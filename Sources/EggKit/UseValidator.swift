@@ -11,7 +11,7 @@ package struct UseValidator {
     package init(
         templateName: String,
         macros: [String],
-        currentDirectory: AbsolutePath,
+        projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
         fileSystem: some FileSysteming
     ) {
@@ -19,7 +19,7 @@ package struct UseValidator {
         self.macros = macros
         self.templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
-            currentDirectory: currentDirectory,
+            projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
         )
         self.parser = EggMacrosParser()

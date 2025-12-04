@@ -31,7 +31,7 @@ struct Use: AsyncParsableCommand {
             return try await UseValidator(
                 templateName: templateName,
                 macros: macros,
-                currentDirectory: Self.fileSystem.currentWorkingDirectory(),
+                projectDirectory: Self.fileSystem.currentWorkingDirectory(),
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                 fileSystem: Self.fileSystem
             ).validate()

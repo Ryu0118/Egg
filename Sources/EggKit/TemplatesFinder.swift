@@ -8,12 +8,12 @@ struct TemplatesFinder {
 
     init(
         fileSystem: any FileSysteming,
-        currentDirectory: AbsolutePath,
+        projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath
     ) {
         self.fileSystem = fileSystem
         self.location = TemplateLocation(
-            projectDirectory: currentDirectory,
+            projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
         )
     }

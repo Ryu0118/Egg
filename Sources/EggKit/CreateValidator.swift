@@ -10,7 +10,7 @@ package struct CreateValidator {
     package init(
         name: String?,
         location: TemplateLocationType?,
-        currentDirectory: AbsolutePath,
+        projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
         fileSystem: some FileSysteming
     ) {
@@ -18,7 +18,7 @@ package struct CreateValidator {
         self.location = location
         self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
-            currentDirectory: currentDirectory,
+            projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
         )
     }

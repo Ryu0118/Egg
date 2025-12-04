@@ -64,13 +64,12 @@ struct TemplateCreator {
         let defaultFilePath = templateDir.appending(component: "___FILE_NAME___View.swift")
         let defaultFileContent = """
         // Available default macros:
-        //   - ___FILE_NAME___: Replaced with the specified file name
         //   - ___DATE___: Current date in default format
         //   - ___DATE(yyyyMMdd)___: Current date in custom format
         //   - ___SYSTEM_USER___: System username
         //
-        // You can also define custom macros (e.g., ___USER_DEFINED___) and provide values via:
-        //   - Command line: egg use <template-name> --user-defined hogehoge
+        // You can also define custom macros (e.g., ___USER_DEFINED___, ___FILE_NAME___) and provide values via:
+        //   - Command line: egg use <template-name> --user-defined foo --file-name bar
         //   - Interactive prompt: will be asked during 'egg use' command
 
         struct ___FILE_NAME___View: View {
@@ -81,13 +80,5 @@ struct TemplateCreator {
         """
         try await fileSystem.writeText(defaultFileContent, at: defaultFilePath)
         return defaultFilePath
-    }
-}
-
-struct Config: Codable {
-    let postUseHook: String?
-
-    enum CodingKeys: String, CodingKey {
-        case postUseHook = "post_use_hook"
     }
 }

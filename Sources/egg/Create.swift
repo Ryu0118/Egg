@@ -3,6 +3,7 @@ import ArgumentParser
 import EggKit
 import FileSystem
 import Path
+import Noora
 
 struct Create: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -26,13 +27,17 @@ struct Create: AsyncParsableCommand {
 
     mutating func run() async throws {
         let mode = try await validate()
-        try await CreateRunner(
-            mode: mode,
-            skipConfig: skipConfig,
-            projectDirectory: resolveProjectDirectory(),
-            homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-            fileSystem: Self.fileSystem
-        ).run()
+        do {
+            try await CreateRunner(
+                mode: mode,
+                skipConfig: skipConfig,
+                projectDirectory: resolveProjectDirectory(),
+                homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                fileSystem: Self.fileSystem
+            ).run()
+        } catch {
+            Noora().error("\(error.localizedDescription)")
+        }
     }
 
     func resolveProjectDirectory() async throws -> AbsolutePath {
@@ -48,7 +53,7 @@ struct Create: AsyncParsableCommand {
             return try await CreateValidator(
                 name: name,
                 location: location,
-                currentDirectory: Self.fileSystem.currentWorkingDirectory(),
+                projectDirectory: Self.fileSystem.currentWorkingDirectory(),
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                 fileSystem: Self.fileSystem
             ).validate()
