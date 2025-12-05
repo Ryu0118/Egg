@@ -19,7 +19,6 @@ struct TemplatesFinder {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.location = TemplateLocation(
-            projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
         )
     }
@@ -30,7 +29,12 @@ struct TemplatesFinder {
 
     func listAll() async throws -> Templates {
         let global = try await list(for: .global)
-        let project = try await list(for: .project(projectDirectory.relative(to: workingDirectory)))
+        let project = try await list(
+            for: .project(
+                projectDirectory,
+                workingDirectory: workingDirectory
+            )
+        )
         return Templates(global: global, project: project)
     }
 
@@ -58,7 +62,13 @@ struct TemplatesFinder {
 
     func validTemplateDirectory(_ name: String) async throws -> AbsolutePath? {
         let templateInGlobal = location.template(name, type: .global)
-        let templateInProject = location.template(name, type: .project(projectDirectory.relative(to: workingDirectory)))
+        let templateInProject = location.template(
+            name,
+            type: .project(
+                projectDirectory,
+                workingDirectory: workingDirectory
+            )
+        )
 
         let existsInGlobal = try await fileSystem.exists(templateInGlobal)
         let existsInProject = try await fileSystem.exists(templateInProject)
@@ -78,7 +88,7 @@ struct Templates {
     let project: [Template]
 }
 
-struct Template {
+struct Template: Equatable {
     let path: AbsolutePath
     let config: Config
 }

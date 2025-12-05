@@ -33,8 +33,12 @@ extension Template {
         @Option(name: .long, help: "The description of the template to create.")
         var description: String?
 
-        @Option(name: .long, help: "Where to store the template: 'global' or 'project' (current directory).", completion: .list(["global", "project"]))
-        var location: TemplateLocationType?
+        @Option(
+            name: .long,
+            help: "Where to store the template: 'global' or 'project' (current directory).",
+            completion: .list(["global", "project"])
+        )
+        var location: TemplateLocationType.Meta?
 
         @Flag(name: .long, help: "Skip the creation of the config.yml file.")
         var skipConfig: Bool = false
@@ -59,12 +63,14 @@ extension Template {
 
         func validate() async throws -> CreateRunnerMode {
             do {
+                let projectDirectory = try await resolveProjectDirectory()
+                let workingDirectory = try await Self.fileSystem.currentWorkingDirectory()
                 return try await CreateArgumentsValidator(
                     name: name,
                     description: description,
-                    location: location,
-                    projectDirectory: try await resolveProjectDirectory(),
-                    workingDirectory: Self.fileSystem.currentWorkingDirectory(),
+                    location: location?.toConcreteType(projectDirectory, workingDirectory: workingDirectory),
+                    projectDirectory: projectDirectory,
+                    workingDirectory: workingDirectory,
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).validate()
@@ -83,9 +89,9 @@ extension Template {
         )
 
         @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
-        var location: TemplateLocationType?
+        var location: TemplateLocationType.Meta?
 
-        @Option(name: .long, help: "Directory to create the template in.", completion: .directory)
+        @Option(name: .long, help: "Directory to list templates from (defaults to current directory).", completion: .directory)
         var projectDirectory: String?
 
         static let fileSystem = FileSystem()
@@ -93,7 +99,10 @@ extension Template {
         mutating func run() async throws {
             let workingDirectory = try await Self.fileSystem.currentWorkingDirectory()
             try await ListRunner(
-                location: location?.updatingProjectDirectory(AbsolutePath(validating: projectDirectory)?.relative(to: workingDirectory)),
+                location: location?.toConcreteType(
+                    resolveProjectDirectory(),
+                    workingDirectory: workingDirectory
+                ),
                 projectDirectory: resolveProjectDirectory(),
                 workingDirectory: workingDirectory,
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
@@ -113,7 +122,7 @@ extension AbsolutePath {
 }
 
 extension Template {
-    struct Delete: AsyncParsableCommand {
+    struct Delete: AsyncParsableCommand, HasProjectDirectory {
         static let configuration = CommandConfiguration(
             commandName: "delete",
             abstract: "Delete a template."
@@ -122,14 +131,42 @@ extension Template {
         @Argument(help: "The name of the template to delete (optional for interactive mode).")
         var templateName: String?
 
-        @Option(name: .long, help: "Specify location: 'global' or 'project'.", completion: .list(["global", "project"]))
-        var location: TemplateLocationType?
+        @Option(name: .long, help: "Directory containing the template to delete (defaults to current directory).", completion: .directory)
+        var projectDirectory: String?
 
-        private static let fileSystem = FileSystem()
+        @Option(name: .long, help: "Delete the template without confirmation.")
+        var force: Bool = false
+
+        static let fileSystem = FileSystem()
 
         mutating func run() async throws {
-            // TODO: Implement delete functionality
-            print("Template delete command - to be implemented")
+            let mode = try await validate()
+            do {
+                try await DeleteRunner(
+                    mode: mode,
+                    force: force,
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                    fileSystem: Self.fileSystem
+                ).run()
+            } catch {
+                Noora().error("\(error.localizedDescription)")
+            }
+        }
+
+        func validate() async throws -> DeleteRunnerMode {
+            do {
+                return try await DeleteArgumentsValidator(
+                    templateName: templateName,
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                    fileSystem: Self.fileSystem
+                ).validate()
+            } catch {
+                throw ValidationError(error.localizedDescription)
+            }
         }
     }
 }
@@ -149,8 +186,23 @@ extension HasProjectDirectory {
     }
 }
 
-extension TemplateLocationType: ExpressibleByArgument {
-    package init?(argument: String) {
-        self.init(rawValue: argument)
+
+
+extension TemplateLocationType {
+    enum Meta: String, ExpressibleByArgument {
+        case global
+        case project
+
+        func toConcreteType(
+            _ projectDirectory: AbsolutePath,
+            workingDirectory: AbsolutePath
+        ) -> TemplateLocationType {
+            return switch self {
+            case .global:
+                .global
+            case .project:
+                .project(projectDirectory, workingDirectory: workingDirectory)
+            }
+        }
     }
 }

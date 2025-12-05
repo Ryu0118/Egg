@@ -1,7 +1,7 @@
 import Foundation
 
 /// Model representing template configuration
-package struct Config: Codable {
+package struct Config: Codable, Equatable {
     /// Template display name
     package let name: String
     
@@ -55,7 +55,7 @@ package struct Config: Codable {
 // MARK: - Macro
 
 /// Macro definition (user input)
-package struct Macro: Codable {
+package struct Macro: Codable, Equatable {
     /// Macro name (e.g., `___MODULE_NAME___`)
     package let name: String
     
@@ -103,7 +103,7 @@ package enum MacroType: String, Codable {
 // MARK: - LifecycleStep
 
 /// Lifecycle hook step (used in pre_hatch/post_hatch)
-package struct LifecycleStep: Codable {
+package struct LifecycleStep: Codable, Equatable {
     /// Step ID (optional, used for step outputs)
     package let id: String?
     
@@ -127,7 +127,7 @@ package struct LifecycleStep: Codable {
 // MARK: - HatchConfig
 
 /// Template expansion configuration
-package struct HatchConfig: Codable {
+package struct HatchConfig: Codable, Equatable {
     /// Output directory (supports macros and step outputs)
     package let output: String
     
@@ -146,7 +146,7 @@ package struct HatchConfig: Codable {
 // MARK: - ExcludeRule
 
 /// Exclusion rule (string or conditional object)
-package enum ExcludeRule: Codable {
+package enum ExcludeRule: Codable, Equatable {
     /// Unconditionally exclude path (glob pattern)
     case path(String)
     
@@ -187,7 +187,7 @@ package enum ExcludeRule: Codable {
 }
 
 /// Conditional exclusion rule
-package struct ConditionalExclude: Codable {
+package struct ConditionalExclude: Codable, Equatable {
     /// Conditional expression (evaluated as JavaScript expression)
     package let `if`: String
     

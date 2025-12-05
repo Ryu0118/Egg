@@ -3,24 +3,8 @@ import Noora
 import Path
 
 package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
-    package typealias RawValue = String
-
     case global
-    case project(_ projectDirectory: RelativePath? = nil)
-
-    package init?(rawValue: String) {
-        if rawValue == "global" {
-            self = .global
-        } else if rawValue == "project" {
-            self = .project()
-        } else {
-            return nil
-        }
-    }
-
-    package var rawValue: String {
-        self == .global ? "global" : "project"
-    }
+    case project(_ projectDirectory: AbsolutePath, workingDirectory: AbsolutePath)
 
     package var name: String {
         switch self {
@@ -44,20 +28,19 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
         switch self {
         case .global:
             "~/.egg"
-        case .project(let projectDirectory):
-            if let projectDirectory {
-                projectDirectory.appending(component: ".eggs").pathString
-            } else {
-                "./.eggs/"
-            }
+        case .project(let projectDirectory, let workingDirectory):
+            projectDirectory
+                .relative(to: workingDirectory)
+                .appending(component: ".eggs").pathString
         }
     }
 
     package func updatingProjectDirectory(
-        _ projectDirectory: RelativePath?
+        _ projectDirectory: AbsolutePath,
+        workingDirectory: AbsolutePath
     ) -> Self? {
         if case .project = self {
-            return .project(projectDirectory)
+            return .project(projectDirectory, workingDirectory: workingDirectory)
         }
         return nil
     }

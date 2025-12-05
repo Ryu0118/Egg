@@ -36,7 +36,13 @@ package struct ListRunner {
             let list = try await finder.listAll()
 
             table(for: list.global, in: .global)
-            table(for: list.project, in: .project(projectDirectory.relative(to: workingDirectory)))
+            table(
+                for: list.project,
+                in: .project(
+                    projectDirectory,
+                    workingDirectory: workingDirectory
+                )
+            )
         }
     }
 

@@ -12,7 +12,7 @@ struct Hatch: AsyncParsableCommand, HasProjectDirectory {
     @Argument(help: "The name of the template to use.")
     var templateName: String
 
-    @Option(name: .long, help: "Directory to create the template in.", completion: .directory)
+    @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
     var projectDirectory: String?
 
     @Option(name: .shortAndLong, help: "Output directory for the generated files. Defaults to current directory.")
