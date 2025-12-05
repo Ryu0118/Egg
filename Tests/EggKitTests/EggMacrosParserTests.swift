@@ -30,35 +30,53 @@ struct EggMacrosParserTests {
             TestCase(
                 description: "parses single macro with content",
                 macros: ["--name", "value"],
-                expected: .success([EggMacro(macro: "NAME", content: "value")])
+                expected: .success([EggMacro(macro: "NAME", values: ["value"])])
             ),
             TestCase(
                 description: "parses multiple macros with content",
                 macros: ["--name", "value1", "--age", "25"],
                 expected: .success([
-                    EggMacro(macro: "NAME", content: "value1"),
-                    EggMacro(macro: "AGE", content: "25")
+                    EggMacro(macro: "NAME", values: ["value1"]),
+                    EggMacro(macro: "AGE", values: ["25"])
+                ])
+            ),
+            TestCase(
+                description: "parses array macro with multiple values",
+                macros: ["--platforms", "iOS", "macOS", "watchOS"],
+                expected: .success([EggMacro(macro: "PLATFORMS", values: ["iOS", "macOS", "watchOS"])])
+            ),
+            TestCase(
+                description: "parses single macro with multiple consecutive values",
+                macros: ["--name", "value1", "value2"],
+                expected: .success([EggMacro(macro: "NAME", values: ["value1", "value2"])])
+            ),
+            TestCase(
+                description: "parses multiple macros where first is array",
+                macros: ["--platforms", "iOS", "macOS", "--name", "MyApp"],
+                expected: .success([
+                    EggMacro(macro: "PLATFORMS", values: ["iOS", "macOS"]),
+                    EggMacro(macro: "NAME", values: ["MyApp"])
                 ])
             ),
             TestCase(
                 description: "normalizes kebab-case macro name to UPPER_SNAKE_CASE",
                 macros: ["--my-app-name", "TestApp"],
-                expected: .success([EggMacro(macro: "MY_APP_NAME", content: "TestApp")])
+                expected: .success([EggMacro(macro: "MY_APP_NAME", values: ["TestApp"])])
             ),
             TestCase(
                 description: "normalizes mixed case macro name to uppercase",
                 macros: ["--MyMacro", "value"],
-                expected: .success([EggMacro(macro: "MYMACRO", content: "value")])
+                expected: .success([EggMacro(macro: "MYMACRO", values: ["value"])])
             ),
             TestCase(
                 description: "allows content with special characters",
                 macros: ["--url", "https://example.com/path?query=value"],
-                expected: .success([EggMacro(macro: "URL", content: "https://example.com/path?query=value")])
+                expected: .success([EggMacro(macro: "URL", values: ["https://example.com/path?query=value"])])
             ),
             TestCase(
                 description: "allows content with spaces",
                 macros: ["--message", "Hello World"],
-                expected: .success([EggMacro(macro: "MESSAGE", content: "Hello World")])
+                expected: .success([EggMacro(macro: "MESSAGE", values: ["Hello World"])])
             ),
             TestCase(
                 description: "returns empty array for empty input",
@@ -68,32 +86,32 @@ struct EggMacrosParserTests {
             TestCase(
                 description: "normalizes underscore in macro name to UPPER_SNAKE_CASE",
                 macros: ["--user_defined", "value"],
-                expected: .success([EggMacro(macro: "USER_DEFINED", content: "value")])
+                expected: .success([EggMacro(macro: "USER_DEFINED", values: ["value"])])
             ),
             TestCase(
                 description: "normalizes mixed underscore and hyphen to UPPER_SNAKE_CASE",
                 macros: ["--user-defined_name", "TestValue"],
-                expected: .success([EggMacro(macro: "USER_DEFINED_NAME", content: "TestValue")])
+                expected: .success([EggMacro(macro: "USER_DEFINED_NAME", values: ["TestValue"])])
             ),
             TestCase(
                 description: "normalizes lowercase macro name to uppercase",
                 macros: ["--name", "value"],
-                expected: .success([EggMacro(macro: "NAME", content: "value")])
+                expected: .success([EggMacro(macro: "NAME", values: ["value"])])
             ),
             TestCase(
                 description: "keeps uppercase macro name as uppercase",
                 macros: ["--NAME", "value"],
-                expected: .success([EggMacro(macro: "NAME", content: "value")])
+                expected: .success([EggMacro(macro: "NAME", values: ["value"])])
             ),
             TestCase(
                 description: "normalizes macro name with numbers",
                 macros: ["--name123", "value"],
-                expected: .success([EggMacro(macro: "NAME123", content: "value")])
+                expected: .success([EggMacro(macro: "NAME123", values: ["value"])])
             ),
             TestCase(
                 description: "normalizes macro name with hyphen and numbers",
                 macros: ["--name-123", "value"],
-                expected: .success([EggMacro(macro: "NAME_123", content: "value")])
+                expected: .success([EggMacro(macro: "NAME_123", values: ["value"])])
             ),
 
             // Error cases
@@ -118,19 +136,9 @@ struct EggMacrosParserTests {
                 expected: .failure(.missingContent(macro: "--name"))
             ),
             TestCase(
-                description: "throws error when content starts with double dash",
-                macros: ["--name", "--value"],
-                expected: .failure(.contentStartsWithDoubleDash(macro: "--name", content: "--value"))
-            ),
-            TestCase(
-                description: "throws error when consecutive content values are provided",
-                macros: ["--name", "value1", "value2"],
-                expected: .failure(.consecutiveContentValues(first: "value1", second: "value2"))
-            ),
-            TestCase(
-                description: "throws error when second element starts with single dash (detected as consecutive content)",
-                macros: ["--valid", "value", "-invalid", "value2"],
-                expected: .failure(.consecutiveContentValues(first: "value", second: "-invalid"))
+                description: "throws error when value starts with single dash",
+                macros: ["--name", "-invalid"],
+                expected: .failure(.singleDashNotAllowed(macro: "-invalid"))
             ),
             TestCase(
                 description: "throws error when macro starts with single dash (first position)",

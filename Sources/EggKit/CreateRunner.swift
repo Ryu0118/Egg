@@ -9,12 +9,12 @@ package struct CreateRunner {
     private let templateCreator: TemplateCreator
     private let templatesFinder: TemplatesFinder
 
-    package init(
+    nonisolated package init(
         mode: CreateRunnerMode,
         skipConfig: Bool,
         projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        fileSystem: sending some FileSysteming
     ) {
         let templateLocation = TemplateLocation(
             projectDirectory: projectDirectory,
@@ -37,13 +37,16 @@ package struct CreateRunner {
     package func run() async throws {
         switch mode {
         case .noora:
-            let templateName = Noora().textPrompt(
+            let noora = Noora()
+
+            let templateName = noora.textPrompt(
                 title: "Template name",
                 prompt: "How would you like to name your template?",
                 collapseOnAnswer: true,
                 validationRules: [
                     NonEmptyValidationRule(error: "Project name cannot be empty."),
-                    DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace.")
+                    DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
+                    LengthValidationRule.templateName
                 ]
             )
 
@@ -51,19 +54,37 @@ package struct CreateRunner {
                 throw Error.templateAlreadyExists
             }
 
-            let locationType: TemplateLocationType = Noora().singleChoicePrompt(
+            let description = noora.textPrompt(
+                title: "Template description",
+                prompt: "Please enter a description for your template.",
+                collapseOnAnswer: true,
+                validationRules: [
+                    NonEmptyValidationRule(error: "Description cannot be empty."),
+                    LengthValidationRule.description
+                ]
+            )
+
+            let locationType: TemplateLocationType = noora.singleChoicePrompt(
                 title: "Template Location",
                 question: "Where would you like to store your template?",
                 description: "Global templates are available across all projects, while project templates are specific to the current project."
             )
 
-            try await templateCreator.create(templateName, in: locationType)
+            try await templateCreator.create(
+                templateName,
+                description: description,
+                in: locationType
+            )
 
             let templateDir = templateLocation.template(templateName, type: locationType)
             successLog(name: templateName, templateDir: templateDir)
 
-        case .provided(let name, let location):
-            try await templateCreator.create(name, in: location)
+        case .provided(let name, let description, let location):
+            try await templateCreator.create(
+                name,
+                description: description,
+                in: location
+            )
 
             let templateDir = templateLocation.template(name, type: location)
             successLog(name: name, templateDir: templateDir)
@@ -88,5 +109,5 @@ package struct CreateRunner {
 
 package enum CreateRunnerMode: Codable {
     case noora
-    case provided(name: String, location: TemplateLocationType)
+    case provided(name: String, description: String, location: TemplateLocationType)
 }

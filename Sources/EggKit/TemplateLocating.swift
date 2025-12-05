@@ -31,6 +31,15 @@ extension TemplateLocating {
         }
     }
 
+    func templateDir(for type: TemplateLocationType) -> AbsolutePath {
+        switch type {
+        case .global:
+            globalTemplatesDirectory
+        case .project:
+            projectTemplatesDirectory
+        }
+    }
+
     func eggsDir(based baseURL: AbsolutePath) -> AbsolutePath {
         baseURL.appending(component: ".eggs")
     }

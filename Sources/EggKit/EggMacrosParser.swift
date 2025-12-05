@@ -29,24 +29,36 @@ struct EggMacrosParser {
                 throw MacrosParseError.missingContent(macro: current)
             }
 
+            // Collect all values until next -- or end of array
+            var values: [String] = []
             i += 1
-            let content = macros[i]
-
-            // Content must not start with --
-            guard !content.hasPrefix("--") else {
-                throw MacrosParseError.contentStartsWithDoubleDash(macro: current, content: content)
+            
+            while i < macros.count {
+                let value = macros[i]
+                
+                // If it starts with --, we've reached the next macro
+                if value.hasPrefix("--") {
+                    break
+                }
+                
+                // Single dash is invalid
+                if value.hasPrefix("-") && !value.hasPrefix("--") {
+                    throw MacrosParseError.singleDashNotAllowed(macro: value)
+                }
+                
+                values.append(value)
+                i += 1
             }
-
-            // Check if next element is also not starting with -- (consecutive content)
-            if i + 1 < macros.count && !macros[i + 1].hasPrefix("--") {
-                throw MacrosParseError.consecutiveContentValues(first: content, second: macros[i + 1])
+            
+            // At least one value is required
+            guard !values.isEmpty else {
+                throw MacrosParseError.missingContent(macro: current)
             }
 
             // Convert macro name to uppercase with underscores
             let normalizedMacro = normalize(macroName: macroName)
 
-            result.append(EggMacro(macro: normalizedMacro, content: content))
-            i += 1
+            result.append(EggMacro(macro: normalizedMacro, values: values))
         }
 
         return result
@@ -64,8 +76,6 @@ enum MacrosParseError: Error, LocalizedError, Equatable {
     case singleDashNotAllowed(macro: String)
     case emptyMacroName
     case missingContent(macro: String)
-    case contentStartsWithDoubleDash(macro: String, content: String)
-    case consecutiveContentValues(first: String, second: String)
 
     var errorDescription: String? {
         switch self {
@@ -76,16 +86,12 @@ enum MacrosParseError: Error, LocalizedError, Equatable {
         case .emptyMacroName:
             return "Macro name cannot be empty"
         case .missingContent(let macro):
-            return "Macro '\(macro)' requires a content value"
-        case .contentStartsWithDoubleDash(let macro, let content):
-            return "Content for macro '\(macro)' cannot start with '--': \(content)"
-        case .consecutiveContentValues(let first, let second):
-            return "Consecutive content values are not allowed: '\(first)' followed by '\(second)'"
+            return "Macro '\(macro)' requires at least one value"
         }
     }
 }
 
 package struct EggMacro: Equatable {
     let macro: String
-    let content: String
+    let values: [String]
 }

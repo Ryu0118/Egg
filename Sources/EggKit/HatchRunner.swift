@@ -1,6 +1,6 @@
 import Foundation
 
-package actor UseRunner {
+package actor HatchRunner {
     private let macros: [EggMacro]
 
     package init(macros: [EggMacro]) {

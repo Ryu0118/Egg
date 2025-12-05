@@ -7,8 +7,8 @@ struct Egg: AsyncParsableCommand {
         commandName: "egg",
         abstract: "A template engine for generating files and folders from templates.",
         subcommands: [
-            Create.self,
-            Use.self
+            Template.self,
+            Hatch.self
         ]
     )
 }

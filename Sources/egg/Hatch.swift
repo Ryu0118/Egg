@@ -3,16 +3,16 @@ import ArgumentParser
 import EggKit
 import FileSystem
 
-struct Use: AsyncParsableCommand {
+struct Hatch: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "use",
+        commandName: "hatch",
         abstract: "Use a template to generate files with macro substitution."
     )
 
     @Argument(help: "The name of the template to use.")
     var templateName: String
 
-    @Option(name: .long, help: "Output directory for the generated files. Defaults to current directory.")
+    @Option(name: .shortAndLong, help: "Output directory for the generated files. Defaults to current directory.")
     var output: String?
 
     @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
@@ -23,12 +23,12 @@ struct Use: AsyncParsableCommand {
     mutating func run() async throws {
         let macros = try await validate()
 
-        try await UseRunner(macros: macros).run()
+        try await HatchRunner(macros: macros).run()
     }
 
     private func validate() async throws -> [EggMacro] {
         do {
-            return try await UseValidator(
+            return try await HatchArgumentsValidator(
                 templateName: templateName,
                 macros: macros,
                 projectDirectory: Self.fileSystem.currentWorkingDirectory(),

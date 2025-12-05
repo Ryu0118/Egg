@@ -1,0 +1,40 @@
+import Foundation
+import Noora
+
+struct ConfigValidator {
+    private let macrosValidator = MacrosValidator()
+    
+    func validate(_ config: Config) async throws {
+        var allErrors: [Error] = []
+
+        let templateNameErrors = Config.templateNameValidationRules.validate(input: config.name).map { Error.validatableRulesError($0) }
+        let descriptionErrors = Config.descriptionValidationRules.validate(input: config.description).map { Error.validatableRulesError($0) }
+
+        allErrors += templateNameErrors + descriptionErrors
+
+        let macros = config.macros ?? []
+        let preHatchValidator = PreHatchValidator(macros: macros)
+        let postHatchValidator = PostHatchValidator(macros: macros)
+        let hatchValidator = HatchValidator(macros: macros)
+
+        if !macros.isEmpty {
+            allErrors += macrosValidator.validate(macros, config: config)
+        }
+        
+        if let preHatch = config.preHatch {
+            allErrors += await preHatchValidator.validate(preHatch)
+        }
+        
+        if let postHatch = config.postHatch {
+            allErrors += await postHatchValidator.validate(postHatch)
+        }
+        
+        if let hatch = config.hatch {
+            allErrors += await hatchValidator.validate(hatch)
+        }
+        
+        if !allErrors.isEmpty {
+            throw CombinedError(errors: allErrors) { "⛔️ \($0)" }
+        }
+    }
+}

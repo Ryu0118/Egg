@@ -2,7 +2,7 @@ import Foundation
 import FileSystem
 import Path
 
-package struct UseValidator {
+package struct HatchArgumentsValidator {
     private let templateName: String
     private let macros: [String]
     private let templateFinder: TemplatesFinder
@@ -13,7 +13,7 @@ package struct UseValidator {
         macros: [String],
         projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        fileSystem: sending some FileSysteming
     ) {
         self.templateName = templateName
         self.macros = macros
