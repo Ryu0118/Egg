@@ -7,18 +7,22 @@ package struct ListRunner {
     let location: TemplateLocationType?
     let finder: TemplatesFinder
     let projectDirectory: AbsolutePath
+    let workingDirectory: AbsolutePath
 
     package init(
         location: TemplateLocationType?,
         projectDirectory: AbsolutePath,
+        workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: sending some FileSysteming
-    ) async {
+        fileSystem: some FileSysteming
+    ) {
         self.location = location
         self.projectDirectory = projectDirectory
-        self.finder = await TemplatesFinder(
+        self.workingDirectory = workingDirectory
+        self.finder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
+            workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
     }
@@ -32,17 +36,21 @@ package struct ListRunner {
             let list = try await finder.listAll()
 
             table(for: list.global, in: .global)
-            table(for: list.project, in: .project(projectDirectory))
+            table(for: list.project, in: .project(projectDirectory.relative(to: workingDirectory)))
         }
     }
 
     private func table(for list: [Template], in location: TemplateLocationType) {
-        Noora().info("Templates in \(location.dir)")
+        guard !list.isEmpty else {
+            return
+        }
+
+        Noora().passthrough("Templates in \(location.dir)\n")
 
         Noora().table(
             headers: ["name", "description"],
             rows: list.reduce(into: [[String]]()) { partialResult, template in
-                partialResult.append([template.config.name, template.path.pathString])
+                partialResult.append([template.config.name, template.config.description])
             }
         )
     }

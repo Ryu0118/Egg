@@ -3,7 +3,7 @@ import Noora
 
 struct ConfigValidator {
     private let macrosValidator = MacrosValidator()
-    
+
     func validate(_ config: Config) async throws {
         var allErrors: [Error] = []
 
@@ -20,19 +20,19 @@ struct ConfigValidator {
         if !macros.isEmpty {
             allErrors += macrosValidator.validate(macros, config: config)
         }
-        
+
         if let preHatch = config.preHatch {
             allErrors += await preHatchValidator.validate(preHatch)
         }
-        
+
         if let postHatch = config.postHatch {
             allErrors += await postHatchValidator.validate(postHatch)
         }
-        
+
         if let hatch = config.hatch {
             allErrors += await hatchValidator.validate(hatch)
         }
-        
+
         if !allErrors.isEmpty {
             throw CombinedError(errors: allErrors) { "⛔️ \($0)" }
         }

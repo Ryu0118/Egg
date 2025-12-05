@@ -13,15 +13,17 @@ package struct CreateArgumentsValidator {
         description: String?,
         location: TemplateLocationType?,
         projectDirectory: AbsolutePath,
+        workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: sending some FileSysteming
-    ) async {
+        fileSystem: some FileSysteming
+    ) {
         self.name = name
         self.description = description
         self.location = location
-        self.templatesFinder = await TemplatesFinder(
+        self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
+            workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
     }

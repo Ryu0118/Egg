@@ -47,7 +47,8 @@ extension Template {
                 try await CreateRunner(
                     mode: mode,
                     skipConfig: skipConfig,
-                    projectDirectory: try await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
+                    workingDirectory: Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).run()
@@ -63,6 +64,7 @@ extension Template {
                     description: description,
                     location: location,
                     projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).validate()
@@ -89,9 +91,11 @@ extension Template {
         static let fileSystem = FileSystem()
 
         mutating func run() async throws {
+            let workingDirectory = try await Self.fileSystem.currentWorkingDirectory()
             try await ListRunner(
-                location: location?.updatingProjectDirectory(AbsolutePath(validating: projectDirectory)),
+                location: location?.updatingProjectDirectory(AbsolutePath(validating: projectDirectory)?.relative(to: workingDirectory)),
                 projectDirectory: resolveProjectDirectory(),
+                workingDirectory: workingDirectory,
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                 fileSystem: Self.fileSystem
             ).run()

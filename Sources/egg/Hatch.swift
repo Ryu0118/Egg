@@ -3,7 +3,7 @@ import ArgumentParser
 import EggKit
 import FileSystem
 
-struct Hatch: AsyncParsableCommand {
+struct Hatch: AsyncParsableCommand, HasProjectDirectory {
     static let configuration = CommandConfiguration(
         commandName: "hatch",
         abstract: "Use a template to generate files with macro substitution."
@@ -12,13 +12,16 @@ struct Hatch: AsyncParsableCommand {
     @Argument(help: "The name of the template to use.")
     var templateName: String
 
+    @Option(name: .long, help: "Directory to create the template in.", completion: .directory)
+    var projectDirectory: String?
+
     @Option(name: .shortAndLong, help: "Output directory for the generated files. Defaults to current directory.")
     var output: String?
 
     @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
     var macros: [String] = []
 
-    private static let fileSystem = FileSystem()
+    static let fileSystem = FileSystem()
 
     mutating func run() async throws {
         let macros = try await validate()
@@ -31,7 +34,8 @@ struct Hatch: AsyncParsableCommand {
             return try await HatchArgumentsValidator(
                 templateName: templateName,
                 macros: macros,
-                projectDirectory: Self.fileSystem.currentWorkingDirectory(),
+                projectDirectory: resolveProjectDirectory(),
+                workingDirectory: Self.fileSystem.currentWorkingDirectory(),
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                 fileSystem: Self.fileSystem
             ).validate()

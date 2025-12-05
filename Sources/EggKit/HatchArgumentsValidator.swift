@@ -12,14 +12,16 @@ package struct HatchArgumentsValidator {
         templateName: String,
         macros: [String],
         projectDirectory: AbsolutePath,
+        workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: sending some FileSysteming
-    ) async {
+        fileSystem: some FileSysteming
+    ) {
         self.templateName = templateName
         self.macros = macros
-        self.templateFinder = await TemplatesFinder(
+        self.templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
+            workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
         self.parser = EggMacrosParser()

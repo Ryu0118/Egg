@@ -2,11 +2,11 @@ import Foundation
 import Noora
 import Path
 
-package enum TemplateLocationType: Codable, CaseIterable, CustomStringConvertible, Equatable {
+package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     package typealias RawValue = String
 
     case global
-    case project(_ projectDirectory: AbsolutePath? = nil)
+    case project(_ projectDirectory: RelativePath? = nil)
 
     package init?(rawValue: String) {
         if rawValue == "global" {
@@ -31,13 +31,6 @@ package enum TemplateLocationType: Codable, CaseIterable, CustomStringConvertibl
         }
     }
 
-    package static var allCases: [Self] {
-        [
-            .global,
-            .project(),
-        ]
-    }
-
     package var description: String {
         switch self {
         case .global:
@@ -50,7 +43,7 @@ package enum TemplateLocationType: Codable, CaseIterable, CustomStringConvertibl
     package var dir: String {
         switch self {
         case .global:
-            "~/.eggs/"
+            "~/.egg"
         case .project(let projectDirectory):
             if let projectDirectory {
                 projectDirectory.appending(component: ".eggs").pathString
@@ -61,7 +54,7 @@ package enum TemplateLocationType: Codable, CaseIterable, CustomStringConvertibl
     }
 
     package func updatingProjectDirectory(
-        _ projectDirectory: AbsolutePath?
+        _ projectDirectory: RelativePath?
     ) -> Self? {
         if case .project = self {
             return .project(projectDirectory)

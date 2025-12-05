@@ -8,13 +8,16 @@ package struct CreateRunner {
     private let templateLocation: TemplateLocation
     private let templateCreator: TemplateCreator
     private let templatesFinder: TemplatesFinder
+    private let projectDirectory: AbsolutePath
+    private let workingDirectory: AbsolutePath
 
-    nonisolated(nonsending) package init(
+    package init(
         mode: CreateRunnerMode,
         skipConfig: Bool,
         projectDirectory: AbsolutePath,
+        workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: sending some FileSysteming
+        fileSystem: some FileSysteming
     ) async {
         let templateLocation = TemplateLocation(
             projectDirectory: projectDirectory,
@@ -22,14 +25,17 @@ package struct CreateRunner {
         )
         self.mode = mode
         self.templateLocation = templateLocation
+        self.projectDirectory = projectDirectory
+        self.workingDirectory = workingDirectory
         self.templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
             fileSystem: fileSystem,
         )
-        self.templatesFinder = await TemplatesFinder(
+        self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
+            workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
     }
@@ -67,6 +73,7 @@ package struct CreateRunner {
             let locationType: TemplateLocationType = noora.singleChoicePrompt(
                 title: "Template Location",
                 question: "Where would you like to store your template?",
+                options: [.global, .project(projectDirectory.relative(to: workingDirectory))],
                 description: "Global templates are available across all projects, while project templates are specific to the current project."
             )
 

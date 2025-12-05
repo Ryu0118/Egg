@@ -2,20 +2,22 @@ import Foundation
 import Path
 import FileSystem
 import Yams
-import AsyncOperations
 
-actor TemplatesFinder {
-    nonisolated(unsafe) let fileSystem: any FileSysteming
+struct TemplatesFinder {
+    let fileSystem: any FileSysteming
     let location: any TemplateLocating
     let projectDirectory: AbsolutePath
+    let workingDirectory: AbsolutePath
 
-    nonisolated(nonsending) init(
+    init(
         fileSystem: some FileSysteming,
         projectDirectory: AbsolutePath,
+        workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath
-    ) async {
+    ) {
         self.fileSystem = fileSystem
         self.projectDirectory = projectDirectory
+        self.workingDirectory = workingDirectory
         self.location = TemplateLocation(
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
@@ -27,37 +29,36 @@ actor TemplatesFinder {
     }
 
     func listAll() async throws -> Templates {
-        async let global = list(for: .global)
-        async let project = list(for: .project(projectDirectory))
-        return try await Templates(global: global, project: project)
+        let global = try await list(for: .global)
+        let project = try await list(for: .project(projectDirectory.relative(to: workingDirectory)))
+        return Templates(global: global, project: project)
     }
 
     func list(for locationType: TemplateLocationType) async throws -> [Template] {
-        let numberOfConcurrentTasks: UInt = 10
         let templateDir = location.templateDir(for: locationType)
         let validator = ConfigValidator()
 
-        return try await fileSystem.contentsOfDirectory(templateDir)
-            .lazy
-            .filter { !URL(filePath: $0.pathString).isFileURL }
-            .asyncFilter(numberOfConcurrentTasks: numberOfConcurrentTasks) { path in
-                try await self.fileSystem.exists(path.appending(component: "config.yml"))
+        var templates = [Template]()
+
+        let templateDirs = try? await fileSystem.contentsOfDirectory(templateDir)
+
+        for templateDir in templateDirs ?? [] {
+            let configPath = templateDir.appending(component: "config.yml")
+            guard (try? await self.fileSystem.exists(configPath)) ?? false else {
+                continue
             }
-            .asyncCompactMap(numberOfConcurrentTasks: numberOfConcurrentTasks) { path -> Template? in
-                do {
-                    let data = try await self.fileSystem.readFile(at: path)
-                    let config = try YAMLDecoder().decode(Config.self, from: data)
-                    try await validator.validate(config)
-                    return Template(path: path, config: config)
-                } catch {
-                    return nil
-                }
-            }
+            let data = try await self.fileSystem.readFile(at: configPath)
+            let config = try YAMLDecoder().decode(Config.self, from: data)
+            try await validator.validate(config)
+            templates.append(Template(path: templateDir, config: config))
+        }
+
+        return templates
     }
 
     func validTemplateDirectory(_ name: String) async throws -> AbsolutePath? {
         let templateInGlobal = location.template(name, type: .global)
-        let templateInProject = location.template(name, type: .project(projectDirectory))
+        let templateInProject = location.template(name, type: .project(projectDirectory.relative(to: workingDirectory)))
 
         let existsInGlobal = try await fileSystem.exists(templateInGlobal)
         let existsInProject = try await fileSystem.exists(templateInProject)

@@ -1,5 +1,5 @@
 name: hoge
-description: This is example template
+description: hoge
 
 # Define custom macros that can be used throughout your template files and in this config file.
 # Macros defined here can be referenced in file names, folder names, file contents, and
