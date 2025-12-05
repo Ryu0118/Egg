@@ -9,13 +9,13 @@ package struct CreateRunner {
     private let templateCreator: TemplateCreator
     private let templatesFinder: TemplatesFinder
 
-    nonisolated package init(
+    nonisolated(nonsending) package init(
         mode: CreateRunnerMode,
         skipConfig: Bool,
         projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
         fileSystem: sending some FileSysteming
-    ) {
+    ) async {
         let templateLocation = TemplateLocation(
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
@@ -27,7 +27,7 @@ package struct CreateRunner {
             templateLocating: templateLocation,
             fileSystem: fileSystem,
         )
-        self.templatesFinder = TemplatesFinder(
+        self.templatesFinder = await TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory

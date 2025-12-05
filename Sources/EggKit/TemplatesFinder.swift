@@ -9,11 +9,11 @@ actor TemplatesFinder {
     let location: any TemplateLocating
     let projectDirectory: AbsolutePath
 
-    init(
-        fileSystem: sending some FileSysteming,
+    nonisolated(nonsending) init(
+        fileSystem: some FileSysteming,
         projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath
-    ) {
+    ) async {
         self.fileSystem = fileSystem
         self.projectDirectory = projectDirectory
         self.location = TemplateLocation(

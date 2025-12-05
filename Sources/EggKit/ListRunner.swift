@@ -13,10 +13,10 @@ package struct ListRunner {
         projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
         fileSystem: sending some FileSysteming
-    ) {
+    ) async {
         self.location = location
         self.projectDirectory = projectDirectory
-        self.finder = TemplatesFinder(
+        self.finder = await TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory

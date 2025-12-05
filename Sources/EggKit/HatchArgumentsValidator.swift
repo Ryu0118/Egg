@@ -14,10 +14,10 @@ package struct HatchArgumentsValidator {
         projectDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
         fileSystem: sending some FileSysteming
-    ) {
+    ) async {
         self.templateName = templateName
         self.macros = macros
-        self.templateFinder = TemplatesFinder(
+        self.templateFinder = await TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
