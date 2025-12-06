@@ -12,7 +12,8 @@ struct Template: AsyncParsableCommand {
         subcommands: [
             Create.self,
             List.self,
-            Delete.self
+            Delete.self,
+            Duplicate.self
         ]
     )
 }
@@ -68,7 +69,7 @@ extension Template {
                 return try await CreateArgumentsValidator(
                     name: name,
                     description: description,
-                    location: location?.toConcreteType(projectDirectory, workingDirectory: workingDirectory),
+                    location: location,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
@@ -186,23 +187,58 @@ extension HasProjectDirectory {
     }
 }
 
+extension Template {
+    struct Duplicate: AsyncParsableCommand, HasProjectDirectory {
+        static let configuration = CommandConfiguration(
+            commandName: "duplicate",
+            abstract: "Duplicate an existing template."
+        )
 
+        @Argument(help: "The name of the template to duplicate (optional for interactive mode).")
+        var templateName: String?
 
-extension TemplateLocationType {
-    enum Meta: String, ExpressibleByArgument {
-        case global
-        case project
+        @Option(name: .long, help: "The name for the duplicated template.")
+        var name: String?
 
-        func toConcreteType(
-            _ projectDirectory: AbsolutePath,
-            workingDirectory: AbsolutePath
-        ) -> TemplateLocationType {
-            return switch self {
-            case .global:
-                .global
-            case .project:
-                .project(projectDirectory, workingDirectory: workingDirectory)
+        @Option(name: .long, help: "The description for the duplicated template.")
+        var description: String?
+
+        @Option(name: .long, help: "Directory containing the template to duplicate (defaults to current directory).", completion: .directory)
+        var projectDirectory: String?
+
+        static let fileSystem = FileSystem()
+
+        mutating func run() async throws {
+            let mode = try await validate()
+            do {
+                try await DuplicateRunner(
+                    mode: mode,
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                    fileSystem: Self.fileSystem
+                ).run()
+            } catch {
+                Noora().error("\(error.localizedDescription)")
+            }
+        }
+
+        func validate() async throws -> DuplicateRunnerMode {
+            do {
+                return try await DuplicateArgumentsValidator(
+                    templateName: templateName,
+                    newName: name,
+                    newDescription: description,
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                    fileSystem: Self.fileSystem
+                ).validate()
+            } catch {
+                throw ValidationError(error.localizedDescription)
             }
         }
     }
 }
+
+extension TemplateLocationType.Meta: ExpressibleByArgument {}

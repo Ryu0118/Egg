@@ -5,12 +5,12 @@ import Yams
 import Noora
 
 struct TemplatesFinder {
-    let fileSystem: any FileSysteming
-    let location: any TemplateLocating
-    let projectDirectory: AbsolutePath
-    let workingDirectory: AbsolutePath
+    private let fileSystem: any FileSysteming
+    private let location: any TemplateLocating
+    private let projectDirectory: AbsolutePath
+    private let workingDirectory: AbsolutePath
 
-    let validator = ConfigValidator()
+    private let validator = ConfigValidator()
 
     init(
         fileSystem: some FileSysteming,
@@ -30,18 +30,25 @@ struct TemplatesFinder {
         try await validTemplateDirectory(name) != nil
     }
 
-    func listAll() async throws -> Templates {
-        let global = try await list(for: .global)
+    func listAll(emitValidationErrorLog: Bool = true) async throws -> Templates {
+        let global = try await list(
+            for: .global,
+            emitValidationErrorLog: emitValidationErrorLog
+        )
         let project = try await list(
             for: .project(
                 projectDirectory,
                 workingDirectory: workingDirectory
-            )
+            ),
+            emitValidationErrorLog: emitValidationErrorLog
         )
         return Templates(global: global, project: project)
     }
 
-    func list(for locationType: TemplateLocationType) async throws -> [Template] {
+    func list(
+        for locationType: TemplateLocationType,
+        emitValidationErrorLog: Bool = true
+    ) async throws -> [Template] {
         let templateDir = location.templateDir(for: locationType)
 
         var templates = [Template]()
@@ -62,11 +69,12 @@ struct TemplatesFinder {
                 let template = await convertConfigToTemplate(
                     config,
                     templateDir: templateDir,
-                    configPath: configPath
+                    configPath: configPath,
+                    emitValidationErrorLog: emitValidationErrorLog
                 )
                 templates.append(template)
             } catch {
-                validationErrorLog(configPath: configPath, error: error)
+                validationErrorLog(configPath: configPath, error: error, emitValidationErrorLog: emitValidationErrorLog)
             }
         }
 
@@ -98,19 +106,32 @@ struct TemplatesFinder {
     private func convertConfigToTemplate(
         _ config: Config,
         templateDir: AbsolutePath,
-        configPath: AbsolutePath
+        configPath: AbsolutePath,
+        emitValidationErrorLog: Bool
     ) async -> Template {
         do {
             try await validator.validate(config)
 
             return Template(path: templateDir, config: config, isValid: true)
         } catch {
-            validationErrorLog(configPath: configPath, error: error)
+            validationErrorLog(
+                configPath: configPath,
+                error: error,
+                emitValidationErrorLog: emitValidationErrorLog
+            )
             return Template(path: templateDir, config: config, isValid: false)
         }
     }
 
-    private func validationErrorLog(configPath: AbsolutePath, error: any Error) {
+    private func validationErrorLog(
+        configPath: AbsolutePath,
+        error: any Error,
+        emitValidationErrorLog: Bool
+    ) {
+        guard emitValidationErrorLog else {
+            return
+        }
+
         Noora().error(
             """
             \(configPath.pathString) is not a valid configuration. 

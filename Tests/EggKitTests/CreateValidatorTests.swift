@@ -11,15 +11,15 @@ struct CreateArgumentsValidatorTests {
         guard let tempDir = FileSystem.temporaryTestDirectory else {
             throw TestError.temporaryDirectoryNotAvailable
         }
-        
+
         let fileSystem = FileSystem()
         let projectDirectory = tempDir.appending(component: "project")
         let homeDirectory = tempDir.appending(component: "home")
-        
+
         // Create directories
         try await fileSystem.makeDirectory(at: projectDirectory, options: [.createTargetParentDirectories])
         try await fileSystem.makeDirectory(at: homeDirectory, options: [.createTargetParentDirectories])
-        
+
         // Create existing templates if needed
         for templateName in testCase.existingTemplates {
             // TemplatesFinder checks both global and project locations, so create in both
@@ -28,16 +28,17 @@ struct CreateArgumentsValidatorTests {
             try await fileSystem.makeDirectory(at: globalPath, options: [.createTargetParentDirectories])
             try await fileSystem.makeDirectory(at: projectPath, options: [.createTargetParentDirectories])
         }
-        
+
         let validator = CreateArgumentsValidator(
             name: testCase.name,
             description: testCase.templateDescription,
             location: testCase.location,
             projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             fileSystem: fileSystem
         )
-        
+
         switch testCase.expected {
         case .success(let expectedMode):
             let result = try await validator.validate()
@@ -53,7 +54,7 @@ struct CreateArgumentsValidatorTests {
         let description: String
         let name: String?
         let templateDescription: String?
-        let location: TemplateLocationType?
+        let location: TemplateLocationType.Meta?
         let existingTemplates: Set<String>
         let expected: Result
 
@@ -160,7 +161,7 @@ struct CreateArgumentsValidatorTests {
             case failure(CreateArgumentsValidator.Error)
         }
     }
-    
+
     enum TestError: Error {
         case temporaryDirectoryNotAvailable
     }

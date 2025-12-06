@@ -8,6 +8,7 @@ package struct DeleteArgumentsValidator {
     private let homeDirectory: AbsolutePath
     private let projectDirectory: AbsolutePath
     private let workingDirectory: AbsolutePath
+    private let fileSystem: any FileSysteming
 
     package init(
         templateName: String?,
@@ -20,6 +21,7 @@ package struct DeleteArgumentsValidator {
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.fileSystem = fileSystem
         self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -44,11 +46,10 @@ package struct DeleteArgumentsValidator {
             homeDirectory: homeDirectory
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
-        let templateLocation: TemplateLocationType
-        if try await templatesFinder.fileSystem.exists(globalPath) && path == globalPath {
-            templateLocation = .global
+        let templateLocation = if try await fileSystem.exists(globalPath) && path == globalPath {
+            TemplateLocationType.global
         } else {
-            templateLocation = .project(
+            TemplateLocationType.project(
                 projectDirectory,
                 workingDirectory: workingDirectory
             )

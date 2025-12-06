@@ -92,13 +92,14 @@ package struct CreateRunner {
             successLog(name: templateName, templateDir: templateDir)
 
         case .provided(let name, let description, let location):
+            let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
             try await templateCreator.create(
                 name,
                 description: description,
-                in: location
+                in: locationConcreteType
             )
 
-            let templateDir = templateLocation.template(name, type: location)
+            let templateDir = templateLocation.template(name, type: locationConcreteType)
             successLog(name: name, templateDir: templateDir)
         }
     }
@@ -121,5 +122,5 @@ package struct CreateRunner {
 
 package enum CreateRunnerMode: Codable {
     case noora
-    case provided(name: String, description: String, location: TemplateLocationType)
+    case provided(name: String, description: String, location: TemplateLocationType.Meta)
 }

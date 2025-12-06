@@ -10,6 +10,7 @@ package struct DeleteRunner {
     private let projectDirectory: AbsolutePath
     private let workingDirectory: AbsolutePath
     private let force: Bool
+    private let fileSystem: any FileSysteming
 
     package init(
         mode: DeleteRunnerMode,
@@ -27,6 +28,7 @@ package struct DeleteRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.force = force
+        self.fileSystem = fileSystem
         self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -49,9 +51,9 @@ package struct DeleteRunner {
                 )
             )
 
-            let globalOptions = globalTemplates.map { TemplateOption(template: $0, location: .global) }
+            let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
             let projectOptions = projectTemplates.map {
-                TemplateOption(
+                TemplateWithLocation(
                     template: $0,
                     location: .project(
                         projectDirectory,
@@ -118,7 +120,7 @@ package struct DeleteRunner {
 
     private func deleteTemplate(at path: AbsolutePath, name: String, location: TemplateLocationType) async throws {
         do {
-            try await templatesFinder.fileSystem.remove(path)
+            try await fileSystem.remove(path)
             Noora().success("Successfully deleted template '\(name)' from \(location.dir)")
         } catch {
             throw Error.deletionFailed(name: name, underlying: error)
@@ -143,14 +145,4 @@ package struct DeleteRunner {
 package enum DeleteRunnerMode: Codable {
     case noora
     case provided(name: String, path: String, location: TemplateLocationType)
-}
-
-// Create options with location info
-private struct TemplateOption: CustomStringConvertible, Equatable {
-    let template: Template
-    let location: TemplateLocationType
-
-    var description: String {
-        "\(template.config.name) (\(location.name))"
-    }
 }

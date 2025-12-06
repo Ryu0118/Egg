@@ -45,3 +45,22 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
         return nil
     }
 }
+
+extension TemplateLocationType {
+    package enum Meta: String, Codable {
+        case global
+        case project
+
+        package func toConcreteType(
+            _ projectDirectory: AbsolutePath,
+            workingDirectory: AbsolutePath
+        ) -> TemplateLocationType {
+            return switch self {
+            case .global:
+                .global
+            case .project:
+                .project(projectDirectory, workingDirectory: workingDirectory)
+            }
+        }
+    }
+}

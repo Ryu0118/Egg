@@ -5,13 +5,13 @@ import FileSystem
 package struct CreateArgumentsValidator {
     private let name: String?
     private let description: String?
-    private let location: TemplateLocationType?
+    private let location: TemplateLocationType.Meta?
     private let templatesFinder: TemplatesFinder
 
     package init(
         name: String?,
         description: String?,
-        location: TemplateLocationType?,
+        location: TemplateLocationType.Meta?,
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
