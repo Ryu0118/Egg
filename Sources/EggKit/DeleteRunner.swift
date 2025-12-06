@@ -119,8 +119,7 @@ package struct DeleteRunner {
     private func deleteTemplate(at path: AbsolutePath, name: String, location: TemplateLocationType) async throws {
         do {
             try await templatesFinder.fileSystem.remove(path)
-            let locationDescription = location == .global ? "global" : "project"
-            Noora().success("Successfully deleted template '\(name)' from \(locationDescription) location")
+            Noora().success("Successfully deleted template '\(name)' from \(location.dir)")
         } catch {
             throw Error.deletionFailed(name: name, underlying: error)
         }

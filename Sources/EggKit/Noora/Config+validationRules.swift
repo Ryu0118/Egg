@@ -6,14 +6,14 @@ extension Config {
         [
             NonEmptyValidationRule(error: "Project name cannot be empty."),
             DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
-            LengthValidationRule.templateName
+            LengthValidationRule.templateName,
         ]
     }
 
     static var descriptionValidationRules: [any ValidatableRule] {
         [
             NonEmptyValidationRule(error: "Description cannot be empty."),
-            LengthValidationRule.description
+            LengthValidationRule.description,
         ]
     }
 }

@@ -15,6 +15,6 @@ struct CombinedError: LocalizedError {
     var errorDescription: String? {
         errors.compactMap(\.localizedDescription)
             .map(errorMessageModifier)
-            .joined(separator: "\n\n")
+            .joined(separator: "\n")
     }
 }

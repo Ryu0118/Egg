@@ -34,6 +34,10 @@ package struct ListRunner {
             table(for: list, in: location)
         } else {
             let list = try await finder.listAll()
+            guard !(list.global.isEmpty && list.project.isEmpty) else {
+                Noora().info("No templates found.")
+                return
+            }
 
             table(for: list.global, in: .global)
             table(

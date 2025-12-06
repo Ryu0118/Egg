@@ -2,12 +2,15 @@ import Foundation
 import Path
 import FileSystem
 import Yams
+import Noora
 
 struct TemplatesFinder {
     let fileSystem: any FileSysteming
     let location: any TemplateLocating
     let projectDirectory: AbsolutePath
     let workingDirectory: AbsolutePath
+
+    let validator = ConfigValidator()
 
     init(
         fileSystem: some FileSysteming,
@@ -40,7 +43,6 @@ struct TemplatesFinder {
 
     func list(for locationType: TemplateLocationType) async throws -> [Template] {
         let templateDir = location.templateDir(for: locationType)
-        let validator = ConfigValidator()
 
         var templates = [Template]()
 
@@ -48,13 +50,24 @@ struct TemplatesFinder {
 
         for templateDir in templateDirs ?? [] {
             let configPath = templateDir.appending(component: "config.yml")
+
             guard (try? await self.fileSystem.exists(configPath)) ?? false else {
                 continue
             }
+
             let data = try await self.fileSystem.readFile(at: configPath)
-            let config = try YAMLDecoder().decode(Config.self, from: data)
-            try await validator.validate(config)
-            templates.append(Template(path: templateDir, config: config))
+
+            do {
+                let config = try YAMLDecoder().decode(Config.self, from: data)
+                let template = await convertConfigToTemplate(
+                    config,
+                    templateDir: templateDir,
+                    configPath: configPath
+                )
+                templates.append(template)
+            } catch {
+                validationErrorLog(configPath: configPath, error: error)
+            }
         }
 
         return templates
@@ -81,6 +94,30 @@ struct TemplatesFinder {
             nil
         }
     }
+
+    private func convertConfigToTemplate(
+        _ config: Config,
+        templateDir: AbsolutePath,
+        configPath: AbsolutePath
+    ) async -> Template {
+        do {
+            try await validator.validate(config)
+
+            return Template(path: templateDir, config: config, isValid: true)
+        } catch {
+            validationErrorLog(configPath: configPath, error: error)
+            return Template(path: templateDir, config: config, isValid: false)
+        }
+    }
+
+    private func validationErrorLog(configPath: AbsolutePath, error: any Error) {
+        Noora().error(
+            """
+            \(configPath.pathString) is not a valid configuration. 
+            \(error.localizedDescription)
+            """
+        )
+    }
 }
 
 struct Templates {
@@ -91,4 +128,5 @@ struct Templates {
 struct Template: Equatable {
     let path: AbsolutePath
     let config: Config
+    let isValid: Bool
 }

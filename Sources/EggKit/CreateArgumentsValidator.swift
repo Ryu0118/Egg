@@ -59,6 +59,14 @@ package struct CreateArgumentsValidator {
             throw Error.templateAlreadyExists
         }
 
+        let templateNameErrors = Config.templateNameValidationRules.validate(input: name)
+        let templateDescriptionErrors = Config.templateNameValidationRules.validate(input: description)
+
+        let argumentValidationErrors = templateNameErrors + templateDescriptionErrors
+        if !argumentValidationErrors.isEmpty {
+            throw CombinedError(errors: argumentValidationErrors) { "⛔️ \($0)" }
+        }
+
         return .provided(name: name, description: description, location: location)
     }
 

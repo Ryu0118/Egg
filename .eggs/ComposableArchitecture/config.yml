@@ -1,5 +1,5 @@
-name: fuge
-description: This is hogehogehoerogiaeor@ga@orega@iehaiorhgaioerhgoiaehrgioaherogiha@oerhigaioehrg@aiehrg@oahergaer@iogha@ergo@aehrg@oahgr@ae@ohirg@aoehrg@aohrg@oeahga@eohirg@oaehirg@eoahg@ohrega@oeirhgoaeihr@goiha@oerihg@oaiherg@oiharg
+name: ComposableArchitecture
+description: This template is creating
 
 # Define custom macros that can be used throughout your template files and in this config file.
 # Macros defined here can be referenced in file names, folder names, file contents, and
@@ -12,22 +12,21 @@ macros:
     type: string
   - name: ___OUTPUT___
     description: Template output directory where generated files will be placed
-    type: path
+    type: patha
 
-#  - name: ___CREATE_TESTS___
-#    description: Whether to create test files
-#    type: boolean
-#    default: false
+#  - name: ___ITEM_NAME___
+#    description: Name of the item to generate
+#    type: string
 
 # pre_hatch:
-#  - id: setup-dirs
+#  - id: compute-path
 #    run: |
-#      echo "test-dir=___OUTPUT___/Tests"
-#  - if: ___CREATE_TESTS___
-#    run: mkdir -p ${{ pre_hatch.setup-dirs.outputs.test-dir }}
+#      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
+#      echo "item-path=$ITEM_PATH"
 hatch:
   output: ___OUTPUT___
+  exclude:
+#    - README.md
 
 # post_hatch:
-#  - if: ___CREATE_TESTS___
-#    run: swift package resolve
+#  - run: echo "You can use step outputs like: ${{ pre_hatch.compute-path.outputs.item-path }}"

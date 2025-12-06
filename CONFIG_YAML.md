@@ -471,6 +471,8 @@ public struct ___MODULE_NAME___ {
 
 ## CLI 使用方法
 
+### hatch コマンド
+
 ```bash
 # 対話モード
 egg hatch SwiftModule
@@ -487,6 +489,82 @@ egg hatch SwiftModule \
 # 一部指定（不足分は対話で質問される）
 egg hatch SwiftModule --module-name NetworkClient
 ```
+
+### template duplicate コマンド
+
+既存のテンプレートを複製して新しいテンプレートを作成します。
+
+#### 基本構文
+
+```bash
+egg template duplicate <template-name> [options]
+```
+
+#### オプション
+
+- `--name <name>`: 新しいテンプレート名（デフォルト: `<元の名前>1`）
+- `--description <description>`: 新しいテンプレートの説明（デフォルト: 元の説明）
+- `--project-directory <path>`: プロジェクトディレクトリ（デフォルト: 現在のディレクトリまたは設定値）
+
+#### 使用例
+
+```bash
+# 対話モード（すべてのオプションを対話で入力）
+egg template duplicate SwiftModule
+
+# すべてのオプションを指定
+egg template duplicate SwiftModule \
+  --name SwiftModuleV2 \
+  --description "Swift Module Generator (Version 2)" \
+  --project-directory ~/MyProject
+
+# 一部指定（不足分は対話で質問される）
+egg template duplicate SwiftModule --name SwiftModuleV2
+
+# デフォルト値の使用例
+# 元のテンプレート名が "SwiftModule" の場合
+egg template duplicate SwiftModule
+# → 新しいテンプレート名: "SwiftModule1"
+# → 新しい説明: 元の説明と同じ
+```
+
+#### 動作
+
+1. 元のテンプレート（`<template-name>`）を検索
+2. 新しいテンプレート名を決定:
+   - `--name` が指定されている場合: その値を使用
+   - 指定されていない場合: `<元の名前>1` をデフォルト値として使用（対話モードでは確認可能）
+3. 新しいテンプレートの説明を決定:
+   - `--description` が指定されている場合: その値を使用
+   - 指定されていない場合: 元の説明をデフォルト値として使用（対話モードでは確認可能）
+4. 元のテンプレートディレクトリ全体を新しい名前でコピー
+5. 新しいテンプレートの `config.yaml` 内の `name` と `description` を更新
+
+#### デフォルト値の動作
+
+- **`--name` のデフォルト値**: 元のテンプレート名に利用可能な最小の番号を付加
+  - 既存のテンプレート名を確認し、重複しない最小の番号を自動的に決定
+  - 例:
+    - `SwiftModule` を duplicate → `SwiftModule1`（`SwiftModule1` が存在しない場合）
+    - 再度 `SwiftModule` を duplicate → `SwiftModule2`（`SwiftModule1` が既に存在する場合）
+    - さらに duplicate → `SwiftModule3`（`SwiftModule1` と `SwiftModule2` が既に存在する場合）
+  - 番号は連続している必要はなく、利用可能な最小の番号が選択される
+    - 例: `SwiftModule1` と `SwiftModule3` が存在する場合、次は `SwiftModule2` が選択される
+- **`--description` のデフォルト値**: 元のテンプレートの `description` をそのまま使用
+
+#### 対話モード
+
+オプションが指定されていない場合、対話的に入力が求められます：
+
+```bash
+$ egg template duplicate SwiftModule
+テンプレート名 [SwiftModule1]: SwiftModuleV2
+説明 [元の説明]: Swift Module Generator (Version 2)
+プロジェクトディレクトリ [./]: ~/MyProject
+✅ テンプレートを複製しました: SwiftModuleV2
+```
+
+対話モードでは、各項目に対してデフォルト値が表示され、Enter キーを押すとデフォルト値が使用されます。
 
 ## テンプレートディレクトリ構造
 

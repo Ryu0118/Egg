@@ -2,12 +2,12 @@ import Foundation
 import Yams
 import FileSystem
 import Path
-// import Config
+import Noora
 
 struct TemplateCreator {
     let fileSystem: any FileSysteming
-    let encoder: YAMLEncoder = .defaultEncoder()
     let skipConfig: Bool
+    let validator = ConfigValidator()
     let templateLocating: any TemplateLocating
 
     init(
@@ -47,7 +47,11 @@ struct TemplateCreator {
         }
     }
 
-    private func createDefaultConfig(_ templateDir: AbsolutePath, name: String, description: String) async throws -> AbsolutePath {
+    private func createDefaultConfig(
+        _ templateDir: AbsolutePath,
+        name: String,
+        description: String
+    ) async throws -> AbsolutePath {
         let defaultConfigPath = templateDir.appending(component: "config.yml")
         let yamlContent = """
 name: \(name)
@@ -66,24 +70,29 @@ macros:
     description: Template output directory where generated files will be placed
     type: path
 
-#  - name: ___CREATE_TESTS___
-#    description: Whether to create test files
-#    type: boolean
-#    default: false
+#  - name: ___ITEM_NAME___
+#    description: Name of the item to generate
+#    type: string
 
 # pre_hatch:
-#  - id: setup-dirs
+#  - id: compute-path
 #    run: |
-#      echo "test-dir=___OUTPUT___/Tests"
-#  - if: ___CREATE_TESTS___
-#    run: mkdir -p ${{ pre_hatch.setup-dirs.outputs.test-dir }}
+#      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
+#      echo "item-path=$ITEM_PATH"
 hatch:
   output: ___OUTPUT___
+  exclude:
+#    - README.md
 
 # post_hatch:
-#  - if: ___CREATE_TESTS___
-#    run: swift package resolve
+#  - run: echo "You can use step outputs like: ${{ pre_hatch.compute-path.outputs.item-path }}"
 """
+        do {
+            let decoded = try YAMLDecoder().decode(Config.self, from: yamlContent)
+            try await validator.validate(decoded)
+        } catch {
+            throw Error.invalidNameOrDescription
+        }
         try await fileSystem.writeText(yamlContent, at: defaultConfigPath)
         return defaultConfigPath
     }
@@ -108,6 +117,17 @@ struct ___FILE_NAME___View: View {
 """
         try await fileSystem.writeText(defaultFileContent, at: defaultFilePath)
         return defaultFilePath
+    }
+
+    enum Error: LocalizedError {
+        case invalidNameOrDescription
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidNameOrDescription:
+                "Invalid name or description detected. \nPlease change a name or description and try again. "
+            }
+        }
     }
 }
 
