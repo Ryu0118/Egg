@@ -143,8 +143,6 @@ package struct HatchConfig: Codable, Equatable {
     }
 }
 
-// MARK: - ExcludeRule
-
 /// Exclusion rule (string or conditional object)
 package enum ExcludeRule: Codable, Equatable {
     /// Unconditionally exclude path (glob pattern)
@@ -153,26 +151,26 @@ package enum ExcludeRule: Codable, Equatable {
     /// Conditionally exclude paths
     case conditional(ConditionalExclude)
     
-//    package init(from decoder: Decoder) throws {
-//        let container = try decoder.singleValueContainer()
-//        
-//        // Try to decode as string
-//        if let path = try? container.decode(String.self) {
-//            self = .path(path)
-//            return
-//        }
-//        
-//        // Try to decode as object
-//        if let conditional = try? container.decode(ConditionalExclude.self) {
-//            self = .conditional(conditional)
-//            return
-//        }a
-//
-//        throw DecodingError.dataCorruptedError(
-//            in: container,
-//            debugDescription: "ExcludeRule must be either a String or a ConditionalExclude object"
-//        )
-//    }
+    package init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        // Try to decode as string
+        if let path = try? container.decode(String.self) {
+            self = .path(path)
+            return
+        }
+        
+        // Try to decode as object
+        if let conditional = try? container.decode(ConditionalExclude.self) {
+            self = .conditional(conditional)
+            return
+        }
+
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "ExcludeRule must be either a String or a ConditionalExclude object"
+        )
+    }
     
     package func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()

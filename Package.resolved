@@ -1,5 +1,5 @@
 {
-  "originHash" : "d8e57c7e210b7df005d81ec4936656844549dfa7536f607904b68d18ae89169c",
+  "originHash" : "0e70dd70b0710c5a4c38d0f0f2b437db603bd4147eea0ce48125393cb3afbc37",
   "pins" : [
     {
       "identity" : "filesystem",
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Ryu0118/ProcessRunning",
       "state" : {
-        "revision" : "9279ce6d3c8ec2817ded49416c341a08df4d0173",
-        "version" : "0.1.0"
+        "revision" : "398b8c4496b2b061f76889700206c9f5eb5f3fad",
+        "version" : "0.2.1"
       }
     },
     {

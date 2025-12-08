@@ -4,6 +4,7 @@ import EggKit
 import FileSystem
 import Path
 import Noora
+import ProcessRunning
 
 struct Template: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -13,7 +14,8 @@ struct Template: AsyncParsableCommand {
             Create.self,
             List.self,
             Delete.self,
-            Duplicate.self
+            Duplicate.self,
+            Open.self
         ]
     )
 }
@@ -39,7 +41,7 @@ extension Template {
             help: "Where to store the template: 'global' or 'project' (current directory).",
             completion: .list(["global", "project"])
         )
-        var location: TemplateLocationType.Meta?
+        var location: TemplateLocationType.Kind?
 
         @Flag(name: .long, help: "Skip the creation of the config.yml file.")
         var skipConfig: Bool = false
@@ -90,10 +92,13 @@ extension Template {
         )
 
         @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
-        var location: TemplateLocationType.Meta?
+        var location: TemplateLocationType.Kind?
 
         @Option(name: .long, help: "Directory to list templates from (defaults to current directory).", completion: .directory)
         var projectDirectory: String?
+
+        @Flag(name: .long, help: "Hide the description column in the output.")
+        var hideDescription: Bool = false
 
         static let fileSystem = FileSystem()
 
@@ -107,7 +112,8 @@ extension Template {
                 projectDirectory: resolveProjectDirectory(),
                 workingDirectory: workingDirectory,
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                fileSystem: Self.fileSystem
+                fileSystem: Self.fileSystem,
+                hideDescription: hideDescription
             ).run()
         }
     }
@@ -241,4 +247,52 @@ extension Template {
     }
 }
 
-extension TemplateLocationType.Meta: ExpressibleByArgument {}
+extension Template {
+    struct Open: AsyncParsableCommand, HasProjectDirectory {
+        static let configuration = CommandConfiguration(
+            commandName: "open",
+            abstract: "Open a template directory in Finder."
+        )
+
+        @Argument(help: "The name of the template to open (optional for interactive mode).")
+        var templateName: String?
+
+        @Option(name: .long, help: "Directory containing the template to open (defaults to current directory).", completion: .directory)
+        var projectDirectory: String?
+
+        static let fileSystem = FileSystem()
+
+        mutating func run() async throws {
+            let mode = try await validate()
+            do {
+                let workingDirectory = try await Self.fileSystem.currentWorkingDirectory()
+                try await OpenRunner(
+                    mode: mode,
+                    processRunner: ProcessRunner(),
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: workingDirectory,
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                    fileSystem: Self.fileSystem
+                ).run()
+            } catch {
+                Noora().error("\(error.localizedDescription)")
+            }
+        }
+
+        func validate() async throws -> OpenRunnerMode {
+            do {
+                return try await OpenArgumentsValidator(
+                    templateName: templateName,
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+                    fileSystem: Self.fileSystem
+                ).validate()
+            } catch {
+                throw ValidationError(error.localizedDescription)
+            }
+        }
+    }
+}
+
+extension TemplateLocationType.Kind: ExpressibleByArgument {}

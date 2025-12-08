@@ -11,6 +11,7 @@ package struct DuplicateRunner {
     private let projectDirectory: AbsolutePath
     private let workingDirectory: AbsolutePath
     private let fileSystem: any FileSysteming
+    private let noora: any Noorable
 
     let decoder = YAMLDecoder()
     let encoder = YAMLEncoder.defaultEncoder()
@@ -21,7 +22,8 @@ package struct DuplicateRunner {
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        fileSystem: some FileSysteming,
+        noora: some Noorable = Noora()
     ) async {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory
@@ -31,6 +33,7 @@ package struct DuplicateRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileSystem = fileSystem
+        self.noora = noora
         self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -41,9 +44,9 @@ package struct DuplicateRunner {
 
     package func run() async throws {
         switch mode {
-        case .noora:
+        case .interactive:
             try await runInteractiveMode()
-        case .provided(_, let sourcePath, let sourceLocation, let newName, let newDescription):
+        case .direct(_, let sourcePath, let sourceLocation, let newName, let newDescription):
             try await duplicateTemplate(
                 sourcePath: try AbsolutePath(validating: sourcePath),
                 sourceLocation: sourceLocation,
@@ -54,14 +57,11 @@ package struct DuplicateRunner {
     }
 
     private func runInteractiveMode() async throws {
-        let noora = Noora()
-        
         let options = try await prepareTemplateWithLocations()
-        let selectedOption = selectSourceTemplate(options: options, noora: noora)
+        let selectedOption = selectSourceTemplate(options: options)
         let (newName, newDescription) = try await promptForNewTemplateInfo(
             sourceTemplate: selectedOption.template,
-            sourceLocation: selectedOption.location,
-            noora: noora
+            sourceLocation: selectedOption.location
         )
         
         try await duplicateTemplate(
@@ -73,26 +73,7 @@ package struct DuplicateRunner {
     }
 
     private func prepareTemplateWithLocations() async throws -> [TemplateWithLocation] {
-        let globalTemplates = try await templatesFinder.list(for: .global)
-        let projectTemplates = try await templatesFinder.list(
-            for: .project(
-                projectDirectory,
-                workingDirectory: workingDirectory
-            )
-        )
-
-        let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
-        let projectOptions = projectTemplates.map {
-            TemplateWithLocation(
-                template: $0,
-                location: .project(
-                    projectDirectory,
-                    workingDirectory: workingDirectory
-                )
-            )
-        }
-
-        let options = globalOptions + projectOptions
+        let options = try await templatesFinder.listWithLocations()
 
         guard !options.isEmpty else {
             throw Error.noTemplatesFound
@@ -102,8 +83,7 @@ package struct DuplicateRunner {
     }
 
     private func selectSourceTemplate(
-        options: [TemplateWithLocation],
-        noora: Noora
+        options: [TemplateWithLocation]
     ) -> TemplateWithLocation {
         noora.singleChoicePrompt(
             title: "Select Template to Duplicate",
@@ -115,8 +95,7 @@ package struct DuplicateRunner {
 
     private func promptForNewTemplateInfo(
         sourceTemplate: Template,
-        sourceLocation: TemplateLocationType,
-        noora: Noora
+        sourceLocation: TemplateLocationType
     ) async throws -> (name: String, description: String) {
         let defaultNewName = await generateDefaultName(
             baseName: sourceTemplate.config.name,
@@ -125,21 +104,18 @@ package struct DuplicateRunner {
         let defaultNewDescription = sourceTemplate.config.description
 
         let newName = try await promptForNewName(
-            defaultName: defaultNewName,
-            noora: noora
+            defaultName: defaultNewName
         )
-        
+
         let newDescription = promptForNewDescription(
-            defaultDescription: defaultNewDescription,
-            noora: noora
+            defaultDescription: defaultNewDescription
         )
 
         return (newName, newDescription)
     }
 
     private func promptForNewName(
-        defaultName: String,
-        noora: Noora
+        defaultName: String
     ) async throws -> String {
         let newName = noora.textPrompt(
             title: "New Template Name",
@@ -166,8 +142,7 @@ package struct DuplicateRunner {
     }
 
     private func promptForNewDescription(
-        defaultDescription: String,
-        noora: Noora
+        defaultDescription: String
     ) -> String {
         let newDescription = noora.textPrompt(
             title: "New Template Description",
@@ -211,7 +186,7 @@ package struct DuplicateRunner {
             newDescription: newDescription
         )
 
-        Noora().success("Successfully duplicated template '\(newName)' at \(targetPath.pathString)")
+        noora.success("Successfully duplicated template '\(newName)' at \(targetPath.pathString)")
     }
 
 
@@ -273,8 +248,8 @@ package struct DuplicateRunner {
 }
 
 package enum DuplicateRunnerMode: Codable {
-    case noora
-    case provided(
+    case interactive
+    case direct(
         sourceName: String,
         sourcePath: String,
         sourceLocation: TemplateLocationType,

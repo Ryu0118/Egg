@@ -54,7 +54,7 @@ struct CreateArgumentsValidatorTests {
         let description: String
         let name: String?
         let templateDescription: String?
-        let location: TemplateLocationType.Meta?
+        let location: TemplateLocationType.Kind?
         let existingTemplates: Set<String>
         let expected: Result
 
@@ -63,28 +63,28 @@ struct CreateArgumentsValidatorTests {
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
-                description: "returns noora mode when all fields are nil",
+                description: "returns interactive mode when all fields are nil",
                 name: nil,
                 templateDescription: nil,
                 location: nil,
                 existingTemplates: [],
-                expected: .success(.noora)
+                expected: .success(.interactive)
             ),
             TestCase(
-                description: "returns provided mode when all fields are provided and template does not exist",
+                description: "returns direct mode when all fields are provided and template does not exist",
                 name: "MyTemplate",
                 templateDescription: "A test template",
                 location: .global,
                 existingTemplates: [],
-                expected: .success(.provided(name: "MyTemplate", description: "A test template", location: .global))
+                expected: .success(.direct(name: "MyTemplate", description: "A test template", location: .global))
             ),
             TestCase(
-                description: "returns provided mode with project location",
+                description: "returns direct mode with project location",
                 name: "ProjectTemplate",
                 templateDescription: "Project template",
                 location: .project,
                 existingTemplates: [],
-                expected: .success(.provided(name: "ProjectTemplate", description: "Project template", location: .project))
+                expected: .success(.direct(name: "ProjectTemplate", description: "Project template", location: .project))
             ),
 
             // Error cases - missing fields
@@ -172,10 +172,10 @@ struct CreateArgumentsValidatorTests {
 extension CreateRunnerMode: Equatable {
     public static func == (lhs: CreateRunnerMode, rhs: CreateRunnerMode) -> Bool {
         switch (lhs, rhs) {
-        case (.noora, .noora):
+        case (.interactive, .interactive):
             return true
-        case (.provided(let lhsName, let lhsDescription, let lhsLocation),
-              .provided(let rhsName, let rhsDescription, let rhsLocation)):
+        case (.direct(let lhsName, let lhsDescription, let lhsLocation),
+              .direct(let rhsName, let rhsDescription, let rhsLocation)):
             return lhsName == rhsName && lhsDescription == rhsDescription && lhsLocation == rhsLocation
         default:
             return false

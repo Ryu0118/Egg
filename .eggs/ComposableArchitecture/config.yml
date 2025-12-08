@@ -12,7 +12,7 @@ macros:
     type: string
   - name: ___OUTPUT___
     description: Template output directory where generated files will be placed
-    type: patha
+    type: path
 
 #  - name: ___ITEM_NAME___
 #    description: Name of the item to generate

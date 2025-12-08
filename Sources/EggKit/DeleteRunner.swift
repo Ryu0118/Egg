@@ -11,6 +11,7 @@ package struct DeleteRunner {
     private let workingDirectory: AbsolutePath
     private let force: Bool
     private let fileSystem: any FileSysteming
+    private let noora: any Noorable
 
     package init(
         mode: DeleteRunnerMode,
@@ -18,7 +19,8 @@ package struct DeleteRunner {
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        fileSystem: some FileSysteming,
+        noora: some Noorable = Noora()
     ) async {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory
@@ -29,6 +31,7 @@ package struct DeleteRunner {
         self.workingDirectory = workingDirectory
         self.force = force
         self.fileSystem = fileSystem
+        self.noora = noora
         self.templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -38,31 +41,9 @@ package struct DeleteRunner {
     }
 
     package func run() async throws {
-        let noora = Noora()
-
         switch mode {
-        case .noora:
-            // Get templates from both locations separately
-            let globalTemplates = try await templatesFinder.list(for: .global)
-            let projectTemplates = try await templatesFinder.list(
-                for: .project(
-                    projectDirectory,
-                    workingDirectory: workingDirectory
-                )
-            )
-
-            let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
-            let projectOptions = projectTemplates.map {
-                TemplateWithLocation(
-                    template: $0,
-                    location: .project(
-                        projectDirectory,
-                        workingDirectory: workingDirectory
-                    )
-                )
-            }
-
-            let options = globalOptions + projectOptions
+        case .interactive:
+            let options = try await templatesFinder.listWithLocations()
 
             guard !options.isEmpty else {
                 throw Error.noTemplatesFound
@@ -82,16 +63,14 @@ package struct DeleteRunner {
             try await confirmAndDelete(
                 templateName: templateName,
                 path: templatePath,
-                location: templateLocationType,
-                noora: noora
+                location: templateLocationType
             )
 
-        case .provided(let name, let pathString, let location):
+        case .direct(let name, let pathString, let location):
             try await confirmAndDelete(
                 templateName: name,
                 path: try AbsolutePath(validating: pathString),
-                location: location,
-                noora: noora
+                location: location
             )
         }
     }
@@ -99,8 +78,7 @@ package struct DeleteRunner {
     private func confirmAndDelete(
         templateName: String,
         path: AbsolutePath,
-        location: TemplateLocationType,
-        noora: Noora
+        location: TemplateLocationType
     ) async throws {
         // Confirmation (skip if force is true)
         if !force {
@@ -121,7 +99,7 @@ package struct DeleteRunner {
     private func deleteTemplate(at path: AbsolutePath, name: String, location: TemplateLocationType) async throws {
         do {
             try await fileSystem.remove(path)
-            Noora().success("Successfully deleted template '\(name)' from \(location.dir)")
+            noora.success("Successfully deleted template '\(name)' from \(location.dir)")
         } catch {
             throw Error.deletionFailed(name: name, underlying: error)
         }
@@ -143,6 +121,6 @@ package struct DeleteRunner {
 }
 
 package enum DeleteRunnerMode: Codable {
-    case noora
-    case provided(name: String, path: String, location: TemplateLocationType)
+    case interactive
+    case direct(name: String, path: String, location: TemplateLocationType)
 }

@@ -40,7 +40,7 @@ package struct DuplicateArgumentsValidator {
 
     package func validate() async throws -> DuplicateRunnerMode {
         guard let templateName else {
-            return .noora
+            return .interactive
         }
 
         let (sourcePath, sourceLocation) = try await findSourceTemplate(name: templateName)
@@ -50,7 +50,7 @@ package struct DuplicateArgumentsValidator {
             sourceLocation: sourceLocation
         )
 
-        return .provided(
+        return .direct(
             sourceName: templateName,
             sourcePath: sourcePath.pathString,
             sourceLocation: sourceLocation,

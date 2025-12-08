@@ -2,7 +2,7 @@ import Foundation
 import Path
 import FileSystem
 
-package struct DeleteArgumentsValidator {
+package struct OpenArgumentsValidator {
     private let templateName: String?
     private let templatesFinder: TemplatesFinder
     private let homeDirectory: AbsolutePath
@@ -30,23 +30,45 @@ package struct DeleteArgumentsValidator {
         )
     }
 
-    package func validate() async throws -> DeleteRunnerMode {
-        // templateName is nil means interactive mode
+    package func validate() async throws -> OpenRunnerMode {
         guard let templateName else {
             return .interactive
         }
 
-        // Check in both locations
-        guard let path = try await templatesFinder.validTemplateDirectory(templateName) else {
-            throw Error.templateNotFound(name: templateName)
+        let (templatePath, templateLocation) = try await findTemplate(name: templateName)
+
+        return .direct(
+            templateName: templateName,
+            templatePath: templatePath,
+            location: templateLocation
+        )
+    }
+
+    private func findTemplate(
+        name: String
+    ) async throws -> (path: AbsolutePath, location: TemplateLocationType) {
+        guard let templatePath = try await templatesFinder.validTemplateDirectory(name) else {
+            throw Error.templateNotFound(name: name)
         }
-        
-        // Determine which location it's in
+
+        let templateLocation = try await determineLocation(
+            templateName: name,
+            templatePath: templatePath
+        )
+
+        return (templatePath, templateLocation)
+    }
+
+    private func determineLocation(
+        templateName: String,
+        templatePath: AbsolutePath
+    ) async throws -> TemplateLocationType {
         let templateLocationInstance = TemplateLocation(
             homeDirectory: homeDirectory
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
-        let templateLocation = if try await fileSystem.exists(globalPath) && path == globalPath {
+
+        return if try await fileSystem.exists(globalPath) && templatePath == globalPath {
             TemplateLocationType.global
         } else {
             TemplateLocationType.project(
@@ -54,8 +76,6 @@ package struct DeleteArgumentsValidator {
                 workingDirectory: workingDirectory
             )
         }
-
-        return .direct(name: templateName, path: path.pathString, location: templateLocation)
     }
 
     enum Error: LocalizedError {

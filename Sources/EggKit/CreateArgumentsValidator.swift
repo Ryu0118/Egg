@@ -5,13 +5,13 @@ import FileSystem
 package struct CreateArgumentsValidator {
     private let name: String?
     private let description: String?
-    private let location: TemplateLocationType.Meta?
+    private let location: TemplateLocationType.Kind?
     private let templatesFinder: TemplatesFinder
 
     package init(
         name: String?,
         description: String?,
-        location: TemplateLocationType.Meta?,
+        location: TemplateLocationType.Kind?,
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
@@ -29,9 +29,9 @@ package struct CreateArgumentsValidator {
     }
 
     package func validate() async throws -> CreateRunnerMode {
-        // All nil means interactive mode (Noora)
+        // All nil means interactive mode
         if name == nil && description == nil && location == nil {
-            return .noora
+            return .interactive
         }
 
         // Check which fields are provided
@@ -67,7 +67,7 @@ package struct CreateArgumentsValidator {
             throw CombinedError(errors: argumentValidationErrors) { "⛔️ \($0)" }
         }
 
-        return .provided(name: name, description: description, location: location)
+        return .direct(name: name, description: description, location: location)
     }
 
     enum Field: String, CaseIterable {

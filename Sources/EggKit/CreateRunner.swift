@@ -10,6 +10,7 @@ package struct CreateRunner {
     private let templatesFinder: TemplatesFinder
     private let projectDirectory: AbsolutePath
     private let workingDirectory: AbsolutePath
+    private let noora: any Noorable
 
     package init(
         mode: CreateRunnerMode,
@@ -17,7 +18,8 @@ package struct CreateRunner {
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        fileSystem: some FileSysteming,
+        noora: some Noorable = Noora()
     ) async {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory
@@ -26,6 +28,7 @@ package struct CreateRunner {
         self.templateLocation = templateLocation
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.noora = noora
         self.templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
@@ -41,9 +44,7 @@ package struct CreateRunner {
 
     package func run() async throws {
         switch mode {
-        case .noora:
-            let noora = Noora()
-
+        case .interactive:
             let templateName = noora.textPrompt(
                 title: "Template name",
                 prompt: "How would you like to name your template?",
@@ -91,7 +92,7 @@ package struct CreateRunner {
             let templateDir = templateLocation.template(templateName, type: locationType)
             successLog(name: templateName, templateDir: templateDir)
 
-        case .provided(let name, let description, let location):
+        case .direct(let name, let description, let location):
             let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
             try await templateCreator.create(
                 name,
@@ -105,7 +106,7 @@ package struct CreateRunner {
     }
 
     private func successLog(name: String, templateDir: AbsolutePath) {
-        Noora().success("Successfully created template '\(name)' at \(templateDir.pathString)")
+        noora.success("Successfully created template '\(name)' at \(templateDir.pathString)")
     }
 
     enum Error: LocalizedError {
@@ -121,6 +122,6 @@ package struct CreateRunner {
 }
 
 package enum CreateRunnerMode: Codable {
-    case noora
-    case provided(name: String, description: String, location: TemplateLocationType.Meta)
+    case interactive
+    case direct(name: String, description: String, location: TemplateLocationType.Kind)
 }

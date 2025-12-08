@@ -9,6 +9,7 @@ struct TemplatesFinder {
     private let location: any TemplateLocating
     private let projectDirectory: AbsolutePath
     private let workingDirectory: AbsolutePath
+    private let noora: any Noorable
 
     private let validator = ConfigValidator()
 
@@ -16,11 +17,13 @@ struct TemplatesFinder {
         fileSystem: some FileSysteming,
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath
+        homeDirectory: AbsolutePath,
+        noora: some Noorable = Noora()
     ) {
         self.fileSystem = fileSystem
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.noora = noora
         self.location = TemplateLocation(
             homeDirectory: homeDirectory
         )
@@ -103,6 +106,30 @@ struct TemplatesFinder {
         }
     }
 
+    func listWithLocations(emitValidationErrorLog: Bool = true) async throws -> [TemplateWithLocation] {
+        let globalTemplates = try await list(for: .global, emitValidationErrorLog: emitValidationErrorLog)
+        let projectTemplates = try await list(
+            for: .project(
+                projectDirectory,
+                workingDirectory: workingDirectory
+            ),
+            emitValidationErrorLog: emitValidationErrorLog
+        )
+
+        let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
+        let projectOptions = projectTemplates.map {
+            TemplateWithLocation(
+                template: $0,
+                location: .project(
+                    projectDirectory,
+                    workingDirectory: workingDirectory
+                )
+            )
+        }
+
+        return globalOptions + projectOptions
+    }
+
     private func convertConfigToTemplate(
         _ config: Config,
         templateDir: AbsolutePath,
@@ -132,9 +159,9 @@ struct TemplatesFinder {
             return
         }
 
-        Noora().error(
+        noora.error(
             """
-            \(configPath.pathString) is not a valid configuration. 
+            \(configPath.pathString) is not a valid configuration.
             \(error.localizedDescription)
             """
         )

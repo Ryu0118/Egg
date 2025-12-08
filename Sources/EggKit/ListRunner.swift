@@ -8,17 +8,23 @@ package struct ListRunner {
     let finder: TemplatesFinder
     let projectDirectory: AbsolutePath
     let workingDirectory: AbsolutePath
+    let hideDescription: Bool
+    let noora: any Noorable
 
     package init(
         location: TemplateLocationType?,
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        fileSystem: some FileSysteming,
+        hideDescription: Bool = false,
+        noora: some Noorable = Noora()
     ) {
         self.location = location
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.hideDescription = hideDescription
+        self.noora = noora
         self.finder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -35,7 +41,7 @@ package struct ListRunner {
         } else {
             let list = try await finder.listAll()
             guard !(list.global.isEmpty && list.project.isEmpty) else {
-                Noora().info("No templates found.")
+                noora.info("No templates found.")
                 return
             }
 
@@ -55,13 +61,22 @@ package struct ListRunner {
             return
         }
 
-        Noora().passthrough("Templates in \(location.dir)\n")
+        noora.passthrough("Templates in \(location.dir)\n")
 
-        Noora().table(
-            headers: ["name", "description"],
-            rows: list.reduce(into: [[String]]()) { partialResult, template in
-                partialResult.append([template.config.name, template.config.description])
-            }
-        )
+        if hideDescription {
+            noora.table(
+                headers: ["name"],
+                rows: list.reduce(into: [[String]]()) { partialResult, template in
+                    partialResult.append([template.config.name])
+                }
+            )
+        } else {
+            noora.table(
+                headers: ["name", "description"],
+                rows: list.reduce(into: [[String]]()) { partialResult, template in
+                    partialResult.append([template.config.name, template.config.description])
+                }
+            )
+        }
     }
 }
