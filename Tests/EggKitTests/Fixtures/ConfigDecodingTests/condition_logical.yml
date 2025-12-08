@@ -1,0 +1,21 @@
+# Logical operators condition
+name: ConditionLogicalTemplate
+description: Template with logical operators
+
+macros:
+  - name: ___A___
+    description: Option A
+    type: boolean
+    default: "true"
+  - name: ___B___
+    description: Option B
+    type: boolean
+    default: "false"
+
+pre_hatch:
+  - if: ___A___ && ___B___
+    run: echo "Both enabled"
+  - if: ___A___ || ___B___
+    run: echo "At least one enabled"
+  - if: (___A___ || ___B___) && ___A___
+    run: echo "Complex condition"

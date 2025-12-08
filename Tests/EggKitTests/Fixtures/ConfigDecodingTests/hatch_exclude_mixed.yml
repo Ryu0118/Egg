@@ -1,0 +1,21 @@
+# Hatch with mixed exclude rules
+name: HatchExcludeMixedTemplate
+description: Template with mixed exclude rules
+
+macros:
+  - name: ___MODULE_TYPE___
+    description: Module type
+    type: choice
+    choices:
+      - library
+      - executable
+    default: library
+
+hatch:
+  output: ./output
+  exclude:
+    - "*.md"
+    - ".DS_Store"
+    - if: ___MODULE_TYPE___ !== "executable"
+      paths:
+        - "main.swift"

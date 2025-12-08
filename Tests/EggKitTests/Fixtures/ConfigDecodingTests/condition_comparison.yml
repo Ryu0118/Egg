@@ -1,0 +1,18 @@
+# Comparison condition
+name: ConditionComparisonTemplate
+description: Template with comparison condition
+
+macros:
+  - name: ___TYPE___
+    description: Type
+    type: choice
+    choices:
+      - library
+      - executable
+    default: library
+
+pre_hatch:
+  - if: ___TYPE___ === "library"
+    run: echo "Building library"
+  - if: ___TYPE___ !== "library"
+    run: echo "Building executable"

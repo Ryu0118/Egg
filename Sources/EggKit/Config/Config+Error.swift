@@ -33,59 +33,59 @@ extension ConfigValidator {
 
         var errorDescription: String? {
             switch self {
-            case .macroNameEmpty(let context):
+            case let .macroNameEmpty(context):
                 "\(context): Macro name cannot be empty."
-            case .macroDescriptionEmpty(let context):
+            case let .macroDescriptionEmpty(context):
                 "\(context): Macro description cannot be empty."
-            case .invalidMacroNameFormat(let context, let name):
+            case let .invalidMacroNameFormat(context, name):
                 "\(context): Macro name '\(name)' must be in the format '___MACRO_NAME___' (three underscores, uppercase letters)."
-            case .duplicateMacroName(let context, let name):
+            case let .duplicateMacroName(context, name):
                 "\(context): Duplicate macro name '\(name)'."
-            case .choiceTypeMissingChoices(let context, let name):
+            case let .choiceTypeMissingChoices(context, name):
                 "\(context): Macro '\(name)' of type 'choice' must have 'choices' defined."
-            case .choiceTypeEmptyChoices(let context, let name):
+            case let .choiceTypeEmptyChoices(context, name):
                 "\(context): Macro '\(name)' of type 'choice' must have at least one choice."
-            case .choiceDefaultValueNotInChoices(let context, let name, let defaultValue, let choices):
+            case let .choiceDefaultValueNotInChoices(context, name, defaultValue, choices):
                 "\(context): Macro '\(name)' default value '\(defaultValue)' must be one of the choices: \(choices.joined(separator: ", "))."
-            case .arrayDefaultValueInvalidFormat(let context, let name):
+            case let .arrayDefaultValueInvalidFormat(context, name):
                 "\(context): Macro '\(name)' default value must be a valid array format like '[value1, value2]'."
-            case .arrayDefaultValueNotInChoices(let context, let name, let value, let choices):
+            case let .arrayDefaultValueNotInChoices(context, name, value, choices):
                 "\(context): Macro '\(name)' default value '\(value)' must be one of the choices: \(choices.joined(separator: ", "))."
-            case .booleanDefaultValueInvalid(let context, let name, let defaultValue):
+            case let .booleanDefaultValueInvalid(context, name, defaultValue):
                 "\(context): Macro '\(name)' of type 'boolean' must have default value 'true' or 'false', got '\(defaultValue)'."
-            case .pathDefaultValueInvalidCharacters(let context, let name):
+            case let .pathDefaultValueInvalidCharacters(context, name):
                 "\(context): Macro '\(name)' default path contains invalid characters."
-            case .invalidRegexPattern(let context, let name, let pattern):
+            case let .invalidRegexPattern(context, name, pattern):
                 "\(context): Macro '\(name)' has invalid regular expression pattern '\(pattern)'."
-            case .defaultValueDoesNotMatchRegex(let context, let name, let defaultValue, let pattern):
+            case let .defaultValueDoesNotMatchRegex(context, name, defaultValue, pattern):
                 "\(context): Macro '\(name)' default value '\(defaultValue)' does not match validation pattern '\(pattern)'."
-            case .lifecycleStepMissingRunOrHatch(let context):
+            case let .lifecycleStepMissingRunOrHatch(context):
                 "\(context): Either 'run' or 'hatch' must be specified."
-            case .lifecycleStepIdEmpty(let context):
+            case let .lifecycleStepIdEmpty(context):
                 "\(context): Step ID cannot be empty."
-            case .lifecycleStepIdInvalidCharacters(let context, let id):
+            case let .lifecycleStepIdInvalidCharacters(context, id):
                 "\(context): Step ID '\(id)' contains invalid characters. Only alphanumeric characters, hyphens, and underscores are allowed."
-            case .lifecycleStepConditionEmpty(let context):
+            case let .lifecycleStepConditionEmpty(context):
                 "\(context): Conditional expression cannot be empty."
-            case .lifecycleStepRunEmpty(let context):
+            case let .lifecycleStepRunEmpty(context):
                 "\(context): 'run' command cannot be empty."
             case .hatchOutputEmpty:
                 "hatch.output: Output directory cannot be empty."
-            case .excludePathEmpty(let context):
+            case let .excludePathEmpty(context):
                 "\(context): Exclude path cannot be empty."
-            case .excludeConditionEmpty(let context):
+            case let .excludeConditionEmpty(context):
                 "\(context): Conditional expression cannot be empty."
-            case .excludePathsEmpty(let context):
+            case let .excludePathsEmpty(context):
                 "\(context): Conditional exclude must have at least one path."
-            case .excludeConditionalPathEmpty(let context, let pathIndex):
+            case let .excludeConditionalPathEmpty(context, pathIndex):
                 "\(context).paths[\(pathIndex)]: Exclude path cannot be empty."
-            case .undefinedMacroReferenced(let context, let macroName):
+            case let .undefinedMacroReferenced(context, macroName):
                 "\(context): Undefined macro '\(macroName)' is referenced."
-            case .duplicateStepId(let context, let index, let id):
+            case let .duplicateStepId(context, index, id):
                 "\(context)[\(index)]: Duplicate step ID '\(id)'."
-            case .validatableRulesError(let error):
+            case let .validatableRulesError(error):
                 error.message
-            case .invalidConditionExpression(let context, let expression):
+            case let .invalidConditionExpression(context, expression):
                 "\(context): Condition expression '\(expression)' must evaluate to a boolean value."
             }
         }

@@ -1,7 +1,7 @@
-import Foundation
 import FileSystem
-import Path
+import Foundation
 import Noora
+import Path
 
 package struct ListRunner {
     let location: TemplateLocationType?
@@ -25,7 +25,7 @@ package struct ListRunner {
         self.workingDirectory = workingDirectory
         self.hideDescription = hideDescription
         self.noora = noora
-        self.finder = TemplatesFinder(
+        finder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,

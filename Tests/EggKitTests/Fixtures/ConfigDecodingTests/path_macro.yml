@@ -1,0 +1,9 @@
+# Path macro
+name: PathTemplate
+description: Template with path macro
+
+macros:
+  - name: ___PACKAGE_PATH___
+    description: Package path
+    type: path
+    default: /path/to/package

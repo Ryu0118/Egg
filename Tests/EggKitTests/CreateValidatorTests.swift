@@ -1,9 +1,9 @@
-import Foundation
-import Testing
+@testable import EggKit
 import FileSystem
 import FileSystemTesting
+import Foundation
 import Path
-@testable import EggKit
+import Testing
 
 struct CreateArgumentsValidatorTests {
     @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
@@ -40,10 +40,10 @@ struct CreateArgumentsValidatorTests {
         )
 
         switch testCase.expected {
-        case .success(let expectedMode):
+        case let .success(expectedMode):
             let result = try await validator.validate()
             #expect(result == expectedMode)
-        case .failure(let expectedError):
+        case let .failure(expectedError):
             await #expect(throws: expectedError) {
                 _ = try await validator.validate()
             }
@@ -174,8 +174,8 @@ extension CreateRunnerMode: Equatable {
         switch (lhs, rhs) {
         case (.interactive, .interactive):
             return true
-        case (.direct(let lhsName, let lhsDescription, let lhsLocation),
-              .direct(let rhsName, let rhsDescription, let rhsLocation)):
+        case let (.direct(lhsName, lhsDescription, lhsLocation),
+                  .direct(rhsName, rhsDescription, rhsLocation)):
             return lhsName == rhsName && lhsDescription == rhsDescription && lhsLocation == rhsLocation
         default:
             return false
@@ -188,8 +188,8 @@ extension CreateRunnerMode: Equatable {
 extension CreateArgumentsValidator.Error: Equatable {
     public static func == (lhs: CreateArgumentsValidator.Error, rhs: CreateArgumentsValidator.Error) -> Bool {
         switch (lhs, rhs) {
-        case (.missingFields(let lhsMissing, let lhsProvided),
-              .missingFields(let rhsMissing, let rhsProvided)):
+        case let (.missingFields(lhsMissing, lhsProvided),
+                  .missingFields(rhsMissing, rhsProvided)):
             return lhsMissing == rhsMissing && lhsProvided == rhsProvided
         case (.templateAlreadyExists, .templateAlreadyExists):
             return true

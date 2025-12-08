@@ -1,0 +1,34 @@
+# Multiple lifecycle steps with dependencies
+name: LifecycleDependenciesTemplate
+description: Template with lifecycle step dependencies
+
+macros:
+  - name: ___PROJECT_NAME___
+    description: Project name
+    type: string
+    default: MyProject
+  - name: ___RUN_TESTS___
+    description: Run tests?
+    type: boolean
+    default: "true"
+
+pre_hatch:
+  - id: validate
+    run: |
+      echo "valid=true"
+      echo "error="
+
+  - id: prepare
+    if: ${{ pre_hatch.validate.outputs.valid }} === "true"
+    run: |
+      echo "ready=true"
+
+hatch:
+  output: ./output
+
+post_hatch:
+  - if: ${{ pre_hatch.prepare.outputs.ready }} === "true" && ___RUN_TESTS___
+    run: swift test
+
+  - if: ${{ pre_hatch.prepare.outputs.ready }} === "true"
+    run: echo "Deployment ready"

@@ -3,7 +3,7 @@ import RegexBuilder
 
 extension ConfigValidator {
     struct MacrosValidator {
-        func validate(_ macros: [Macro], config: Config) -> [Error] {
+        func validate(_ macros: [Config.Macro], config: Config) -> [Error] {
             var errors: [Error] = []
 
             for (index, macro) in macros.enumerated() {
@@ -18,7 +18,7 @@ extension ConfigValidator {
             return errors + validateMacroNameUniqueness(macros) + validateMacroReferences(config, definedMacros: macros)
         }
 
-        private func validateMacroReferences(_ config: Config, definedMacros: [Macro]) -> [Error] {
+        private func validateMacroReferences(_ config: Config, definedMacros: [Config.Macro]) -> [Error] {
             var errors: [Error] = []
             let definedMacroNames = Set(definedMacros.map { $0.name })
 
@@ -58,7 +58,7 @@ extension ConfigValidator {
                         switch rule {
                         case .path:
                             break
-                        case .conditional(let conditional):
+                        case let .conditional(conditional):
                             errors += validateMacroReferencesInText(conditional.if, definedMacroNames: definedMacroNames, context: "hatch.exclude[\(index)].if")
                         }
                     }
@@ -70,7 +70,7 @@ extension ConfigValidator {
 
         // MARK: - Private Methods
 
-        private func validateRequiredFields(_ macro: Macro, context: String) -> [Error] {
+        private func validateRequiredFields(_ macro: Config.Macro, context: String) -> [Error] {
             var errors: [Error] = []
 
             if macro.name.isEmpty {
@@ -84,7 +84,7 @@ extension ConfigValidator {
             return errors
         }
 
-        private func validateMacroName(_ macro: Macro, context: String) -> Error? {
+        private func validateMacroName(_ macro: Config.Macro, context: String) -> Error? {
             guard !macro.name.isEmpty else {
                 return nil
             }
@@ -92,7 +92,7 @@ extension ConfigValidator {
             return !isValidMacroName(macro.name) ? .invalidMacroNameFormat(context: context, name: macro.name) : nil
         }
 
-        private func validateMacroNameUniqueness(_ macros: [Macro]) -> [Error] {
+        private func validateMacroNameUniqueness(_ macros: [Config.Macro]) -> [Error] {
             var errors: [Error] = []
             var macroNames: Set<String> = []
 
@@ -109,7 +109,7 @@ extension ConfigValidator {
             return errors
         }
 
-        private func validateMacroType(_ macro: Macro, context: String) -> [Error] {
+        private func validateMacroType(_ macro: Config.Macro, context: String) -> [Error] {
             switch macro.type {
             case .choice:
                 return validateChoiceType(macro, context: context)
@@ -124,7 +124,7 @@ extension ConfigValidator {
             }
         }
 
-        private func validateChoiceType(_ macro: Macro, context: String) -> [Error] {
+        private func validateChoiceType(_ macro: Config.Macro, context: String) -> [Error] {
             guard let choices = macro.choices else {
                 return [.choiceTypeMissingChoices(context: context, name: macro.name)]
             }
@@ -147,7 +147,7 @@ extension ConfigValidator {
             return errors
         }
 
-        private func validateArrayType(_ macro: Macro, context: String) -> [Error] {
+        private func validateArrayType(_ macro: Config.Macro, context: String) -> [Error] {
             guard let defaultValue = macro.default else {
                 return []
             }
@@ -176,7 +176,7 @@ extension ConfigValidator {
             return errors
         }
 
-        private func validateBooleanType(_ macro: Macro, context: String) -> Error? {
+        private func validateBooleanType(_ macro: Config.Macro, context: String) -> Error? {
             guard let defaultValue = macro.default,
                   defaultValue != "true",
                   defaultValue != "false"
@@ -187,7 +187,7 @@ extension ConfigValidator {
             return .booleanDefaultValueInvalid(context: context, name: macro.name, defaultValue: defaultValue)
         }
 
-        private func validatePathType(_ macro: Macro, context: String) -> Error? {
+        private func validatePathType(_ macro: Config.Macro, context: String) -> Error? {
             guard let defaultValue = macro.default, !defaultValue.isEmpty, defaultValue.contains("\0") else {
                 return nil
             }
@@ -195,7 +195,7 @@ extension ConfigValidator {
             return .pathDefaultValueInvalidCharacters(context: context, name: macro.name)
         }
 
-        private func validateMacroValidation(_ macro: Macro, context: String) -> Error? {
+        private func validateMacroValidation(_ macro: Config.Macro, context: String) -> Error? {
             guard let validatePattern = macro.validate else {
                 return nil
             }
@@ -208,11 +208,11 @@ extension ConfigValidator {
                     pattern: validatePattern
                 )
             }
-            
+
             guard let defaultValue = macro.default else {
                 return nil
             }
-            
+
             // Check if the default value matches the regular expression
             guard let regex = try? Regex(validatePattern) else {
                 return nil
@@ -272,7 +272,7 @@ extension ConfigValidator {
 
         private func parseArrayString(_ value: String) -> [String] {
             let trimmed = value.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("[") && trimmed.hasSuffix("]") else {
+            guard trimmed.hasPrefix("["), trimmed.hasSuffix("]") else {
                 return []
             }
 

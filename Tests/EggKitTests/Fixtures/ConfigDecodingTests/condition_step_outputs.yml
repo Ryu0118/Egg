@@ -1,0 +1,15 @@
+# Step outputs condition
+name: ConditionStepOutputsTemplate
+description: Template with step outputs condition
+
+pre_hatch:
+  - id: setup
+    run: |
+      echo "ready=true"
+      echo "path=/tmp/output"
+
+post_hatch:
+  - if: ${{ pre_hatch.setup.outputs.ready }} === "true"
+    run: echo "Setup completed"
+  - if: ${{ pre_hatch.setup.outputs.path }} !== ""
+    run: echo "Path is set"

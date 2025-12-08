@@ -1,0 +1,20 @@
+# Pre-hatch with id and step outputs
+name: PreHatchWithIdTemplate
+description: Template with pre_hatch step outputs
+
+macros:
+  - name: ___BASE_PATH___
+    description: Base path
+    type: string
+    default: /tmp
+
+pre_hatch:
+  - id: setup-dirs
+    run: |
+      SRC="___BASE_PATH___/src"
+      TESTS="___BASE_PATH___/tests"
+      echo "src-dir=$SRC"
+      echo "test-dir=$TESTS"
+
+hatch:
+  output: ${{ pre_hatch.setup-dirs.outputs.src-dir }}

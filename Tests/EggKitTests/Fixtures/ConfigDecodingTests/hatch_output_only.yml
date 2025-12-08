@@ -1,0 +1,6 @@
+# Hatch with output only
+name: HatchOutputOnlyTemplate
+description: Template with hatch output
+
+hatch:
+  output: ./output

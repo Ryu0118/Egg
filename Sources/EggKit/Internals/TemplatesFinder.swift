@@ -1,8 +1,8 @@
-import Foundation
-import Path
 import FileSystem
-import Yams
+import Foundation
 import Noora
+import Path
+import Yams
 
 struct TemplatesFinder {
     private let fileSystem: any FileSysteming
@@ -12,6 +12,7 @@ struct TemplatesFinder {
     private let noora: any Noorable
 
     private let validator = ConfigValidator()
+    private let decoder = YAMLDecoder()
 
     init(
         fileSystem: some FileSysteming,
@@ -24,13 +25,21 @@ struct TemplatesFinder {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
-        self.location = TemplateLocation(
+        location = TemplateLocation(
             homeDirectory: homeDirectory
         )
     }
 
     func exists(_ name: String) async throws -> Bool {
         try await validTemplateDirectory(name) != nil
+    }
+
+    func fetchTemplate(_ name: String) async throws -> Template {
+        guard let templateDir = try await validTemplateDirectory(name) else {
+            throw Error.noTemplatesFound(name: name)
+        }
+
+        return try await fetchTemplate(templateDir: templateDir)
     }
 
     func listAll(emitValidationErrorLog: Bool = true) async throws -> Templates {
@@ -61,14 +70,14 @@ struct TemplatesFinder {
         for templateDir in templateDirs ?? [] {
             let configPath = templateDir.appending(component: "config.yml")
 
-            guard (try? await self.fileSystem.exists(configPath)) ?? false else {
+            guard (try? await fileSystem.exists(configPath)) ?? false else {
                 continue
             }
 
-            let data = try await self.fileSystem.readFile(at: configPath)
+            let data = try await fileSystem.readFile(at: configPath)
 
             do {
-                let config = try YAMLDecoder().decode(Config.self, from: data)
+                let config = try decoder.decode(Config.self, from: data)
                 let template = await convertConfigToTemplate(
                     config,
                     templateDir: templateDir,
@@ -130,6 +139,17 @@ struct TemplatesFinder {
         return globalOptions + projectOptions
     }
 
+    private func fetchTemplate(
+        templateDir: AbsolutePath
+    ) async throws -> Template {
+        let configPath = templateDir.appending(component: "config.yml")
+
+        let data = try await fileSystem.readFile(at: configPath)
+        let config = try decoder.decode(Config.self, from: data)
+        try await validator.validate(config)
+        return Template(path: templateDir, config: config, isValid: true)
+    }
+
     private func convertConfigToTemplate(
         _ config: Config,
         templateDir: AbsolutePath,
@@ -152,7 +172,7 @@ struct TemplatesFinder {
 
     private func validationErrorLog(
         configPath: AbsolutePath,
-        error: any Error,
+        error: any Swift.Error,
         emitValidationErrorLog: Bool
     ) {
         guard emitValidationErrorLog else {
@@ -166,15 +186,15 @@ struct TemplatesFinder {
             """
         )
     }
-}
 
-struct Templates {
-    let global: [Template]
-    let project: [Template]
-}
+    enum Error: LocalizedError {
+        case noTemplatesFound(name: String)
 
-struct Template: Equatable {
-    let path: AbsolutePath
-    let config: Config
-    let isValid: Bool
+        var errorDescription: String? {
+            switch self {
+            case let .noTemplatesFound(name):
+                "Template '\(name)' was not found in global or project templates."
+            }
+        }
+    }
 }

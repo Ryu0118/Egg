@@ -1,0 +1,93 @@
+# Full featured config (based on CONFIG_YAML.md example)
+name: Swift Module Generator
+description: Create Swift module with optional tests and documentation
+version: 1.0.0
+
+macros:
+  - name: ___MODULE_NAME___
+    description: Module name
+    type: string
+    validate: "^[A-Z][a-zA-Z0-9]*$"
+
+  - name: ___PACKAGE_PATH___
+    description: Package path
+    type: path
+
+  - name: ___MODULE_TYPE___
+    description: Module type
+    type: choice
+    choices:
+      - library
+      - executable
+    default: library
+
+  - name: ___CREATE_TESTS___
+    description: Create test files?
+    type: boolean
+    default: "true"
+
+  - name: ___INCLUDE_DOCS___
+    description: Include documentation?
+    type: boolean
+    default: "false"
+
+  - name: ___AUTHOR_NAME___
+    description: Author name
+    type: string
+    default: Unknown
+
+pre_hatch:
+  - run: |
+      cd ___PACKAGE_PATH___
+      swift package add-target ___MODULE_NAME___ --type ___MODULE_TYPE___
+      rm -f Sources/___MODULE_NAME___/___MODULE_NAME___.swift
+
+  - id: setup-dirs
+    run: |
+      SRC="___PACKAGE_PATH___/Sources/___MODULE_NAME___"
+      TESTS="___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests"
+      DOCS="___PACKAGE_PATH___/Documentation"
+      echo "src-dir=$SRC"
+      echo "test-dir=$TESTS"
+      echo "docs-dir=$DOCS"
+
+  - run: mkdir -p ${{ pre_hatch.setup-dirs.outputs.src-dir }}
+
+  - if: ___CREATE_TESTS___
+    run: mkdir -p ${{ pre_hatch.setup-dirs.outputs.test-dir }}
+
+  - if: ___INCLUDE_DOCS___
+    run: mkdir -p ${{ pre_hatch.setup-dirs.outputs.docs-dir }}
+
+hatch:
+  output: ${{ pre_hatch.setup-dirs.outputs.src-dir }}
+  exclude:
+    - "*.md"
+    - ".DS_Store"
+    - if: !___CREATE_TESTS___
+      paths:
+        - "Tests/**"
+    - if: !___INCLUDE_DOCS___
+      paths:
+        - "Documentation/**"
+        - "**/*.docc"
+    - if: ___MODULE_TYPE___ !== "executable"
+      paths:
+        - "main.swift"
+
+post_hatch:
+  - run: swift package resolve --package-path ___PACKAGE_PATH___
+
+  - if: ___CREATE_TESTS___
+    run: swift test --package-path ___PACKAGE_PATH___
+
+  - if: ___INCLUDE_DOCS___
+    run: |
+      swift package --package-path ___PACKAGE_PATH___ \
+        generate-documentation --target ___MODULE_NAME___
+
+  - if: ___MODULE_TYPE___ === "executable"
+    run: swift build --package-path ___PACKAGE_PATH___
+
+  - run: |
+      echo "✅ Created module: ${{ pre_hatch.setup-dirs.outputs.src-dir }}"

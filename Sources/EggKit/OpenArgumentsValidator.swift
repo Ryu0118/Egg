@@ -1,6 +1,6 @@
+import FileSystem
 import Foundation
 import Path
-import FileSystem
 
 package struct OpenArgumentsValidator {
     private let templateName: String?
@@ -22,7 +22,7 @@ package struct OpenArgumentsValidator {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileSystem = fileSystem
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -83,7 +83,7 @@ package struct OpenArgumentsValidator {
 
         var errorDescription: String? {
             switch self {
-            case .templateNotFound(let name):
+            case let .templateNotFound(name):
                 return "Template '\(name)' not found"
             }
         }

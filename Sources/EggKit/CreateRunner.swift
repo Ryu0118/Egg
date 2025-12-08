@@ -1,7 +1,7 @@
-import Foundation
 import FileSystem
-import Path
+import Foundation
 import Noora
+import Path
 
 package struct CreateRunner {
     private let mode: CreateRunnerMode
@@ -29,12 +29,12 @@ package struct CreateRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
-        self.templateCreator = TemplateCreator(
+        templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
             fileSystem: fileSystem,
         )
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -52,11 +52,11 @@ package struct CreateRunner {
                 validationRules: [
                     NonEmptyValidationRule(error: "Project name cannot be empty."),
                     DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
-                    LengthValidationRule.templateName
+                    LengthValidationRule.templateName,
                 ]
             )
 
-            guard !(try await templatesFinder.exists(templateName)) else {
+            guard try !(await templatesFinder.exists(templateName)) else {
                 throw Error.templateAlreadyExists
             }
 
@@ -66,7 +66,7 @@ package struct CreateRunner {
                 collapseOnAnswer: true,
                 validationRules: [
                     NonEmptyValidationRule(error: "Description cannot be empty."),
-                    LengthValidationRule.description
+                    LengthValidationRule.description,
                 ]
             )
 
@@ -78,7 +78,7 @@ package struct CreateRunner {
                     .project(
                         projectDirectory,
                         workingDirectory: workingDirectory
-                    )
+                    ),
                 ],
                 description: "Global templates are available across all projects, while project templates are specific to the current project."
             )
@@ -92,7 +92,7 @@ package struct CreateRunner {
             let templateDir = templateLocation.template(templateName, type: locationType)
             successLog(name: templateName, templateDir: templateDir)
 
-        case .direct(let name, let description, let location):
+        case let .direct(name, description, location):
             let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
             try await templateCreator.create(
                 name,

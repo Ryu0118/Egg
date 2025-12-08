@@ -1,13 +1,13 @@
+import FileSystem
 import Foundation
+import Noora
 import Path
 import ProcessRunning
-import Noora
-import FileSystem
 
 #if canImport(System)
-import System
+    import System
 #else
-import SystemPackage
+    import SystemPackage
 #endif
 
 package struct OpenRunner {
@@ -32,7 +32,7 @@ package struct OpenRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -44,7 +44,7 @@ package struct OpenRunner {
         switch mode {
         case .interactive:
             try await runInteractiveMode()
-        case .direct(let templateName, let templatePath, let location):
+        case let .direct(templateName, templatePath, location):
             try await openTemplateDirectory(
                 templateName: templateName,
                 templatePath: templatePath,
@@ -77,7 +77,7 @@ package struct OpenRunner {
     private func openTemplateDirectory(
         templateName: String,
         templatePath: AbsolutePath,
-        location: TemplateLocationType
+        location _: TemplateLocationType
     ) async throws {
         do {
             _ = try await processRunner.run(
@@ -103,7 +103,7 @@ package struct OpenRunner {
             switch self {
             case .noTemplatesFound:
                 "No templates found to open"
-            case .failedToOpen(let templateName, let path, let underlying):
+            case let .failedToOpen(templateName, path, underlying):
                 "Failed to open template '\(templateName)' at \(path.pathString): \(underlying.localizedDescription)"
             }
         }

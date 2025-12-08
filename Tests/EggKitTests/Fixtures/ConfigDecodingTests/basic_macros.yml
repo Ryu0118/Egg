@@ -1,0 +1,12 @@
+# Basic config with simple macros
+name: BasicTemplate
+description: A template with basic macros
+
+macros:
+  - name: ___MODULE_NAME___
+    description: Module name
+    type: string
+  - name: ___AUTHOR___
+    description: Author name
+    type: string
+    default: Anonymous

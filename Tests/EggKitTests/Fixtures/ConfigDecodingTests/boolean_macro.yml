@@ -1,0 +1,9 @@
+# Boolean macro with default
+name: BooleanTemplate
+description: Template with boolean macro
+
+macros:
+  - name: ___CREATE_TESTS___
+    description: Create test files?
+    type: boolean
+    default: "true"

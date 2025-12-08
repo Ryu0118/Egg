@@ -1,0 +1,17 @@
+# Hatch with conditional exclude
+name: HatchExcludeConditionalTemplate
+description: Template with conditional exclude rules
+
+macros:
+  - name: ___CREATE_TESTS___
+    description: Create tests?
+    type: boolean
+    default: "false"
+
+hatch:
+  output: ./output
+  exclude:
+    - if: !___CREATE_TESTS___
+      paths:
+        - "Tests/**"
+        - "**/*Tests.swift"

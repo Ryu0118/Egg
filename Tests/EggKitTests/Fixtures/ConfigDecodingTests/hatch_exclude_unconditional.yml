@@ -1,0 +1,10 @@
+# Hatch with unconditional exclude
+name: HatchExcludeUnconditionalTemplate
+description: Template with unconditional exclude rules
+
+hatch:
+  output: ./output
+  exclude:
+    - "*.md"
+    - ".DS_Store"
+    - "**/.git/**"

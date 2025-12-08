@@ -1,5 +1,5 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 @main
 struct Egg: AsyncParsableCommand {
@@ -7,8 +7,8 @@ struct Egg: AsyncParsableCommand {
         commandName: "egg",
         abstract: "A template engine for generating files and folders from templates.",
         subcommands: [
-            Template.self,
-            Hatch.self
+            TemplateCommand.self,
+            HatchCommand.self,
         ]
     )
 }

@@ -1,15 +1,17 @@
-import Foundation
 import FileSystem
+import Foundation
 import Path
 
 package struct HatchArgumentsValidator {
-    private let templateName: String
+    private let templateName: String?
     private let macros: [String]
     private let templateFinder: TemplatesFinder
-    private let parser: EggMacrosParser
+    private let parser: MacrosParser
+    private let workingDirectory: AbsolutePath
+    private let homeDirectory: AbsolutePath
 
     package init(
-        templateName: String,
+        templateName: String?,
         macros: [String],
         projectDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
@@ -18,30 +20,40 @@ package struct HatchArgumentsValidator {
     ) {
         self.templateName = templateName
         self.macros = macros
-        self.templateFinder = TemplatesFinder(
+        templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
-        self.parser = EggMacrosParser()
+        self.workingDirectory = workingDirectory
+        self.homeDirectory = homeDirectory
+        parser = MacrosParser()
     }
 
-    package func validate() async throws -> [EggMacro] {
-        guard try await templateFinder.exists(templateName) else {
-            throw Error.templateNotFound(name: templateName)
+    package func validate() async throws -> HatchRunnerMode {
+        // templateName is nil means interactive mode
+        guard let templateName else {
+            return .interactive
         }
-        return try parser.parse(macros)
-    }
 
-    enum Error: LocalizedError {
-        case templateNotFound(name: String)
+        let parsedMacros = try parser.parseCommandLineArguments(macros)
 
-        var errorDescription: String? {
-            switch self {
-            case .templateNotFound(let name):
-                "Template '\(name)' not found."
-            }
-        }
+        let template = try await templateFinder.fetchTemplate(templateName)
+
+        let validator = ParsedMacroDefinitionValidator(
+            config: template.config,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory
+        )
+
+        let resolvedMacros = try validator.validate(parsedMacros)
+        print(resolvedMacros)
+        return .direct(template: template, macros: resolvedMacros)
     }
+}
+
+package enum HatchRunnerMode {
+    case interactive
+    case direct(template: Template, macros: [ResolvedMacro])
 }

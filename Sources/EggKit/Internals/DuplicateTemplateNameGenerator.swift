@@ -1,6 +1,6 @@
+import FileSystem
 import Foundation
 import Path
-import FileSystem
 
 /// Namespace for template name generation utilities
 package enum DuplicateTemplateNameGenerator {

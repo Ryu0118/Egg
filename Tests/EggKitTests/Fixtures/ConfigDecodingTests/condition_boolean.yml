@@ -1,0 +1,15 @@
+# Boolean condition
+name: ConditionBooleanTemplate
+description: Template with boolean condition
+
+macros:
+  - name: ___ENABLED___
+    description: Enable feature?
+    type: boolean
+    default: "true"
+
+pre_hatch:
+  - if: ___ENABLED___
+    run: echo "Feature enabled"
+  - if: !___ENABLED___
+    run: echo "Feature disabled"

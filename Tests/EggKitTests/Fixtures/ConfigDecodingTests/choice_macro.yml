@@ -1,0 +1,13 @@
+# Choice macro with choices
+name: ChoiceTemplate
+description: Template with choice macro
+
+macros:
+  - name: ___MODULE_TYPE___
+    description: Module type
+    type: choice
+    choices:
+      - library
+      - executable
+      - plugin
+    default: library

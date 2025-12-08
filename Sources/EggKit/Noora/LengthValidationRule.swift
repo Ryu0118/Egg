@@ -3,16 +3,16 @@ import Noora
 
 package struct LengthValidationRule: ValidatableRule {
     package let error: any ValidatableError
-    
+
     private let minLength: Int
     private let maxLength: Int
-    
+
     package init(minLength: Int, maxLength: Int, error: String) {
         self.minLength = minLength
         self.maxLength = maxLength
         self.error = error
     }
-    
+
     package func validate(input: String) -> Bool {
         let length = input.count
         return length >= minLength && length <= maxLength

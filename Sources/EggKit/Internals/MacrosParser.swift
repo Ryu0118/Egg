@@ -1,15 +1,23 @@
 import Foundation
 
-struct EggMacrosParser {
-    func parse(_ macros: [String]) throws -> [EggMacro] {
-        var result: [EggMacro] = []
+struct MacrosParser {
+    /// Parses command line arguments into macro definitions.
+    ///
+    /// Converts CLI arguments in the format `["--name", "value", "--age", "25"]`
+    /// into normalized macro definitions with `___UPPER_CASE___` format.
+    ///
+    /// - Parameter commandLineArguments: Array of CLI arguments starting with `--` prefix
+    /// - Returns: Array of parsed and normalized `ParsedMacroDefinition` instances
+    /// - Throws: `MacrosParseError` if arguments are malformed
+    func parseCommandLineArguments(_ commandLineArguments: [String]) throws -> [ParsedMacroDefinition] {
+        var result: [ParsedMacroDefinition] = []
         var i = 0
 
-        while i < macros.count {
-            let current = macros[i]
+        while i < commandLineArguments.count {
+            let current = commandLineArguments[i]
 
             // Check if it has only one dash (invalid)
-            if current.hasPrefix("-") && !current.hasPrefix("--") {
+            if current.hasPrefix("-"), !current.hasPrefix("--") {
                 throw MacrosParseError.singleDashNotAllowed(macro: current)
             }
 
@@ -25,31 +33,31 @@ struct EggMacrosParser {
             }
 
             // Check if next element exists
-            guard i + 1 < macros.count else {
+            guard i + 1 < commandLineArguments.count else {
                 throw MacrosParseError.missingContent(macro: current)
             }
 
             // Collect all values until next -- or end of array
             var values: [String] = []
             i += 1
-            
-            while i < macros.count {
-                let value = macros[i]
-                
+
+            while i < commandLineArguments.count {
+                let value = commandLineArguments[i]
+
                 // If it starts with --, we've reached the next macro
                 if value.hasPrefix("--") {
                     break
                 }
-                
+
                 // Single dash is invalid
-                if value.hasPrefix("-") && !value.hasPrefix("--") {
+                if value.hasPrefix("-"), !value.hasPrefix("--") {
                     throw MacrosParseError.singleDashNotAllowed(macro: value)
                 }
-                
+
                 values.append(value)
                 i += 1
             }
-            
+
             // At least one value is required
             guard !values.isEmpty else {
                 throw MacrosParseError.missingContent(macro: current)
@@ -58,16 +66,17 @@ struct EggMacrosParser {
             // Convert macro name to uppercase with underscores
             let normalizedMacro = normalize(macroName: macroName)
 
-            result.append(EggMacro(macro: normalizedMacro, values: values))
+            result.append(ParsedMacroDefinition(macro: normalizedMacro, values: values))
         }
 
         return result
     }
 
     private func normalize(macroName: String) -> String {
-        macroName
+        let normalized = macroName
             .replacingOccurrences(of: "-", with: "_")
             .uppercased()
+        return "___\(normalized)___"
     }
 }
 
@@ -79,19 +88,14 @@ enum MacrosParseError: Error, LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .missingDoubleDash(let macro):
+        case let .missingDoubleDash(macro):
             return "Macro must start with '--': \(macro)"
-        case .singleDashNotAllowed(let macro):
+        case let .singleDashNotAllowed(macro):
             return "Macro must start with '--', not '-': \(macro)"
         case .emptyMacroName:
             return "Macro name cannot be empty"
-        case .missingContent(let macro):
+        case let .missingContent(macro):
             return "Macro '\(macro)' requires at least one value"
         }
     }
-}
-
-package struct EggMacro: Equatable {
-    let macro: String
-    let values: [String]
 }

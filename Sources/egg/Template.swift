@@ -1,30 +1,43 @@
-import Foundation
 import ArgumentParser
 import EggKit
 import FileSystem
-import Path
+import Foundation
 import Noora
+import Path
 import ProcessRunning
 
-struct Template: AsyncParsableCommand {
+struct TemplateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "template",
         abstract: "Manage templates.",
         subcommands: [
-            Create.self,
-            List.self,
-            Delete.self,
-            Duplicate.self,
-            Open.self
+            CreateCommand.self,
+            ListCommand.self,
+            DeleteCommand.self,
+            DuplicateCommand.self,
+            OpenCommand.self,
         ]
     )
 }
 
-extension Template {
-    struct Create: AsyncParsableCommand, HasProjectDirectory {
+extension TemplateCommand {
+    struct CreateCommand: AsyncParsableCommand, HasProjectDirectory {
         static let configuration = CommandConfiguration(
             commandName: "create",
-            abstract: "Create a new template with config.yml and template files."
+            abstract: "Create a new template with config.yml and template files.",
+            discussion: """
+            This command supports two modes:
+
+            Interactive Mode:
+              When no arguments are provided, you will be prompted to enter:
+              - Template name
+              - Template description
+              - Template location (global or project)
+
+            Direct Mode:
+              Provide all required information via command-line arguments.
+              Example: egg template create --name MyTemplate --description "My template" --location global
+            """
         )
 
         @Option(name: .long, help: "Directory to create the template in.", completion: .directory)
@@ -84,8 +97,8 @@ extension Template {
     }
 }
 
-extension Template {
-    struct List: AsyncParsableCommand, HasProjectDirectory {
+extension TemplateCommand {
+    struct ListCommand: AsyncParsableCommand, HasProjectDirectory {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all available templates."
@@ -128,11 +141,23 @@ extension AbsolutePath {
     }
 }
 
-extension Template {
-    struct Delete: AsyncParsableCommand, HasProjectDirectory {
+extension TemplateCommand {
+    struct DeleteCommand: AsyncParsableCommand, HasProjectDirectory {
         static let configuration = CommandConfiguration(
             commandName: "delete",
-            abstract: "Delete a template."
+            abstract: "Delete a template.",
+            discussion: """
+            This command supports two modes:
+
+            Interactive Mode:
+              When no template name is provided, you will be prompted to:
+              - Select a template from the available templates
+
+            Direct Mode:
+              Provide the template name as an argument.
+              Example: egg template delete MyTemplate
+              Use --force to skip confirmation prompt.
+            """
         )
 
         @Argument(help: "The name of the template to delete (optional for interactive mode).")
@@ -152,8 +177,8 @@ extension Template {
                 try await DeleteRunner(
                     mode: mode,
                     force: force,
-                    projectDirectory: try await resolveProjectDirectory(),
-                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
+                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).run()
@@ -166,8 +191,8 @@ extension Template {
             do {
                 return try await DeleteArgumentsValidator(
                     templateName: templateName,
-                    projectDirectory: try await resolveProjectDirectory(),
-                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
+                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).validate()
@@ -193,11 +218,24 @@ extension HasProjectDirectory {
     }
 }
 
-extension Template {
-    struct Duplicate: AsyncParsableCommand, HasProjectDirectory {
+extension TemplateCommand {
+    struct DuplicateCommand: AsyncParsableCommand, HasProjectDirectory {
         static let configuration = CommandConfiguration(
             commandName: "duplicate",
-            abstract: "Duplicate an existing template."
+            abstract: "Duplicate an existing template.",
+            discussion: """
+            This command supports two modes:
+
+            Interactive Mode:
+              When arguments are not provided, you will be prompted to:
+              - Select a template to duplicate
+              - Enter the name for the new template
+              - Enter the description for the new template
+
+            Direct Mode:
+              Provide all required information via command-line arguments.
+              Example: egg template duplicate MyTemplate --name NewTemplate --description "Duplicated template"
+            """
         )
 
         @Argument(help: "The name of the template to duplicate (optional for interactive mode).")
@@ -219,8 +257,8 @@ extension Template {
             do {
                 try await DuplicateRunner(
                     mode: mode,
-                    projectDirectory: try await resolveProjectDirectory(),
-                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
+                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).run()
@@ -235,8 +273,8 @@ extension Template {
                     templateName: templateName,
                     newName: name,
                     newDescription: description,
-                    projectDirectory: try await resolveProjectDirectory(),
-                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
+                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).validate()
@@ -247,11 +285,22 @@ extension Template {
     }
 }
 
-extension Template {
-    struct Open: AsyncParsableCommand, HasProjectDirectory {
+extension TemplateCommand {
+    struct OpenCommand: AsyncParsableCommand, HasProjectDirectory {
         static let configuration = CommandConfiguration(
             commandName: "open",
-            abstract: "Open a template directory in Finder."
+            abstract: "Open a template directory in Finder.",
+            discussion: """
+            This command supports two modes:
+
+            Interactive Mode:
+              When no template name is provided, you will be prompted to:
+              - Select a template from the available templates
+
+            Direct Mode:
+              Provide the template name as an argument.
+              Example: egg template open MyTemplate
+            """
         )
 
         @Argument(help: "The name of the template to open (optional for interactive mode).")
@@ -269,7 +318,7 @@ extension Template {
                 try await OpenRunner(
                     mode: mode,
                     processRunner: ProcessRunner(),
-                    projectDirectory: try await resolveProjectDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
@@ -283,8 +332,8 @@ extension Template {
             do {
                 return try await OpenArgumentsValidator(
                     templateName: templateName,
-                    projectDirectory: try await resolveProjectDirectory(),
-                    workingDirectory: try await Self.fileSystem.currentWorkingDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
+                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
                     homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
                     fileSystem: Self.fileSystem
                 ).validate()

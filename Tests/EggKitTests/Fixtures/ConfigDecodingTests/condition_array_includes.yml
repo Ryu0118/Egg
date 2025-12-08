@@ -1,0 +1,19 @@
+# Array includes condition
+name: ConditionArrayIncludesTemplate
+description: Template with array includes condition
+
+macros:
+  - name: ___PLATFORMS___
+    description: Platforms
+    type: array
+    choices:
+      - iOS
+      - macOS
+      - watchOS
+    default: "[\"iOS\", \"macOS\"]"
+
+pre_hatch:
+  - if: ___PLATFORMS___.includes("iOS")
+    run: echo "iOS supported"
+  - if: "!___PLATFORMS___.includes(\"watchOS\")"
+    run: echo "watchOS not supported"

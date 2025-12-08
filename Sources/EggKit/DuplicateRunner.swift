@@ -1,7 +1,7 @@
-import Foundation
 import FileSystem
-import Path
+import Foundation
 import Noora
+import Path
 import Yams
 
 package struct DuplicateRunner {
@@ -34,7 +34,7 @@ package struct DuplicateRunner {
         self.workingDirectory = workingDirectory
         self.fileSystem = fileSystem
         self.noora = noora
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -46,9 +46,9 @@ package struct DuplicateRunner {
         switch mode {
         case .interactive:
             try await runInteractiveMode()
-        case .direct(_, let sourcePath, let sourceLocation, let newName, let newDescription):
+        case let .direct(_, sourcePath, sourceLocation, newName, newDescription):
             try await duplicateTemplate(
-                sourcePath: try AbsolutePath(validating: sourcePath),
+                sourcePath: AbsolutePath(validating: sourcePath),
                 sourceLocation: sourceLocation,
                 newName: newName,
                 newDescription: newDescription
@@ -63,7 +63,7 @@ package struct DuplicateRunner {
             sourceTemplate: selectedOption.template,
             sourceLocation: selectedOption.location
         )
-        
+
         try await duplicateTemplate(
             sourcePath: selectedOption.template.path,
             sourceLocation: selectedOption.location,
@@ -124,7 +124,7 @@ package struct DuplicateRunner {
             validationRules: [
                 NonEmptyValidationRule(error: "Template name cannot be empty."),
                 DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
-                LengthValidationRule.templateName
+                LengthValidationRule.templateName,
             ]
         )
 
@@ -134,7 +134,7 @@ package struct DuplicateRunner {
             newName
         }
 
-        guard !(try await templatesFinder.exists(finalNewName)) else {
+        guard try !(await templatesFinder.exists(finalNewName)) else {
             throw Error.targetAlreadyExists(name: finalNewName)
         }
 
@@ -150,7 +150,7 @@ package struct DuplicateRunner {
             collapseOnAnswer: true,
             validationRules: [
                 NonEmptyValidationRule(error: "Description cannot be empty."),
-                LengthValidationRule.description
+                LengthValidationRule.description,
             ]
         )
 
@@ -171,7 +171,7 @@ package struct DuplicateRunner {
         let targetPath = templateLocation.template(newName, type: sourceLocation)
 
         // Ensure target directory doesn't exist
-        guard !(try await fileSystem.exists(targetPath)) else {
+        guard try !(await fileSystem.exists(targetPath)) else {
             throw Error.targetAlreadyExists(name: newName)
         }
 
@@ -188,7 +188,6 @@ package struct DuplicateRunner {
 
         noora.success("Successfully duplicated template '\(newName)' at \(targetPath.pathString)")
     }
-
 
     private func updateConfig(
         at configPath: AbsolutePath,
@@ -238,9 +237,9 @@ package struct DuplicateRunner {
             switch self {
             case .noTemplatesFound:
                 "No templates found to duplicate"
-            case .targetAlreadyExists(let name):
+            case let .targetAlreadyExists(name):
                 "A template with the name '\(name)' already exists at the target location"
-            case .copyFailed(let underlying):
+            case let .copyFailed(underlying):
                 "Failed to copy template: \(underlying.localizedDescription)"
             }
         }

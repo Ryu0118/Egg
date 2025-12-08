@@ -1,7 +1,7 @@
-import Foundation
 import FileSystem
-import Path
+import Foundation
 import Noora
+import Path
 
 package struct DeleteRunner {
     private let mode: DeleteRunnerMode
@@ -32,7 +32,7 @@ package struct DeleteRunner {
         self.force = force
         self.fileSystem = fileSystem
         self.noora = noora
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -66,10 +66,10 @@ package struct DeleteRunner {
                 location: templateLocationType
             )
 
-        case .direct(let name, let pathString, let location):
+        case let .direct(name, pathString, location):
             try await confirmAndDelete(
                 templateName: name,
-                path: try AbsolutePath(validating: pathString),
+                path: AbsolutePath(validating: pathString),
                 location: location
             )
         }
@@ -113,7 +113,7 @@ package struct DeleteRunner {
             switch self {
             case .noTemplatesFound:
                 "No templates found to delete"
-            case .deletionFailed(let name, let underlying):
+            case let .deletionFailed(name, underlying):
                 "Failed to delete template '\(name)': \(underlying.localizedDescription)"
             }
         }

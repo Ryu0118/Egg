@@ -1,0 +1,10 @@
+# Config with version field
+name: VersionedTemplate
+description: Template with version field
+version: 2.1.0
+
+macros:
+  - name: ___NAME___
+    description: Name
+    type: string
+    default: Example

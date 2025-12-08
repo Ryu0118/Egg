@@ -28,7 +28,7 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
         switch self {
         case .global:
             "~/.egg"
-        case .project(let projectDirectory, let workingDirectory):
+        case let .project(projectDirectory, workingDirectory):
             projectDirectory
                 .relative(to: workingDirectory)
                 .appending(component: ".eggs").pathString
@@ -46,8 +46,8 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     }
 }
 
-extension TemplateLocationType {
-    package enum Kind: String, Codable {
+package extension TemplateLocationType {
+    enum Kind: String, Codable {
         case global
         case project
 

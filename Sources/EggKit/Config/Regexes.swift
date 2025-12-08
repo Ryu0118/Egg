@@ -9,8 +9,8 @@ enum Regexes {
             Capture {
                 OneOrMore {
                     ChoiceOf {
-                        CharacterClass("A"..."Z")
-                        CharacterClass("0"..."9")
+                        CharacterClass("A" ... "Z")
+                        CharacterClass("0" ... "9")
                         "_"
                     }
                 }

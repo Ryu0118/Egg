@@ -1,0 +1,494 @@
+@testable import EggKit
+import Foundation
+import Path
+import Testing
+
+struct ParsedMacroDefinitionValidatorTests {
+    @Test(arguments: TestCase.allCases)
+    func validate(_ testCase: TestCase) throws {
+        let workingDirectory = try! AbsolutePath(validating: "/tmp/test")
+        let homeDirectory = try! AbsolutePath(validating: "/Users/testuser")
+        let validator = ParsedMacroDefinitionValidator(
+            config: testCase.config,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory
+        )
+
+        switch testCase.expected {
+        case let .success(expectedMacros):
+            let result = try validator.validate(testCase.parsedMacros)
+            #expect(result == expectedMacros)
+        case let .failure(expectedErrors):
+            do {
+                _ = try validator.validate(testCase.parsedMacros)
+                #expect(Bool(false), "Expected errors \(expectedErrors)")
+            } catch {
+                guard let combinedError = error as? CombinedError else {
+                    throw error
+                }
+
+                let actualErrors = combinedError.errors
+                    .compactMap { $0 as? ParsedMacroDefinitionValidator.Error }
+                #expect(actualErrors == expectedErrors)
+            }
+        }
+    }
+
+    struct TestCase: CustomTestStringConvertible {
+        let description: String
+        let config: Config
+        let parsedMacros: [ParsedMacroDefinition]
+        let expected: Result
+
+        var testDescription: String { description }
+
+        enum Result {
+            case success([ResolvedMacro])
+            case failure([ParsedMacroDefinitionValidator.Error])
+        }
+
+        static let allCases: [TestCase] = [
+            TestCase(
+                description: "validates string macro",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["TestValue"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___NAME___", description: "Name", value: .string("TestValue")),
+                ])
+            ),
+            TestCase(
+                description: "validates boolean macro with true value",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___ENABLED___", values: ["true"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___ENABLED___", description: "Enabled", value: .boolean(true)),
+                ])
+            ),
+            TestCase(
+                description: "validates boolean macro with false value",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___ENABLED___", values: ["false"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___ENABLED___", description: "Enabled", value: .boolean(false)),
+                ])
+            ),
+            TestCase(
+                description: "validates choice macro",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B", "C"]),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___TYPE___", values: ["B"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___TYPE___", description: "Type", value: .choice("B")),
+                ])
+            ),
+            TestCase(
+                description: "validates array macro",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PLATFORMS___", description: "Platforms", type: .array),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PLATFORMS___", values: ["iOS", "macOS", "watchOS"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"])),
+                ])
+            ),
+            TestCase(
+                description: "validates path macro with absolute path",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: ["/absolute/path/to/file"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "/absolute/path/to/file"))),
+                ])
+            ),
+            TestCase(
+                description: "validates path macro with relative path",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: ["relative/path"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "relative/path", relativeTo: try! AbsolutePath(validating: "/tmp/test")))),
+                ])
+            ),
+            TestCase(
+                description: "uses default value when macro is not provided",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string, default: "DefaultName"),
+                        Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean, default: "true"),
+                    ]
+                ),
+                parsedMacros: [],
+                expected: .success([
+                    ResolvedMacro(name: "___NAME___", description: "Name", value: .string("DefaultName")),
+                    ResolvedMacro(name: "___ENABLED___", description: "Enabled", value: .boolean(true)),
+                ])
+            ),
+            TestCase(
+                description: "prioritizes provided value over default",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string, default: "DefaultName"),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["ProvidedName"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___NAME___", description: "Name", value: .string("ProvidedName")),
+                ])
+            ),
+            TestCase(
+                description: "combines provided and default macros",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string, default: "DefaultName"),
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, default: "A", choices: ["A", "B"]),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["CustomName"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___NAME___", description: "Name", value: .string("CustomName")),
+                    ResolvedMacro(name: "___TYPE___", description: "Type", value: .choice("A")),
+                ])
+            ),
+            TestCase(
+                description: "validates value matching regex pattern",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string, validate: "^[A-Z][a-zA-Z0-9]*$"),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["MyModule"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___NAME___", description: "Name", value: .string("MyModule")),
+                ])
+            ),
+            TestCase(
+                description: "fails when macro is not defined in config",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___DEFINED___", description: "Defined", type: .string, default: "default"),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___UNDEFINED___", values: ["value"]),
+                ],
+                expected: .failure([
+                    .unknownMacro(macro: "___UNDEFINED___"),
+                ])
+            ),
+            TestCase(
+                description: "fails when array macro has no values",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___ARRAY___", description: "Array", type: .array),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___ARRAY___", values: []),
+                ],
+                expected: .failure([
+                    .arrayRequiresAtLeastOneValue(macro: "___ARRAY___"),
+                ])
+            ),
+            TestCase(
+                description: "fails when string macro has multiple values",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["value1", "value2"]),
+                ],
+                expected: .failure([
+                    .nonArrayRequiresSingleValue(macro: "___NAME___", type: .string, actualCount: 2),
+                ])
+            ),
+            TestCase(
+                description: "fails when boolean macro has multiple values",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___ENABLED___", values: ["true", "false"]),
+                ],
+                expected: .failure([
+                    .nonArrayRequiresSingleValue(macro: "___ENABLED___", type: .boolean, actualCount: 2),
+                ])
+            ),
+            TestCase(
+                description: "fails when choice macro has no choices defined",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: nil),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___TYPE___", values: ["A"]),
+                ],
+                expected: .failure([
+                    .choiceTypeRequiresChoices(macro: "___TYPE___"),
+                ])
+            ),
+            TestCase(
+                description: "fails when choice value is not in allowed choices",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B"]),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___TYPE___", values: ["C"]),
+                ],
+                expected: .failure([
+                    .valueNotInChoices(macro: "___TYPE___", value: "C", choices: ["A", "B"]),
+                ])
+            ),
+
+            // Error cases - regex validation
+            TestCase(
+                description: "fails when value does not match regex pattern",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string, validate: "^[A-Z][a-zA-Z0-9]*$"),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["invalid-name"]),
+                ],
+                expected: .failure([
+                    .valueDoesNotMatchRegex(macro: "___NAME___", value: "invalid-name", pattern: "^[A-Z][a-zA-Z0-9]*$"),
+                ])
+            ),
+
+            // Error cases - conversion
+            TestCase(
+                description: "fails when boolean value is invalid",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___ENABLED___", values: ["maybe"]),
+                ],
+                expected: .failure([
+                    .conversionFailed(macro: "___ENABLED___", type: .boolean),
+                ])
+            ),
+            TestCase(
+                description: "fails when path value is empty",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: [""]),
+                ],
+                expected: .failure([
+                    .conversionFailed(macro: "___PATH___", type: .path),
+                ])
+            ),
+            TestCase(
+                description: "validates path macro with tilde expansion",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: ["~/path/to/file"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "/Users/testuser/path/to/file"))),
+                ])
+            ),
+            TestCase(
+                description: "validates path macro with tilde only",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: ["~"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "/Users/testuser"))),
+                ])
+            ),
+            TestCase(
+                description: "fails when required macro is not provided",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___REQUIRED___", description: "Required", type: .string),
+                    ]
+                ),
+                parsedMacros: [],
+                expected: .failure([
+                    .requiredMacroNotProvided(macro: "___REQUIRED___"),
+                ])
+            ),
+            TestCase(
+                description: "fails when multiple required macros are not provided",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___REQUIRED1___", description: "Required 1", type: .string),
+                        Config.Macro(name: "___REQUIRED2___", description: "Required 2", type: .boolean),
+                    ]
+                ),
+                parsedMacros: [],
+                expected: .failure([
+                    .requiredMacroNotProvided(macro: "___REQUIRED1___"),
+                    .requiredMacroNotProvided(macro: "___REQUIRED2___"),
+                ])
+            ),
+            TestCase(
+                description: "succeeds when required macro is provided",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___REQUIRED___", description: "Required", type: .string),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___REQUIRED___", values: ["value"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___REQUIRED___", description: "Required", value: .string("value")),
+                ])
+            ),
+            TestCase(
+                description: "combines required and optional macros correctly",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___REQUIRED___", description: "Required", type: .string),
+                        Config.Macro(name: "___OPTIONAL___", description: "Optional", type: .string, default: "default"),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___REQUIRED___", values: ["value"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___REQUIRED___", description: "Required", value: .string("value")),
+                    ResolvedMacro(name: "___OPTIONAL___", description: "Optional", value: .string("default")),
+                ])
+            ),
+            TestCase(
+                description: "aggregates multiple validation errors",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___NAME___", description: "Name", type: .string, validate: "^[A-Z]"),
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B"]),
+                    ]
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["invalid"]),
+                    ParsedMacroDefinition(macro: "___TYPE___", values: ["C"]),
+                ],
+                expected: .failure([
+                    .valueDoesNotMatchRegex(macro: "___NAME___", value: "invalid", pattern: "^[A-Z]"),
+                    .valueNotInChoices(macro: "___TYPE___", value: "C", choices: ["A", "B"]),
+                ])
+            ),
+        ]
+    }
+}

@@ -1,0 +1,14 @@
+# Array macro with choices
+name: ArrayTemplate
+description: Template with array macro
+
+macros:
+  - name: ___PLATFORMS___
+    description: Supported platforms
+    type: array
+    choices:
+      - iOS
+      - macOS
+      - watchOS
+      - tvOS
+    default: "[\"iOS\", \"macOS\"]"

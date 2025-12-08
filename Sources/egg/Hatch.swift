@@ -1,22 +1,32 @@
-import Foundation
 import ArgumentParser
 import EggKit
 import FileSystem
+import Foundation
 
-struct Hatch: AsyncParsableCommand, HasProjectDirectory {
+struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     static let configuration = CommandConfiguration(
         commandName: "hatch",
-        abstract: "Use a template to generate files with macro substitution."
+        abstract: "Use a template to generate files with macro substitution.",
+        discussion: """
+        This command supports two modes:
+
+        Interactive Mode:
+          When no arguments are provided, the command runs in interactive mode.
+          You will be prompted to:
+          1. Enter the template name
+          2. Answer questions for each macro defined in the template's config
+
+        Direct Mode:
+          Provide the template name and macro values via command-line arguments.
+          Example: egg hatch MyTemplate --NAME value --ENABLED true
+        """
     )
 
-    @Argument(help: "The name of the template to use.")
-    var templateName: String
+    @Argument(help: "The name of the template to use (optional, will prompt if not provided).")
+    var templateName: String?
 
     @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
     var projectDirectory: String?
-
-    @Option(name: .shortAndLong, help: "Output directory for the generated files. Defaults to current directory.")
-    var output: String?
 
     @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
     var macros: [String] = []
@@ -24,12 +34,18 @@ struct Hatch: AsyncParsableCommand, HasProjectDirectory {
     static let fileSystem = FileSystem()
 
     mutating func run() async throws {
-        let macros = try await validate()
+        let mode = try await validate()
 
-        try await HatchRunner(macros: macros).run()
+        try await HatchRunner(
+            mode: mode,
+            workingDirectory: Self.fileSystem.currentWorkingDirectory(),
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
+            projectDirectory: resolveProjectDirectory(),
+            fileSystem: Self.fileSystem
+        ).run()
     }
 
-    private func validate() async throws -> [EggMacro] {
+    private func validate() async throws -> HatchRunnerMode {
         do {
             return try await HatchArgumentsValidator(
                 templateName: templateName,

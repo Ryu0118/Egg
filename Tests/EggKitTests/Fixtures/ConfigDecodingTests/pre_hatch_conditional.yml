@@ -1,0 +1,13 @@
+# Pre-hatch with conditional execution
+name: PreHatchConditionalTemplate
+description: Template with conditional pre_hatch
+
+macros:
+  - name: ___CREATE_TESTS___
+    description: Create tests?
+    type: boolean
+    default: "true"
+
+pre_hatch:
+  - if: ___CREATE_TESTS___
+    run: mkdir -p tests

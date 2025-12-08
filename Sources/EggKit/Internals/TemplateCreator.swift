@@ -1,8 +1,8 @@
-import Foundation
-import Yams
 import FileSystem
-import Path
+import Foundation
 import Noora
+import Path
+import Yams
 
 struct TemplateCreator {
     let fileSystem: any FileSysteming
@@ -54,39 +54,39 @@ struct TemplateCreator {
     ) async throws -> AbsolutePath {
         let defaultConfigPath = templateDir.appending(component: "config.yml")
         let yamlContent = """
-name: \(name)
-description: \(description)
+        name: \(name)
+        description: \(description)
 
-# Define custom macros that can be used throughout your template files and in this config file.
-# Macros defined here can be referenced in file names, folder names, file contents, and
-# within this config.yaml (e.g., in pre_hatch, hatch, post_hatch sections) using the format
-# ___MACRO_NAME___. When you run 'egg hatch', you'll be prompted to provide values for these
-# macros, which will then replace all occurrences in your template and configuration.
-macros:
-  - name: ___FILE_NAME___
-    description: The name of the file to be generated
-    type: string
-  - name: ___OUTPUT___
-    description: Template output directory where generated files will be placed
-    type: path
+        # Define custom macros that can be used throughout your template files and in this config file.
+        # Macros defined here can be referenced in file names, folder names, file contents, and
+        # within this config.yaml (e.g., in pre_hatch, hatch, post_hatch sections) using the format
+        # ___MACRO_NAME___. When you run 'egg hatch', you'll be prompted to provide values for these
+        # macros, which will then replace all occurrences in your template and configuration.
+        macros:
+          - name: ___FILE_NAME___
+            description: The name of the file to be generated
+            type: string
+          - name: ___OUTPUT___
+            description: Template output directory where generated files will be placed
+            type: path
 
-#  - name: ___ITEM_NAME___
-#    description: Name of the item to generate
-#    type: string
+        #  - name: ___ITEM_NAME___
+        #    description: Name of the item to generate
+        #    type: string
 
-# pre_hatch:
-#  - id: compute-path
-#    run: |
-#      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
-#      echo "item-path=$ITEM_PATH"
-hatch:
-  output: ___OUTPUT___
-  exclude:
-#    - README.md
+        # pre_hatch:
+        #  - id: compute-path
+        #    run: |
+        #      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
+        #      echo "item-path=$ITEM_PATH"
+        hatch:
+          output: ___OUTPUT___
+          exclude:
+        #    - README.md
 
-# post_hatch:
-#  - run: echo "You can use step outputs like: ${{ pre_hatch.compute-path.outputs.item-path }}"
-"""
+        # post_hatch:
+        #  - run: echo "You can use step outputs like: ${{ pre_hatch.compute-path.outputs.item-path }}"
+        """
         do {
             let decoded = try YAMLDecoder().decode(Config.self, from: yamlContent)
             try await validator.validate(decoded)
@@ -100,21 +100,21 @@ hatch:
     private func createDefaultFile(_ templateDir: AbsolutePath) async throws -> AbsolutePath {
         let defaultFilePath = templateDir.appending(component: "___FILE_NAME___View.swift")
         let defaultFileContent = """
-// Available default macros:
-//   - ___DATE___: Current date in default format
-//   - ___DATE(yyyyMMdd)___: Current date in custom format
-//   - ___SYSTEM_USER___: System username
-//
-// You can also define custom macros (e.g., ___USER_DEFINED___, ___FILE_NAME___) and provide values via:
-//   - Command line: egg use <template-name> --user-defined foo --file-name bar
-//   - Interactive prompt: will be asked during 'egg use' command
+        // Available default macros:
+        //   - ___DATE___: Current date in default format
+        //   - ___DATE(yyyyMMdd)___: Current date in custom format
+        //   - ___SYSTEM_USER___: System username
+        //
+        // You can also define custom macros (e.g., ___USER_DEFINED___, ___FILE_NAME___) and provide values via:
+        //   - Command line: egg use <template-name> --user-defined foo --file-name bar
+        //   - Interactive prompt: will be asked during 'egg use' command
 
-struct ___FILE_NAME___View: View {
-    var body: some View {
-        Text("___FILE_NAME___View")
-    }
-}
-"""
+        struct ___FILE_NAME___View: View {
+            var body: some View {
+                Text("___FILE_NAME___View")
+            }
+        }
+        """
         try await fileSystem.writeText(defaultFileContent, at: defaultFilePath)
         return defaultFilePath
     }
@@ -130,5 +130,3 @@ struct ___FILE_NAME___View: View {
         }
     }
 }
-
-

@@ -24,7 +24,7 @@ extension TemplateLocating {
         switch type {
         case .global:
             globalTemplatesDirectory.appending(component: name)
-        case .project(let projectDirectory, _):
+        case let .project(projectDirectory, _):
             projectTemplatesDirectory(projectDirectory).appending(component: name)
         }
     }
@@ -33,7 +33,7 @@ extension TemplateLocating {
         switch type {
         case .global:
             globalTemplatesDirectory
-        case .project(let projectDirectory, _):
+        case let .project(projectDirectory, _):
             projectTemplatesDirectory(projectDirectory)
         }
     }

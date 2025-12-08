@@ -1,6 +1,6 @@
+import FileSystem
 import Foundation
 import Path
-import FileSystem
 
 package struct CreateArgumentsValidator {
     private let name: String?
@@ -20,7 +20,7 @@ package struct CreateArgumentsValidator {
         self.name = name
         self.description = description
         self.location = location
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -38,7 +38,7 @@ package struct CreateArgumentsValidator {
         let providedFields = Set([
             name != nil ? Field.name : nil,
             description != nil ? Field.description : nil,
-            location != nil ? Field.location : nil
+            location != nil ? Field.location : nil,
         ].compactMap { $0 })
 
         // Check if all required fields are provided
@@ -55,7 +55,7 @@ package struct CreateArgumentsValidator {
             throw Error.missingFields(missing: requiredFields, provided: [])
         }
 
-        guard !(try await templatesFinder.exists(name)) else {
+        guard try !(await templatesFinder.exists(name)) else {
             throw Error.templateAlreadyExists
         }
 
@@ -93,19 +93,19 @@ package struct CreateArgumentsValidator {
 
         var errorDescription: String? {
             switch self {
-            case .missingFields(let missing, let provided):
+            case let .missingFields(missing, provided):
                 let missingText = missing.sorted(by: { $0.rawValue < $1.rawValue })
                     .map { $0.displayName }
                     .joined(separator: " and ")
-                
+
                 if provided.isEmpty {
                     return "Template \(missingText) must be provided together"
                 }
-                
+
                 let providedText = provided.sorted(by: { $0.rawValue < $1.rawValue })
                     .map { $0.displayName }
                     .joined(separator: " and ")
-                
+
                 return "Template \(missingText) \(missing.count == 1 ? "is" : "are") required when \(providedText) \(provided.count == 1 ? "is" : "are") specified"
             case .templateAlreadyExists:
                 return "A template with the same name already exists"

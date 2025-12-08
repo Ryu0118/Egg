@@ -1,6 +1,6 @@
+import FileSystem
 import Foundation
 import Path
-import FileSystem
 
 package struct DeleteArgumentsValidator {
     private let templateName: String?
@@ -22,7 +22,7 @@ package struct DeleteArgumentsValidator {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileSystem = fileSystem
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -40,7 +40,7 @@ package struct DeleteArgumentsValidator {
         guard let path = try await templatesFinder.validTemplateDirectory(templateName) else {
             throw Error.templateNotFound(name: templateName)
         }
-        
+
         // Determine which location it's in
         let templateLocationInstance = TemplateLocation(
             homeDirectory: homeDirectory
@@ -63,7 +63,7 @@ package struct DeleteArgumentsValidator {
 
         var errorDescription: String? {
             switch self {
-            case .templateNotFound(let name):
+            case let .templateNotFound(name):
                 return "Template '\(name)' not found"
             }
         }

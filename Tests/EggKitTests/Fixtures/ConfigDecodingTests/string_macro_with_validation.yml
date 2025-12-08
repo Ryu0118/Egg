@@ -1,0 +1,10 @@
+# String macro with validation regex
+name: StringValidationTemplate
+description: Template with string macro validation
+
+macros:
+  - name: ___MODULE_NAME___
+    description: Module name (must start with uppercase)
+    type: string
+    validate: "^[A-Z][a-zA-Z0-9]*$"
+    default: MyModule

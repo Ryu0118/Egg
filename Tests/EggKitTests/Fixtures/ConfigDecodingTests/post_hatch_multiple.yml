@@ -1,0 +1,8 @@
+# Post-hatch with multiple steps
+name: PostHatchMultipleTemplate
+description: Template with multiple post_hatch steps
+
+post_hatch:
+  - run: swift test
+  - run: swift build
+  - run: echo "Build complete"

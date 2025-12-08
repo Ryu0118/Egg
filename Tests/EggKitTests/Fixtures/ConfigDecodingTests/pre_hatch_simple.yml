@@ -1,0 +1,7 @@
+# Pre-hatch with simple run command
+name: PreHatchSimpleTemplate
+description: Template with simple pre_hatch
+
+pre_hatch:
+  - run: mkdir -p output
+  - run: echo "Preparing template"

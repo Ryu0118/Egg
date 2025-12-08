@@ -1,9 +1,9 @@
-import Foundation
-import Testing
+@testable import EggKit
 import FileSystem
 import FileSystemTesting
+import Foundation
 import Path
-@testable import EggKit
+import Testing
 
 struct DuplicateTemplateNameGeneratorTests {
     @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
@@ -139,7 +139,7 @@ struct DuplicateTemplateNameGeneratorTests {
                     "MyTemplate (1)",
                     "MyTemplate (2)",
                     "MyTemplate (3)",
-                    "MyTemplate (4)"
+                    "MyTemplate (4)",
                 ],
                 expected: "MyTemplate (5)"
             ),

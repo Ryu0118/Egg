@@ -1,6 +1,6 @@
+import FileSystem
 import Foundation
 import Path
-import FileSystem
 import Yams
 
 package struct DuplicateArgumentsValidator {
@@ -30,7 +30,7 @@ package struct DuplicateArgumentsValidator {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileSystem = fileSystem
-        self.templatesFinder = TemplatesFinder(
+        templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
@@ -80,7 +80,7 @@ package struct DuplicateArgumentsValidator {
             homeDirectory: homeDirectory
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
-        
+
         return if try await fileSystem.exists(globalPath) && sourcePath == globalPath {
             TemplateLocationType.global
         } else {
@@ -118,7 +118,7 @@ package struct DuplicateArgumentsValidator {
     }
 
     private func validateNewTemplateName(_ name: String) async throws {
-        guard !(try await templatesFinder.exists(name)) else {
+        guard try !(await templatesFinder.exists(name)) else {
             throw Error.templateAlreadyExists(name: name)
         }
 
@@ -146,9 +146,9 @@ package struct DuplicateArgumentsValidator {
 
         var errorDescription: String? {
             switch self {
-            case .templateNotFound(let name):
+            case let .templateNotFound(name):
                 return "Template '\(name)' not found"
-            case .templateAlreadyExists(let name):
+            case let .templateAlreadyExists(name):
                 return "A template with the name '\(name)' already exists"
             }
         }
