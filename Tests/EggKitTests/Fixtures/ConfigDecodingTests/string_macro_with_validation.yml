@@ -8,3 +8,6 @@ macros:
     type: string
     validate: "^[A-Z][a-zA-Z0-9]*$"
     default: MyModule
+
+hatch:
+  output: .

@@ -12,3 +12,6 @@ macros:
       - watchOS
       - tvOS
     default: "[\"iOS\", \"macOS\"]"
+
+hatch:
+  output: .

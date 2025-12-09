@@ -13,3 +13,6 @@ pre_hatch:
     run: echo "Feature enabled"
   - if: !___ENABLED___
     run: echo "Feature disabled"
+
+hatch:
+  output: .

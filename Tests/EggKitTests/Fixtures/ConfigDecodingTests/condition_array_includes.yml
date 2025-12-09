@@ -17,3 +17,6 @@ pre_hatch:
     run: echo "iOS supported"
   - if: "!___PLATFORMS___.includes(\"watchOS\")"
     run: echo "watchOS not supported"
+
+hatch:
+  output: .

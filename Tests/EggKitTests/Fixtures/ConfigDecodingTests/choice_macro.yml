@@ -11,3 +11,6 @@ macros:
       - executable
       - plugin
     default: library
+
+hatch:
+  output: .

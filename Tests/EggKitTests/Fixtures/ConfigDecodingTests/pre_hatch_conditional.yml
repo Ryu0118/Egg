@@ -11,3 +11,6 @@ macros:
 pre_hatch:
   - if: ___CREATE_TESTS___
     run: mkdir -p tests
+
+hatch:
+  output: .

@@ -19,3 +19,6 @@ pre_hatch:
     run: echo "At least one enabled"
   - if: (___A___ || ___B___) && ___A___
     run: echo "Complex condition"
+
+hatch:
+  output: .

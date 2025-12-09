@@ -1,3 +1,6 @@
 # Minimal config with only required fields
 name: MinimalTemplate
 description: A minimal template configuration
+
+hatch:
+  output: .

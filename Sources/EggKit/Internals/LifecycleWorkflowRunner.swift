@@ -137,12 +137,11 @@ struct LifecycleWorkflowRunner {
         let resolver = VariableResolver(macros: macros, outputs: outputs)
         let resolvedOutput = try await resolver.resolve(config.hatch.output)
 
-        let pathResolver = PathValidationRule(
+        let outputDirectory = try resolveToAbsolutePath(
+            resolvedOutput,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory,
-            error: "Invalid output path"
+            homeDirectory: homeDirectory
         )
-        let outputDirectory = try pathResolver.resolveToAbsolutePath(resolvedOutput)
 
         // Safety check: prevent data loss by ensuring outputDirectory is not the same as or contains templateDirectory
         // This prevents accidentally wiping out the template or working directory

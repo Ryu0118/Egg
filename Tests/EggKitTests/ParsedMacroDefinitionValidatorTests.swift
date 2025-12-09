@@ -56,6 +56,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___NAME___", description: "Name", type: .string),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["TestValue"]),
@@ -72,6 +74,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___ENABLED___", values: ["true"]),
@@ -88,6 +92,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___ENABLED___", values: ["false"]),
@@ -102,8 +108,11 @@ struct ParsedMacroDefinitionValidatorTests {
                     name: "Test",
                     description: "Test",
                     macros: [
-                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B", "C"]),
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B", "C"]
+                ),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___TYPE___", values: ["B"]),
@@ -120,6 +129,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___PLATFORMS___", description: "Platforms", type: .array),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___PLATFORMS___", values: ["iOS", "macOS", "watchOS"]),
@@ -136,6 +147,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___PATH___", description: "Path", type: .path),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___PATH___", values: ["/absolute/path/to/file"]),
@@ -152,6 +165,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___PATH___", description: "Path", type: .path),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___PATH___", values: ["relative/path"]),
@@ -169,6 +184,8 @@ struct ParsedMacroDefinitionValidatorTests {
                         Config.Macro(name: "___NAME___", description: "Name", type: .string, default: "DefaultName"),
                         Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean, default: "true"),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [],
                 expected: .success([
@@ -184,6 +201,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___NAME___", description: "Name", type: .string, default: "DefaultName"),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["ProvidedName"]),
@@ -201,6 +220,8 @@ struct ParsedMacroDefinitionValidatorTests {
                         Config.Macro(name: "___NAME___", description: "Name", type: .string, default: "DefaultName"),
                         Config.Macro(name: "___TYPE___", description: "Type", type: .choice, default: "A", choices: ["A", "B"]),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["CustomName"]),
@@ -218,6 +239,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___NAME___", description: "Name", type: .string, validate: "^[A-Z][a-zA-Z0-9]*$"),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["MyModule"]),
@@ -234,6 +257,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___DEFINED___", description: "Defined", type: .string, default: "default"),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___UNDEFINED___", values: ["value"]),
@@ -250,6 +275,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___ARRAY___", description: "Array", type: .array),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___ARRAY___", values: []),
@@ -266,6 +293,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___NAME___", description: "Name", type: .string),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["value1", "value2"]),
@@ -282,6 +311,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___ENABLED___", values: ["true", "false"]),
@@ -298,6 +329,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: nil),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___TYPE___", values: ["A"]),
@@ -312,8 +345,11 @@ struct ParsedMacroDefinitionValidatorTests {
                     name: "Test",
                     description: "Test",
                     macros: [
-                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B"]),
+                        Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B"]
+                ),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___TYPE___", values: ["C"]),
@@ -332,6 +368,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___NAME___", description: "Name", type: .string, validate: "^[A-Z][a-zA-Z0-9]*$"),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["invalid-name"]),
@@ -350,6 +388,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___ENABLED___", description: "Enabled", type: .boolean),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___ENABLED___", values: ["maybe"]),
@@ -366,6 +406,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___PATH___", description: "Path", type: .path),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___PATH___", values: [""]),
@@ -382,6 +424,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___PATH___", description: "Path", type: .path),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___PATH___", values: ["~/path/to/file"]),
@@ -398,6 +442,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___PATH___", description: "Path", type: .path),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___PATH___", values: ["~"]),
@@ -414,6 +460,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___REQUIRED___", description: "Required", type: .string),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [],
                 expected: .failure([
@@ -429,6 +477,8 @@ struct ParsedMacroDefinitionValidatorTests {
                         Config.Macro(name: "___REQUIRED1___", description: "Required 1", type: .string),
                         Config.Macro(name: "___REQUIRED2___", description: "Required 2", type: .boolean),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [],
                 expected: .failure([
@@ -444,6 +494,8 @@ struct ParsedMacroDefinitionValidatorTests {
                     macros: [
                         Config.Macro(name: "___REQUIRED___", description: "Required", type: .string),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___REQUIRED___", values: ["value"]),
@@ -461,6 +513,8 @@ struct ParsedMacroDefinitionValidatorTests {
                         Config.Macro(name: "___REQUIRED___", description: "Required", type: .string),
                         Config.Macro(name: "___OPTIONAL___", description: "Optional", type: .string, default: "default"),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___REQUIRED___", values: ["value"]),
@@ -479,6 +533,8 @@ struct ParsedMacroDefinitionValidatorTests {
                         Config.Macro(name: "___NAME___", description: "Name", type: .string, validate: "^[A-Z]"),
                         Config.Macro(name: "___TYPE___", description: "Type", type: .choice, choices: ["A", "B"]),
                     ]
+                ,
+                hatch: Config.HatchConfig(output: ".")
                 ),
                 parsedMacros: [
                     ParsedMacroDefinition(macro: "___NAME___", values: ["invalid"]),

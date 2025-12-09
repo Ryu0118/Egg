@@ -237,8 +237,12 @@ private struct MacroQuestionGenerator {
             validationRules: validationRules
         )
 
-        // Resolve path using the same validation rule
-        let absolutePath = try! pathValidationRule.resolveToAbsolutePath(pathString)
+        // Resolve path using the standalone function
+        let absolutePath = try! resolveToAbsolutePath(
+            pathString,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory
+        )
 
         return ResolvedMacro(
             name: macro.name,

@@ -10,3 +10,6 @@ macros:
     description: Author name
     type: string
     default: Anonymous
+
+hatch:
+  output: .

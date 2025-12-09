@@ -7,3 +7,6 @@ macros:
     description: Package path
     type: path
     default: /path/to/package
+
+hatch:
+  output: .

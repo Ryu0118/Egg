@@ -16,3 +16,6 @@ pre_hatch:
     run: echo "Building library"
   - if: ___TYPE___ !== "library"
     run: echo "Building executable"
+
+hatch:
+  output: .

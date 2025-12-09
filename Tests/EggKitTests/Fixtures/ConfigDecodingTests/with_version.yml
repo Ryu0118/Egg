@@ -8,3 +8,6 @@ macros:
     description: Name
     type: string
     default: Example
+
+hatch:
+  output: .

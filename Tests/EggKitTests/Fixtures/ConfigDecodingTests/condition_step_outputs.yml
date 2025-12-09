@@ -13,3 +13,6 @@ post_hatch:
     run: echo "Setup completed"
   - if: ${{ pre_hatch.setup.outputs.path }} !== ""
     run: echo "Path is set"
+
+hatch:
+  output: .

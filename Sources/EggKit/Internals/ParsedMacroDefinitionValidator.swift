@@ -240,14 +240,11 @@ struct ParsedMacroDefinitionValidator {
         case .path:
             guard let value = resolvedValues.first, !value.isEmpty else { return nil }
 
-            // Use PathValidationRule for path resolution
-            let pathValidationRule = PathValidationRule(
+            guard let absolutePath = try? resolveToAbsolutePath(
+                value,
                 workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory,
-                error: "Invalid path"
-            )
-
-            guard let absolutePath = try? pathValidationRule.resolveToAbsolutePath(value) else {
+                homeDirectory: homeDirectory
+            ) else {
                 return nil
             }
 
