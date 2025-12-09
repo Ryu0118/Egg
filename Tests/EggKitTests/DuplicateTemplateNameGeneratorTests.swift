@@ -77,6 +77,8 @@ struct DuplicateTemplateNameGeneratorTests {
             let configContent = """
             name: \(templateName)
             description: Test template
+            hatch:
+              output: .
             """
             try await fileSystem.writeText(configContent, at: configPath)
         }
