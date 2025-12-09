@@ -85,7 +85,9 @@ struct LifecycleStepRunner {
             processRunner: processRunner,
             workingDirectory: workingDirectory
         )
-        let (stdout, _) = try await shellRunner.execute(resolvedCommand)
+        let stdout = try await shellRunner.executeStreaming(resolvedCommand) { output in
+            print("    " + output)
+        }
 
         if let stepId = step.id {
             let parsedOutputs = StepOutputParser.parse(stdout)

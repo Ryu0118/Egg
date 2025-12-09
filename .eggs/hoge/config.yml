@@ -14,19 +14,20 @@ macros:
     description: Template output directory where generated files will be placed
     type: path
 
-#  - name: ___ITEM_NAME___
-#    description: Name of the item to generate
-#    type: string
+  - name: ___ITEM_NAME___
+    description: Name of the item to generate
+    type: string
 
-# pre_hatch:
-#  - id: compute-path
-#    run: |
-#      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
-#      echo "item-path=$ITEM_PATH"
+pre_hatch:
+  - id: compute-path
+    run: |
+      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
+      echo "item-path=$ITEM_PATH"
 hatch:
-  output: ___OUTPUT___
+  output: ${{ pre_hatch.compute-path.outputs.item-path }}
   exclude:
-#    - README.md
+    - README.md
 
-# post_hatch:
-#  - run: echo "You can use step outputs like: ${{ pre_hatch.compute-path.outputs.item-path }}"
+post_hatch:
+  - run: |
+      echo "You can use step outputs like: ${{ pre_hatch.compute-path.outputs.item-path }}"

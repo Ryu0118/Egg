@@ -99,7 +99,7 @@ struct LifecycleWorkflowRunner {
         macros: [ResolvedMacro],
         outputs: StepOutputsStorage
     ) async throws {
-        noora.passthrough("🥚 Pre-hatch phase")
+        noora.passthrough("🥚 Pre-hatch script executing...\n")
 
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
@@ -131,7 +131,7 @@ struct LifecycleWorkflowRunner {
         outputs: StepOutputsStorage,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
-        noora.passthrough("🐣 Hatch phase\n")
+        noora.passthrough("🐣 Hatching \(config.name)...\n")
 
         // Resolve macros in the output path first
         let resolver = VariableResolver(macros: macros, outputs: outputs)
@@ -188,7 +188,7 @@ struct LifecycleWorkflowRunner {
         macros: [ResolvedMacro],
         outputs: StepOutputsStorage
     ) async throws {
-        noora.passthrough("🐥 Post-hatch phase\n")
+        noora.passthrough("🐥 Post-hatch script executing...\n")
 
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
