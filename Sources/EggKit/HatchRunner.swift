@@ -2,6 +2,7 @@ import FileSystem
 import Foundation
 import Noora
 import Path
+import ProcessRunning
 
 package struct HatchRunner {
     private let mode: HatchRunnerMode
@@ -11,6 +12,7 @@ package struct HatchRunner {
     private let fileSystem: any FileSysteming
     private let projectDirectory: AbsolutePath
     private let templateFinder: TemplatesFinder
+    private let processRunner: any ProcessRunning
 
     package init(
         mode: HatchRunnerMode,
@@ -18,6 +20,7 @@ package struct HatchRunner {
         homeDirectory: AbsolutePath,
         projectDirectory: AbsolutePath,
         fileSystem: some FileSysteming,
+        processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora()
     ) {
         self.mode = mode
@@ -25,6 +28,7 @@ package struct HatchRunner {
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.fileSystem = fileSystem
+        self.processRunner = processRunner
         self.noora = noora
         templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
@@ -58,12 +62,34 @@ package struct HatchRunner {
 
             let resolvedMacros = generator.generateQuestions()
 
-            print(resolvedMacros)
+            let workflowRunner = LifecycleWorkflowRunner(
+                processRunner: processRunner,
+                fileSystem: fileSystem,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory,
+                noora: noora
+            )
+
+            _ = try await workflowRunner.run(
+                config: template.config,
+                macros: resolvedMacros,
+                templateDirectory: template.directory
+            )
 
         case let .direct(template, macros):
-            _ = template
-            _ = macros
-            // TODO: Implement direct mode
+            let workflowRunner = LifecycleWorkflowRunner(
+                processRunner: processRunner,
+                fileSystem: fileSystem,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory,
+                noora: noora
+            )
+
+            _ = try await workflowRunner.run(
+                config: template.config,
+                macros: macros,
+                templateDirectory: template.directory
+            )
         }
     }
 }
