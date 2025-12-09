@@ -29,9 +29,7 @@ struct ConfigValidator {
             allErrors += await postHatchValidator.validate(postHatch)
         }
 
-        if let hatch = config.hatch {
-            allErrors += await hatchValidator.validate(hatch)
-        }
+        allErrors += await hatchValidator.validate(config.hatch)
 
         if !allErrors.isEmpty {
             throw CombinedError(errors: allErrors) { "⛔️ \($0)" }

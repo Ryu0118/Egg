@@ -40,10 +40,27 @@ extension FileSysteming {
             try await copy(source, to: workingDirectory)
             try await transform(workingDirectory)
 
+            // Move the transformed content to destination
+            // If destination doesn't exist, move the entire directory
+            // If destination exists, we need to merge contents
             if try await exists(destination) {
-                try await remove(destination)
+                // Merge: copy items from workingDirectory into destination
+                let items = try await contentsOfDirectory(workingDirectory)
+                for item in items {
+                    let itemName = item.basename
+                    let destItem = destination.appending(component: itemName)
+
+                    // Remove existing item in destination if it exists
+                    if try await exists(destItem) {
+                        try await remove(destItem)
+                    }
+
+                    try await move(from: item, to: destItem)
+                }
+            } else {
+                // Destination doesn't exist, move entire directory
+                try await move(from: workingDirectory, to: destination)
             }
-            try await move(from: workingDirectory, to: destination)
         } catch {
             try? await remove(tempDirectory)
             throw error

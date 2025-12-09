@@ -49,18 +49,17 @@ extension ConfigValidator {
             }
 
             // Check macros used in hatch.output
-            if let hatch = config.hatch {
-                errors += validateMacroReferencesInText(hatch.output, definedMacroNames: definedMacroNames, context: "hatch.output")
+            let hatch = config.hatch
+            errors += validateMacroReferencesInText(hatch.output, definedMacroNames: definedMacroNames, context: "hatch.output")
 
-                // Check macros used in hatch.exclude condition expressions
-                if let exclude = hatch.exclude {
-                    for (index, rule) in exclude.enumerated() {
-                        switch rule {
-                        case .path:
-                            break
-                        case let .conditional(conditional):
-                            errors += validateMacroReferencesInText(conditional.if, definedMacroNames: definedMacroNames, context: "hatch.exclude[\(index)].if")
-                        }
+            // Check macros used in hatch.exclude condition expressions
+            if let exclude = hatch.exclude {
+                for (index, rule) in exclude.enumerated() {
+                    switch rule {
+                    case .path:
+                        break
+                    case let .conditional(conditional):
+                        errors += validateMacroReferencesInText(conditional.if, definedMacroNames: definedMacroNames, context: "hatch.exclude[\(index)].if")
                     }
                 }
             }

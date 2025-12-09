@@ -18,7 +18,7 @@ package struct Config: Codable, Equatable {
     package let preHatch: [LifecycleStep]?
 
     /// Template expansion configuration
-    package let hatch: HatchConfig?
+    package let hatch: HatchConfig
 
     /// Lifecycle hooks after template expansion
     package let postHatch: [LifecycleStep]?
@@ -29,7 +29,7 @@ package struct Config: Codable, Equatable {
         version: String? = nil,
         macros: [Macro]? = nil,
         preHatch: [LifecycleStep]? = nil,
-        hatch: HatchConfig? = nil,
+        hatch: HatchConfig,
         postHatch: [LifecycleStep]? = nil
     ) {
         self.name = name

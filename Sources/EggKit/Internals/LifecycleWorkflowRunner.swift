@@ -103,8 +103,7 @@ struct LifecycleWorkflowRunner {
 
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
-            workingDirectory: workingDirectory,
-            noora: noora
+            workingDirectory: workingDirectory
         )
 
         _ = try await stepRunner.execute(
@@ -138,11 +137,12 @@ struct LifecycleWorkflowRunner {
         let resolver = VariableResolver(macros: macros, outputs: outputs)
         let resolvedOutput = try await resolver.resolve(config.hatch.output)
 
-        let outputDirectory = try PathResolver.resolveToAbsolutePath(
-            resolvedOutput,
+        let pathResolver = PathValidationRule(
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            error: "Invalid output path"
         )
+        let outputDirectory = try pathResolver.resolveToAbsolutePath(resolvedOutput)
 
         // Safety check: prevent data loss by ensuring outputDirectory is not the same as or contains templateDirectory
         // This prevents accidentally wiping out the template or working directory
@@ -193,8 +193,7 @@ struct LifecycleWorkflowRunner {
 
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
-            workingDirectory: workingDirectory,
-            noora: noora
+            workingDirectory: workingDirectory
         )
 
         _ = try await stepRunner.execute(

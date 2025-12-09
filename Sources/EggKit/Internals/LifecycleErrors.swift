@@ -4,6 +4,7 @@ enum LifecycleStepError: LocalizedError, Equatable {
     case shellExecutionError(command: String, exitCode: Int32, stderr: String)
     case undefinedOutputReference(phase: LifecyclePhase, stepId: String, key: String)
     case conditionEvaluationError(condition: String, reason: String)
+    case invalidOutputDirectory(String)
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +17,8 @@ enum LifecycleStepError: LocalizedError, Equatable {
             "Undefined output reference: \(phase.rawValue).\(stepId).outputs.\(key)"
         case let .conditionEvaluationError(condition, reason):
             "Failed to evaluate condition '\(condition)': \(reason)"
+        case let .invalidOutputDirectory(message):
+            "Invalid output directory: \(message)"
         }
     }
 }

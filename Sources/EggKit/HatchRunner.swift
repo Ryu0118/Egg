@@ -73,7 +73,7 @@ package struct HatchRunner {
             _ = try await workflowRunner.run(
                 config: template.config,
                 macros: resolvedMacros,
-                templateDirectory: template.directory
+                templateDirectory: template.path
             )
 
         case let .direct(template, macros):
@@ -88,7 +88,7 @@ package struct HatchRunner {
             _ = try await workflowRunner.run(
                 config: template.config,
                 macros: macros,
-                templateDirectory: template.directory
+                templateDirectory: template.path
             )
         }
     }
