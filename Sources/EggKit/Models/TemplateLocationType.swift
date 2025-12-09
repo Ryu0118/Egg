@@ -47,7 +47,7 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
 }
 
 package extension TemplateLocationType {
-    enum Kind: String, Codable {
+    enum Kind: String, Codable, Sendable {
         case global
         case project
 

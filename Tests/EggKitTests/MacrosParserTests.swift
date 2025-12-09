@@ -26,7 +26,6 @@ struct MacrosParserTests {
         var testDescription: String { description }
 
         static let allCases: [TestCase] = [
-            // Success cases
             TestCase(
                 description: "parses single macro with content",
                 macros: ["--name", "value"],
@@ -113,8 +112,6 @@ struct MacrosParserTests {
                 macros: ["--name-123", "value"],
                 expected: .success([ParsedMacroDefinition(macro: "___NAME_123___", values: ["value"])])
             ),
-
-            // Error cases
             TestCase(
                 description: "throws error when macro starts with single dash",
                 macros: ["-name", "value"],

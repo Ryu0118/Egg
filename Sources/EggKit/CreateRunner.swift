@@ -32,7 +32,7 @@ package struct CreateRunner {
         templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
-            fileSystem: fileSystem,
+            fileSystem: fileSystem
         )
         templatesFinder = TemplatesFinder(
             fileSystem: fileSystem,

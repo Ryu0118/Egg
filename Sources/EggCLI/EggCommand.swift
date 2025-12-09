@@ -1,11 +1,10 @@
 import ArgumentParser
 import Foundation
 
-@main
 package struct EggCommand: AsyncParsableCommand {
     package static let configuration = CommandConfiguration(
         commandName: "egg",
-        abstract: "A template engine for generating files and folders from templates.",
+        abstract: "A highly customizable scaffolding tool with scriptable pre and post generation workflows",
         subcommands: [
             TemplateCommand.self,
             HatchCommand.self,

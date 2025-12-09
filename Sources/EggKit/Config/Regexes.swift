@@ -36,4 +36,46 @@ enum Regexes {
             "}}"
         }
     }
+
+    /// Matches step output references with phase, step ID, and key:
+    /// ${{ phase.step-id.outputs.key }}
+    static var stepOutputDetailed: Regex<(Substring, Substring, Substring, Substring)> {
+        Regex {
+            "${{"
+            ZeroOrMore(.whitespace)
+            // Capture 1: phase (e.g., pre_hatch, post_hatch)
+            Capture {
+                OneOrMore(.word)
+            }
+            "."
+            // Capture 2: step-id (alphanumeric, hyphens, underscores)
+            Capture {
+                OneOrMore {
+                    ChoiceOf {
+                        CharacterClass("a" ... "z")
+                        CharacterClass("A" ... "Z")
+                        CharacterClass("0" ... "9")
+                        "_"
+                        "-"
+                    }
+                }
+            }
+            ".outputs."
+            // Capture 3: key (alphanumeric, hyphens, underscores, dots)
+            Capture {
+                OneOrMore {
+                    ChoiceOf {
+                        CharacterClass("a" ... "z")
+                        CharacterClass("A" ... "Z")
+                        CharacterClass("0" ... "9")
+                        "_"
+                        "-"
+                        "."
+                    }
+                }
+            }
+            ZeroOrMore(.whitespace)
+            "}}"
+        }
+    }
 }

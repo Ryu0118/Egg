@@ -1,0 +1,229 @@
+import FileSystem
+import Foundation
+import Glob
+import Path
+
+/// Expands template files by substituting macros and copying to output directory.
+///
+/// Responsibilities:
+/// - Recursively traverse template directory
+/// - Substitute macros in filenames and directory names
+/// - Substitute macros and step outputs in file contents
+/// - Apply glob exclusion patterns (conditional and unconditional)
+/// - Write transformed files to output directory
+struct TemplateExpander {
+    private let fileSystem: any FileSysteming
+    private let templateDirectory: AbsolutePath
+    private let outputDirectory: AbsolutePath
+
+    init(
+        fileSystem: any FileSysteming,
+        templateDirectory: AbsolutePath,
+        outputDirectory: AbsolutePath
+    ) {
+        self.fileSystem = fileSystem
+        self.templateDirectory = templateDirectory
+        self.outputDirectory = outputDirectory
+    }
+
+    /// Expands the template by copying and transforming all non-excluded files.
+    ///
+    /// The expansion is atomic: files are first copied to a temporary directory,
+    /// transformed in place, and then moved to the output directory.
+    ///
+    /// - Parameters:
+    ///   - macros: Resolved macro values to substitute in filenames and contents
+    ///   - outputs: Step outputs for evaluating exclude conditions (macros only are used for substitution)
+    ///   - rules: Exclusion rules to skip certain files (nil means no exclusions)
+    func expand(
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage,
+        excluding rules: [Config.ExcludeRule]? = nil
+    ) async throws {
+        let excludePatterns = try await makeExcludePatterns(
+            from: rules,
+            evaluatingWith: macros,
+            and: outputs
+        )
+
+        try await fileSystem.withAtomicCopyAndWrite(
+            from: templateDirectory,
+            to: outputDirectory
+        ) { workingDirectory in
+            try await removeConfigFile(in: workingDirectory)
+            try await removeExcludedFiles(in: workingDirectory, matching: excludePatterns)
+            try await transformFilenames(in: workingDirectory, substituting: macros, with: outputs)
+            try await transformFileContents(in: workingDirectory, substituting: macros, with: outputs)
+        }
+    }
+
+    /// Creates glob patterns from exclude rules, evaluating any conditional expressions.
+    private func makeExcludePatterns(
+        from rules: [Config.ExcludeRule]?,
+        evaluatingWith macros: [ResolvedMacro],
+        and outputs: StepOutputsStorage
+    ) async throws -> [Glob.Pattern] {
+        guard let rules else { return [] }
+
+        var patterns: [Glob.Pattern] = []
+
+        for rule in rules {
+            switch rule {
+            case let .path(pattern):
+                try patterns.append(Glob.Pattern(pattern))
+
+            case let .conditional(conditional):
+                let evaluator = ConditionEvaluator(macros: macros, outputs: outputs)
+                let shouldExclude = try await evaluator.evaluate(conditional.if)
+
+                if shouldExclude {
+                    for pattern in conditional.paths {
+                        try patterns.append(Glob.Pattern(pattern))
+                    }
+                }
+            }
+        }
+
+        return patterns
+    }
+
+    /// Removes the config.yml file from the working directory.
+    private func removeConfigFile(in directory: AbsolutePath) async throws {
+        let configPath = directory.appending(component: "config.yml")
+        if try await fileSystem.exists(configPath) {
+            try await fileSystem.remove(configPath)
+        }
+    }
+
+    /// Removes files matching exclusion patterns from the working directory.
+    private func removeExcludedFiles(
+        in directory: AbsolutePath,
+        matching patterns: [Glob.Pattern]
+    ) async throws {
+        guard !patterns.isEmpty else { return }
+
+        let allPaths = try await collectAllPaths(in: directory, relativeTo: directory)
+
+        // Sort by path length descending so we remove children before parents
+        let sortedPaths = allPaths.sorted { $0.relativePath.count > $1.relativePath.count }
+
+        for (absolutePath, relativePath) in sortedPaths {
+            if isExcluded(relativePath, by: patterns) {
+                try await fileSystem.remove(absolutePath)
+            }
+        }
+    }
+
+    /// Transforms filenames by substituting macros, processing depth-first.
+    private func transformFilenames(
+        in directory: AbsolutePath,
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage
+    ) async throws {
+        let contents = try await fileSystem.contentsOfDirectory(directory)
+
+        for item in contents {
+            let isDirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+
+            // Process children first (depth-first)
+            if isDirectory {
+                try await transformFilenames(in: item, substituting: macros, with: outputs)
+            }
+
+            try await transformFilename(at: item, substituting: macros, with: outputs)
+        }
+    }
+
+    /// Transforms a single file or directory name by substituting macros.
+    private func transformFilename(
+        at path: AbsolutePath,
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage
+    ) async throws {
+        let originalName = path.basename
+        let transformedName = try await resolvingMacros(in: originalName, substituting: macros, with: outputs)
+
+        if transformedName != originalName {
+            let newPath = path.parentDirectory.appending(component: transformedName)
+            try await fileSystem.move(from: path, to: newPath)
+        }
+    }
+
+    /// Transforms file contents by substituting macros.
+    private func transformFileContents(
+        in directory: AbsolutePath,
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage
+    ) async throws {
+        let contents = try await fileSystem.contentsOfDirectory(directory)
+
+        for item in contents {
+            let isDirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+
+            if isDirectory {
+                try await transformFileContents(in: item, substituting: macros, with: outputs)
+            } else {
+                try await transformFile(at: item, substituting: macros, with: outputs)
+            }
+        }
+    }
+
+    /// Transforms a single file's contents in place.
+    private func transformFile(
+        at path: AbsolutePath,
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage
+    ) async throws {
+        let data = try await fileSystem.readFile(at: path)
+
+        // Skip binary files
+        guard let text = String(data: data, encoding: .utf8) else { return }
+
+        let resolver = VariableResolver(macros: macros, outputs: outputs)
+        let transformed = try await resolver.resolve(text)
+
+        // Only write if changed
+        if transformed != text {
+            try await fileSystem.writeText(transformed, at: path, encoding: .utf8, options: [.overwrite])
+        }
+    }
+
+    /// Collects all paths in a directory recursively.
+    private func collectAllPaths(
+        in directory: AbsolutePath,
+        relativeTo root: AbsolutePath
+    ) async throws -> [(absolutePath: AbsolutePath, relativePath: String)] {
+        var result: [(AbsolutePath, String)] = []
+        let contents = try await fileSystem.contentsOfDirectory(directory)
+
+        for item in contents {
+            let relativePath = item.pathString.replacingOccurrences(
+                of: root.pathString + "/",
+                with: ""
+            )
+            result.append((item, relativePath))
+
+            let isDirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+            if isDirectory {
+                try result.append(contentsOf: await collectAllPaths(in: item, relativeTo: root))
+            }
+        }
+
+        return result
+    }
+
+    /// Resolves macros in the given text (step outputs are not supported in templates).
+    private func resolvingMacros(
+        in text: String,
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage
+    ) async throws -> String {
+        let resolver = VariableResolver(macros: macros, outputs: outputs)
+        return try await resolver.resolve(text)
+    }
+
+    /// Returns whether the given path matches any exclusion pattern.
+    private func isExcluded(_ relativePath: String, by patterns: [Glob.Pattern]) -> Bool {
+        patterns.contains { $0.match(relativePath) }
+    }
+}

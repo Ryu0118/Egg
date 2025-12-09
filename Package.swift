@@ -9,7 +9,7 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .executable(name: "egg", targets: ["EggCLI"]),
+        .executable(name: "egg", targets: ["egg"]),
         .library(name: "EggKit", targets: ["EggKit"]),
     ],
     dependencies: [
@@ -22,6 +22,12 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
+            name: "egg",
+            dependencies: [
+                "EggCLI",
+            ]
+        ),
+        .target(
             name: "EggCLI",
             dependencies: [
                 "EggKit",

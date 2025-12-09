@@ -84,7 +84,7 @@ package struct DeleteRunner {
         if !force {
             let confirm = noora.yesOrNoChoicePrompt(
                 title: "Confirm Deletion",
-                question: "Are you sure you want to delete template '\(templateName)'?",
+                question: "Are you sure you want to delete template '\(templateName)'?"
             )
 
             guard confirm else {

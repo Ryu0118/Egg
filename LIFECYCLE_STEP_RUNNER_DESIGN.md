@@ -9,274 +9,467 @@ LifecycleStepRunner is a system for executing pre_hatch and post_hatch lifecycle
 1. **Memory-based storage**: Store step outputs in memory (not files)
 2. **stdout parsing**: Extract `key=value` outputs from shell script stdout
 3. **Separation of concerns**: Each component has a single, well-defined responsibility
-4. **Integration with existing code**: Follows project patterns and integrates seamlessly with HatchRunner
+4. **Follow existing patterns**: Use ProcessRunning, package access level, Internals/ directory structure
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ HatchRunner                                             │
-│                                                         │
-│  1. Pre-hatch phase                                     │
-│     ↓                                                   │
-│  LifecycleStepRunner.executePhase("pre_hatch", ...)    │
-│     → Returns: StepOutputs                              │
-│                                                         │
-│  2. Hatch phase (existing logic)                        │
-│                                                         │
-│  3. Post-hatch phase                                    │
-│     ↓                                                   │
-│  LifecycleStepRunner.executePhase("post_hatch", ...)   │
-│     → Can reference pre_hatch outputs                   │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ LifecycleWorkflowRunner (Top-level Orchestrator)        │
+│                                                          │
+│  run(config, macros, templateDirectory)                 │
+│                                                          │
+│  ┌────────────────────────────────────────────────┐     │
+│  │ 1. Execute pre_hatch phase                     │     │
+│  │    └─ LifecycleStepRunner.executePhase()       │     │
+│  │                                                 │     │
+│  │ 2. Execute hatch (template expansion)          │     │
+│  │    └─ TemplateExpander.expand()                │     │
+│  │                                                 │     │
+│  │ 3. Execute post_hatch phase                    │     │
+│  │    └─ LifecycleStepRunner.executePhase()       │     │
+│  └────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────┐
+│ LifecycleStepRunner (Phase Executor)        │
+│                                             │
+│  executePhase(phase, steps, macros, ...)   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │ For each step:                      │   │
+│  │                                     │   │
+│  │  1. ConditionEvaluator              │   │
+│  │     └─ Evaluate if condition        │   │
+│  │                                     │   │
+│  │  2. VariableResolver                │   │
+│  │     ├─ Replace ___MACROS___         │   │
+│  │     └─ Replace ${{ outputs }}       │   │
+│  │                                     │   │
+│  │  3. ShellScriptRunner               │   │
+│  │     └─ Execute /bin/sh -c "cmd"    │   │
+│  │                                     │   │
+│  │  4. StepOutputParser                │   │
+│  │     └─ Parse key=value from stdout  │   │
+│  │                                     │   │
+│  │  5. StepOutputsStorage              │   │
+│  │     └─ Store outputs by phase.id    │   │
+│  └─────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
 ```
 
 ## Component Design
 
 ### 1. StepOutputs (Data Structure)
 
-**Responsibility**: Store and retrieve step outputs across lifecycle execution
+**Responsibility**: In-memory storage for step outputs
 
 **Interface**:
-- Store outputs for a step: `(phase, stepId, outputs) -> void`
-- Retrieve output value: `(phase, stepId, key) -> String?`
-- Check existence: `(phase, stepId, key) -> Bool`
+```swift
+package struct StepOutputs {
+    package init()
 
-**Storage format**: `"phase.stepId" -> [key: value]`
-
-**Example**:
+    package mutating func store(phase: String, stepId: String, outputs: [String: String])
+    package func get(phase: String, stepId: String, key: String) -> String?
+    package func has(phase: String, stepId: String, key: String) -> Bool
+}
 ```
+
+**Storage format**:
+```
+[phase.stepId: [key: value]]
+
+Example:
 {
   "pre_hatch.setup": {
     "version": "1.0.0",
     "src-dir": "/tmp/src"
-  },
-  "pre_hatch.validate": {
-    "valid": "true"
   }
 }
 ```
+
+**Design rationale**: Simple dictionary-based storage, keyed by `phase.stepId` for uniqueness.
+
+---
 
 ### 2. StepOutputParser
 
 **Responsibility**: Parse key-value pairs from shell script stdout
 
-**Input**: stdout string
-**Output**: Dictionary of key-value pairs
+**Interface**:
+```swift
+package struct StepOutputParser {
+    package static func parse(_ stdout: String) -> [String: String]
+}
+```
 
-**Format**: `key=value` (one per line)
-
-**Behavior**:
+**Parsing logic**:
 - Split by newlines
-- Parse `key=value` format (split on first `=` only)
-- Skip empty lines
+- For each line: find first `=`, split into key and value
 - Trim whitespace
+- Skip empty lines
+
+**Example**:
+```
+Input:  "version=1.0.0\nsrc-dir=/tmp/src\n"
+Output: ["version": "1.0.0", "src-dir": "/tmp/src"]
+```
+
+**Design rationale**: Simple line-based parsing, robust to values containing `=`.
+
+---
 
 ### 3. VariableResolver
 
 **Responsibility**: Replace variables (macros and step outputs) in strings
 
-**Input**:
-- Text with variables
-- Macros dictionary
-- StepOutputs
+**Interface**:
+```swift
+package struct VariableResolver {
+    package init(macros: [ResolvedMacro], outputs: StepOutputs)
 
-**Output**: Text with variables replaced
+    package func resolve(_ text: String) throws -> String
+}
+```
 
-**Handles two types**:
-1. Macros: `___MACRO_NAME___` → value from macros dict
-2. Step outputs: `${{ phase.step-id.outputs.key }}` → value from StepOutputs
+**Resolution process**:
+1. **First pass - Macros**:
+   - Pattern: `___MACRO_NAME___`
+   - Method: Convert `ResolvedMacro.value` to string, then replace (no quoting)
+   - Value conversion:
+     - `.string(s)` → `s`
+     - `.boolean(b)` → `true` or `false`
+     - `.choice(c)` → `c`
+     - `.array(a)` → `item1,item2` (comma-separated, no quotes)
+     - `.path(p)` → `p.pathString`
 
-**Behavior**:
-- First pass: Replace macros (simple string replacement)
-- Second pass: Replace step outputs (regex pattern matching)
-- Throw error if undefined reference found
+2. **Second pass - Step outputs**:
+   - Pattern: `${{ phase.step-id.outputs.key }}`
+   - Method: Regex matching and lookup in StepOutputs
+   - Replacement: Direct string replacement (no quoting)
+   - Error: Throw if undefined reference
+
+**Note**: This resolver is for `run` fields (shell scripts). For `if` fields (conditions), see ConditionEvaluator which uses type-aware quoting.
+
+**Example**:
+```
+Input:  "echo ___NAME___ ${{ pre_hatch.setup.outputs.version }}"
+Macros: [ResolvedMacro(name: "___NAME___", value: .string("MyApp"))]
+Outputs: pre_hatch.setup.version = "1.0.0"
+Output: "echo MyApp 1.0.0"
+```
+
+**Design rationale**: Two-pass approach ensures macros are resolved before output references.
+
+---
 
 ### 4. ShellScriptRunner
 
 **Responsibility**: Execute shell commands and capture output
 
-**Input**: Shell command string
-**Output**: (stdout, stderr)
+**Interface**:
+```swift
+package struct ShellScriptRunner {
+    package init(processRunner: any ProcessRunning, workingDirectory: AbsolutePath)
 
-**Execution**: `/bin/sh -c "command"`
+    package func execute(_ command: String) async throws -> (stdout: String, stderr: String)
+}
+```
 
-**Behavior**:
-- Execute using ProcessRunning
-- Capture stdout and stderr
-- Set working directory
-- Throw error on non-zero exit code
+**Execution**:
+- Command: `/bin/sh -c "user_command"`
+- Working directory: Set from context
+- Output capture: Both stdout and stderr
+
+**Error handling**: Throw on non-zero exit code
+
+**Design rationale**: Use `/bin/sh` for shell feature support (pipes, variables, etc.). Follows pattern from OpenRunner.swift.
+
+---
 
 ### 5. ConditionEvaluator
 
 **Responsibility**: Evaluate conditional expressions (if field)
 
-**Input**: Condition string
-**Output**: Boolean (true/false)
+**Interface**:
+```swift
+package struct ConditionEvaluator {
+    package init(macros: [ResolvedMacro], outputs: StepOutputs)
 
-**Phase 1 implementation**: Always return `true` (placeholder)
-
-**Future**: Implement JavaScript-like expression evaluation
-
-### 6. LifecycleStepRunner (Main Orchestrator)
-
-**Responsibility**: Orchestrate execution of lifecycle phases
-
-**Key methods**:
-- `executePhase(phase, steps, macros, existingOutputs) -> StepOutputs`
-- `executeStep(step, phase, resolver, evaluator) -> outputs?`
-
-**Execution flow per step**:
+    package func evaluate(_ condition: String) throws -> Bool
+}
 ```
-1. Evaluate condition (if present)
-   └─ Skip step if false
 
-2. Resolve variables in run command
-   ├─ Replace macros
-   └─ Replace step outputs
+**Variable resolution in conditions**:
 
-3. Execute shell script
-   └─ Capture stdout/stderr
+Conditions require type-aware variable expansion:
+
+1. **Macros** (`___MACRO___`):
+   - `.string(s)` → `"s"` (quoted)
+   - `.boolean(b)` → `true` or `false` (unquoted)
+   - `.choice(c)` → `"c"` (quoted)
+   - `.array(a)` → `["item1", "item2"]` (JSON array with quoted items)
+   - `.path(p)` → `"path"` (quoted)
+
+2. **Step outputs** (`${{ phase.step-id.outputs.key }}`):
+   - Always strings from stdout, but type inference is applied for JavaScript evaluation:
+     - `"true"` → `true` (boolean, unquoted)
+     - `"false"` → `false` (boolean, unquoted)
+     - `"item1,item2,item3"` → `["item1", "item2", "item3"]` (JSON array with quoted items)
+     - Other strings → `"value"` (quoted)
+
+**Example**:
+```yaml
+macros:
+  - name: ___DEBUG___
+    type: boolean
+    default: true
+  - name: ___PLATFORMS___
+    type: array
+    default: ["iOS", "macOS"]
+
+pre_hatch:
+  - id: setup
+    run: |
+      echo "ready=true"
+      echo "platforms=iOS,macOS,watchOS"
+
+  # Boolean macro - no quotes
+  - if: ___DEBUG___ === true
+    run: echo "Debug mode"
+
+  # Boolean output - auto-inferred as boolean (no user quotes needed)
+  - if: ${{ pre_hatch.setup.outputs.ready }} === true
+    run: echo "Ready"
+
+  # Array output - auto-inferred as JSON array from comma-separated string
+  - if: ${{ pre_hatch.setup.outputs.platforms }}.includes("iOS")
+    run: echo "iOS platform detected"
+
+  # Array macro - JSON array
+  - if: ___PLATFORMS___.includes("iOS")
+    run: echo "Building for iOS"
+```
+
+**Phase 1**: Placeholder - always returns `true`
+
+**Design rationale**: Deferred to allow core functionality to work immediately. Complex feature that can be added later without affecting other components.
+
+---
+
+### 6. LifecycleStepRunner (Phase Executor)
+
+**Responsibility**: Execute steps within a single lifecycle phase
+
+**Interface**:
+```swift
+struct LifecycleStepRunner {
+    init(processRunner: any ProcessRunning, workingDirectory: AbsolutePath)
+
+    func executePhase(
+        phase: String,
+        steps: [Config.LifecycleStep],
+        macros: [ResolvedMacro],
+        existingOutputs: StepOutputsStorage
+    ) async throws -> StepOutputsStorage
+}
+```
+
+**Per-step execution flow**:
+```
+1. Check condition
+   └─ If false, skip step
+
+2. Resolve variables
+   ├─ Create VariableResolver with macros + current outputs
+   └─ Resolve step.run command
+
+3. Execute command
+   └─ ShellScriptRunner.execute(resolved_command)
 
 4. Parse outputs (if step has id)
-   ├─ Parse stdout for key=value
-   └─ Store in StepOutputs
+   ├─ StepOutputParser.parse(stdout)
+   └─ StepOutputsStorage.store(phase, step.id, parsed_outputs)
 
-5. Return updated StepOutputs
+5. Continue to next step
 ```
+
+**Design rationale**: Single responsibility - handles execution of steps within one phase only.
+
+---
+
+### 7. LifecycleWorkflowRunner (Workflow Orchestrator)
+
+**Responsibility**: Orchestrate the complete lifecycle workflow (pre_hatch → hatch → post_hatch)
+
+**Interface**:
+```swift
+struct LifecycleWorkflowRunner {
+    init(
+        processRunner: any ProcessRunning,
+        workingDirectory: AbsolutePath,
+        outputDirectory: AbsolutePath
+    )
+
+    func run(
+        config: Config,
+        macros: [ResolvedMacro],
+        templateDirectory: AbsolutePath
+    ) async throws
+}
+```
+
+**Workflow execution flow**:
+```
+1. Initialize outputs storage
+   └─ StepOutputsStorage()
+
+2. Execute pre_hatch phase
+   ├─ LifecycleStepRunner.executePhase("pre_hatch", ...)
+   └─ Update outputs storage
+
+3. Execute hatch (template expansion)
+   ├─ TemplateExpander.expand(...)
+   └─ Use macros + step outputs for variable resolution
+
+4. Execute post_hatch phase
+   ├─ LifecycleStepRunner.executePhase("post_hatch", ...)
+   └─ Use outputs from pre_hatch + hatch
+
+5. Return successfully
+```
+
+**Design rationale**:
+- Separates workflow orchestration from step execution
+- HatchRunner delegates to this component instead of managing lifecycle directly
+- Clear separation: LifecycleWorkflowRunner (what to run) vs LifecycleStepRunner (how to run)
+
+---
 
 ## Data Flow
 
 ```
-HatchRunner
-    ↓
-  macros: [String: String]
-    ↓
-LifecycleStepRunner.executePhase("pre_hatch", steps, macros, StepOutputs())
-    ↓
-  For each step:
-    ↓
-  VariableResolver.resolve(step.run)
-    ├─ macros
-    └─ StepOutputs (accumulated)
-    ↓
-  ShellScriptRunner.execute(resolvedCommand)
-    ↓
-  stdout/stderr
-    ↓
-  StepOutputParser.parse(stdout)
-    ↓
-  [key: value]
-    ↓
-  StepOutputs.store("pre_hatch", step.id, outputs)
-    ↓
-  Updated StepOutputs
-    ↓
-Return StepOutputs to HatchRunner
-    ↓
-(Hatch phase executes)
-    ↓
-LifecycleStepRunner.executePhase("post_hatch", steps, macros, previousOutputs)
-    ↓
-  (Can reference pre_hatch outputs)
+Input:
+  ├─ phase: "pre_hatch"
+  ├─ steps: [Config.LifecycleStep]
+  ├─ macros: [ResolvedMacro]
+  └─ existingOutputs: StepOutputs (possibly from previous phase)
+
+Flow:
+  Step 1:
+    ├─ ConditionEvaluator.evaluate(step.if) → true/false
+    ├─ VariableResolver.resolve(step.run)
+    ├─ ShellScriptRunner.execute(resolved_command) → (stdout, stderr)
+    ├─ StepOutputParser.parse(stdout) → [key: value]
+    └─ StepOutputs.store("pre_hatch", step.id, outputs)
+
+  Step 2:
+    ├─ VariableResolver now has access to Step 1 outputs
+    ├─ Can reference ${{ pre_hatch.step1.outputs.key }}
+    └─ (same flow as Step 1)
+
+Output:
+  └─ Updated StepOutputs (existingOutputs + new outputs)
 ```
 
-## Integration Points
+---
 
-### HatchRunner Modifications
+## Cross-Phase Output References
 
-**Before**:
-```
-1. Validate arguments
-2. Resolve macros
-3. Copy template files
-4. Substitute macros in files
-```
+Steps in `post_hatch` can reference outputs from `pre_hatch`:
 
-**After**:
-```
-1. Validate arguments
-2. Resolve macros
-3. Execute pre_hatch → StepOutputs
-4. Copy template files
-5. Substitute macros in files
-6. Execute post_hatch (with StepOutputs from pre_hatch)
+```yaml
+pre_hatch:
+  - id: setup
+    run: echo "version=1.0.0"
+
+post_hatch:
+  - run: echo "Version: ${{ pre_hatch.setup.outputs.version }}"
 ```
 
-### Required Changes:
-- Add `LifecycleStepRunner` as property
-- Call `executePhase()` before and after hatching
-- Thread `StepOutputs` between phases
+**Mechanism**: `executePhase()` accepts `existingOutputs` parameter, allowing post_hatch phase to access pre_hatch outputs through VariableResolver.
+
+---
 
 ## Error Handling
 
-### Error Categories:
+### Error Types:
 
-1. **Shell execution errors**
-   - Non-zero exit code
-   - Include: command, exit code, stderr
+1. **ShellExecutionError**
+   - When: Command exits with non-zero code
+   - Contains: command, exit code, stderr
 
-2. **Variable resolution errors**
-   - Undefined output reference
-   - Include: phase, stepId, key
+2. **UndefinedOutputReferenceError**
+   - When: `${{ phase.step-id.outputs.key }}` not found
+   - Contains: phase, stepId, key
 
-3. **Condition evaluation errors** (future)
-   - Invalid condition syntax
-   - Include: condition, reason
+3. **ConditionEvaluationError**
+   - When: Invalid condition syntax (future)
+   - Contains: condition, reason
 
-4. **Output parsing errors** (optional)
-   - Invalid format
-   - Include: offending line
+**Error propagation**: All errors propagate up from component to LifecycleStepRunner, then to caller (HatchRunner).
+
+---
 
 ## File Organization
 
-### New Files:
-
 ```
 Sources/EggKit/
-  ├─ LifecycleStepRunner.swift          (Main orchestrator)
+  ├─ LifecycleStepRunner.swift
   └─ Internals/
-      ├─ StepOutputs.swift               (Data structure)
-      ├─ StepOutputParser.swift          (Parser)
-      ├─ VariableResolver.swift          (Variable substitution)
-      ├─ ShellScriptRunner.swift         (Shell execution)
-      ├─ ConditionEvaluator.swift        (Condition eval)
-      └─ LifecycleErrors.swift           (Error types)
+      ├─ StepOutputs.swift
+      ├─ StepOutputParser.swift
+      ├─ VariableResolver.swift
+      ├─ ShellScriptRunner.swift
+      ├─ ConditionEvaluator.swift
+      └─ LifecycleErrors.swift
 ```
 
-### Modified Files:
+**Design rationale**:
+- Main orchestrator at top level
+- Implementation details in Internals/
+- Follows existing project structure
 
-```
-Sources/EggKit/
-  └─ HatchRunner.swift                   (Integration point)
-```
+---
 
-## Testing Strategy
+## Design Decisions
 
-### Unit Tests:
+### Why memory-based storage instead of files?
 
-1. **StepOutputParser**: Parse various stdout formats
-2. **VariableResolver**: Replace macros and outputs
-3. **ShellScriptRunner**: Execute commands, capture output
-4. **StepOutputs**: Store and retrieve operations
-5. **LifecycleStepRunner**: Step execution, phase execution
+**Answer**: Simpler, faster, and sufficient for single-process execution. No inter-process communication needed.
 
-### Integration Tests:
+### Why stdout parsing for outputs?
 
-1. Full lifecycle execution (pre_hatch → hatch → post_hatch)
-2. Cross-phase output references
-3. Conditional execution
-4. Error cases
+**Answer**:
+- Simple and intuitive for users
+- No special syntax required in shell scripts
+- Easy to debug (just echo key=value)
+- Familiar pattern (similar to GitHub Actions)
 
-### Test Fixtures:
+### Why two-pass variable resolution?
 
-YAML files with various lifecycle configurations:
-- Simple steps
-- Steps with outputs
-- Conditional steps
-- Cross-reference scenarios
+**Answer**: Ensures macros are fully resolved before attempting output reference resolution. Prevents ambiguity.
 
-## Example Workflow
+### Why placeholder ConditionEvaluator?
+
+**Answer**:
+- Condition evaluation is complex (JavaScript-like expressions)
+- Core functionality (step execution, outputs) can work without it
+- Can be implemented separately without affecting other components
+- Steps without conditions work from day one
+
+### Why separate components instead of monolithic runner?
+
+**Answer**:
+- Single responsibility principle
+- Each component testable in isolation
+- Easy to understand and maintain
+- Easy to extend (e.g., add new variable types)
+
+---
+
+## Example
 
 ### Input (config.yaml):
 
@@ -285,114 +478,46 @@ pre_hatch:
   - id: setup
     run: |
       echo "version=1.0.0"
-      echo "src-dir=./Sources/___PROJECT_NAME___"
+      echo "name=___PROJECT_NAME___"
 
   - id: validate
     run: |
-      echo "Checking: ${{ pre_hatch.setup.outputs.version }}"
+      VERSION="${{ pre_hatch.setup.outputs.version }}"
+      echo "Checking version: $VERSION"
       echo "valid=true"
 
   - if: ${{ pre_hatch.validate.outputs.valid }} === "true"
-    run: echo "Validated!"
+    run: echo "Validation passed"
 
 post_hatch:
-  - run: echo "Created: ${{ pre_hatch.setup.outputs.src-dir }}"
+  - run: echo "Created ___PROJECT_NAME___ v${{ pre_hatch.setup.outputs.version }}"
 ```
 
-### Execution Trace:
+### Execution:
 
-```
-1. Pre-hatch phase:
-   Step "setup":
-     Input:  "echo \"version=1.0.0\"\necho \"src-dir=./Sources/MyApp\""
-     Output: {version: "1.0.0", src-dir: "./Sources/MyApp"}
-     Store:  pre_hatch.setup → outputs
+**Pre-hatch phase:**
 
-   Step "validate":
-     Resolve: "${{ pre_hatch.setup.outputs.version }}" → "1.0.0"
-     Input:   "echo \"Checking: 1.0.0\"\necho \"valid=true\""
-     Output:  {valid: "true"}
-     Store:   pre_hatch.validate → outputs
+Step "setup":
+- Input: `echo "version=1.0.0"\necho "name=MyApp"`
+- Execute: `/bin/sh -c "..."`
+- Stdout: `version=1.0.0\nname=MyApp\n`
+- Parse: `{version: "1.0.0", name: "MyApp"}`
+- Store: `pre_hatch.setup → {version: "1.0.0", name: "MyApp"}`
 
-   Step (conditional):
-     Condition: "${{ pre_hatch.validate.outputs.valid }} === \"true\"" → true
-     Input:     "echo \"Validated!\""
-     Output:    (no id, outputs not stored)
+Step "validate":
+- Resolve: `${{ pre_hatch.setup.outputs.version }}` → `"1.0.0"`
+- Input: `VERSION="1.0.0"\necho "Checking version: $VERSION"\necho "valid=true"`
+- Stdout: `Checking version: 1.0.0\nvalid=true\n`
+- Parse: `{valid: "true"}`
+- Store: `pre_hatch.validate → {valid: "true"}`
 
-2. Hatch phase:
-   (Existing template copying logic)
+Step (conditional):
+- Condition: `${{ pre_hatch.validate.outputs.valid }} === "true"` → `true` (placeholder always true)
+- Execute: `echo "Validation passed"`
 
-3. Post-hatch phase:
-   Step:
-     Resolve: "${{ pre_hatch.setup.outputs.src-dir }}" → "./Sources/MyApp"
-     Input:   "echo \"Created: ./Sources/MyApp\""
-     Output:  (no id, outputs not stored)
-```
+**Post-hatch phase:**
 
-## Design Decisions
-
-### Why memory-based storage?
-
-- Simpler than file-based
-- Faster (no disk I/O)
-- Sufficient for single-process execution
-- No cleanup needed
-
-### Why stdout parsing for outputs?
-
-- Simple and intuitive
-- Familiar pattern (GitHub Actions uses similar approach)
-- No special syntax needed in shell scripts
-- Easy to debug
-
-### Why separate VariableResolver?
-
-- Single responsibility
-- Testable in isolation
-- Reusable for other contexts (e.g., condition evaluation)
-
-### Why placeholder ConditionEvaluator?
-
-- Allows core functionality to work immediately
-- Condition evaluation is complex and can be added later
-- Steps without conditions work from day one
-
-## Future Enhancements
-
-### Phase 2: Full Condition Evaluation
-
-Implement JavaScript-like expression evaluation:
-- Boolean operators: `&&`, `||`, `!`
-- Comparison: `===`, `!==`, `>`, `<`
-- Array methods: `.includes()`
-- String methods: `.startsWith()`, `.endsWith()`
-
-Options:
-- JavaScriptCore (macOS/iOS built-in)
-- Custom expression parser
-- Swift Expression library
-
-### Phase 3: Enhanced Error Reporting
-
-- Line numbers for failures
-- Suggest fixes for common errors
-- Better error messages for undefined references
-
-### Phase 4: Dry-run Mode
-
-- Preview what would be executed
-- Show resolved variables
-- Don't actually execute commands
-
-## Success Criteria
-
-1. All lifecycle steps execute in correct order
-2. Step outputs are captured and accessible
-3. Variable resolution works for both macros and outputs
-4. Cross-phase output references work
-5. Conditional execution works (with placeholder)
-6. Shell scripts execute correctly
-7. Errors are handled and reported clearly
-8. Integration with HatchRunner is seamless
-9. Code follows project conventions
-10. All tests pass
+Step:
+- Resolve: `___PROJECT_NAME___` → `"MyApp"`, `${{ pre_hatch.setup.outputs.version }}` → `"1.0.0"`
+- Input: `echo "Created MyApp v1.0.0"`
+- Execute: `/bin/sh -c "..."`

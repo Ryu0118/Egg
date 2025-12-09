@@ -42,8 +42,6 @@ extension ConfigValidator {
             return errors
         }
 
-        // MARK: - Private Methods
-
         private func validateRequiredFields(_ step: Config.LifecycleStep, context: String) -> Error? {
             // In post_hatch, 'hatch' is also allowed, but not implemented yet, so only 'run' is checked
             (step.run == nil || step.run?.isEmpty == true) ? .lifecycleStepMissingRunOrHatch(context: context) : nil
@@ -79,8 +77,6 @@ extension ConfigValidator {
         private func validateRun(_ step: Config.LifecycleStep, context: String) -> Error? {
             (step.run?.isEmpty == true) ? .lifecycleStepRunEmpty(context: context) : nil
         }
-
-        // MARK: - Helper Methods
 
         private func isValidStepId(_ id: String) -> Bool {
             return id.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }

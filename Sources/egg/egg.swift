@@ -1,14 +1,8 @@
-import ArgumentParser
-import Foundation
+import EggCLI
 
 @main
-struct Egg: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "egg",
-        abstract: "A template engine for generating files and folders from templates.",
-        subcommands: [
-            TemplateCommand.self,
-            HatchCommand.self,
-        ]
-    )
+struct Egg {
+    static func main() async throws {
+        await EggCommand.main()
+    }
 }
