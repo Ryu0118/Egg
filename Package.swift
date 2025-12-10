@@ -40,7 +40,6 @@ let package = Package(
         .target(
             name: "EggKit",
             dependencies: [
-                //                "Config",
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "FileSystem", package: "FileSystem"),
                 .product(name: "Yams", package: "Yams"),
@@ -69,16 +68,5 @@ let package = Package(
             name: "TestModuleTests",
             dependencies: [ "TestModule" ]
         ),
-        .target(name: "NetworkClient"),
-        .testTarget(
-            name: "NetworkClientTests",
-            dependencies: [ "NetworkClient" ]
-        ),
-//        .target(
-//            name: "Config",
-//            dependencies: [
-//                .product(name: "Yams", package: "Yams"),
-//            ]
-//        ),
     ]
 )
