@@ -13,6 +13,7 @@ package struct HatchRunner {
     private let projectDirectory: AbsolutePath
     private let templateFinder: TemplatesFinder
     private let processRunner: any ProcessRunning
+    private let force: Bool
 
     package init(
         mode: HatchRunnerMode,
@@ -21,7 +22,8 @@ package struct HatchRunner {
         projectDirectory: AbsolutePath,
         fileSystem: some FileSysteming,
         processRunner: some ProcessRunning = ProcessRunner(),
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
+        force: Bool = false
     ) {
         self.mode = mode
         self.workingDirectory = workingDirectory
@@ -30,6 +32,7 @@ package struct HatchRunner {
         self.fileSystem = fileSystem
         self.processRunner = processRunner
         self.noora = noora
+        self.force = force
         templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -67,7 +70,9 @@ package struct HatchRunner {
                 fileSystem: fileSystem,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora
+                noora: noora,
+                isInteractive: true,
+                force: force
             )
 
             _ = try await workflowRunner.run(
@@ -82,7 +87,9 @@ package struct HatchRunner {
                 fileSystem: fileSystem,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora
+                noora: noora,
+                isInteractive: false,
+                force: force
             )
 
             _ = try await workflowRunner.run(

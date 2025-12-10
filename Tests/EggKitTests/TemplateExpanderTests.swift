@@ -20,23 +20,40 @@ struct TemplateExpanderTests {
         // Setup template using helper
         try await setupTemplate(testCase.templateSetup, in: templateDir, using: fileSystem)
 
+        // Setup existing files in output directory
+        try await setupExistingFiles(testCase.existingFiles, in: outputDir, using: fileSystem)
+
         // Setup step outputs using helper
         let outputs = await setupOutputs(testCase.stepOutputs)
 
         let expander = TemplateExpander(
             fileSystem: fileSystem,
             templateDirectory: templateDir,
-            outputDirectory: outputDir
+            outputDirectory: outputDir,
+            isInteractive: testCase.isInteractive,
+            force: testCase.force
         )
 
-        try await expander.expand(
-            substituting: testCase.macros,
-            with: outputs,
-            excluding: testCase.excludeRules
-        )
+        switch testCase.expectation {
+        case let .success(verifications):
+            try await expander.expand(
+                substituting: testCase.macros,
+                with: outputs,
+                excluding: testCase.excludeRules
+            )
+            // Verify expectations using helper
+            try await verifyExpectations(verifications, in: outputDir, using: fileSystem)
 
-        // Verify expectations using helper
-        try await verifyExpectations(testCase.expectation.verifications, in: outputDir, using: fileSystem)
+        case let .failure(expectedError):
+            let error = await #expect(throws: TemplateExpander.Error.self) {
+                try await expander.expand(
+                    substituting: testCase.macros,
+                    with: outputs,
+                    excluding: testCase.excludeRules
+                )
+            }
+            #expect(error == expectedError)
+        }
     }
 
     struct TestCase: CustomTestStringConvertible {
@@ -45,6 +62,9 @@ struct TemplateExpanderTests {
         let macros: [ResolvedMacro]
         let stepOutputs: [TestOutput]
         let excludeRules: [Config.ExcludeRule]?
+        let existingFiles: [ExistingFile]
+        let isInteractive: Bool
+        let force: Bool
         let expectation: Expectation
 
         var testDescription: String { description }
@@ -56,6 +76,9 @@ struct TemplateExpanderTests {
             macros: [ResolvedMacro] = [],
             stepOutputs: [TestOutput] = [],
             excludeRules: [Config.ExcludeRule]? = nil,
+            existingFiles: [ExistingFile] = [],
+            isInteractive: Bool = false,
+            force: Bool = false,
             expectation: Expectation
         ) {
             self.description = description
@@ -63,6 +86,9 @@ struct TemplateExpanderTests {
             self.macros = macros
             self.stepOutputs = stepOutputs
             self.excludeRules = excludeRules
+            self.existingFiles = existingFiles
+            self.isInteractive = isInteractive
+            self.force = force
             self.expectation = expectation
         }
 
@@ -73,6 +99,9 @@ struct TemplateExpanderTests {
             macros: [ResolvedMacro] = [],
             stepOutputs: [TestOutput] = [],
             excludeRules: [Config.ExcludeRule]? = nil,
+            existingFiles: [ExistingFile] = [],
+            isInteractive: Bool = false,
+            force: Bool = false,
             verifications: [Verification]
         ) -> TestCase {
             TestCase(
@@ -81,7 +110,35 @@ struct TemplateExpanderTests {
                 macros: macros,
                 stepOutputs: stepOutputs,
                 excludeRules: excludeRules,
+                existingFiles: existingFiles,
+                isInteractive: isInteractive,
+                force: force,
                 expectation: .success(verifications: verifications)
+            )
+        }
+
+        // Convenience method for failure cases
+        static func failure(
+            _ description: String,
+            templateSetup: [TemplateSetup],
+            macros: [ResolvedMacro] = [],
+            stepOutputs: [TestOutput] = [],
+            excludeRules: [Config.ExcludeRule]? = nil,
+            existingFiles: [ExistingFile] = [],
+            isInteractive: Bool = false,
+            force: Bool = false,
+            expectedError: TemplateExpander.Error
+        ) -> TestCase {
+            TestCase(
+                description,
+                templateSetup: templateSetup,
+                macros: macros,
+                stepOutputs: stepOutputs,
+                excludeRules: excludeRules,
+                existingFiles: existingFiles,
+                isInteractive: isInteractive,
+                force: force,
+                expectation: .failure(expectedError: expectedError)
             )
         }
 
@@ -91,15 +148,14 @@ struct TemplateExpanderTests {
             case binaryFile(path: String, data: Data)
         }
 
+        struct ExistingFile {
+            let path: String
+            let content: String
+        }
+
         enum Expectation {
             case success(verifications: [Verification])
-
-            var verifications: [Verification] {
-                switch self {
-                case let .success(verifications):
-                    return verifications
-                }
-            }
+            case failure(expectedError: TemplateExpander.Error)
         }
 
         enum Verification {
@@ -298,6 +354,80 @@ struct TemplateExpanderTests {
                     .fileContent(path: "info.txt", expectedContent: "Project: MyApp v2.0.0"),
                 ]
             ),
+
+            // MARK: - Overwrite Tests
+
+            // Force overwrites existing files
+            .success(
+                "overwrites existing files with force flag",
+                templateSetup: [
+                    .file(path: "file.txt", content: "new content"),
+                ],
+                existingFiles: [
+                    ExistingFile(path: "file.txt", content: "old content"),
+                ],
+                force: true,
+                verifications: [
+                    .fileContent(path: "file.txt", expectedContent: "new content"),
+                ]
+            ),
+
+            // Force overwrites nested files
+            .success(
+                "overwrites nested existing files with force flag",
+                templateSetup: [
+                    .file(path: "src/main.swift", content: "new main"),
+                ],
+                existingFiles: [
+                    ExistingFile(path: "src/main.swift", content: "old main"),
+                ],
+                force: true,
+                verifications: [
+                    .fileContent(path: "src/main.swift", expectedContent: "new main"),
+                ]
+            ),
+
+            // No conflict when files don't overlap
+            .success(
+                "succeeds when no existing files conflict",
+                templateSetup: [
+                    .file(path: "new-file.txt", content: "new content"),
+                ],
+                existingFiles: [
+                    ExistingFile(path: "existing-file.txt", content: "existing content"),
+                ],
+                force: false,
+                verifications: [
+                    .fileExists(path: "new-file.txt"),
+                    .fileExists(path: "existing-file.txt"),
+                ]
+            ),
+
+            // Error without force when files conflict
+            .failure(
+                "throws error without force when files conflict",
+                templateSetup: [
+                    .file(path: "file.txt", content: "new content"),
+                ],
+                existingFiles: [
+                    ExistingFile(path: "file.txt", content: "old content"),
+                ],
+                force: false,
+                expectedError: .existingFilesWouldBeOverwritten(files: ["file.txt"])
+            ),
+
+            // Error reports only leaf paths, not parent directories
+            .failure(
+                "reports only leaf paths in conflict error",
+                templateSetup: [
+                    .file(path: "Sources/Module/File.swift", content: "code"),
+                ],
+                existingFiles: [
+                    ExistingFile(path: "Sources/Module/File.swift", content: "old code"),
+                ],
+                force: false,
+                expectedError: .existingFilesWouldBeOverwritten(files: ["Sources/Module/File.swift"])
+            ),
         ]
     }
 
@@ -349,6 +479,16 @@ extension TemplateExpanderTests {
         }
 
         try data.write(to: URL(fileURLWithPath: filePath.pathString))
+    }
+
+    private func setupExistingFiles(_ existingFiles: [TestCase.ExistingFile], in outputDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+        guard !existingFiles.isEmpty else { return }
+
+        try await fileSystem.makeDirectory(at: outputDir, options: [.createTargetParentDirectories])
+
+        for existing in existingFiles {
+            try await createFile(at: existing.path, content: existing.content, in: outputDir, using: fileSystem)
+        }
     }
 
     private func setupOutputs(_ outputs: [TestOutput]) async -> StepOutputsStorage {

@@ -1,0 +1,62 @@
+name: SwiftModule
+description: Swift Packageに新しいモジュールを追加するテンプレート
+
+macros:
+  - name: ___MODULE_NAME___
+    description: "モジュール名 (例: NetworkClient)"
+    type: string
+    validate: "^[A-Z][a-zA-Z0-9]*$"
+
+  - name: ___PACKAGE_PATH___
+    description: "Swift Packageのパス"
+    type: path
+
+  - name: ___MODULE_TYPE___
+    description: "モジュールタイプ"
+    type: choice
+    choices:
+      - library
+      - executable
+    default: library
+
+  - name: ___CREATE_TESTS___
+    description: "テストファイルを作成しますか？"
+    type: boolean
+    default: true
+
+  - name: ___AUTHOR_NAME___
+    description: "著者名"
+    type: string
+    default: "Unknown"
+
+pre_hatch:
+  - run: |
+      cd ___PACKAGE_PATH___
+      xcrun swift package add-target ___MODULE_NAME___ --type ___MODULE_TYPE___
+      rm -f Sources/___MODULE_NAME___/___MODULE_NAME___.swift
+
+  - if: ___CREATE_TESTS___
+    run: |
+      cd ___PACKAGE_PATH___
+      xcrun swift package add-target ___MODULE_NAME___Tests --type test --dependencies ___MODULE_NAME___
+      rm -f Tests/___MODULE_NAME___Tests/___MODULE_NAME___Tests.swift
+
+hatch:
+  output: ___PACKAGE_PATH___
+
+  exclude:
+    - "*.md"
+    - ".DS_Store"
+    - "config.yml"
+
+    - if: ___CREATE_TESTS___ === false
+      paths:
+        - "Tests/**"
+
+    - if: "___MODULE_TYPE___ !== 'executable'"
+      paths:
+        - "**/main.swift"
+
+post_hatch:
+  - run: |
+      echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___"

@@ -1,6 +1,7 @@
 import FileSystem
 import Foundation
 import Glob
+import Noora
 import Path
 
 /// Expands template files by substituting macros and copying to output directory.
@@ -15,15 +16,24 @@ struct TemplateExpander {
     private let fileSystem: any FileSysteming
     private let templateDirectory: AbsolutePath
     private let outputDirectory: AbsolutePath
+    private let noora: any Noorable
+    private let isInteractive: Bool
+    private let force: Bool
 
     init(
         fileSystem: any FileSysteming,
         templateDirectory: AbsolutePath,
-        outputDirectory: AbsolutePath
+        outputDirectory: AbsolutePath,
+        noora: some Noorable = Noora(),
+        isInteractive: Bool = true,
+        force: Bool = false
     ) {
         self.fileSystem = fileSystem
         self.templateDirectory = templateDirectory
         self.outputDirectory = outputDirectory
+        self.noora = noora
+        self.isInteractive = isInteractive
+        self.force = force
     }
 
     /// Expands the template by copying and transforming all non-excluded files.
@@ -46,6 +56,23 @@ struct TemplateExpander {
             and: outputs
         )
 
+        // Collect files that will be generated (with transformed names)
+        let filesToGenerate = try await collectFilesToGenerate(
+            substituting: macros,
+            with: outputs,
+            excluding: excludePatterns
+        )
+
+        // Check for existing files in output directory
+        let existingFiles = try await findExistingFiles(filesToGenerate)
+
+        if !existingFiles.isEmpty {
+            let shouldOverwrite = try await confirmOverwrite(existingFiles)
+            if !shouldOverwrite {
+                throw Error.overwriteCancelled
+            }
+        }
+
         try await fileSystem.withAtomicCopyAndWrite(
             from: templateDirectory,
             to: outputDirectory
@@ -55,6 +82,87 @@ struct TemplateExpander {
             try await transformFilenames(in: workingDirectory, substituting: macros, with: outputs)
             try await transformFileContents(in: workingDirectory, substituting: macros, with: outputs)
         }
+    }
+
+    /// Collects the list of files that will be generated (with transformed names).
+    private func collectFilesToGenerate(
+        substituting macros: [ResolvedMacro],
+        with outputs: StepOutputsStorage,
+        excluding patterns: [Glob.Pattern]
+    ) async throws -> [String] {
+        let allPaths = try await collectAllPaths(in: templateDirectory, relativeTo: templateDirectory)
+        var result: [String] = []
+
+        for (_, relativePath) in allPaths {
+            // Skip excluded files
+            if isExcluded(relativePath, by: patterns) {
+                continue
+            }
+
+            // Skip config.yml
+            if relativePath == "config.yml" {
+                continue
+            }
+
+            // Transform the filename
+            let transformedPath = try await resolvingMacros(in: relativePath, substituting: macros, with: outputs)
+            result.append(transformedPath)
+        }
+
+        return result
+    }
+
+    /// Finds files that already exist in the output directory.
+    /// Only returns leaf paths (not parent directories of other generated files).
+    private func findExistingFiles(_ filesToGenerate: [String]) async throws -> [String] {
+        var existingFiles: [String] = []
+
+        for relativePath in filesToGenerate {
+            let fullPath = outputDirectory.appending(components: relativePath.split(separator: "/").map(String.init))
+            if try await fileSystem.exists(fullPath) {
+                existingFiles.append(relativePath)
+            }
+        }
+
+        // Filter out parent directories (paths that are prefixes of other paths)
+        return filterLeafPaths(existingFiles)
+    }
+
+    /// Filters out parent directories, keeping only leaf paths.
+    /// For example, given ["Sources", "Sources/Module", "Sources/Module/File.swift"],
+    /// returns only ["Sources/Module/File.swift"].
+    private func filterLeafPaths(_ paths: [String]) -> [String] {
+        paths.filter { path in
+            let pathWithSlash = path + "/"
+            // Keep this path only if no other path starts with it as a directory prefix
+            return !paths.contains { other in
+                other != path && other.hasPrefix(pathWithSlash)
+            }
+        }
+    }
+
+    /// Confirms whether to overwrite existing files.
+    /// - Returns: `true` if should overwrite, `false` otherwise
+    private func confirmOverwrite(_ existingFiles: [String]) async throws -> Bool {
+        // If force flag is set, always overwrite
+        if force {
+            return true
+        }
+
+        // If interactive, prompt user
+        if isInteractive {
+            noora.passthrough("⚠️ The following files already exist and will be overwritten:\n", tab: 1)
+            for file in existingFiles {
+                noora.passthrough("  - \(file)\n", tab: 2)
+            }
+            return noora.yesOrNoChoicePrompt(
+                title: "Overwrite",
+                question: "Do you want to overwrite these files?"
+            )
+        }
+
+        // Non-interactive without force: error
+        throw Error.existingFilesWouldBeOverwritten(files: existingFiles)
     }
 
     /// Creates glob patterns from exclude rules, evaluating any conditional expressions.
@@ -225,5 +333,26 @@ struct TemplateExpander {
     /// Returns whether the given path matches any exclusion pattern.
     private func isExcluded(_ relativePath: String, by patterns: [Glob.Pattern]) -> Bool {
         patterns.contains { $0.match(relativePath) }
+    }
+}
+
+extension TemplateExpander {
+    enum Error: LocalizedError, Equatable {
+        case overwriteCancelled
+        case existingFilesWouldBeOverwritten(files: [String])
+
+        var errorDescription: String? {
+            switch self {
+            case .overwriteCancelled:
+                return "Operation cancelled by user."
+            case let .existingFilesWouldBeOverwritten(files):
+                var message = "The following files already exist and would be overwritten:\n"
+                for file in files {
+                    message += "  - \(file)\n"
+                }
+                message += "Use --force to overwrite existing files."
+                return message
+            }
+        }
     }
 }

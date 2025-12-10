@@ -31,6 +31,9 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
     package var macros: [String] = []
 
+    @Flag(name: .long, help: "Force overwrite existing files without prompting.")
+    package var force: Bool = false
+
     package static let fileSystem = FileSystem()
 
     package init() {}
@@ -43,7 +46,8 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             workingDirectory: Self.fileSystem.currentWorkingDirectory(),
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
             projectDirectory: resolveProjectDirectory(),
-            fileSystem: Self.fileSystem
+            fileSystem: Self.fileSystem,
+            force: force
         ).run()
     }
 

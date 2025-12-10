@@ -59,6 +59,16 @@ let package = Package(
                 "Fixtures",
             ]
         ),
+        .target(name: "NetworkClient"),
+        .testTarget(
+            name: "NetworkClientTests",
+            dependencies: [ "NetworkClient" ]
+        ),
+        .target(name: "TestModule"),
+        .testTarget(
+            name: "TestModuleTests",
+            dependencies: [ "TestModule" ]
+        ),
 //        .target(
 //            name: "Config",
 //            dependencies: [

@@ -35,19 +35,25 @@ struct LifecycleWorkflowRunner {
     private let workingDirectory: AbsolutePath
     private let homeDirectory: AbsolutePath
     private let noora: any Noorable
+    private let isInteractive: Bool
+    private let force: Bool
 
     init(
         processRunner: any ProcessRunning,
         fileSystem: any FileSysteming,
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
+        isInteractive: Bool = true,
+        force: Bool = false
     ) {
         self.processRunner = processRunner
         self.fileSystem = fileSystem
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.noora = noora
+        self.isInteractive = isInteractive
+        self.force = force
     }
 
     /// Executes the complete lifecycle workflow.
@@ -143,24 +149,20 @@ struct LifecycleWorkflowRunner {
             homeDirectory: homeDirectory
         )
 
-        // Safety check: prevent data loss by ensuring outputDirectory is not the same as or contains templateDirectory
-        // This prevents accidentally wiping out the template or working directory
+        // Safety check: only prevent outputDirectory from being the same as templateDirectory
         if outputDirectory == templateDirectory {
             throw LifecycleStepError.invalidOutputDirectory(
                 "Output directory cannot be the same as template directory: \(outputDirectory.pathString)"
             )
         }
 
-        if templateDirectory.pathString.hasPrefix(outputDirectory.pathString + "/") {
-            throw LifecycleStepError.invalidOutputDirectory(
-                "Output directory cannot contain template directory. Output: \(outputDirectory.pathString), Template: \(templateDirectory.pathString)"
-            )
-        }
-
         let expander = TemplateExpander(
             fileSystem: fileSystem,
             templateDirectory: templateDirectory,
-            outputDirectory: outputDirectory
+            outputDirectory: outputDirectory,
+            noora: noora,
+            isInteractive: isInteractive,
+            force: force
         )
 
         try await expander.expand(
@@ -169,7 +171,7 @@ struct LifecycleWorkflowRunner {
             excluding: config.hatch.exclude
         )
 
-        noora.success("Template hatched successfully at \(outputDirectory.pathString)")
+        noora.passthrough("✅ Template hatched successfully at \(outputDirectory.pathString)\n", tab: 1)
 
         return outputDirectory
     }
