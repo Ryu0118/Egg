@@ -18,7 +18,6 @@ let package = Package(
         .package(url: "https://github.com/tuist/FileSystem", from: "0.13.47"),
         .package(url: "https://github.com/Ryu0118/ProcessRunning", from: "0.2.1"),
         .package(url: "https://github.com/jpsim/Yams", from: "6.2.0"),
-        .package(url: "https://github.com/mtj0928/swift-async-operations", from: "0.4.0"),
     ],
     targets: [
         .executableTarget(
@@ -44,7 +43,6 @@ let package = Package(
                 .product(name: "FileSystem", package: "FileSystem"),
                 .product(name: "Yams", package: "Yams"),
                 .product(name: "Noora", package: "Noora"),
-                .product(name: "AsyncOperations", package: "swift-async-operations"),
             ]
         ),
         .testTarget(
@@ -57,16 +55,6 @@ let package = Package(
             exclude: [
                 "Fixtures",
             ]
-        ),
-        .target(name: "NetworkClient"),
-        .testTarget(
-            name: "NetworkClientTests",
-            dependencies: [ "NetworkClient" ]
-        ),
-        .target(name: "TestModule"),
-        .testTarget(
-            name: "TestModuleTests",
-            dependencies: [ "TestModule" ]
         ),
     ]
 )
