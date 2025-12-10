@@ -41,7 +41,6 @@ struct GitDiffRunnerIntegrationTests {
         }
     }
 
-    // MARK: - Setup Helpers
 
     /// Creates a directory and populates it with the specified files.
     private func setupDirectory(
@@ -82,7 +81,6 @@ struct GitDiffRunnerIntegrationTests {
         return paths
     }
 
-    // MARK: - Assertion Helpers
 
     /// Asserts that the change summary matches expected values.
     private func assertChangeSummary(
@@ -115,7 +113,6 @@ struct GitDiffRunnerIntegrationTests {
         )
     }
 
-    // MARK: - Test Types
 
     struct FileEntry {
         let path: String

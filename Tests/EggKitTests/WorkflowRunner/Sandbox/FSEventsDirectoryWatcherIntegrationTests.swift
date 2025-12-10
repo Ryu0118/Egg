@@ -9,7 +9,6 @@ import Testing
 struct FSEventsDirectoryWatcherIntegrationTests {
     private let fileSystem = FileSystem()
 
-    // MARK: - Helper
 
     /// Context passed to the test closure containing the watcher, watched directory, and file system.
     struct WatcherContext {
@@ -60,7 +59,6 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    // MARK: - Tests
 
     @Test("detects new file creation")
     func detectsNewFileCreation() async throws {
@@ -86,7 +84,11 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             try await watcher.start(watching: tempDir)
             defer { Task { await watcher.stop() } }
 
-            FileManager.default.createFile(atPath: filePath.pathString, contents: Data("modified".utf8))
+            // Modify via FileHandle (non-atomic)
+            let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath.pathString))
+            try handle.truncate(atOffset: 0)
+            try handle.write(contentsOf: Data("modified".utf8))
+            try handle.close()
 
             try await Task.sleep(for: .milliseconds(200))
 

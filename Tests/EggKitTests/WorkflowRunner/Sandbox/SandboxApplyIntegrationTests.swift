@@ -147,7 +147,6 @@ struct SandboxApplyIntegrationTests {
         }
     }
 
-    // MARK: - Test Types
 
     struct InitialFile {
         let path: String
