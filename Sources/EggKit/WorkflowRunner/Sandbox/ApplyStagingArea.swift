@@ -97,8 +97,6 @@ struct ApplyStagingArea {
         }
     }
 
-    // MARK: - Staging
-
     /// Stages all changes from the sandbox based on the change summary.
     ///
     /// This method prepares all file operations without touching the working directory:
@@ -125,8 +123,6 @@ struct ApplyStagingArea {
 
         return ChangeManifest(entries: entries)
     }
-
-    // MARK: - Apply
 
     /// Applies staged changes to the working directory.
     ///
@@ -357,8 +353,6 @@ struct ApplyStagingArea {
         return backupDestination
     }
 
-    // MARK: - Cleanup
-
     /// Cleans up the staging area.
     ///
     /// Removes all staging artifacts. Safe to call multiple times.
@@ -367,11 +361,7 @@ struct ApplyStagingArea {
     func cleanup(fileSystem: any FileSysteming) async {
         try? await fileSystem.remove(root)
     }
-
-    // MARK: - State Queries
 }
-
-// MARK: - Supporting Types
 
 /// Manifest describing all changes to be applied.
 struct ChangeManifest: Equatable, Sendable {

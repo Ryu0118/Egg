@@ -231,4 +231,81 @@ struct ShellScriptRunnerTests {
             ),
         ]
     }
+
+    @Test(arguments: EnvironmentTestCase.allCases)
+    func executeWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
+        let tempDir = try AbsolutePath(validating: FileManager.default.temporaryDirectory.path(percentEncoded: false))
+        let runner = ShellScriptRunner(
+            processRunner: ProcessRunner(),
+            workingDirectory: tempDir,
+            additionalEnvironment: testCase.additionalEnvironment
+        )
+
+        let (stdout, _) = try await runner.execute(testCase.command)
+        #expect(stdout.contains(testCase.expectedOutput), "Expected '\(testCase.expectedOutput)' in stdout, got '\(stdout)'")
+    }
+
+    @Test(arguments: EnvironmentTestCase.allCases)
+    func executeStreamingWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
+        let tempDir = try AbsolutePath(validating: FileManager.default.temporaryDirectory.path(percentEncoded: false))
+        let runner = ShellScriptRunner(
+            processRunner: ProcessRunner(),
+            workingDirectory: tempDir,
+            additionalEnvironment: testCase.additionalEnvironment
+        )
+
+        let stdout = try await runner.executeStreaming(testCase.command) { _ in }
+        #expect(stdout.contains(testCase.expectedOutput), "Expected '\(testCase.expectedOutput)' in stdout, got '\(stdout)'")
+    }
+
+    struct EnvironmentTestCase: CustomTestStringConvertible {
+        let description: String
+        let command: String
+        let additionalEnvironment: [String: String]
+        let expectedOutput: String
+
+        var testDescription: String { description }
+
+        static let allCases: [EnvironmentTestCase] = [
+            EnvironmentTestCase(
+                description: "accesses single additional environment variable",
+                command: "echo $EGG_SANDBOX_ROOT",
+                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                expectedOutput: "/tmp/sandbox"
+            ),
+            EnvironmentTestCase(
+                description: "accesses multiple additional environment variables",
+                command: "echo $EGG_SANDBOX_ROOT:$EGG_ORIGINAL_WORKING_DIR",
+                additionalEnvironment: [
+                    "EGG_SANDBOX_ROOT": "/tmp/sandbox",
+                    "EGG_ORIGINAL_WORKING_DIR": "/Users/test/project",
+                ],
+                expectedOutput: "/tmp/sandbox:/Users/test/project"
+            ),
+            EnvironmentTestCase(
+                description: "additional environment variables are available in subshell",
+                command: "sh -c 'echo $EGG_TEST_VAR'",
+                additionalEnvironment: ["EGG_TEST_VAR": "subshell_value"],
+                expectedOutput: "subshell_value"
+            ),
+            EnvironmentTestCase(
+                description: "additional environment overrides inherited variable",
+                command: "echo $HOME",
+                additionalEnvironment: ["HOME": "/custom/home"],
+                expectedOutput: "/custom/home"
+            ),
+            EnvironmentTestCase(
+                description: "inherited environment is still accessible",
+                command: "echo $PATH | grep -q '/' && echo 'PATH_EXISTS'",
+                additionalEnvironment: ["EGG_CUSTOM": "value"],
+                expectedOutput: "PATH_EXISTS"
+            ),
+            EnvironmentTestCase(
+                description: "empty additional environment still inherits parent",
+                command: "echo $PATH | grep -q '/' && echo 'PATH_EXISTS'",
+                additionalEnvironment: [:],
+                expectedOutput: "PATH_EXISTS"
+            ),
+        ]
+    }
 }

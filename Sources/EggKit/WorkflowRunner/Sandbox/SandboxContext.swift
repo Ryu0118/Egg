@@ -138,8 +138,6 @@ actor SandboxContext {
         }
     }
 
-    // MARK: - Path Validation
-
     /// Validates that a path is within sandbox boundaries.
     ///
     /// This method performs syntactic validation only (no filesystem access).
@@ -159,8 +157,6 @@ actor SandboxContext {
             throw SandboxContext.Error.escapeAttempt(path: path.pathString)
         }
     }
-
-    // MARK: - Change Detection and Apply
 
     /// Computes the summary of changes between sandbox and original working directory.
     ///

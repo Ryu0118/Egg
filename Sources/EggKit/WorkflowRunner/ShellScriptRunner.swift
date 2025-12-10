@@ -13,13 +13,16 @@ import Subprocess
 struct ShellScriptRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: AbsolutePath
+    private let additionalEnvironment: [String: String]
 
     init(
         processRunner: any ProcessRunning,
-        workingDirectory: AbsolutePath
+        workingDirectory: AbsolutePath,
+        additionalEnvironment: [String: String] = [:]
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
+        self.additionalEnvironment = additionalEnvironment
     }
 
     /// Executes a shell command and captures stdout and stderr.
@@ -31,7 +34,7 @@ struct ShellScriptRunner {
         let result = try await processRunner.run(
             .path("/bin/sh"),
             arguments: ["-c", command],
-            environment: .inherit,
+            environment: mergedEnvironment,
             workingDirectory: FilePath(workingDirectory.pathString),
             platformOptions: PlatformOptions(),
             input: .none,
@@ -75,7 +78,7 @@ struct ShellScriptRunner {
         let result = try await processRunner.run(
             .path("/bin/sh"),
             arguments: ["-c", command],
-            environment: .inherit,
+            environment: mergedEnvironment,
             workingDirectory: FilePath(workingDirectory.pathString)
         ) { _, stdoutSequence in
             var stdoutBuffer = Data()
@@ -113,5 +116,25 @@ struct ShellScriptRunner {
         }
 
         return stdout
+    }
+
+    /// Computes the merged environment by inheriting parent process environment
+    /// and adding any additional environment variables.
+    ///
+    /// Additional environment variables take precedence over inherited values.
+    private var mergedEnvironment: Subprocess.Environment {
+        if additionalEnvironment.isEmpty {
+            return .inherit
+        }
+        // Convert [String: String] to [Environment.Key: String?] for the updating() method
+        // Environment.Key conforms to ExpressibleByStringLiteral, so we need to create keys via a workaround
+        var envUpdates: [Subprocess.Environment.Key: String?] = [:]
+        for (key, value) in additionalEnvironment {
+            // Use the rawValue setter approach since the init is package-internal
+            var envKey = Subprocess.Environment.Key("")
+            envKey.rawValue = key
+            envUpdates[envKey] = value
+        }
+        return Subprocess.Environment.inherit.updating(envUpdates)
     }
 }

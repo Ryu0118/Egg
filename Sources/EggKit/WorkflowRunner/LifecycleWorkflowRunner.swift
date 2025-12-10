@@ -14,6 +14,9 @@ import ProcessRunning
 /// The workflow runner ensures that outputs from earlier phases are available to later phases,
 /// enabling complex multi-step template generation workflows.
 ///
+/// This is the legacy (non-sandboxed) implementation that operates directly on the working directory.
+/// For atomic all-or-nothing execution, use `SandboxedWorkflowRunner` instead.
+///
 /// Example:
 /// ```swift
 /// let runner = LifecycleWorkflowRunner(
@@ -29,7 +32,7 @@ import ProcessRunning
 ///     templateDirectory: templateDir
 /// )
 /// ```
-struct LifecycleWorkflowRunner {
+struct LifecycleWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath

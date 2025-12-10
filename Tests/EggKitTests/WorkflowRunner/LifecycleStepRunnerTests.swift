@@ -384,4 +384,171 @@ struct LifecycleStepRunnerTests {
             ),
         ]
     }
+
+    @Test(arguments: EnvironmentPropagationTestCase.allCases)
+    func executeWithAdditionalEnvironment(_ testCase: EnvironmentPropagationTestCase) async throws {
+        let processRunner = ProcessRunner()
+        let workingDirectory = try AbsolutePath(validating: NSTemporaryDirectory())
+
+        let runner = LifecycleStepRunner(
+            processRunner: processRunner,
+            workingDirectory: workingDirectory,
+            additionalEnvironment: testCase.additionalEnvironment
+        )
+
+        let initialOutputs = StepOutputsStorage()
+
+        let outputs = try await runner.execute(
+            testCase.phase,
+            steps: testCase.steps,
+            substituting: testCase.macros,
+            merging: initialOutputs
+        )
+
+        // Verify expected outputs
+        for expected in testCase.expectedOutputs {
+            for (key, expectedValue) in expected.values {
+                let actualValue = await outputs.get(phase: expected.phase, stepId: expected.stepId, key: key)
+                #expect(actualValue == expectedValue, "Expected '\(expectedValue)' for \(expected.phase.rawValue).\(expected.stepId).\(key), got '\(actualValue ?? "nil")'")
+            }
+        }
+    }
+
+    struct EnvironmentPropagationTestCase: CustomTestStringConvertible {
+        let description: String
+        let phase: LifecyclePhase
+        let steps: [Config.LifecycleStep]
+        let macros: [ResolvedMacro]
+        let additionalEnvironment: [String: String]
+        let expectedOutputs: [TestOutput]
+
+        var testDescription: String { description }
+
+        static let allCases: [EnvironmentPropagationTestCase] = [
+            // Single environment variable propagation
+            EnvironmentPropagationTestCase(
+                description: "propagates single environment variable to step",
+                phase: .preHatch,
+                steps: [
+                    Config.LifecycleStep(
+                        id: "env-test",
+                        if: nil,
+                        run: "echo \"sandbox=$EGG_SANDBOX_ROOT\""
+                    ),
+                ],
+                macros: [],
+                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                expectedOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "env-test", values: ["sandbox": "/tmp/sandbox"]),
+                ]
+            ),
+
+            // Multiple environment variables propagation
+            EnvironmentPropagationTestCase(
+                description: "propagates multiple environment variables to step",
+                phase: .preHatch,
+                steps: [
+                    Config.LifecycleStep(
+                        id: "multi-env",
+                        if: nil,
+                        run: """
+                        echo "sandbox=$EGG_SANDBOX_ROOT"
+                        echo "workdir=$EGG_ORIGINAL_WORKING_DIR"
+                        """
+                    ),
+                ],
+                macros: [],
+                additionalEnvironment: [
+                    "EGG_SANDBOX_ROOT": "/tmp/sandbox",
+                    "EGG_ORIGINAL_WORKING_DIR": "/Users/test/project",
+                ],
+                expectedOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "multi-env", values: [
+                        "sandbox": "/tmp/sandbox",
+                        "workdir": "/Users/test/project",
+                    ]),
+                ]
+            ),
+
+            // Environment variables with macro substitution
+            EnvironmentPropagationTestCase(
+                description: "combines environment variables with macro substitution",
+                phase: .preHatch,
+                steps: [
+                    Config.LifecycleStep(
+                        id: "combined",
+                        if: nil,
+                        run: "echo \"result=___PROJECT_NAME___:$EGG_SANDBOX_ROOT\""
+                    ),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___PROJECT_NAME___", description: "Project Name", value: .string("MyApp")),
+                ],
+                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                expectedOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "combined", values: ["result": "MyApp:/tmp/sandbox"]),
+                ]
+            ),
+
+            // Environment variables across multiple steps
+            EnvironmentPropagationTestCase(
+                description: "propagates environment variables across multiple steps",
+                phase: .preHatch,
+                steps: [
+                    Config.LifecycleStep(
+                        id: "step1",
+                        if: nil,
+                        run: "echo \"first=$EGG_CUSTOM_VAR\""
+                    ),
+                    Config.LifecycleStep(
+                        id: "step2",
+                        if: nil,
+                        run: "echo \"second=$EGG_CUSTOM_VAR\""
+                    ),
+                ],
+                macros: [],
+                additionalEnvironment: ["EGG_CUSTOM_VAR": "shared_value"],
+                expectedOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "step1", values: ["first": "shared_value"]),
+                    TestOutput(phase: .preHatch, stepId: "step2", values: ["second": "shared_value"]),
+                ]
+            ),
+
+            // postHatch phase environment propagation
+            EnvironmentPropagationTestCase(
+                description: "propagates environment variables in postHatch phase",
+                phase: .postHatch,
+                steps: [
+                    Config.LifecycleStep(
+                        id: "post-env",
+                        if: nil,
+                        run: "echo \"sandbox=$EGG_SANDBOX_ROOT\""
+                    ),
+                ],
+                macros: [],
+                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                expectedOutputs: [
+                    TestOutput(phase: .postHatch, stepId: "post-env", values: ["sandbox": "/tmp/sandbox"]),
+                ]
+            ),
+
+            // Empty additional environment (inherits parent)
+            EnvironmentPropagationTestCase(
+                description: "works with empty additional environment",
+                phase: .preHatch,
+                steps: [
+                    Config.LifecycleStep(
+                        id: "no-extra-env",
+                        if: nil,
+                        run: "echo \"path-exists=$(echo $PATH | grep -q '/' && echo yes || echo no)\""
+                    ),
+                ],
+                macros: [],
+                additionalEnvironment: [:],
+                expectedOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "no-extra-env", values: ["path-exists": "yes"]),
+                ]
+            ),
+        ]
+    }
 }

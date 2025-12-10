@@ -26,8 +26,6 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
     /// Thread-safe event buffer for receiving events from the callback.
     private let eventBuffer = EventBuffer()
 
-    // MARK: - DirectoryWatching Protocol
-
     func start(watching directory: AbsolutePath) async throws {
         guard !isRunning else {
             throw DirectoryWatcherError.alreadyStarted

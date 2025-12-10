@@ -140,9 +140,9 @@ Steps:
 4. Ensure watchers survive the entire hatch run and stop deterministically before apply/discard.
 
 **Checklist:**
-- [ ] Implement macOS FSEvents-backed watcher
-- [ ] Provide no-op mock for tests / unsupported platforms
-- [ ] Add unit tests simulating create/delete/modify/rename bursts
+- [x] Implement macOS FSEvents-backed watcher
+- [x] Provide no-op mock for tests / unsupported platforms
+- [x] Add unit tests simulating create/delete/modify/rename bursts
 
 ### 2.2 Apply Changes Method (path-targeted)
 
@@ -170,12 +170,11 @@ Steps:
 8. **Return:** Conflicts list
 
 **Checklist:**
-- [ ] Implement watcher draining + union logic
-- [ ] Implement git diff wrapper that accepts explicit path list
-- [ ] Implement conflict detection based on workingTouched
-- [ ] Implement Noora prompt path for interactive mode
-- [ ] Implement targeted apply (create parents, handle deletes)
-- [ ] Tests: new/modified/deleted path subsets, conflict detection, force override
+- [x] Implement watcher draining + union logic
+- [x] Implement git diff wrapper that accepts explicit path list
+- [x] Implement conflict detection based on workingTouched
+- [x] Implement targeted apply (create parents, handle deletes)
+- [x] Tests: new/modified/deleted path subsets, conflict detection, force override
 
 #### ApplyStagingArea helper
 
@@ -209,13 +208,11 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 1. **Batch diff**: call `git diff --no-index --name-status -z sandbox/path working/path ...` once, enumerating pairs via arguments.
 2. **Rename detection**: when Git outputs `Rxxx`, treat it as a delete+add so downstream logic stays simple.
 3. **Ignore unchanged paths**: if Git reports "no differences" for a path, skip it from the apply set.
-4. **Fallback**: when Git is unavailable or fails, fall back to a lightweight stat comparison and emit a warning.
 
 **Checklist:**
-- [ ] Git diff wrapper that accepts N path pairs
-- [ ] Parser converting `A/M/D/R` into `ChangeEntry`
-- [ ] Fallback logic + warning
-- [ ] Tests with recorded git output fixtures
+- [x] Git diff wrapper that accepts N path pairs
+- [x] Parser converting `A/M/D/R` into `ChangeEntry`
+- [x] Tests with recorded git output fixtures
 
 
 ---
@@ -271,20 +268,20 @@ func run(
 **File:** `Sources/EggKit/WorkflowRunner/LifecycleStepRunner.swift`
 
 **Changes:**
-- Accept optional `environmentOverrides: [String: String]` in initializer
+- Accept optional `additionalEnvironment: [String: String]` in initializer
 - Pass to ShellScriptRunner
 
 ```swift
 init(
     // ... existing params ...
-    environmentOverrides: [String: String] = [:]
+    additionalEnvironment: [String: String] = [:]
 )
 ```
 
 **Checklist:**
-- [ ] Add `environmentOverrides` property
+- [ ] Add `additionalEnvironment` property
 - [ ] Pass to ShellScriptRunner.run()
-- [ ] Tests: Environment override propagation
+- [ ] Tests: Environment variable propagation
 
 ---
 
@@ -339,7 +336,7 @@ let sandboxEnv = [
 let preHatchRunner = LifecycleStepRunner(
     // ... existing params ...
     workingDirectory: sandbox.root,
-    environmentOverrides: sandboxEnv
+    additionalEnvironment: sandboxEnv
 )
 ```
 
@@ -362,7 +359,7 @@ try await expander.expand(to: absoluteOutput, ...)
 let postHatchRunner = LifecycleStepRunner(
     // ... existing params ...
     workingDirectory: sandbox.root,
-    environmentOverrides: sandboxEnv
+    additionalEnvironment: sandboxEnv
 )
 ```
 
@@ -667,7 +664,7 @@ None required - using:
 | File | Changes |
 |------|---------|
 | `WorkflowRunner/NoSandbox/LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
-| `WorkflowRunner/Shared/LifecycleStepRunner.swift` | Add environmentOverrides parameter |
+| `WorkflowRunner/Shared/LifecycleStepRunner.swift` | Add additionalEnvironment parameter |
 | `WorkflowRunner/Shared/ShellScriptRunner.swift` | Add additionalEnvironment parameter |
 | `HatchRunner.swift` | Add useSandbox and force parameters, runner factory |
 | `EggCLI/Commands/HatchCommand.swift` | Add --no-sandbox and --force flags |
