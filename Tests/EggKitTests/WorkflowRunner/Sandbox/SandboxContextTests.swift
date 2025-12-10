@@ -192,7 +192,6 @@ struct SandboxContextTests {
         ]
     }
 
-
     private func setupWorkingDirectory(
         in tempDir: AbsolutePath,
         initialFiles: [InitialFile],
@@ -214,7 +213,6 @@ struct SandboxContextTests {
 
         return workingDir
     }
-
 
     private func assertSuccessCheck(
         _ check: TestCase.SuccessCheck,

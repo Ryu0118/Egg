@@ -32,8 +32,6 @@ struct ApplyStagingAreaTests {
     }
 }
 
-// MARK: - Test Context
-
 extension ApplyStagingAreaTests {
     struct TestContext {
         let fileSystem: FileSystem
@@ -69,8 +67,6 @@ extension ApplyStagingAreaTests {
         func tearDown() async {
             try? await fileSystem.remove(tempDir)
         }
-
-        // MARK: - Execution Helpers
 
         func executeStageAndApply() async throws {
             try await ApplyStagingArea.withStaging(
@@ -112,8 +108,8 @@ extension ApplyStagingAreaTests {
             let root = staging.root
 
             do {
-                let badChanges = ChangeSummary(
-                    added: [try RelativePath(validating: "nonexistent.txt")],
+                let badChanges = try ChangeSummary(
+                    added: [RelativePath(validating: "nonexistent.txt")],
                     modified: [],
                     deleted: []
                 )
@@ -125,8 +121,6 @@ extension ApplyStagingAreaTests {
 
             return root
         }
-
-        // MARK: - Verification Helpers
 
         func verifyExpectedFiles(_ expectedFiles: [ExpectedFile]) async throws {
             for expectedFile in expectedFiles {
@@ -184,8 +178,6 @@ extension ApplyStagingAreaTests {
             )
         }
 
-        // MARK: - Private Helpers
-
         private static func createFiles(
             _ files: [FileEntry],
             in directory: AbsolutePath,
@@ -211,8 +203,6 @@ extension ApplyStagingAreaTests {
         }
     }
 }
-
-// MARK: - Test Data Types
 
 extension ApplyStagingAreaTests {
     struct FileEntry {
@@ -264,8 +254,6 @@ extension ApplyStagingAreaTests {
     }
 }
 
-// MARK: - Test Cases
-
 extension ApplyStagingAreaTests.TestCase {
     static let allCases: [ApplyStagingAreaTests.TestCase] = [
         emptyChangesCase,
@@ -277,14 +265,10 @@ extension ApplyStagingAreaTests.TestCase {
         + cleanupCases
         + edgeCases
 
-    // MARK: - Empty Changes
-
     private static let emptyChangesCase = ApplyStagingAreaTests.TestCase(
         description: "empty changes produces empty manifest",
         expectation: .emptyManifest
     )
-
-    // MARK: - Add Operations
 
     private static let addOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
@@ -323,8 +307,6 @@ extension ApplyStagingAreaTests.TestCase {
         ),
     ]
 
-    // MARK: - Modify Operations
-
     private static let modifyOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies single modified file",
@@ -357,8 +339,6 @@ extension ApplyStagingAreaTests.TestCase {
         ),
     ]
 
-    // MARK: - Delete Operations
-
     private static let deleteOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies single deleted file",
@@ -389,8 +369,6 @@ extension ApplyStagingAreaTests.TestCase {
         ),
     ]
 
-    // MARK: - Mixed Operations
-
     private static let mixedOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies mixed operations",
@@ -414,8 +392,6 @@ extension ApplyStagingAreaTests.TestCase {
             ])
         ),
     ]
-
-    // MARK: - Manifest Count Verification
 
     private static let manifestCountCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
@@ -471,8 +447,6 @@ extension ApplyStagingAreaTests.TestCase {
         ),
     ]
 
-    // MARK: - Cleanup Behavior
-
     private static let cleanupCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "staging directory is cleaned up after successful apply",
@@ -487,8 +461,6 @@ extension ApplyStagingAreaTests.TestCase {
             expectation: .stagingCleanedUpOnError
         ),
     ]
-
-    // MARK: - Edge Cases
 
     private static let edgeCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
