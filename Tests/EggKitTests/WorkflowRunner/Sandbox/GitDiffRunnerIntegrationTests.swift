@@ -41,7 +41,6 @@ struct GitDiffRunnerIntegrationTests {
         }
     }
 
-
     /// Creates a directory and populates it with the specified files.
     private func setupDirectory(
         _ directory: AbsolutePath,
@@ -73,14 +72,13 @@ struct GitDiffRunnerIntegrationTests {
     private func buildTargetPaths(testCase: TestCase) throws -> Set<RelativePath> {
         var paths = Set<RelativePath>()
         for file in testCase.workingFiles {
-            paths.insert(try RelativePath(validating: file.path))
+            try paths.insert(RelativePath(validating: file.path))
         }
         for file in testCase.sandboxFiles {
-            paths.insert(try RelativePath(validating: file.path))
+            try paths.insert(RelativePath(validating: file.path))
         }
         return paths
     }
-
 
     /// Asserts that the change summary matches expected values.
     private func assertChangeSummary(
@@ -112,7 +110,6 @@ struct GitDiffRunnerIntegrationTests {
             "Deleted files mismatch"
         )
     }
-
 
     struct FileEntry {
         let path: String

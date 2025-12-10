@@ -119,9 +119,9 @@ struct ApplyStagingArea {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(changes.totalCount)
 
-        entries.append(contentsOf: try await stageAddedFiles(changes.added, fileSystem: fileSystem))
-        entries.append(contentsOf: try await stageModifiedFiles(changes.modified, fileSystem: fileSystem))
-        entries.append(contentsOf: try await stageDeletedFiles(changes.deleted, fileSystem: fileSystem))
+        try entries.append(contentsOf: await stageAddedFiles(changes.added, fileSystem: fileSystem))
+        try entries.append(contentsOf: await stageModifiedFiles(changes.modified, fileSystem: fileSystem))
+        try entries.append(contentsOf: await stageDeletedFiles(changes.deleted, fileSystem: fileSystem))
 
         return ChangeManifest(entries: entries)
     }
@@ -369,7 +369,6 @@ struct ApplyStagingArea {
     }
 
     // MARK: - State Queries
-
 }
 
 // MARK: - Supporting Types

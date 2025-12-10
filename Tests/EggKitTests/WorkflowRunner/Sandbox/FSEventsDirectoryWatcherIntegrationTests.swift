@@ -9,7 +9,6 @@ import Testing
 struct FSEventsDirectoryWatcherIntegrationTests {
     private let fileSystem = FileSystem()
 
-
     /// Context passed to the test closure containing the watcher, watched directory, and file system.
     struct WatcherContext {
         let watcher: FSEventsDirectoryWatcher
@@ -58,7 +57,6 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             try await operation(context)
         }
     }
-
 
     @Test("detects new file creation")
     func detectsNewFileCreation() async throws {

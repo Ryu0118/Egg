@@ -90,7 +90,7 @@ extension FileSystemAtomicTests {
         using fileSystem: FileSystem
     ) async throws {
         let parent = path.parentDirectory
-        if !(try await fileSystem.exists(parent)) {
+        if try !(await fileSystem.exists(parent)) {
             try await fileSystem.makeDirectory(at: parent, options: [.createTargetParentDirectories])
         }
     }

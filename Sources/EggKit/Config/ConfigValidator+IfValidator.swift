@@ -25,7 +25,6 @@ extension ConfigValidator {
             return nil
         }
 
-
         private func expandVariables(in expression: String) -> String {
             var expanded = expression
 

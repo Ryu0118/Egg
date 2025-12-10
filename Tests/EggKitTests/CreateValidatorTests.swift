@@ -167,7 +167,6 @@ struct CreateArgumentsValidatorTests {
     }
 }
 
-
 extension CreateRunnerMode: Equatable {
     public static func == (lhs: CreateRunnerMode, rhs: CreateRunnerMode) -> Bool {
         switch (lhs, rhs) {
@@ -181,7 +180,6 @@ extension CreateRunnerMode: Equatable {
         }
     }
 }
-
 
 extension CreateArgumentsValidator.Error: Equatable {
     public static func == (lhs: CreateArgumentsValidator.Error, rhs: CreateArgumentsValidator.Error) -> Bool {

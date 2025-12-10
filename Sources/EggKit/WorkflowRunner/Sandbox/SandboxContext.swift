@@ -214,7 +214,7 @@ actor SandboxContext {
         let conflicts = detectConflicts(using: events, changeSummary: changes)
 
         // Handle conflicts
-        if !conflicts.isEmpty && !force {
+        if !conflicts.isEmpty, !force {
             throw SandboxContext.Error.conflictingFiles(conflicts)
         }
 
@@ -280,7 +280,7 @@ extension SandboxContext {
         return WatcherEvents(sandbox: sandboxTouched, working: workingTouched)
     }
 
-    nonisolated private func computeChangeSummary(using events: WatcherEvents) async throws -> ChangeSummary {
+    private nonisolated func computeChangeSummary(using events: WatcherEvents) async throws -> ChangeSummary {
         guard await !isDiscarded else {
             throw SandboxContext.Error.alreadyDiscarded
         }

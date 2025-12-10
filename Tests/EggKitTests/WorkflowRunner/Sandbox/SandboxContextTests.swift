@@ -71,7 +71,7 @@ struct SandboxContextTests {
                     await sandbox.discard()
                     #expect(try await !fileSystem.exists(sandboxRoot), "Sandbox should be removed after discard")
 
-                case .discardedState(let expected):
+                case let .discardedState(expected):
                     let discarded = await sandbox.isDiscarded
                     #expect(discarded == expected, "Discarded state should be \(expected)")
 

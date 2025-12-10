@@ -165,7 +165,7 @@ private final class EventBuffer: @unchecked Sendable {
 private func fsEventsCallback(
     _: ConstFSEventStreamRef,
     info: UnsafeMutableRawPointer?,
-    numEvents: Int,
+    numEvents _: Int,
     eventPaths: UnsafeMutableRawPointer,
     _: UnsafePointer<FSEventStreamEventFlags>,
     _: UnsafePointer<FSEventStreamEventId>

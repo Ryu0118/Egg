@@ -58,7 +58,7 @@ struct SandboxApplyIntegrationTests {
             let path = sandboxRoot.appending(components: modification.path.split(separator: "/").map(String.init))
 
             switch modification.operation {
-            case .create(let content):
+            case let .create(content):
                 let parent = path.parentDirectory
                 if try await !fileSystem.exists(parent) {
                     try await fileSystem.makeDirectory(at: parent)
@@ -68,7 +68,7 @@ struct SandboxApplyIntegrationTests {
                 let relativePath = try RelativePath(validating: modification.path)
                 await sandboxWatcher.simulateEvent(at: relativePath)
 
-            case .modify(let content):
+            case let .modify(content):
                 try await fileSystem.writeText(content, at: path, options: [.overwrite])
                 let relativePath = try RelativePath(validating: modification.path)
                 await sandboxWatcher.simulateEvent(at: relativePath)
@@ -85,7 +85,7 @@ struct SandboxApplyIntegrationTests {
             let path = workingDir.appending(components: modification.path.split(separator: "/").map(String.init))
 
             switch modification.operation {
-            case .create(let content):
+            case let .create(content):
                 let parent = path.parentDirectory
                 if try await !fileSystem.exists(parent) {
                     try await fileSystem.makeDirectory(at: parent)
@@ -94,7 +94,7 @@ struct SandboxApplyIntegrationTests {
                 let relativePath = try RelativePath(validating: modification.path)
                 await workingDirWatcher.simulateEvent(at: relativePath)
 
-            case .modify(let content):
+            case let .modify(content):
                 try await fileSystem.writeText(content, at: path, options: [.overwrite])
                 let relativePath = try RelativePath(validating: modification.path)
                 await workingDirWatcher.simulateEvent(at: relativePath)
@@ -108,7 +108,7 @@ struct SandboxApplyIntegrationTests {
 
         // Execute test expectation
         switch testCase.expectation {
-        case .successfulApply(let expectedFiles):
+        case let .successfulApply(expectedFiles):
             let changes = try await sandbox.computeChangeSummary()
             let conflicts = try await sandbox.applyChanges(changes, force: testCase.forceApply)
             #expect(conflicts.isEmpty || testCase.forceApply, "Expected no conflicts when not forcing")
@@ -126,7 +126,7 @@ struct SandboxApplyIntegrationTests {
                 }
             }
 
-        case .conflictsDetected(let expectedConflictPaths):
+        case let .conflictsDetected(expectedConflictPaths):
             // Without force, should throw conflict error
             let changes = try await sandbox.computeChangeSummary()
             let error = await #expect(throws: SandboxContext.Error.self) {
@@ -146,7 +146,6 @@ struct SandboxApplyIntegrationTests {
             #expect(summary.isEmpty, "Expected empty change summary")
         }
     }
-
 
     struct InitialFile {
         let path: String

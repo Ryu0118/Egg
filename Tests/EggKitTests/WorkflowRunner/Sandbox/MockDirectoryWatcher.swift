@@ -1,6 +1,6 @@
+@testable import EggKit
 import Foundation
 import Path
-@testable import EggKit
 
 /// Mock implementation of DirectoryWatching for testing.
 ///
@@ -14,7 +14,6 @@ actor MockDirectoryWatcher: DirectoryWatching {
 
     /// Events that will be returned by drainEvents().
     private var simulatedEvents: Set<RelativePath> = []
-
 
     func start(watching directory: AbsolutePath) async throws {
         guard !isRunning else {
@@ -32,7 +31,6 @@ actor MockDirectoryWatcher: DirectoryWatching {
     func drainEvents() async -> Set<RelativePath> {
         simulatedEvents
     }
-
 
     /// Simulates a file event at the given relative path.
     func simulateEvent(at relativePath: RelativePath) {

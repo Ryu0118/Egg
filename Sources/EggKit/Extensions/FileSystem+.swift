@@ -64,7 +64,7 @@ extension FileSysteming {
         var result: Result<T, Error>!
         do {
             temporaryDirectory = try await makeTemporaryDirectory(prefix: prefix)
-            result = .success(try await action(temporaryDirectory))
+            result = try .success(await action(temporaryDirectory))
         } catch {
             result = .failure(error)
         }

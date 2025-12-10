@@ -355,7 +355,6 @@ struct TemplateExpanderTests {
                 ]
             ),
 
-
             // Force overwrites existing files
             .success(
                 "overwrites existing files with force flag",
