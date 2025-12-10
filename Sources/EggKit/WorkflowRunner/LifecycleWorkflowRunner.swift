@@ -109,7 +109,8 @@ struct LifecycleWorkflowRunner {
 
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
+            noora: noora
         )
 
         _ = try await stepRunner.execute(
@@ -194,7 +195,8 @@ struct LifecycleWorkflowRunner {
 
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
+            noora: noora
         )
 
         _ = try await stepRunner.execute(

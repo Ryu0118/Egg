@@ -117,8 +117,6 @@ extension FileSystemAtomicTests {
     }
 }
 
-// MARK: - Verification Helpers
-
 extension FileSystemAtomicTests {
     private func verify(
         _ verifications: [TestCase.Verification],
@@ -181,8 +179,6 @@ extension FileSystemAtomicTests {
         return baseDir.appending(components: relativePath.split(separator: "/").map(String.init))
     }
 }
-
-// MARK: - Test Case Definition
 
 extension FileSystemAtomicTests {
     struct TestCase: CustomTestStringConvertible, Sendable {

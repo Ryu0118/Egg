@@ -1,4 +1,5 @@
 import Foundation
+import Noora
 import Path
 import ProcessRunning
 
@@ -27,10 +28,16 @@ import ProcessRunning
 struct LifecycleStepRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: AbsolutePath
+    private let noora: any Noorable
 
-    init(processRunner: any ProcessRunning, workingDirectory: AbsolutePath) {
+    init(
+        processRunner: any ProcessRunning,
+        workingDirectory: AbsolutePath,
+        noora: some Noorable = Noora()
+    ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
+        self.noora = noora
     }
 
     /// Executes all steps in a lifecycle phase.
@@ -86,7 +93,7 @@ struct LifecycleStepRunner {
             workingDirectory: workingDirectory
         )
         let stdout = try await shellRunner.executeStreaming(resolvedCommand) { output in
-            print("    " + output)
+            noora.passthrough("\(output)\n", tab: 1)
         }
 
         if let stepId = step.id {

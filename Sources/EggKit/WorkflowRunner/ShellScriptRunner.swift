@@ -70,7 +70,7 @@ struct ShellScriptRunner {
     /// - Throws: LifecycleStepError.shellExecutionError if the command exits with non-zero status
     func executeStreaming(
         _ command: String,
-        onOutput: @escaping @Sendable (String) -> Void
+        onOutput: @escaping (String) -> Void
     ) async throws -> String {
         let result = try await processRunner.run(
             .path("/bin/sh"),

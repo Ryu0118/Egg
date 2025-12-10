@@ -69,6 +69,11 @@ let package = Package(
             name: "TestModuleTests",
             dependencies: [ "TestModule" ]
         ),
+        .target(name: "NetworkClient"),
+        .testTarget(
+            name: "NetworkClientTests",
+            dependencies: [ "NetworkClient" ]
+        ),
 //        .target(
 //            name: "Config",
 //            dependencies: [
