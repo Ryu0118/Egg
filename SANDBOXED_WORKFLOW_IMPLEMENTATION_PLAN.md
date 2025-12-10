@@ -64,10 +64,10 @@ struct ChangeSummary {
 ```
 
 **Checklist:**
-- [ ] Create file with nested enum definition
-- [ ] Implement `LocalizedError` conformance with user-friendly messages
-- [ ] Add `Equatable` conformance for testing
-- [ ] Test: Error equality and description formatting
+- [x] Create file with nested enum definition
+- [x] Implement `LocalizedError` conformance with user-friendly messages
+- [x] Add `Equatable` conformance for testing
+- [x] Test: Error equality and description formatting
 
 ### 1.2 Create SandboxContext Actor
 
@@ -111,14 +111,14 @@ func discard(fileSystem: any FileSysteming) async {
    - Delegated to the path-targeted diff approach described later.
 
 **Checklist:**
-- [ ] Create actor skeleton with properties
-- [ ] Implement `create()` with APFS clone (clonefile)
-- [ ] Implement watcher wiring + lifecycle hooks
-- [ ] Implement `validatePath()`
-- [ ] Implement `computeChangeSummary()` (leveraging path-targeted diffs)
-- [ ] Implement `applyChanges(force:)` (returns [ConflictInfo])
-- [ ] Implement `discard()`
-- [ ] Tests: Creation, path validation, change summary, apply with/without force, discard idempotency
+- [x] Create actor skeleton with properties
+- [x] Implement `create()` with APFS clone (clonefile)
+- [x] Implement watcher wiring + lifecycle hooks
+- [x] Implement `validatePath()`
+- [x] Implement `computeChangeSummary()` (leveraging path-targeted diffs)
+- [x] Implement `applyChanges(force:)` (returns [ConflictInfo])
+- [x] Implement `discard()`
+- [x] Tests: Creation, path validation, change summary, apply with/without force, discard idempotency
 
 ---
 

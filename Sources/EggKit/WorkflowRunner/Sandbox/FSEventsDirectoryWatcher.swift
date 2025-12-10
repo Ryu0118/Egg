@@ -109,7 +109,9 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
 
     /// Converts an absolute path string to a RelativePath relative to the watched directory.
     private func makeRelativePath(from absolutePath: String, relativeTo base: AbsolutePath) -> RelativePath? {
-        let basePath = base.pathString
+        // Normalize both paths to resolve symlinks (e.g., /var -> /private/var)
+        // FSEvents reports real paths while the watched directory may use symlinked paths
+        let basePath = (base.pathString as NSString).standardizingPath
         let normalizedPath = (absolutePath as NSString).standardizingPath
 
         // Ensure the path is within the watched directory

@@ -15,17 +15,9 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         let directory: AbsolutePath
         let fileSystem: FileSystem
 
-        /// Writes text directly to a file using FileHandle (non-atomic) to ensure FSEvents detection.
-        func writeText(_ text: String, at path: AbsolutePath) throws {
-            let data = Data(text.utf8)
-            if FileManager.default.fileExists(atPath: path.pathString) {
-                let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: path.pathString))
-                try handle.truncate(atOffset: 0)
-                try handle.write(contentsOf: data)
-                try handle.close()
-            } else {
-                FileManager.default.createFile(atPath: path.pathString, contents: data)
-            }
+        /// Writes text to a file.
+        func writeText(_ text: String, at path: AbsolutePath) async throws {
+            try await fileSystem.writeText(text, at: path)
         }
 
         /// Creates a directory at the given path.
@@ -34,8 +26,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
 
         /// Removes the item at the given path.
-        func remove(_ path: AbsolutePath) throws {
-            try FileManager.default.removeItem(atPath: path.pathString)
+        func remove(_ path: AbsolutePath) async throws {
+            try await fileSystem.remove(path)
         }
     }
 
@@ -62,7 +54,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     func detectsNewFileCreation() async throws {
         try await withWatcher { ctx in
             let filePath = ctx.directory.appending(component: "new-file.txt")
-            try ctx.writeText("content", at: filePath)
+            try await ctx.writeText("content", at: filePath)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -76,17 +68,15 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     func detectsFileModification() async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
             let filePath = tempDir.appending(component: "existing.txt")
-            FileManager.default.createFile(atPath: filePath.pathString, contents: Data("original".utf8))
+            try await fileSystem.writeText("original", at: filePath)
 
             let watcher = FSEventsDirectoryWatcher()
             try await watcher.start(watching: tempDir)
             defer { Task { await watcher.stop() } }
 
-            // Modify via FileHandle (non-atomic)
-            let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath.pathString))
-            try handle.truncate(atOffset: 0)
-            try handle.write(contentsOf: Data("modified".utf8))
-            try handle.close()
+            // FileSystem.writeText doesn't support overwriting existing files,
+            // so we use Data.write for modification
+            try Data("modified".utf8).write(to: URL(fileURLWithPath: filePath.pathString))
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -98,19 +88,23 @@ struct FSEventsDirectoryWatcherIntegrationTests {
 
     @Test("detects file deletion")
     func detectsFileDeletion() async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
-            let filePath = tempDir.appending(component: "to-delete.txt")
-            FileManager.default.createFile(atPath: filePath.pathString, contents: Data("content".utf8))
+        try await withWatcher { ctx in
+            let filePath = ctx.directory.appending(component: "to-delete.txt")
+            // Create file first
+            try await ctx.writeText("content", at: filePath)
 
-            let watcher = FSEventsDirectoryWatcher()
-            try await watcher.start(watching: tempDir)
-            defer { Task { await watcher.stop() } }
+            // Small delay to let creation events settle
+            try await Task.sleep(for: .milliseconds(100))
 
+            // Clear creation events
+            _ = await ctx.watcher.drainEvents()
+
+            // Now delete
             try FileManager.default.removeItem(atPath: filePath.pathString)
 
             try await Task.sleep(for: .milliseconds(200))
 
-            let events = await watcher.drainEvents()
+            let events = await ctx.watcher.drainEvents()
             let expectedPath = try RelativePath(validating: "to-delete.txt")
             #expect(events.contains(expectedPath), "Should detect file deletion")
         }
@@ -123,7 +117,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             try await ctx.makeDirectory(at: nestedDir)
 
             let nestedFile = nestedDir.appending(component: "nested.txt")
-            try ctx.writeText("nested content", at: nestedFile)
+            try await ctx.writeText("nested content", at: nestedFile)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -140,9 +134,9 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             let file2 = ctx.directory.appending(component: "file2.txt")
             let file3 = ctx.directory.appending(component: "file3.txt")
 
-            try ctx.writeText("content1", at: file1)
-            try ctx.writeText("content2", at: file2)
-            try ctx.writeText("content3", at: file3)
+            try await ctx.writeText("content1", at: file1)
+            try await ctx.writeText("content2", at: file2)
+            try await ctx.writeText("content3", at: file3)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -201,7 +195,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             defer { Task { await watcher.stop() } }
 
             let filePath = tempDir.appending(component: "after-restart.txt")
-            FileManager.default.createFile(atPath: filePath.pathString, contents: Data("content".utf8))
+            try await fileSystem.writeText("content", at: filePath)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -215,7 +209,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     func accumulatesEventsAcrossMultipleDrains() async throws {
         try await withWatcher { ctx in
             let file1 = ctx.directory.appending(component: "first.txt")
-            try ctx.writeText("first", at: file1)
+            try await ctx.writeText("first", at: file1)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -224,7 +218,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             #expect(events1.contains(expected1), "First drain should contain first.txt")
 
             let file2 = ctx.directory.appending(component: "second.txt")
-            try ctx.writeText("second", at: file2)
+            try await ctx.writeText("second", at: file2)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -247,7 +241,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             try await ctx.makeDirectory(at: deepPath)
 
             let deepFile = deepPath.appending(component: "deep.txt")
-            try ctx.writeText("deep content", at: deepFile)
+            try await ctx.writeText("deep content", at: deepFile)
 
             try await Task.sleep(for: .milliseconds(200))
 
@@ -271,10 +265,10 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             defer { Task { await watcher.stop() } }
 
             let outsideFile = outsideDir.appending(component: "outside.txt")
-            FileManager.default.createFile(atPath: outsideFile.pathString, contents: Data("outside content".utf8))
+            try await fileSystem.writeText("outside content", at: outsideFile)
 
             let insideFile = watchedDir.appending(component: "inside.txt")
-            FileManager.default.createFile(atPath: insideFile.pathString, contents: Data("inside content".utf8))
+            try await fileSystem.writeText("inside content", at: insideFile)
 
             try await Task.sleep(for: .milliseconds(200))
 
