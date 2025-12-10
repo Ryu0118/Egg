@@ -75,8 +75,9 @@ SandboxedWorkflowRunner is a system for executing the entire hatch lifecycle (pr
 │  │ 4. Execute post_hatch in sandbox                                     │ │
 │  │    └─ LifecycleStepRunner(workingDir: sandbox.root)                 │ │
 │  │                                                                      │ │
-│  │ 5. Partial apply sandbox changes to workingDirectory                 │ │
-│  │    └─ sandbox.applyChanges(to: workingDirectory)                    │ │
+  │  │ 5. Partial apply sandbox changes via staging                        │ │
+  │  │    └─ sandbox.stageChanges() → verify                               │ │
+  │  │    └─ staging.applyTo(workingDirectory)                             │ │
 │  └─────────────────────────────────────────────────────────────────────┘ │
 │                                                                           │
 │  On any failure:                                                          │
@@ -92,7 +93,7 @@ SandboxedWorkflowRunner is a system for executing the entire hatch lifecycle (pr
 
 **Responsibility**: Manages the lifecycle of a sandbox environment
 
-**File**: `Sources/EggKit/WorkflowRunner/Internals/SandboxContext.swift`
+**File**: `Sources/EggKit/WorkflowRunner/Sandbox/SandboxContext.swift`
 
 **Interface**:
 ```swift
@@ -108,9 +109,9 @@ actor SandboxContext {
     /// The original working directory that was cloned.
     var originalWorkingDirectory: AbsolutePath { get }
 
-    /// Snapshot of file hashes at sandbox creation time.
-    /// Used for change detection during apply.
-    private var baselineHashes: [RelativePath: String]
+    /// Watchers that record which paths changed during sandbox execution.
+    private let sandboxWatcher: DirectoryWatching
+    private let workingDirectoryWatcher: DirectoryWatching
 
     /// Creates a new sandbox context by cloning the working directory.
     ///
@@ -118,7 +119,7 @@ actor SandboxContext {
     ///   - workingDirectory: The directory to clone into sandbox
     ///   - fileSystem: File system for operations
     /// - Returns: A new SandboxContext with cloned directory
-    /// - Throws: SandboxError.creationFailed on file system errors
+    /// - Throws: SandboxContext.Error.creationFailed on file system errors
     static func create(
         cloning workingDirectory: AbsolutePath,
         fileSystem: any FileSysteming
@@ -127,7 +128,7 @@ actor SandboxContext {
     /// Validates that a path is within sandbox boundaries.
     ///
     /// - Parameter path: Path to validate (can be relative or absolute)
-    /// - Throws: SandboxError.escapeAttempt if path escapes sandbox
+    /// - Throws: SandboxContext.Error.escapeAttempt if path escapes sandbox
     func validatePath(_ path: AbsolutePath) throws
 
     /// Applies sandbox changes to the original working directory.
@@ -141,19 +142,11 @@ actor SandboxContext {
     ///   - fileSystem: File system for operations
     ///   - force: If true, override conflicts with warning. If false, throw error on conflicts.
     /// - Returns: List of conflicts that were overridden (empty if no conflicts or force=false)
-    /// - Throws: SandboxError.conflictingFiles if conflicts detected and force=false
+    /// - Throws: SandboxContext.Error.conflictingFiles if conflicts detected and force=false
     func applyChanges(
         fileSystem: any FileSysteming,
         force: Bool
     ) async throws -> [ConflictInfo]
-
-    /// Computes a summary of changes between sandbox and original working directory.
-    ///
-    /// Used to display changes to user before confirmation.
-    /// - Returns: ChangeSummary with added, modified, and deleted files
-    func computeChangeSummary(
-        fileSystem: any FileSysteming
-    ) async throws -> ChangeSummary
 
     /// Discards the sandbox without applying changes.
     ///
@@ -182,60 +175,39 @@ struct ChangeSummary {
 
 **Key Characteristics**:
 - Single sandbox directory (no staging/output split)
-- Baseline hash snapshot taken at creation time
+- Dual filesystem watchers capture touched paths in sandbox + working dir
 - All operations happen within sandbox.root
-- Change detection via content hash comparison
+- Change detection compares only watcher-reported files
 
 **Design Rationale**:
 - Actor ensures thread-safe access to sandbox state
-- Content hashing enables accurate change detection
+- Watcher-driven diff keeps large trees fast (no full rescans)
 - Single sandbox simplifies mental model
 - Idempotent discard allows safe cleanup in any error path
 
 ---
 
-### 2. SandboxError
+### 2. Sandbox Errors and Types
 
-**Responsibility**: Define sandbox-specific errors
+**Responsibility**: Define sandbox-specific errors and supporting types
 
-**File**: `Sources/EggKit/WorkflowRunner/Internals/SandboxError.swift`
+**Files**:
+- `Sources/EggKit/WorkflowRunner/Sandbox/SandboxError.swift`
+- `Sources/EggKit/WorkflowRunner/Sandbox/ConflictInfo.swift`
+- `Sources/EggKit/WorkflowRunner/Sandbox/ChangeSummary.swift`
 
 **Interface**:
 ```swift
-enum SandboxError: LocalizedError, Equatable {
-    /// Attempted to use a sandbox that has already been discarded.
-    case alreadyDiscarded
-
-    /// Failed to create sandbox directory structure.
-    case creationFailed(reason: String)
-
-    /// Path attempted to escape sandbox boundaries.
-    /// This can occur in pre_hatch, hatch output, or post_hatch.
-    case escapeAttempt(path: String)
-
-    /// Conflicting changes detected during apply.
-    /// Contains list of conflicting relative paths and conflict type.
-    case conflictingFiles([ConflictInfo])
-
-    /// User declined to apply changes when prompted.
-    case userAborted
-
-    /// Failed to apply sandbox changes to destination.
-    case applyFailed(reason: String)
-
-    var errorDescription: String? { get }
-}
-
-struct ConflictInfo: Equatable {
-    let path: RelativePath
-    let type: ConflictType
-
-    enum ConflictType: Equatable {
-        /// File was modified in sandbox but also modified in working directory
-        case bothModified
-        /// File was deleted in sandbox but modified in working directory
-        case deletedButModified
+extension SandboxContext {
+    enum Error: LocalizedError, Equatable {
+        case alreadyDiscarded
+        case creationFailed(reason: String)
+        case escapeAttempt(path: String)
+        case conflictingFiles([ConflictInfo])
+        case userAborted
+        case applyFailed(reason: String)
     }
+
 }
 ```
 
@@ -247,27 +219,12 @@ struct ConflictInfo: Equatable {
 
 **File**: Logic lives inside `SandboxContext.applyChanges`
 
-**Change Detection Algorithm (Dual FSEvents)**:
+**Change Detection Approach (Dual FSEvents)**:
 
-```
-At sandbox creation:
-  1. Clone workingDirectory → sandbox.root (APFS CoW)
-  2. Attach FSEvents watcher to sandbox.root (records sandboxTouchedPaths)
-  3. Attach FSEvents watcher to workingDirectory (records workingDirTouchedPaths)
-
-During hatch execution:
-  - All sandbox mutations automatically populate sandboxTouchedPaths
-  - Any user edits in workingDirectory populate workingDirTouchedPaths
-
-After post_hatch completes:
-  1. Stop both watchers and snapshot the two path sets
-  2. targetPaths = sandboxTouchedPaths ∪ workingDirTouchedPaths
-  3. For each path in targetPaths:
-        - Compare sandbox vs workingDirectory contents via git diff --no-index <sandbox/path> <working/path>
-        - Classify as Added / Modified / Deleted based solely on sandbox result
-        - If path ∈ workingDirTouchedPaths, mark as potential conflict
-  4. Generate ChangeSummary + apply plan using this classified list only
-```
+1. **Watch both trees**: Immediately after cloning, start lightweight filesystem watchers on `sandbox.root` and on the original working directory. Each watcher accumulates relative paths that actually changed during the run.
+2. **Limit diff scope**: When hatch completes, union the two path sets. Only those paths are compared (via `git diff --no-index` or an equivalent file comparer) to derive Added / Modified / Deleted entries for `ChangeSummary`.
+3. **Surface potential conflicts**: Any path that appears in the working-directory watcher set is automatically treated as “potential conflict,” regardless of the diff outcome. This conservatively flags files the user touched mid-run.
+4. **Apply only what changed**: The resulting change list (typically tiny compared to the full tree) drives the partial-apply step—new files copied in, modified files overwritten, deleted files removed.
 
 **Conflict Matrix**:
 
@@ -280,54 +237,33 @@ After post_hatch completes:
 | Deleted | No                | Delete |
 | Deleted | Yes               | Potential conflict |
 
-**Implementation**:
-```swift
-func applyChanges(fileSystem: any FileSysteming, force: Bool) async throws -> [ConflictInfo] {
-    guard !isDiscarded else { throw SandboxError.alreadyDiscarded }
+**Implementation Notes**:
+- The design focuses on “signal extraction” (watchers + minimal diffs). Actual scheduling of watcher draining, git invocations, and copy/delete operations is left to the implementation plan.
+- Potential conflicts are decided purely from watcher overlap. Interactive runs prompt before overriding; non-interactive runs fail fast unless `--force` was specified.
+- Cleanup (removing the sandbox directory, disposing watchers) follows the same guarantees as the original design.
 
-    // 1. Obtain watcher results
-    let sandboxTouchedPaths = await sandboxWatcher.drainEvents()
-    let workingDirTouchedPaths = await workingDirWatcher.drainEvents()
-    let targetPaths = sandboxTouchedPaths.union(workingDirTouchedPaths)
+This targeted approach dramatically reduces work on large projects (e.g., untouched `node_modules` never enters the diff), while still surfacing all user-edited paths as potential conflicts.
 
-    // 2. Classify sandbox changes via git diff --no-index (path-scoped)
-    let changeEntries = try await diffPaths(targetPaths)
+### Apply Staging Area
 
-    // 3. Detect conflicts (event-based)
-    var conflicts: [ConflictInfo] = []
-    for entry in changeEntries where workingDirTouchedPaths.contains(entry.path) {
-        conflicts.append(ConflictInfo(path: entry.path, type: .potentialOverlap))
-    }
+- **Purpose**: guarantee that no partial changes reach the real working directory even if a late failure occurs.
+- **Mechanics**:
+  1. `SandboxContext` materializes every add/modify/delete described by the watcher-derived change set inside a temporary `applyStagingRoot` created via `FileSystem.makeTemporaryDirectory` (typically under `/tmp/egg-apply-staging-XXXXXX`). This keeps staging isolated from both the sandbox and working directories while still benefiting from fast local storage.
+  2. The staging step performs file copies, deletions, permission updates, and conflict resolution exactly as they would occur on the real tree, but against the staging root. Errors (permission issues, disk full, template bugs) surface here before the working directory is touched.
+  3. Once staging succeeds, the helper returns a `ChangeManifest` describing everything that was materialized. `SandboxContext` owns this manifest (ensuring single source of truth) and passes it back to the helper for the apply phase.
+  4. A final, deterministic pass streams staged contents into the real working directory (Deletes → Adds → Modifies). Because all side effects are already computed, this pass is a simple transfer with well-defined rollback data.
+- **Additional requirements**:
+  - `applyStagingRoot` must be automatically cleaned up, even on crash/abort.
+  - Disk space check: ensure there is enough space for staging before copying large trees.
+  - File metadata parity (permissions, executability, timestamps) must be preserved so transfer back is faithful.
+  - Conflict overrides (`--force`) are recorded in staging metadata so the user can see which files were overwritten during the final apply.
+  - Errors raised during staging/apply are encapsulated by `ApplyStagingArea.Error`, a nested enum that groups staging-specific failure reasons (rollback failure, missing staged artifact). Keeping the error scoped to the type upholds single-responsibility boundaries and avoids polluting the global namespace.
 
-    // 4. Handle conflicts
-    if !conflicts.isEmpty && !force {
-        throw SandboxError.conflictingFiles(conflicts)
-    }
-    // If force=true, conflicts will be returned for warning display
+### Conflict confirmation UX
 
-    // 5. Apply changes
-    // 4. Apply changes in targetPaths only (order: deletes → adds → modifies)
-    try await applyChangeEntries(changeEntries, respectingConflicts: conflicts, force: force)
-
-    // 6. Cleanup
-    try await fileSystem.remove(root)
-    isDiscarded = true
-
-    return conflicts  // Return for warning display if force=true
-}
-```
-
----
-
-### Dual Watchers for Targeted Diff
-
-Both sandbox and original workingDirectory receive FSEvents watchers once cloning finishes. These watchers record only the relative paths that actually changed during the hatch run. Instead of hashing entire trees:
-
-- `sandboxTouchedPaths` tells us exactly which files the workflow touched.
-- `workingDirTouchedPaths` tells us which files the user or another process touched concurrently.
-- The union determines which paths require diffing via `git diff --no-index`. Everything else is implicitly unchanged and skipped.
-
-This dramatically reduces diff scope on large projects (e.g., `node_modules` stays untouched, so never diffed) while still surfacing “potential conflict” warnings whenever both sides touched the same path. `--force` continues to override but emits a warning that the file changed outside the sandbox.
+- **Interactive mode**: if potential conflicts exist and `--force` is not supplied, Noora lists the paths and prompts `Override these files? [y/N]`. Choosing `y` proceeds (equivalent to force for this apply), otherwise the run aborts cleanly.
+- **Non-interactive / direct mode**: potential conflicts immediately raise `SandboxContext.Error.conflictingFiles` unless `--force` was set on the CLI.
+- **Force flag**: skips prompts in both modes and records overridden paths for warning output after apply.
 
 ### 4. Sandbox Escape Detection
 
@@ -345,7 +281,7 @@ This dramatically reduces diff scope on large projects (e.g., `node_modules` sta
 func validatePath(_ path: AbsolutePath) throws {
     let normalizedPath = path.lexicallyNormalized()
     guard normalizedPath.isDescendant(of: root) else {
-        throw SandboxError.escapeAttempt(path: path.pathString)
+        throw SandboxContext.Error.escapeAttempt(path: path.pathString)
     }
 }
 ```
@@ -424,12 +360,12 @@ Flow:
   1. Create Sandbox (clone workingDirectory)
      ├─ SandboxContext.create(cloning: workingDirectory)
      ├─ Copy all files from workingDirectory to sandbox.root
-     └─ Compute baseline hashes for all files
+     └─ Attach sandbox + workingDir watchers to capture touched paths
 
   2. Execute pre_hatch (in sandbox.root)
      ├─ LifecycleStepRunner(workingDirectory: sandbox.root)
      ├─ Shell commands run, outputs captured
-     ├─ Any path escape attempt → SandboxError.escapeAttempt
+     ├─ Any path escape attempt → SandboxContext.Error.escapeAttempt
      └─ StepOutputsStorage updated with pre_hatch outputs
 
   3. Execute hatch (to sandbox.root/output)
@@ -441,14 +377,14 @@ Flow:
   4. Execute post_hatch (in sandbox.root)
      ├─ LifecycleStepRunner(workingDirectory: sandbox.root)
      ├─ Shell commands run in sandbox
-     ├─ Any path escape attempt → SandboxError.escapeAttempt
+     ├─ Any path escape attempt → SandboxContext.Error.escapeAttempt
      └─ StepOutputsStorage updated with post_hatch outputs
 
   5. Partial apply (on success only)
-     ├─ Compute sandbox hashes
-     ├─ Detect conflicts with current workingDirectory
-     ├─ If conflicts → SandboxError.conflictingFiles
-     └─ Apply diff: add new, update modified, delete removed
+     ├─ Drain sandbox + workingDir watcher events
+     ├─ Run targeted diffs for touched paths
+     ├─ Flag overlapping paths as potential conflicts
+     └─ Apply classified changes (add/update/delete) if user/flags allow
 
   On error at any step:
      └─ sandbox.discard() → Remove all sandbox contents
@@ -484,13 +420,15 @@ EGG_ORIGINAL_WORKING_DIR=/Users/user/projects  # Read-only reference
 ```
 Timeline:
   t0: Sandbox created (clone of workingDirectory)
-      └─ baselineHashes computed
+      └─ Watchers attached to sandbox + workingDirectory
   t1: pre_hatch, hatch, post_hatch execute in sandbox
-      └─ Files created, modified, deleted within sandbox
-  t2: Apply changes
-      └─ Diff computed: sandbox vs baseline
-      └─ Conflicts checked: baseline vs current workingDirectory
-      └─ Changes applied: only the diff
+      └─ Watchers record any touched files
+  t2: Stage changes
+      └─ Drain watcher sets, run per-path diffs only on touched files
+      └─ Materialize adds/modifies/deletes inside applyStagingRoot
+      └─ Conflicts checked: overlap between sandbox + workingDirectory events
+  t3: Apply staged diff
+      └─ Transfer staged contents into workingDirectory (Deletes → Adds → Modifies)
 ```
 
 ### Why Partial Apply?
@@ -499,6 +437,7 @@ Timeline:
 - **Concurrent modification detection**: User edits during hatch are detected
 - **Minimal impact**: Unchanged files are never touched
 - **Predictable**: User knows exactly what will change
+- **Two-phase commit**: Staging ensures the real working directory is only touched after a dry-run of the file operations succeeds
 
 ### User Confirmation Before Apply
 
@@ -537,7 +476,7 @@ if !force {
     let confirmed = await noora.confirm("Apply these changes?")
     guard confirmed else {
         await sandbox.discard(fileSystem: fileSystem)
-        throw SandboxError.userAborted
+        throw SandboxContext.Error.userAborted
     }
 }
 
@@ -566,15 +505,14 @@ if !overriddenConflicts.isEmpty {
 try fileSystem.copy(from: workingDirectory, to: sandbox.root, usingClone: true)
 ```
 
-**Hash Computation Cost**:
-- SHA256 is O(file size)
-- For large directories with many files, this can be expensive
-- Optimization: Skip hashing for files with unchanged mtime
+**Watcher & Diff Cost**:
+- FSEvents delivers only the paths that actually changed, so untouched trees (e.g., `node_modules`) are never scanned.
+- Per-path diffs still read file contents, but the number of files is limited to the union of watcher results.
 
 **Mitigation Strategies**:
 1. Use APFS clone for sandbox creation (instant)
-2. Use mtime as quick check before hashing
-3. Parallelize hash computation for large directories
+2. Deduplicate watcher bursts to keep the target set small
+3. Batch git diff calls so multiple paths are compared in a single process launch
 
 ### Git diff-based change detection
 
@@ -587,8 +525,8 @@ try fileSystem.copy(from: workingDirectory, to: sandbox.root, usingClone: true)
 ### Error Propagation
 
 ```
-SandboxError.escapeAttempt        ───┐
-SandboxError.conflictingFiles        │
+SandboxContext.Error.escapeAttempt        ───┐
+SandboxContext.Error.conflictingFiles        │
 ShellExecutionError                  ├──► SandboxedWorkflowRunner
 UndefinedOutputReferenceError        │           │
 ConditionEvaluationError             │           ▼
@@ -629,18 +567,24 @@ func run(...) async throws -> AbsolutePath {
 ```
 Sources/EggKit/
 ├── WorkflowRunner/
-│   ├── SandboxedWorkflowRunner.swift     (NEW - main orchestrator)
-│   ├── WorkflowRunning.swift             (NEW - protocol)
-│   ├── LifecycleWorkflowRunner.swift     (existing - add protocol conformance)
-│   ├── LifecycleStepRunner.swift         (existing - add env overrides)
-│   ├── TemplateExpander.swift            (existing - no changes)
-│   ├── ShellScriptRunner.swift           (existing - add environment param)
-│   └── Internals/
-│       ├── SandboxContext.swift          (NEW)
-│       ├── SandboxError.swift            (NEW)
-│       └── ... (existing internals)
-└── HatchRunner.swift                     (update to use SandboxedWorkflowRunner)
+│   ├── Shared/
+│   │   ├── WorkflowRunning.swift
+│   │   ├── LifecycleStepRunner.swift
+│   │   ├── ShellScriptRunner.swift
+│   │   └── TemplateExpander.swift
+│   ├── NoSandbox/
+│   │   └── LifecycleWorkflowRunner.swift
+│   └── Sandbox/
+│       ├── SandboxedWorkflowRunner.swift
+│       ├── SandboxContext.swift
+│       ├── ApplyStagingArea.swift
+│       ├── SandboxError.swift
+│       ├── WorkingDirectoryWatcher.swift
+│       └── (supporting internals)
+└── HatchRunner.swift                     (factory: sandbox vs legacy)
 ```
+
+This separation keeps sandbox-specific logic isolated, retains the legacy runner in `NoSandbox/`, and leaves reusable components accessible under `Shared/`.
 
 ---
 
@@ -761,14 +705,15 @@ try sandbox.validatePath(absoluteOutput)  // Throws if escape attempt
 - Simpler to understand and implement
 - All operations naturally stay within one boundary
 - Partial apply handles all change types uniformly
+- The apply staging area is lightweight and exists only for the final copy-back phase, so we still avoid maintaining two full execution sandboxes
 
-### Why content hashing instead of mtime?
+### Why watcher-driven diff instead of full rescans?
 
 **Answer**:
-- Accurate change detection regardless of timestamps
-- Handles edge cases (file touched but not changed)
-- Required for proper conflict detection
-- Can optimize with mtime as quick pre-check
+- Touch-path capture means we only compare files that actually changed, keeping large repos fast.
+- FSEvents surfaces concurrent user edits automatically, making conflict detection independent of timestamps.
+- Eliminates reliance on expensive SHA hashing or mtime heuristics.
+- Still compatible with `git diff --no-index`, which handles rename detection and large-file optimizations on the narrowed set.
 
 ### Why partial apply instead of full replacement?
 
@@ -882,16 +827,16 @@ Unchanged (not touched):
 
 ```
 Timeline:
-  t0: Sandbox created, baseline has README.md (hash: abc)
-  t1: User edits README.md in working directory (hash: xyz)
-  t2: post_hatch modifies README.md in sandbox (hash: 123)
-  t3: Apply detects conflict:
-      - Sandbox hash (123) != Baseline hash (abc) → Modified in sandbox
-      - Current hash (xyz) != Baseline hash (abc) → Modified in working dir
-      → CONFLICT: bothModified
+  t0: Sandbox created, watchers attach
+  t1: User edits README.md in working directory → working watcher records `README.md`
+  t2: post_hatch modifies README.md in sandbox → sandbox watcher records `README.md`
+  t3: Apply drains both watcher sets, union contains `README.md`
+      - git diff on that path shows sandbox intends to update the file
+      - working watcher indicates concurrent change
+      → Potential conflict surfaced to user
 
 Error:
-  SandboxError.conflictingFiles([
+  SandboxContext.Error.conflictingFiles([
     ConflictInfo(path: "README.md", type: .bothModified)
   ])
 ```
@@ -908,7 +853,7 @@ Error:
 | **User confirmation** | Show changes and prompt before apply (skip with `--force`) |
 | **Conflict handling** | Error by default; `--force` overrides with warning |
 | **Automatic cleanup** | Sandbox discarded on any failure or user abort |
-| **Content hashing** | Accurate change detection |
+| **Watcher-driven diff** | Only touched paths are compared/applied |
 | **Actor-based safety** | Thread-safe sandbox management |
 
 The architecture provides:

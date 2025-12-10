@@ -67,7 +67,6 @@ extension ConfigValidator {
             return errors
         }
 
-        // MARK: - Private Methods
 
         private func validateRequiredFields(_ macro: Config.Macro, context: String) -> [Error] {
             var errors: [Error] = []
@@ -237,7 +236,6 @@ extension ConfigValidator {
             }
         }
 
-        // MARK: - Helper Methods
 
         private func isValidMacroName(_ name: String) -> Bool {
             guard name.hasPrefix("___"), name.hasSuffix("___") else {

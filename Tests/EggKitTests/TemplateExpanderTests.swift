@@ -355,7 +355,6 @@ struct TemplateExpanderTests {
                 ]
             ),
 
-            // MARK: - Overwrite Tests
 
             // Force overwrites existing files
             .success(

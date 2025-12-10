@@ -16,20 +16,26 @@ Before starting implementation:
 - [ ] Review SANDBOXED_WORKFLOW_DESIGN.md in full
 - [ ] Understand existing `LifecycleWorkflowRunner` implementation
 - [ ] Understand `StepOutputsStorage` actor pattern (reference for SandboxContext)
-- [ ] Understand FileSysteming protocol and hash computation methods
+- [ ] Understand FileSysteming protocol (APFS clone, path validation, etc.)
 
 ---
 
-## Phase 1: Foundation Layer (SandboxContext + SandboxError)
+## Phase 1: Foundation Layer (SandboxContext + Nested Errors)
+
+> Directory layout note: sandbox-specific sources live under `Sources/EggKit/WorkflowRunner/Sandbox/`, legacy runner under `WorkflowRunner/NoSandbox/`, and shared utilities under `WorkflowRunner/Shared/`. Tests mirror the same structure beneath `Tests/EggKitTests/WorkflowRunner/`.
 
 **Goal:** Create the core sandbox management components.
 
-### 1.1 Create SandboxError
+### 1.1 Create SandboxContext.Error
 
-**File:** `Sources/EggKit/WorkflowRunner/Internals/SandboxError.swift`
+**Files:**
+- `Sources/EggKit/WorkflowRunner/Sandbox/SandboxError.swift`
+- `Sources/EggKit/WorkflowRunner/Sandbox/ConflictInfo.swift`
+- `Sources/EggKit/WorkflowRunner/Sandbox/ChangeSummary.swift`
 
 ```swift
-enum SandboxError: LocalizedError, Equatable {
+extension SandboxContext {
+enum Error: LocalizedError, Equatable {
     case alreadyDiscarded
     case creationFailed(reason: String)
     case escapeAttempt(path: String)
@@ -54,31 +60,22 @@ struct ChangeSummary {
     let deleted: [RelativePath]
     var isEmpty: Bool { added.isEmpty && modified.isEmpty && deleted.isEmpty }
 }
+}
 ```
 
 **Checklist:**
-- [ ] Create file with enum definition
+- [ ] Create file with nested enum definition
 - [ ] Implement `LocalizedError` conformance with user-friendly messages
 - [ ] Add `Equatable` conformance for testing
 - [ ] Test: Error equality and description formatting
 
 ### 1.2 Create SandboxContext Actor
 
-**File:** `Sources/EggKit/WorkflowRunner/Internals/SandboxContext.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Sandbox/SandboxContext.swift`
 
 **Implementation Order:**
 
 1. **Basic structure:**
-```swift
-actor SandboxContext {
-    let root: AbsolutePath
-    let originalWorkingDirectory: AbsolutePath
-    private var baselineHashes: [RelativePath: String]
-    private var isDiscarded: Bool = false
-}
-```
-
-2. **Factory method:**
 ```swift
 static func create(
     cloning workingDirectory: AbsolutePath,
@@ -87,21 +84,21 @@ static func create(
 ```
 - Create temp directory with prefix `egg-sandbox-`
 - Use APFS clone (`clonefile()`) for instant copy-on-write copy
-- Compute SHA256 hash for each file → baselineHashes
+- Start sandbox + working-directory watchers immediately after cloning so that change tracking is watcher-driven from the very beginning
 - Handle symlinks (copy as symlinks)
 - Skip device files/sockets with warning
 
-3. **Path validation:**
+2. **Path validation:**
 ```swift
 func validatePath(_ path: AbsolutePath) throws {
     let normalized = path.lexicallyNormalized()
     guard normalized.isDescendant(of: root) else {
-        throw SandboxError.escapeAttempt(path: path.pathString)
+        throw SandboxContext.Error.escapeAttempt(path: path.pathString)
     }
 }
 ```
 
-4. **Discard method:**
+3. **Discard method:**
 ```swift
 func discard(fileSystem: any FileSysteming) async {
     guard !isDiscarded else { return }  // Idempotent
@@ -110,16 +107,15 @@ func discard(fileSystem: any FileSysteming) async {
 }
 ```
 
-5. **Apply changes (most complex - implement after testing basics):**
-- See Phase 2
+4. **Apply changes (Phase 2)**
+   - Delegated to the path-targeted diff approach described later.
 
 **Checklist:**
 - [ ] Create actor skeleton with properties
 - [ ] Implement `create()` with APFS clone (clonefile)
-- [ ] Implement hash computation helper (SHA256)
-- [ ] Implement file enumeration helper (recursive)
+- [ ] Implement watcher wiring + lifecycle hooks
 - [ ] Implement `validatePath()`
-- [ ] Implement `computeChangeSummary()` (returns ChangeSummary)
+- [ ] Implement `computeChangeSummary()` (leveraging path-targeted diffs)
 - [ ] Implement `applyChanges(force:)` (returns [ConflictInfo])
 - [ ] Implement `discard()`
 - [ ] Tests: Creation, path validation, change summary, apply with/without force, discard idempotency
@@ -135,7 +131,7 @@ func discard(fileSystem: any FileSysteming) async {
 **Goal:** Capture touched paths in both sandbox and working directory without scanning entire trees.
 
 Steps:
-1. Implement `WorkingDirectoryWatcher` abstraction (FSEvents on macOS, placeholder for other OS) with `start()`, `stop()`, `drainEvents()` returning `Set<RelativePath>`.
+1. Implement `WorkingDirectoryWatcher` abstraction (FSEvents on macOS) with `start()`, `stop()`, `drainEvents()` returning `Set<RelativePath>`. Because this feature targets macOS only, no cross-platform fallback is required.
 2. Instantiate one watcher pointing at `sandbox.root`, another at `originalWorkingDirectory`.
 3. Normalize events:
    - Convert to relative paths (relative to respective roots)
@@ -156,35 +152,64 @@ Steps:
 2. **Drain watcher events**:
    - `sandboxTouched = sandboxWatcher.drainEvents()`
    - `workingTouched = workingWatcher.drainEvents()`
-   - `targetPaths = sandboxTouched ∪ workingTouched`
+   - `targetPaths = sandboxTouched union workingTouched`
 3. **Run git diff per target path (batched)**:
    - Invoke `git diff --no-index --name-status -z` restricted to `targetPaths`
    - Parse results into `ChangeEntry { path, kind (add/modify/delete) }`
 4. **Conflict detection**:
-   - If `path ∈ workingTouched`, emit `ConflictInfo(type: .potentialOverlap)`
+   - If `path` is in `workingTouched`, emit `ConflictInfo(type: .potentialOverlap)`
 5. **Handle conflicts**:
-   - `force=false`: throw on first conflict
-   - `force=true`: proceed but report overwritten paths
-6. **Apply changes (targeted)**:
-   - Deletes first, then adds, then modifies, only for paths in `ChangeEntry`
-7. **Cleanup:** Remove sandbox directory, stop watchers, set `isDiscarded = true`
+   - `isInteractive && !force`: display conflicts via Noora, prompt `Override these files?`; abort on negative response
+   - `!isInteractive && !force`: throw `SandboxContext.Error.conflictingFiles`
+   - `force=true`: proceed but record conflicts for warning output
+6. **Apply changes (targeted + staged)**:
+   - For each path in `ChangeEntry`, materialize the new/removed state inside a temporary `applyStaging` directory located under the sandbox root.
+   - Once staging succeeds, perform filesystem updates against the real working directory in the order Deletes -> Adds -> Modifies. Each step tracks success so that, if an error surfaces mid-apply, the runner can revert to the previous state by replaying the inverse operations from staging (or simply abort before touching the working tree when staging fails).
+   - Applying only after staging completes ensures no partial updates remain even when an exception interrupts the operation.
+7. **Cleanup:** Remove sandbox directory and staging artifacts, stop watchers, set `isDiscarded = true`
 8. **Return:** Conflicts list
 
 **Checklist:**
 - [ ] Implement watcher draining + union logic
 - [ ] Implement git diff wrapper that accepts explicit path list
 - [ ] Implement conflict detection based on workingTouched
+- [ ] Implement Noora prompt path for interactive mode
 - [ ] Implement targeted apply (create parents, handle deletes)
 - [ ] Tests: new/modified/deleted path subsets, conflict detection, force override
 
+#### ApplyStagingArea helper
+
+Create a dedicated helper type (struct or class) responsible for managing the temporary staging directory and the metadata required for rollback.
+
+- **Responsibilities**:
+  - Create `applyStagingRoot` via `FileSystem.makeTemporaryDirectory` (typically `/tmp/egg-apply-staging-XXXX`). Keeping staging outside the sandbox avoids surprise interactions with user files and ensures cleanup is trivial even if the sandbox is removed mid-run.
+  - Mirror the change plan (adds/modifies/deletes) inside the staging root, including permissions and file contents.
+  - Return a manifest describing which filesystem actions must be applied to the real working directory, plus the inverse operations in case rollback is required mid-flight. The caller retains this manifest so orchestration state never lives inside `ApplyStagingArea`.
+  - Provide APIs:
+    - `stage(changes: ChangeSummary, sourceRoot: AbsolutePath, fileSystem: FileSysteming)`
+    - `apply(to workingDirectory: AbsolutePath)` which streams staged content to disk
+    - `cleanup()` that tears down staging regardless of success/failure.
+- **Error handling**:
+  - If staging fails, abort before touching the real working directory and surface the error.
+  - If applying fails halfway, use the inverse manifest to undo any writes already performed (or leave the working directory untouched when failure occurs prior to starting).
+  - Scope staging-specific failures to `ApplyStagingArea.Error` (nested enum) so that callers only need to reason about sandbox-level errors (`SandboxContext.Error`) vs. staging internals. The valid cases focus on rollback failures and missing staged artifacts; high-level lifecycle state is tracked by `SandboxContext`.
+- **Extra considerations**:
+  - Validate available disk space before staging large trees (compare `du` of change set vs. free space).
+  - Normalize ownership/permissions so staged artifacts exactly match the sandbox equivalents.
+  - Ensure staging paths are hidden from user templates to avoid accidental interactions (prefix with `.`).
+- **Tests**:
+  - Successful staging/apply for add/modify/delete combinations.
+  - Simulated failure during staging (e.g., permission error) leaves working directory unchanged.
+  - Simulated failure mid-apply triggers rollback and reports error.
+
 ### 2.3 Git diff --no-index integration (optional fast path)
 
-`git diff --no-index` は targetPaths を限定した形で呼び出すだけでよくなった。実装ポイント:
+`git diff --no-index` can now be invoked with a narrowed list of `targetPaths`. Implementation notes:
 
-1. **バッチ diff**: `git diff --no-index --name-status -z sandbox/path working/path ...` を 1 回で呼び出す（arguments でペア列挙）。
-2. **rename detection**: 出力に `Rxxx` が来た場合は delete+add として扱う。
-3. **無変更パスの除外**: Git が "no differences" を返した path は apply 対象から外す。
-4. **フォールバック**: Git 不在・失敗時は軽量 stat 比較に切替（警告表示）。
+1. **Batch diff**: call `git diff --no-index --name-status -z sandbox/path working/path ...` once, enumerating pairs via arguments.
+2. **Rename detection**: when Git outputs `Rxxx`, treat it as a delete+add so downstream logic stays simple.
+3. **Ignore unchanged paths**: if Git reports "no differences" for a path, skip it from the apply set.
+4. **Fallback**: when Git is unavailable or fails, fall back to a lightweight stat comparison and emit a warning.
 
 **Checklist:**
 - [ ] Git diff wrapper that accepts N path pairs
@@ -269,7 +294,7 @@ init(
 
 ### 4.1 Create SandboxedWorkflowRunner
 
-**File:** `Sources/EggKit/WorkflowRunner/SandboxedWorkflowRunner.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Sandbox/SandboxedWorkflowRunner.swift`
 
 **Structure:**
 
@@ -353,16 +378,18 @@ if !force {
     let confirmed = await noora.confirm("Apply these changes?")
     guard confirmed else {
         await sandbox.discard(fileSystem: fileSystem)
-        throw SandboxError.userAborted
+        throw SandboxContext.Error.userAborted
     }
 }
 ```
 
-7. **Apply changes and display conflict warnings:**
+7. **Stage + apply changes and display conflict warnings:**
 ```swift
-// force=true: override conflicts with warning
-// force=false: throw error on conflicts
-let overriddenConflicts = try await sandbox.applyChanges(fileSystem: fileSystem, force: force)
+// Phase 1: build the staged diff. This touches only applyStagingRoot.
+let staging = try await sandbox.stageChanges(fileSystem: fileSystem, force: force)
+
+// Phase 2: push staged changes into the working directory (Deletes -> Adds -> Modifies)
+let overriddenConflicts = try await staging.apply(to: workingDirectory)
 
 // Display warning for overridden conflicts (only when force=true)
 if !overriddenConflicts.isEmpty {
@@ -395,7 +422,7 @@ do {
 - [ ] Implement post_hatch execution
 - [ ] Implement change summary display (helper function)
 - [ ] Implement user confirmation prompt (using Noora)
-- [ ] Implement apply with force parameter (pass to applyChanges)
+- [ ] Implement stage/apply pipeline with force-aware conflict handling
 - [ ] Implement conflict warning display (when force=true)
 - [ ] Implement discard on failure or user abort
 - [ ] Tests: Full workflow, user confirmation, user abort, force mode, conflict override
@@ -543,7 +570,7 @@ let runner = HatchRunner(
 
 | Phase | Components | Dependencies | Estimated Complexity |
 |-------|------------|--------------|---------------------|
-| 1 | SandboxError, SandboxContext (basic) | FileSysteming | Medium |
+| 1 | SandboxContext.Error, SandboxContext (basic) | FileSysteming | Medium |
 | 2 | Hash computation, Apply changes | Phase 1 | High |
 | 3 | WorkflowRunning protocol, Updates | Existing code | Low |
 | 4 | SandboxedWorkflowRunner | Phases 1-3 | High |
@@ -582,7 +609,7 @@ let runner = HatchRunner(
 
 ### Test Coverage
 
-- [ ] All SandboxError cases covered (including userAborted)
+- [ ] All `SandboxContext.Error` cases covered (including userAborted)
 - [ ] SandboxContext: creation, validation, change summary, apply, discard
 - [ ] SandboxedWorkflowRunner: success, user confirmation, user abort, force mode
 - [ ] CLI integration: --no-sandbox, --force, combined flags
@@ -625,22 +652,25 @@ None required - using:
 
 | File | Description |
 |------|-------------|
-| `SandboxError.swift` | Error types for sandbox operations |
-| `SandboxContext.swift` | Actor managing sandbox lifecycle |
-| `WorkflowRunning.swift` | Protocol for workflow runners |
-| `SandboxedWorkflowRunner.swift` | Main orchestrator |
-| `SandboxContextTests.swift` | Unit tests for SandboxContext |
-| `SandboxedWorkflowRunnerTests.swift` | Unit tests for runner |
+| `WorkflowRunner/Sandbox/SandboxError.swift` | Nested error types for sandbox operations |
+| `WorkflowRunner/Sandbox/SandboxContext.swift` | Actor managing sandbox lifecycle |
+| `WorkflowRunner/Sandbox/SandboxedWorkflowRunner.swift` | Main orchestrator |
+| `WorkflowRunner/Sandbox/ApplyStagingArea.swift` | Helper managing staged diff + rollback |
+| `WorkflowRunner/Sandbox/WorkingDirectoryWatcher.swift` | Dual FSEvents implementation |
+| `WorkflowRunner/Shared/WorkflowRunning.swift` | Protocol for workflow runners |
+| `Tests/EggKitTests/WorkflowRunner/Sandbox/SandboxContextTests.swift` | Unit tests for SandboxContext |
+| `Tests/EggKitTests/WorkflowRunner/Sandbox/SandboxedWorkflowRunnerTests.swift` | Unit tests for runner |
+| `Tests/EggKitTests/WorkflowRunner/Sandbox/ApplyStagingAreaTests.swift` | Unit tests for staging helper |
 
 ### Modified Files
 
 | File | Changes |
 |------|---------|
-| `LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
-| `LifecycleStepRunner.swift` | Add environmentOverrides parameter |
-| `ShellScriptRunner.swift` | Add additionalEnvironment parameter |
-| `HatchRunner.swift` | Add useSandbox and force parameters, factory method |
-| `HatchCommand.swift` | Add --no-sandbox and --force flags |
+| `WorkflowRunner/NoSandbox/LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
+| `WorkflowRunner/Shared/LifecycleStepRunner.swift` | Add environmentOverrides parameter |
+| `WorkflowRunner/Shared/ShellScriptRunner.swift` | Add additionalEnvironment parameter |
+| `HatchRunner.swift` | Add useSandbox and force parameters, runner factory |
+| `EggCLI/Commands/HatchCommand.swift` | Add --no-sandbox and --force flags |
 
 ---
 

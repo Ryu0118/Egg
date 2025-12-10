@@ -167,7 +167,6 @@ struct CreateArgumentsValidatorTests {
     }
 }
 
-// MARK: - Equatable conformance for CreateRunnerMode
 
 extension CreateRunnerMode: Equatable {
     public static func == (lhs: CreateRunnerMode, rhs: CreateRunnerMode) -> Bool {
@@ -183,7 +182,6 @@ extension CreateRunnerMode: Equatable {
     }
 }
 
-// MARK: - Equatable conformance for CreateArgumentsValidator.Error
 
 extension CreateArgumentsValidator.Error: Equatable {
     public static func == (lhs: CreateArgumentsValidator.Error, rhs: CreateArgumentsValidator.Error) -> Bool {
