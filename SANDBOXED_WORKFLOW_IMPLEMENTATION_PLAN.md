@@ -130,65 +130,68 @@ func discard(fileSystem: any FileSysteming) async {
 
 **Goal:** Implement the change detection and partial apply logic.
 
-### 2.1 Hash Computation Helpers
+### 2.1 Dual watcher infrastructure
 
-**Location:** Inside SandboxContext or separate internal file
+**Goal:** Capture touched paths in both sandbox and working directory without scanning entire trees.
 
-```swift
-private func computeHash(
-    _ path: AbsolutePath,
-    fileSystem: any FileSysteming
-) async throws -> String {
-    let data = try await fileSystem.readFile(path)
-    return SHA256.hash(data: data).hexString
-}
-
-private func enumerateFiles(
-    in directory: AbsolutePath,
-    fileSystem: any FileSysteming
-) async throws -> [RelativePath]
-```
+Steps:
+1. Implement `WorkingDirectoryWatcher` abstraction (FSEvents on macOS, placeholder for other OS) with `start()`, `stop()`, `drainEvents()` returning `Set<RelativePath>`.
+2. Instantiate one watcher pointing at `sandbox.root`, another at `originalWorkingDirectory`.
+3. Normalize events:
+   - Convert to relative paths (relative to respective roots)
+   - Expand directory events to include descendants (e.g., rename)
+   - Deduplicate thrashing (coalesce identical paths)
+4. Ensure watchers survive the entire hatch run and stop deterministically before apply/discard.
 
 **Checklist:**
-- [ ] Implement `computeHash()` using CryptoKit SHA256
-- [ ] Implement `enumerateFiles()` recursively (files only, not directories)
-- [ ] Handle symlinks correctly (hash target content)
-- [ ] Tests: Hash consistency, file enumeration
+- [ ] Implement macOS FSEvents-backed watcher
+- [ ] Provide no-op mock for tests / unsupported platforms
+- [ ] Add unit tests simulating create/delete/modify/rename bursts
 
-### 2.2 Apply Changes Method
+### 2.2 Apply Changes Method (path-targeted)
 
 **Implementation Steps:**
 
 1. **Guard discarded state**
-2. **Compute sandbox state:**
-   - Enumerate all files in sandbox → sandboxFiles
-   - Compute hash for each → sandboxHashes
-3. **Compute current working directory state:**
-   - For each file in baselineHashes, check if exists in workingDir
-   - If exists, compute current hash → currentHashes
-4. **Detect conflicts:**
-   - Modified files: sandboxHash != baselineHash AND currentHash != baselineHash → CONFLICT
-   - Deleted files: not in sandbox AND currentHash != baselineHash → CONFLICT
-5. **Handle conflicts based on force parameter:**
-   - `force=false`: If conflicts exist, throw `SandboxError.conflictingFiles`
-   - `force=true`: Continue with apply (conflicts will be overridden)
-6. **Apply changes:**
-   - New files: Copy from sandbox to workingDir (create parent dirs)
-   - Modified files: Overwrite in workingDir (including conflicting ones if force=true)
-   - Deleted files: Remove from workingDir (including conflicting ones if force=true)
-7. **Cleanup:** Remove sandbox directory, set isDiscarded = true
-8. **Return:** List of overridden conflicts (for warning display)
+2. **Drain watcher events**:
+   - `sandboxTouched = sandboxWatcher.drainEvents()`
+   - `workingTouched = workingWatcher.drainEvents()`
+   - `targetPaths = sandboxTouched ∪ workingTouched`
+3. **Run git diff per target path (batched)**:
+   - Invoke `git diff --no-index --name-status -z` restricted to `targetPaths`
+   - Parse results into `ChangeEntry { path, kind (add/modify/delete) }`
+4. **Conflict detection**:
+   - If `path ∈ workingTouched`, emit `ConflictInfo(type: .potentialOverlap)`
+5. **Handle conflicts**:
+   - `force=false`: throw on first conflict
+   - `force=true`: proceed but report overwritten paths
+6. **Apply changes (targeted)**:
+   - Deletes first, then adds, then modifies, only for paths in `ChangeEntry`
+7. **Cleanup:** Remove sandbox directory, stop watchers, set `isDiscarded = true`
+8. **Return:** Conflicts list
 
 **Checklist:**
-- [ ] Implement sandbox state computation
-- [ ] Implement current state computation
-- [ ] Implement conflict detection logic
-- [ ] Implement force parameter handling (throw vs continue)
-- [ ] Implement change application (add, modify, delete)
-- [ ] Implement directory creation for nested new files
-- [ ] Handle empty directories correctly
-- [ ] Return overridden conflicts list
-- [ ] Tests: New files, modified files, deleted files, conflicts (with/without force)
+- [ ] Implement watcher draining + union logic
+- [ ] Implement git diff wrapper that accepts explicit path list
+- [ ] Implement conflict detection based on workingTouched
+- [ ] Implement targeted apply (create parents, handle deletes)
+- [ ] Tests: new/modified/deleted path subsets, conflict detection, force override
+
+### 2.3 Git diff --no-index integration (optional fast path)
+
+`git diff --no-index` は targetPaths を限定した形で呼び出すだけでよくなった。実装ポイント:
+
+1. **バッチ diff**: `git diff --no-index --name-status -z sandbox/path working/path ...` を 1 回で呼び出す（arguments でペア列挙）。
+2. **rename detection**: 出力に `Rxxx` が来た場合は delete+add として扱う。
+3. **無変更パスの除外**: Git が "no differences" を返した path は apply 対象から外す。
+4. **フォールバック**: Git 不在・失敗時は軽量 stat 比較に切替（警告表示）。
+
+**Checklist:**
+- [ ] Git diff wrapper that accepts N path pairs
+- [ ] Parser converting `A/M/D/R` into `ChangeEntry`
+- [ ] Fallback logic + warning
+- [ ] Tests with recorded git output fixtures
+
 
 ---
 

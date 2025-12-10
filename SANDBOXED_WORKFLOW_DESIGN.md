@@ -247,94 +247,56 @@ struct ConflictInfo: Equatable {
 
 **File**: Logic lives inside `SandboxContext.applyChanges`
 
-**Change Detection Algorithm**:
+**Change Detection Algorithm (Dual FSEvents)**:
 
 ```
 At sandbox creation:
-  1. Enumerate all files in workingDirectory recursively
-  2. Compute content hash (SHA256) for each file
-  3. Store as baselineHashes: [RelativePath: Hash]
+  1. Clone workingDirectory → sandbox.root (APFS CoW)
+  2. Attach FSEvents watcher to sandbox.root (records sandboxTouchedPaths)
+  3. Attach FSEvents watcher to workingDirectory (records workingDirTouchedPaths)
 
-At apply time:
-  1. Enumerate all files in sandbox recursively → sandboxFiles
-  2. Compute content hash for each sandbox file → sandboxHashes
-  3. Re-hash files in workingDirectory → currentHashes (for conflict detection)
+During hatch execution:
+  - All sandbox mutations automatically populate sandboxTouchedPaths
+  - Any user edits in workingDirectory populate workingDirTouchedPaths
 
-  For each file:
-    Case A: File in sandbox, not in baseline (NEW FILE)
-      → Copy to workingDirectory
-
-    Case B: File in both, hashes differ (MODIFIED)
-      → Check currentHashes[file] == baselineHashes[file]
-         If same: Update workingDirectory
-         If different: CONFLICT (bothModified)
-
-    Case C: File in baseline, not in sandbox (DELETED)
-      → Check currentHashes[file] == baselineHashes[file]
-         If same: Delete from workingDirectory
-         If different: CONFLICT (deletedButModified)
-
-    Case D: File unchanged (same hash in sandbox and baseline)
-      → No action
+After post_hatch completes:
+  1. Stop both watchers and snapshot the two path sets
+  2. targetPaths = sandboxTouchedPaths ∪ workingDirTouchedPaths
+  3. For each path in targetPaths:
+        - Compare sandbox vs workingDirectory contents via git diff --no-index <sandbox/path> <working/path>
+        - Classify as Added / Modified / Deleted based solely on sandbox result
+        - If path ∈ workingDirTouchedPaths, mark as potential conflict
+  4. Generate ChangeSummary + apply plan using this classified list only
 ```
 
 **Conflict Matrix**:
 
-| Sandbox | Baseline | Working Dir | Result |
-|---------|----------|-------------|--------|
-| New | - | - | Add |
-| New | - | Exists | Add (overwrite) |
-| Modified | Hash A | Hash A | Update |
-| Modified | Hash A | Hash B | **CONFLICT** |
-| Deleted | Hash A | Hash A | Delete |
-| Deleted | Hash A | Hash B | **CONFLICT** |
-| Unchanged | Hash A | Hash A | No action |
-| Unchanged | Hash A | Hash B | No action (user's change preserved) |
+| Sandbox | Working Dir Event | Result |
+|---------|-------------------|--------|
+| Added   | No                | Add |
+| Added   | Yes               | Potential conflict (new file created both sides) |
+| Modified| No                | Update |
+| Modified| Yes               | Potential conflict |
+| Deleted | No                | Delete |
+| Deleted | Yes               | Potential conflict |
 
 **Implementation**:
 ```swift
 func applyChanges(fileSystem: any FileSysteming, force: Bool) async throws -> [ConflictInfo] {
     guard !isDiscarded else { throw SandboxError.alreadyDiscarded }
 
-    // 1. Compute sandbox state
-    let sandboxFiles = try await enumerateFiles(in: root, fileSystem: fileSystem)
-    var sandboxHashes: [RelativePath: String] = [:]
-    for file in sandboxFiles {
-        sandboxHashes[file] = try await computeHash(root.appending(file), fileSystem: fileSystem)
-    }
+    // 1. Obtain watcher results
+    let sandboxTouchedPaths = await sandboxWatcher.drainEvents()
+    let workingDirTouchedPaths = await workingDirWatcher.drainEvents()
+    let targetPaths = sandboxTouchedPaths.union(workingDirTouchedPaths)
 
-    // 2. Compute current working directory state (for conflict detection)
-    var currentHashes: [RelativePath: String] = [:]
-    for file in baselineHashes.keys {
-        let fullPath = originalWorkingDirectory.appending(file)
-        if await fileSystem.exists(fullPath) {
-            currentHashes[file] = try await computeHash(fullPath, fileSystem: fileSystem)
-        }
-    }
+    // 2. Classify sandbox changes via git diff --no-index (path-scoped)
+    let changeEntries = try await diffPaths(targetPaths)
 
-    // 3. Detect conflicts
+    // 3. Detect conflicts (event-based)
     var conflicts: [ConflictInfo] = []
-
-    // Check modified files
-    for (file, sandboxHash) in sandboxHashes {
-        if let baselineHash = baselineHashes[file], sandboxHash != baselineHash {
-            // File was modified in sandbox
-            if let currentHash = currentHashes[file], currentHash != baselineHash {
-                // Also modified in working directory → CONFLICT
-                conflicts.append(ConflictInfo(path: file, type: .bothModified))
-            }
-        }
-    }
-
-    // Check deleted files
-    for (file, baselineHash) in baselineHashes {
-        if sandboxHashes[file] == nil {
-            // File was deleted in sandbox
-            if let currentHash = currentHashes[file], currentHash != baselineHash {
-                // Modified in working directory → CONFLICT
-                conflicts.append(ConflictInfo(path: file, type: .deletedButModified))
-            }
-        }
+    for entry in changeEntries where workingDirTouchedPaths.contains(entry.path) {
+        conflicts.append(ConflictInfo(path: entry.path, type: .potentialOverlap))
     }
 
     // 4. Handle conflicts
@@ -344,26 +306,8 @@ func applyChanges(fileSystem: any FileSysteming, force: Bool) async throws -> [C
     // If force=true, conflicts will be returned for warning display
 
     // 5. Apply changes
-    // Add new files
-    for (file, _) in sandboxHashes where baselineHashes[file] == nil {
-        try await copyFile(from: root.appending(file),
-                          to: originalWorkingDirectory.appending(file),
-                          fileSystem: fileSystem)
-    }
-
-    // Update modified files (including conflicting ones if force=true)
-    for (file, sandboxHash) in sandboxHashes {
-        if let baselineHash = baselineHashes[file], sandboxHash != baselineHash {
-            try await copyFile(from: root.appending(file),
-                              to: originalWorkingDirectory.appending(file),
-                              fileSystem: fileSystem)
-        }
-    }
-
-    // Delete removed files (including conflicting ones if force=true)
-    for (file, _) in baselineHashes where sandboxHashes[file] == nil {
-        try await fileSystem.remove(originalWorkingDirectory.appending(file))
-    }
+    // 4. Apply changes in targetPaths only (order: deletes → adds → modifies)
+    try await applyChangeEntries(changeEntries, respectingConflicts: conflicts, force: force)
 
     // 6. Cleanup
     try await fileSystem.remove(root)
@@ -374,6 +318,16 @@ func applyChanges(fileSystem: any FileSysteming, force: Bool) async throws -> [C
 ```
 
 ---
+
+### Dual Watchers for Targeted Diff
+
+Both sandbox and original workingDirectory receive FSEvents watchers once cloning finishes. These watchers record only the relative paths that actually changed during the hatch run. Instead of hashing entire trees:
+
+- `sandboxTouchedPaths` tells us exactly which files the workflow touched.
+- `workingDirTouchedPaths` tells us which files the user or another process touched concurrently.
+- The union determines which paths require diffing via `git diff --no-index`. Everything else is implicitly unchanged and skipped.
+
+This dramatically reduces diff scope on large projects (e.g., `node_modules` stays untouched, so never diffed) while still surfacing “potential conflict” warnings whenever both sides touched the same path. `--force` continues to override but emits a warning that the file changed outside the sandbox.
 
 ### 4. Sandbox Escape Detection
 
@@ -621,6 +575,10 @@ try fileSystem.copy(from: workingDirectory, to: sandbox.root, usingClone: true)
 1. Use APFS clone for sandbox creation (instant)
 2. Use mtime as quick check before hashing
 3. Parallelize hash computation for large directories
+
+### Git diff-based change detection
+
+`git diff --no-index <baseline> <sandbox>` runs Git の差分エンジンをディレクトリ同士に直接適用できる。SandboxContext がこのコマンドを呼び出して `--raw` や `--name-status -z` の結果をパースすれば、Git の stat キャッシュ／rename 検出／巨大ファイル処理などをそのまま再利用可能。すでに Git 依存はあるため追加のライブラリ導入も不要で、`computeChangeSummary` / `applyChanges` は Git の出力をトリガにコピー・削除を行うだけで済む。libgit2 を組み込むより手軽に「Git と同じ方法」を実現できる。
 
 ---
 
