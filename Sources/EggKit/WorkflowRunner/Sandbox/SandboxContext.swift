@@ -57,7 +57,7 @@ actor SandboxContext {
     private init(
         root: AbsolutePath,
         originalWorkingDirectory: AbsolutePath,
-        fileSystem: any FileSysteming,
+        fileSystem: sending any FileSysteming,
         sandboxWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning
@@ -72,29 +72,6 @@ actor SandboxContext {
 
     /// Creates a new sandbox context by cloning the working directory.
     ///
-    /// Uses APFS copy-on-write cloning for instant creation. The clone is created
-    /// in a temporary directory with the prefix `egg-sandbox-`.
-    ///
-    /// - Parameters:
-    ///   - workingDirectory: The directory to clone into sandbox
-    ///   - fileSystem: File system for operations
-    /// - Returns: A new SandboxContext with cloned directory
-    /// - Throws: SandboxContext.Error.creationFailed on file system errors
-    static func create(
-        cloning workingDirectory: AbsolutePath,
-        fileSystem: sending any FileSysteming
-    ) async throws -> SandboxContext {
-        try await create(
-            cloning: workingDirectory,
-            fileSystem: fileSystem,
-            sandboxWatcher: FSEventsDirectoryWatcher(),
-            workingDirectoryWatcher: FSEventsDirectoryWatcher(),
-            processRunner: ProcessRunner()
-        )
-    }
-
-    /// Creates a new sandbox context with custom watchers (for testing).
-    ///
     /// - Parameters:
     ///   - workingDirectory: The directory to clone into sandbox
     ///   - fileSystem: File system for operations
@@ -105,19 +82,23 @@ actor SandboxContext {
     /// - Throws: SandboxContext.Error.creationFailed on file system errors
     static func create(
         cloning workingDirectory: AbsolutePath,
-        fileSystem: sending any FileSysteming,
+        fileSystem: any FileSysteming,
         sandboxWatcher: some DirectoryWatching,
         workingDirectoryWatcher: some DirectoryWatching,
         processRunner: some ProcessRunning
     ) async throws -> SandboxContext {
+        // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
+        // FileSystem is actually thread-safe and all its methods are nonisolated.
+        nonisolated(unsafe) let fs = fileSystem
+
         do {
             // Generate unique sandbox path in temp directory
-            let tempDirectory = try await fileSystem.makeTemporaryDirectory(prefix: "egg-sandbox")
+            let tempDirectory = try await fs.makeTemporaryDirectory(prefix: "egg-sandbox")
             // Remove the empty directory so we can clone into it
-            try await fileSystem.remove(tempDirectory)
+            try await fs.remove(tempDirectory)
 
             // Clone entire working directory using APFS copy-on-write
-            try await fileSystem.copy(workingDirectory, to: tempDirectory)
+            try await fs.copy(workingDirectory, to: tempDirectory)
 
             // Start watchers immediately after cloning
             try await sandboxWatcher.start(watching: tempDirectory)
@@ -126,7 +107,7 @@ actor SandboxContext {
             return SandboxContext(
                 root: tempDirectory,
                 originalWorkingDirectory: workingDirectory,
-                fileSystem: fileSystem,
+                fileSystem: fs,
                 sandboxWatcher: sandboxWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner

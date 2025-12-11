@@ -223,7 +223,7 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 
 ### 3.1 Create WorkflowRunning Protocol
 
-**File:** `Sources/EggKit/WorkflowRunner/WorkflowRunning.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Shared/WorkflowRunning.swift`
 
 ```swift
 /// Protocol for workflow runners that execute the hatch lifecycle.
@@ -237,31 +237,31 @@ protocol WorkflowRunning {
 ```
 
 **Checklist:**
-- [ ] Create protocol file
-- [ ] Add conformance to `LifecycleWorkflowRunner`
-- [ ] Verify existing tests still pass
+- [x] Create protocol file
+- [x] Add conformance to `LifecycleWorkflowRunner`
+- [x] Verify existing tests still pass
 
 ### 3.2 Update ShellScriptRunner
 
 **File:** `Sources/EggKit/WorkflowRunner/ShellScriptRunner.swift`
 
 **Changes:**
-- Add optional `additionalEnvironment: [String: String]` parameter to `run()`
-- Merge with existing environment in `executeProcess()`
+- Add optional `additionalEnvironment: [String: String]` parameter to `init()`
+- Merge with existing environment using `Subprocess.Environment.inherit.updating()`
 
 ```swift
-func run(
-    script: String,
+init(
+    processRunner: any ProcessRunning,
     workingDirectory: AbsolutePath,
     additionalEnvironment: [String: String] = [:]
-) async throws -> ShellOutput
+)
 ```
 
 **Checklist:**
-- [ ] Add `additionalEnvironment` parameter
-- [ ] Merge environment variables in process execution
-- [ ] Update existing call sites (if any)
-- [ ] Tests: Environment variable merging
+- [x] Add `additionalEnvironment` parameter
+- [x] Merge environment variables in process execution
+- [x] Update existing call sites (if any)
+- [x] Tests: Environment variable merging
 
 ### 3.3 Update LifecycleStepRunner
 
@@ -279,9 +279,9 @@ init(
 ```
 
 **Checklist:**
-- [ ] Add `additionalEnvironment` property
-- [ ] Pass to ShellScriptRunner.run()
-- [ ] Tests: Environment variable propagation
+- [x] Add `additionalEnvironment` property
+- [x] Pass to ShellScriptRunner.run()
+- [x] Tests: Environment variable propagation
 
 ---
 
@@ -411,18 +411,18 @@ do {
 ```
 
 **Checklist:**
-- [ ] Create basic structure with dependencies (including `force` parameter)
-- [ ] Implement sandbox creation
-- [ ] Implement pre_hatch execution with environment
-- [ ] Implement output path validation
-- [ ] Implement hatch execution
-- [ ] Implement post_hatch execution
-- [ ] Implement change summary display (helper function)
-- [ ] Implement user confirmation prompt (using Noora)
-- [ ] Implement stage/apply pipeline with force-aware conflict handling
-- [ ] Implement conflict warning display (when force=true)
-- [ ] Implement discard on failure or user abort
-- [ ] Tests: Full workflow, user confirmation, user abort, force mode, conflict override
+- [x] Create basic structure with dependencies (including `force` parameter)
+- [x] Implement sandbox creation
+- [x] Implement pre_hatch execution with environment
+- [x] Implement output path validation
+- [x] Implement hatch execution
+- [x] Implement post_hatch execution
+- [x] Implement change summary display (helper function)
+- [x] Implement user confirmation prompt (using Noora)
+- [x] Implement stage/apply pipeline with force-aware conflict handling
+- [x] Implement conflict warning display (when force=true)
+- [x] Implement discard on failure or user abort
+- [x] Tests: Full workflow, user confirmation, user abort, force mode, conflict override
 
 ---
 

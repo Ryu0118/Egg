@@ -10,19 +10,26 @@ import Subprocess
 #endif
 
 /// Executes shell commands and captures output.
+///
+/// When `executionEnvironment` is `.sandboxed`, commands are executed within
+/// an OS-level sandbox using `sandbox-exec` that restricts file system access
+/// to only the sandbox directory.
 struct ShellScriptRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: AbsolutePath
     private let additionalEnvironment: [String: String]
+    private let executionEnvironment: ExecutionEnvironment
 
     init(
         processRunner: any ProcessRunning,
         workingDirectory: AbsolutePath,
-        additionalEnvironment: [String: String] = [:]
+        additionalEnvironment: [String: String] = [:],
+        executionEnvironment: ExecutionEnvironment = .normal
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
         self.additionalEnvironment = additionalEnvironment
+        self.executionEnvironment = executionEnvironment
     }
 
     /// Executes a shell command and captures stdout and stderr.
@@ -31,11 +38,16 @@ struct ShellScriptRunner {
     /// - Returns: Tuple of (stdout, stderr)
     /// - Throws: LifecycleStepError.shellExecutionError if the command exits with non-zero status
     func execute(_ command: String) async throws -> (stdout: String, stderr: String) {
+        let (executable, arguments) = makeExecutableAndArguments(for: command)
+
+        // Resolve symlinks in working directory for sandbox compatibility
+        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.pathString)
+
         let result = try await processRunner.run(
-            .path("/bin/sh"),
-            arguments: ["-c", command],
+            executable,
+            arguments: arguments,
             environment: mergedEnvironment,
-            workingDirectory: FilePath(workingDirectory.pathString),
+            workingDirectory: FilePath(resolvedWorkingDirectory),
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: .max),
@@ -75,11 +87,16 @@ struct ShellScriptRunner {
         _ command: String,
         onOutput: @escaping (String) -> Void
     ) async throws -> String {
+        let (executable, arguments) = makeExecutableAndArguments(for: command)
+
+        // Resolve symlinks in working directory for sandbox compatibility
+        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.pathString)
+
         let result = try await processRunner.run(
-            .path("/bin/sh"),
-            arguments: ["-c", command],
+            executable,
+            arguments: arguments,
             environment: mergedEnvironment,
-            workingDirectory: FilePath(workingDirectory.pathString)
+            workingDirectory: FilePath(resolvedWorkingDirectory)
         ) { _, stdoutSequence in
             var stdoutBuffer = Data()
 
@@ -136,5 +153,99 @@ struct ShellScriptRunner {
             envUpdates[envKey] = value
         }
         return Subprocess.Environment.inherit.updating(envUpdates)
+    }
+
+    /// Returns the executable and arguments for running the command.
+    ///
+    /// When sandboxed, wraps the command in `sandbox-exec`
+    /// with a profile that restricts file system access to only the sandbox directory.
+    private func makeExecutableAndArguments(for command: String) -> (Subprocess.Executable, Arguments) {
+        switch executionEnvironment {
+        case .normal:
+            return (.path("/bin/sh"), ["-c", command])
+
+        case let .sandboxed(root, originalWorkingDirectory):
+            let profile = generateSandboxProfile(
+                allowingAccessTo: root,
+                denyingAccessTo: originalWorkingDirectory
+            )
+            // sandbox-exec -p '<profile>' /bin/sh -c '<command>'
+            return (
+                .path("/usr/bin/sandbox-exec"),
+                ["-p", profile, "/bin/sh", "-c", command]
+            )
+        }
+    }
+
+    /// Generates a Sandbox Profile Language (SBPL) profile that restricts file access.
+    ///
+    /// The profile:
+    /// - Denies all operations by default
+    /// - Allows process execution (required for running commands)
+    /// - Allows read access to all files
+    /// - Allows read/write access only to the sandbox root directory
+    /// - Explicitly denies write access to the original working directory
+    /// - Allows network access (some scripts may need it)
+    ///
+    /// Reference: https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf
+    private func generateSandboxProfile(
+        allowingAccessTo sandboxRoot: AbsolutePath,
+        denyingAccessTo originalWorkingDirectory: AbsolutePath
+    ) -> String {
+        // Resolve symlinks to get the real path (sandbox-exec uses real paths)
+        // e.g., /var/folders/... -> /private/var/folders/...
+        let sandboxPath = resolveRealPath(sandboxRoot.pathString)
+        let originalPath = resolveRealPath(originalWorkingDirectory.pathString)
+
+        // Escape quotes in paths for SBPL string literal
+        let escapedSandboxPath = sandboxPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedOriginalPath = originalPath.replacingOccurrences(of: "\"", with: "\\\"")
+
+        return """
+        (version 1)
+        (deny default)
+
+        ; Allow all process operations (exec, fork, etc.)
+        (allow process*)
+
+        ; Allow reading all files
+        (allow file-read*)
+
+        ; Explicitly deny write access to original working directory
+        (deny file-write* (subpath "\(escapedOriginalPath)"))
+
+        ; Allow full read/write access to sandbox directory only
+        (allow file-write* (subpath "\(escapedSandboxPath)"))
+
+        ; Allow file I/O control operations
+        (allow file-ioctl)
+
+        ; Allow network (some scripts may need it)
+        (allow network*)
+
+        ; Allow sysctl for process management
+        (allow sysctl-read)
+
+        ; Allow mach lookups for IPC
+        (allow mach-lookup)
+
+        ; Allow signal handling
+        (allow signal)
+
+        ; Allow IPC operations
+        (allow ipc-posix*)
+        """
+    }
+
+    /// Resolves symlinks in a path using C's realpath.
+    ///
+    /// This is necessary because sandbox-exec uses real paths, not symlinked paths.
+    /// For example, `/var/folders/...` must be `/private/var/folders/...` for sandbox rules.
+    private func resolveRealPath(_ path: String) -> String {
+        var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
+        guard let result = realpath(path, &buffer) else {
+            return path
+        }
+        return String(cString: result)
     }
 }

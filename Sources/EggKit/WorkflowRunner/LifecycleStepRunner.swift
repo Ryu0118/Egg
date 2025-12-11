@@ -30,17 +30,20 @@ struct LifecycleStepRunner {
     private let workingDirectory: AbsolutePath
     private let noora: any Noorable
     private let additionalEnvironment: [String: String]
+    private let executionEnvironment: ExecutionEnvironment
 
     init(
         processRunner: any ProcessRunning,
         workingDirectory: AbsolutePath,
         noora: some Noorable = Noora(),
-        additionalEnvironment: [String: String] = [:]
+        additionalEnvironment: [String: String] = [:],
+        executionEnvironment: ExecutionEnvironment = .normal
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
         self.noora = noora
         self.additionalEnvironment = additionalEnvironment
+        self.executionEnvironment = executionEnvironment
     }
 
     /// Executes all steps in a lifecycle phase.
@@ -94,7 +97,8 @@ struct LifecycleStepRunner {
         let shellRunner = ShellScriptRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
-            additionalEnvironment: additionalEnvironment
+            additionalEnvironment: additionalEnvironment,
+            executionEnvironment: executionEnvironment
         )
         let stdout = try await shellRunner.executeStreaming(resolvedCommand) { output in
             noora.passthrough("\(output)\n", tab: 1)

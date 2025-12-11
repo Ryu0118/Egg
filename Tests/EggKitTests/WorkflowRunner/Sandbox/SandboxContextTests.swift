@@ -2,6 +2,7 @@
 import FileSystem
 import Foundation
 import Path
+import ProcessRunning
 import Testing
 
 struct SandboxContextTests {
@@ -20,7 +21,13 @@ struct SandboxContextTests {
             fileSystem: fileSystem
         )
 
-        let sandbox = try await SandboxContext.create(cloning: workingDir, fileSystem: fileSystem)
+        let sandbox = try await SandboxContext.create(
+            cloning: workingDir,
+            fileSystem: fileSystem,
+            sandboxWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
+            workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
+            processRunner: ProcessRunner()
+        )
 
         defer {
             Task { await sandbox.discard() }

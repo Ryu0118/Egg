@@ -23,7 +23,7 @@ import ProcessRunning
 ///     processRunner: ProcessRunner(),
 ///     fileSystem: FileSystem(),
 ///     workingDirectory: try AbsolutePath(validating: "/tmp/work"),
-///     outputDirectory: try AbsolutePath(validating: "/tmp/output")
+///     homeDirectory: try AbsolutePath(validating: NSHomeDirectory())
 /// )
 ///
 /// try await runner.run(
@@ -33,13 +33,9 @@ import ProcessRunning
 /// )
 /// ```
 struct LifecycleWorkflowRunner: WorkflowRunning {
-    private let processRunner: any ProcessRunning
-    private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
+    private let phaseRunner: PhaseRunner
     private let noora: any Noorable
-    private let isInteractive: Bool
-    private let force: Bool
 
     init(
         processRunner: any ProcessRunning,
@@ -50,13 +46,16 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         isInteractive: Bool = true,
         force: Bool = false
     ) {
-        self.processRunner = processRunner
-        self.fileSystem = fileSystem
         self.workingDirectory = workingDirectory
-        self.homeDirectory = homeDirectory
         self.noora = noora
-        self.isInteractive = isInteractive
-        self.force = force
+        self.phaseRunner = PhaseRunner(
+            processRunner: processRunner,
+            fileSystem: fileSystem,
+            homeDirectory: homeDirectory,
+            noora: noora,
+            isInteractive: isInteractive,
+            force: force
+        )
     }
 
     /// Executes the complete lifecycle workflow.
@@ -76,137 +75,35 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
 
         // Phase 1: Execute pre_hatch
         if let preHatchSteps = config.preHatch {
-            try await executePreHatchPhase(steps: preHatchSteps, macros: macros, outputs: outputs)
+            try await phaseRunner.executePreHatch(
+                steps: preHatchSteps,
+                macros: macros,
+                outputs: outputs,
+                workingDirectory: workingDirectory
+            )
         }
 
         // Phase 2: Execute hatch (template expansion)
-        let outputDirectory = try await executeHatchPhase(config: config, macros: macros, outputs: outputs, templateDirectory: templateDirectory)
-
-        // Phase 3: Execute post_hatch
-        if let postHatchSteps = config.postHatch {
-            try await executePostHatchPhase(
-                steps: postHatchSteps,
-                macros: macros,
-                outputs: outputs
-            )
-        }
-
-        return outputDirectory
-    }
-
-    /// Executes the pre_hatch lifecycle phase.
-    ///
-    /// Pre-hatch steps typically prepare the environment, validate inputs,
-    /// or generate metadata that will be used during template expansion.
-    ///
-    /// - Parameters:
-    ///   - steps: Pre-hatch lifecycle steps to execute
-    ///   - macros: Resolved macros for variable substitution
-    ///   - outputs: Storage for step outputs
-    private func executePreHatchPhase(
-        steps: [Config.LifecycleStep],
-        macros: [ResolvedMacro],
-        outputs: StepOutputsStorage
-    ) async throws {
-        noora.passthrough("🥚 Pre-hatch script executing...\n")
-
-        let stepRunner = LifecycleStepRunner(
-            processRunner: processRunner,
-            workingDirectory: workingDirectory,
-            noora: noora
-        )
-
-        _ = try await stepRunner.execute(
-            .preHatch,
-            steps: steps,
-            substituting: macros,
-            merging: outputs
-        )
-    }
-
-    /// Executes the hatch phase (template expansion).
-    ///
-    /// Hatch phase expands the template directory to the output directory,
-    /// performing macro substitution, step output substitution, and applying exclusion rules.
-    ///
-    /// - Parameters:
-    ///   - config: Template configuration
-    ///   - macros: Resolved macros for substitution
-    ///   - outputs: Step outputs from pre_hatch phase
-    ///   - templateDirectory: Source directory containing template files
-    /// - Returns: The resolved absolute path of the output directory
-    private func executeHatchPhase(
-        config: Config,
-        macros: [ResolvedMacro],
-        outputs: StepOutputsStorage,
-        templateDirectory: AbsolutePath
-    ) async throws -> AbsolutePath {
-        noora.passthrough("🐣 Hatching \(config.name)...\n")
-
-        // Resolve macros in the output path first
-        let resolver = VariableResolver(macros: macros, outputs: outputs)
-        let resolvedOutput = try await resolver.resolve(config.hatch.output)
-
-        let outputDirectory = try resolveToAbsolutePath(
-            resolvedOutput,
-            workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
-        )
-
-        // Safety check: only prevent outputDirectory from being the same as templateDirectory
-        if outputDirectory == templateDirectory {
-            throw LifecycleStepError.invalidOutputDirectory(
-                "Output directory cannot be the same as template directory: \(outputDirectory.pathString)"
-            )
-        }
-
-        let expander = TemplateExpander(
-            fileSystem: fileSystem,
+        let outputDirectory = try await phaseRunner.executeHatch(
+            config: config,
+            macros: macros,
+            outputs: outputs,
             templateDirectory: templateDirectory,
-            outputDirectory: outputDirectory,
-            noora: noora,
-            isInteractive: isInteractive,
-            force: force
-        )
-
-        try await expander.expand(
-            substituting: macros,
-            with: outputs,
-            excluding: config.hatch.exclude
+            workingDirectory: workingDirectory
         )
 
         noora.passthrough("✅ Template hatched successfully at \(outputDirectory.pathString)\n", tab: 1)
 
+        // Phase 3: Execute post_hatch
+        if let postHatchSteps = config.postHatch {
+            try await phaseRunner.executePostHatch(
+                steps: postHatchSteps,
+                macros: macros,
+                outputs: outputs,
+                workingDirectory: workingDirectory
+            )
+        }
+
         return outputDirectory
-    }
-
-    /// Executes the post_hatch lifecycle phase.
-    ///
-    /// Post-hatch steps typically perform finalization tasks such as code formatting,
-    /// git initialization, dependency installation, or running initial builds.
-    ///
-    /// - Parameters:
-    ///   - steps: Post-hatch lifecycle steps to execute
-    ///   - macros: Resolved macros for variable substitution
-    ///   - outputs: Step outputs from pre_hatch and hatch phases
-    private func executePostHatchPhase(
-        steps: [Config.LifecycleStep],
-        macros: [ResolvedMacro],
-        outputs: StepOutputsStorage
-    ) async throws {
-        noora.passthrough("🐥 Post-hatch script executing...\n")
-
-        let stepRunner = LifecycleStepRunner(
-            processRunner: processRunner,
-            workingDirectory: workingDirectory,
-            noora: noora
-        )
-
-        _ = try await stepRunner.execute(
-            .postHatch,
-            steps: steps,
-            substituting: macros,
-            merging: outputs
-        )
     }
 }

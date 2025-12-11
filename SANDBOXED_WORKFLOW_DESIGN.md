@@ -297,17 +297,22 @@ EGG_ORIGINAL_WORKING_DIR=/Users/user/projects  # Read-only reference
 - Relative paths stay within sandbox
 - Absolute paths outside sandbox will fail (no access)
 
-**Note on Shell Escape Prevention**:
-Full sandbox enforcement for shell scripts (preventing `cd ..` or absolute paths) requires platform-specific mechanisms:
-- macOS: `sandbox-exec` with generated profile
-- Linux: `landlock` or similar
+**Current Implementation (Incomplete)**:
 
-For initial implementation, we rely on:
-- Working directory set to sandbox
-- Environment variables for reference
-- Path validation for explicit outputs
+The current implementation does **not** use OS-level sandboxing. It only provides:
+- Working directory set to sandbox.root
+- Environment variables (`EGG_SANDBOX_ROOT`, `EGG_ORIGINAL_WORKING_DIR`) for reference
+- Path validation for explicit outputs (hatch output directory)
 
-Advanced escape prevention can be added as future enhancement.
+⚠️ **This is insufficient.** Shell scripts can escape the sandbox via `cd ..`, absolute paths, or symlinks.
+
+**Required Implementation (TODO)**:
+
+OS-level sandboxing **must** be implemented:
+- macOS: `sandbox-exec` with generated profile restricting file access to sandbox.root
+- Linux: `landlock` or similar mechanism
+
+Without this, the sandbox only provides atomicity but not security isolation. This is a **required feature**, not optional.
 
 ---
 
