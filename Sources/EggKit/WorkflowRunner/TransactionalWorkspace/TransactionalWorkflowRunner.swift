@@ -90,24 +90,18 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         // Step 1: Start transactional workspace creation in parallel with macro collection
         noora.passthrough("🔒 Creating transactional workspace...\n")
 
-        // Capture all values needed for workspace creation to avoid capturing self
+        // Copy fileSystem to a local variable to satisfy sending requirement
+        // FileSystem is thread-safe but not marked Sendable
         nonisolated(unsafe) let fs = fileSystem
-        let workingDir = workingDirectory
-        let homeDir = homeDirectory
-        let wsWatcher = workspaceWatcher
-        let wdWatcher = workingDirectoryWatcher
-        let procRunner = processRunner
 
-        let workspaceTask = Task {
-            try await TransactionalWorkspaceContext.create(
-                cloning: workingDir,
-                homeDirectory: homeDir,
-                fileSystem: fs,
-                workspaceWatcher: wsWatcher,
-                workingDirectoryWatcher: wdWatcher,
-                processRunner: procRunner
-            )
-        }
+        let workspaceTask = Self.createWorkspaceTask(
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory,
+            fileSystem: fs,
+            workspaceWatcher: workspaceWatcher,
+            workingDirectoryWatcher: workingDirectoryWatcher,
+            processRunner: processRunner
+        )
 
         // Step 2: Collect macro values (runs in parallel with workspace creation)
         let collectedMacroValues = collectMacroValues(macroInputs, config: config)

@@ -263,6 +263,8 @@ actor TransactionalWorkspaceContext {
     func discard() async {
         guard !isDiscarded else { return }
 
+        print("🗑️ Discarding transactional workspace at \(root.pathString)...")
+
         // Stop watchers
         await workspaceWatcher.stop()
         await workingDirectoryWatcher.stop()
