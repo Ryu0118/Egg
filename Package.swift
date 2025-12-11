@@ -56,6 +56,5 @@ let package = Package(
                 "Fixtures",
             ]
         ),
-        .target(name: "S"),
     ]
 )

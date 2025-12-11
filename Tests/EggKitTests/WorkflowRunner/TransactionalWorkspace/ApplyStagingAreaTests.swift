@@ -36,7 +36,7 @@ extension ApplyStagingAreaTests {
     struct TestContext {
         let fileSystem: FileSystem
         let tempDir: AbsolutePath
-        let sandboxRoot: AbsolutePath
+        let workspaceRoot: AbsolutePath
         let workingDir: AbsolutePath
         let changes: ChangeSummary
 
@@ -58,7 +58,7 @@ extension ApplyStagingAreaTests {
             return TestContext(
                 fileSystem: fileSystem,
                 tempDir: tempDir,
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: sandboxRoot,
                 workingDir: workingDir,
                 changes: changes
             )
@@ -70,7 +70,7 @@ extension ApplyStagingAreaTests {
 
         func executeStageAndApply() async throws {
             try await ApplyStagingArea.withStaging(
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: sandboxRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             ) { staging, fs in
@@ -81,7 +81,7 @@ extension ApplyStagingAreaTests {
 
         func executeStageAndApplyReturningRoot() async throws -> AbsolutePath {
             let staging = try await ApplyStagingArea.create(
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: sandboxRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             )
@@ -101,7 +101,7 @@ extension ApplyStagingAreaTests {
 
         func executeStagingWithError() async throws -> AbsolutePath {
             let staging = try await ApplyStagingArea.create(
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: sandboxRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             )
@@ -149,7 +149,7 @@ extension ApplyStagingAreaTests {
 
         func verifyEmptyManifest() async throws {
             try await ApplyStagingArea.withStaging(
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: sandboxRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             ) { staging, fs in
@@ -160,7 +160,7 @@ extension ApplyStagingAreaTests {
 
         func verifyManifestCounts(add: Int, modify: Int, delete: Int) async throws {
             try await ApplyStagingArea.withStaging(
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: sandboxRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             ) { staging, fs in

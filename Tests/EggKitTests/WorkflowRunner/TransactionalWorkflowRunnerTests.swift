@@ -6,7 +6,7 @@ import Path
 import ProcessRunning
 import Testing
 
-struct SandboxedWorkflowRunnerTests {
+struct TransactionalWorkflowRunnerTests {
     @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
     func run(_ testCase: TestCase) async throws {
         guard let tempDir = FileSystem.temporaryTestDirectory else {
@@ -40,7 +40,7 @@ struct SandboxedWorkflowRunnerTests {
         )
 
         let nooraMock = NooraMock()
-        let runner = SandboxedWorkflowRunner(
+        let runner = TransactionalWorkflowRunner(
             processRunner: ProcessRunner(),
             fileSystem: fileSystem,
             workingDirectory: workingDir,
@@ -48,7 +48,7 @@ struct SandboxedWorkflowRunnerTests {
             noora: nooraMock,
             isInteractive: false,
             force: testCase.force,
-            sandboxWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem()),
+            workspaceWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem()),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem())
         )
 
@@ -162,9 +162,9 @@ struct SandboxedWorkflowRunnerTests {
         }
 
         static let allCases: [TestCase] = [
-            // Basic workflow in sandbox
+            // Basic workflow in transactional workspace
             .success(
-                "executes complete workflow in sandbox",
+                "executes complete workflow in transactional workspace",
                 templateSetup: [
                     .file(path: "README.md", content: "Hello World"),
                 ],
@@ -249,18 +249,18 @@ struct SandboxedWorkflowRunnerTests {
                 ]
             ),
 
-            // Environment variables available in sandbox scripts
+            // Environment variables available in transactional workspace scripts
             .success(
-                "sandbox env vars available in pre_hatch",
+                "workspace env vars available in pre_hatch",
                 templateSetup: [
                     .file(path: "app.txt", content: "app"),
                 ],
                 preHatchSteps: [
-                    Config.LifecycleStep(run: "echo \"sandbox=$EGG_SANDBOX_ROOT\" > env.txt"),
+                    Config.LifecycleStep(run: "echo \"workspace=$EGG_WORKSPACE_ROOT\" > env.txt"),
                 ],
                 verifications: [
                     .fileExists(path: "env.txt"),
-                    // File should contain sandbox= (non-empty value)
+                    // File should contain workspace= (non-empty value)
                 ]
             ),
 
@@ -419,7 +419,7 @@ struct SandboxedWorkflowRunnerTests {
     }
 }
 
-extension SandboxedWorkflowRunnerTests {
+extension TransactionalWorkflowRunnerTests {
     private func setupItem(_ item: TestCase.FileSetup, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
         switch item {
         case let .file(path, content):
@@ -475,16 +475,16 @@ extension SandboxedWorkflowRunnerTests {
     private func verifyError(_ error: Error, matches expectedType: TestCase.ExpectedError) throws {
         switch expectedType {
         case .userAborted:
-            guard let sandboxError = error as? SandboxContext.Error,
-                  case .userAborted = sandboxError
+            guard let workspaceError = error as? TransactionalWorkspaceContext.Error,
+                  case .userAborted = workspaceError
             else {
                 Issue.record("Expected userAborted error, got: \(error)")
                 return
             }
 
         case .escapeAttempt:
-            guard let sandboxError = error as? SandboxContext.Error,
-                  case .escapeAttempt = sandboxError
+            guard let workspaceError = error as? TransactionalWorkspaceContext.Error,
+                  case .escapeAttempt = workspaceError
             else {
                 Issue.record("Expected escapeAttempt error, got: \(error)")
                 return

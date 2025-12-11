@@ -4,7 +4,7 @@ import Path
 /// Parses the output of `git diff --name-status -z` into a `ChangeSummary`.
 struct GitNameStatusParser {
     let workingRoot: AbsolutePath
-    let sandboxRoot: AbsolutePath
+    let workspaceRoot: AbsolutePath
 
     func parse(components: [Substring]) -> ChangeSummary {
         var index = 0
@@ -67,7 +67,7 @@ struct GitNameStatusParser {
             return try? RelativePath(validating: relative)
         }
 
-        if let relative = rawPath.removingPrefix(sandboxRoot.pathString + "/") {
+        if let relative = rawPath.removingPrefix(workspaceRoot.pathString + "/") {
             return try? RelativePath(validating: relative)
         }
 

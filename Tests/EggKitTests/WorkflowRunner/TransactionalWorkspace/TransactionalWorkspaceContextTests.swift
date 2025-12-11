@@ -5,11 +5,11 @@ import Path
 import ProcessRunning
 import Testing
 
-struct SandboxContextTests {
+struct TransactionalWorkspaceContextTests {
     @Test(arguments: TestCase.allCases)
-    func sandboxContext(_ testCase: TestCase) async throws {
+    func transactionalWorkspaceContext(_ testCase: TestCase) async throws {
         let fileSystem = FileSystem()
-        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "sandbox-test")
+        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "workspace-test")
 
         defer {
             Task { try? await fileSystem.remove(tempDir) }
@@ -21,42 +21,42 @@ struct SandboxContextTests {
             fileSystem: fileSystem
         )
 
-        let sandbox = try await SandboxContext.create(
+        let transactionalWorkspace = try await TransactionalWorkspaceContext.create(
             cloning: workingDir,
             fileSystem: fileSystem,
-            sandboxWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
+            workspaceWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
             processRunner: ProcessRunner()
         )
 
         defer {
-            Task { await sandbox.discard() }
+            Task { await transactionalWorkspace.discard() }
         }
 
         switch testCase.expectation {
         case let .success(checks):
             for check in checks {
-                try await assertSuccessCheck(check, sandbox: sandbox, workingDir: workingDir, fileSystem: fileSystem)
+                try await assertSuccessCheck(check, transactionalWorkspace: transactionalWorkspace, workingDir: workingDir, fileSystem: fileSystem)
             }
 
         case let .pathValidationFails(absolutePath, expectedErrorPath):
             try await assertPathValidationFails(
                 absolutePath: absolutePath,
                 expectedErrorPath: expectedErrorPath,
-                sandbox: sandbox
+                transactionalWorkspace: transactionalWorkspace
             )
 
-        case .pathValidationFailsOutsideSandbox:
-            await assertPathValidationFailsOutsideSandbox(sandbox: sandbox)
+        case .pathValidationFailsOutsideWorkspace:
+            await assertPathValidationFailsOutsideWorkspace(transactionalWorkspace: transactionalWorkspace)
 
         case .validationFailsAfterDiscard:
-            await assertValidationFailsAfterDiscard(sandbox: sandbox)
+            await assertValidationFailsAfterDiscard(transactionalWorkspace: transactionalWorkspace)
 
         case .computeChangeSummaryFailsAfterDiscard:
-            await assertComputeChangeSummaryFailsAfterDiscard(sandbox: sandbox)
+            await assertComputeChangeSummaryFailsAfterDiscard(transactionalWorkspace: transactionalWorkspace)
 
         case .applyChangesFailsAfterDiscard:
-            await assertApplyChangesFailsAfterDiscard(sandbox: sandbox)
+            await assertApplyChangesFailsAfterDiscard(transactionalWorkspace: transactionalWorkspace)
         }
     }
 
@@ -73,12 +73,12 @@ struct SandboxContextTests {
         var testDescription: String { description }
 
         enum SuccessCheck {
-            case sandboxExists
+            case workspaceExists
             case originalWorkingDirectoryStored
             case fileCloned(relativePath: String)
             case fileContent(relativePath: String, expectedContent: String)
             case pathValidationSucceeds(relativePath: String)
-            case discardRemovesSandbox
+            case discardRemovesWorkspace
             case discardedState(Bool)
             case discardIsIdempotent
             case changeSummaryIgnoresGitDirectory
@@ -87,7 +87,7 @@ struct SandboxContextTests {
         enum Expectation {
             case success(checks: [SuccessCheck])
             case pathValidationFails(absolutePath: String, expectedErrorPath: String)
-            case pathValidationFailsOutsideSandbox
+            case pathValidationFailsOutsideWorkspace
             case validationFailsAfterDiscard
             case computeChangeSummaryFailsAfterDiscard
             case applyChangesFailsAfterDiscard
@@ -96,14 +96,14 @@ struct SandboxContextTests {
         static let allCases: [TestCase] = [
             // Creation tests
             TestCase(
-                description: "creates sandbox from working directory with files",
+                description: "creates transactional workspace from working directory with files",
                 initialFiles: [
                     InitialFile(path: "file1.txt", content: "content1"),
                     InitialFile(path: "file2.txt", content: "content2"),
                     InitialFile(path: "subdir/nested.txt", content: "nested"),
                 ],
                 expectation: .success(checks: [
-                    .sandboxExists,
+                    .workspaceExists,
                     .fileCloned(relativePath: "file1.txt"),
                     .fileCloned(relativePath: "file2.txt"),
                     .fileCloned(relativePath: "subdir/nested.txt"),
@@ -112,10 +112,10 @@ struct SandboxContextTests {
             ),
 
             TestCase(
-                description: "creates sandbox from empty working directory",
+                description: "creates transactional workspace from empty working directory",
                 initialFiles: [],
                 expectation: .success(checks: [
-                    .sandboxExists,
+                    .workspaceExists,
                 ])
             ),
 
@@ -129,7 +129,7 @@ struct SandboxContextTests {
 
             // Path validation tests
             TestCase(
-                description: "validates path inside sandbox",
+                description: "validates path inside transactional workspace",
                 initialFiles: [],
                 expectation: .success(checks: [
                     .pathValidationSucceeds(relativePath: "file.txt"),
@@ -138,7 +138,7 @@ struct SandboxContextTests {
             ),
 
             TestCase(
-                description: "rejects path outside sandbox (absolute path)",
+                description: "rejects path outside transactional workspace (absolute path)",
                 initialFiles: [],
                 expectation: .pathValidationFails(
                     absolutePath: "/etc/passwd",
@@ -149,7 +149,7 @@ struct SandboxContextTests {
             TestCase(
                 description: "rejects path escaping via parent directory",
                 initialFiles: [],
-                expectation: .pathValidationFailsOutsideSandbox
+                expectation: .pathValidationFailsOutsideWorkspace
             ),
 
             TestCase(
@@ -160,12 +160,12 @@ struct SandboxContextTests {
 
             // Discard tests
             TestCase(
-                description: "discard removes sandbox directory",
+                description: "discard removes transactional workspace directory",
                 initialFiles: [
                     InitialFile(path: "file.txt", content: "content"),
                 ],
                 expectation: .success(checks: [
-                    .discardRemovesSandbox,
+                    .discardRemovesWorkspace,
                 ])
             ),
 
@@ -237,54 +237,54 @@ struct SandboxContextTests {
 
     private func assertSuccessCheck(
         _ check: TestCase.SuccessCheck,
-        sandbox: SandboxContext,
+        transactionalWorkspace: TransactionalWorkspaceContext,
         workingDir: AbsolutePath,
         fileSystem: FileSystem
     ) async throws {
         switch check {
-        case .sandboxExists:
-            let sandboxRoot = await sandbox.root
-            #expect(try await fileSystem.exists(sandboxRoot), "Sandbox root should exist")
+        case .workspaceExists:
+            let workspaceRoot = await transactionalWorkspace.root
+            #expect(try await fileSystem.exists(workspaceRoot), "Transactional workspace root should exist")
 
         case .originalWorkingDirectoryStored:
-            let originalDir = await sandbox.originalWorkingDirectory
+            let originalDir = await transactionalWorkspace.originalWorkingDirectory
             #expect(originalDir == workingDir, "Original working directory should match")
 
         case let .fileCloned(relativePath):
-            let filePath = await sandbox.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            let filePath = await transactionalWorkspace.root.appending(components: relativePath.split(separator: "/").map(String.init))
             #expect(try await fileSystem.exists(filePath), "File '\(relativePath)' should be cloned")
 
         case let .fileContent(relativePath, expectedContent):
-            let filePath = await sandbox.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            let filePath = await transactionalWorkspace.root.appending(components: relativePath.split(separator: "/").map(String.init))
             let content = try await fileSystem.readTextFile(at: filePath)
             #expect(content == expectedContent, "File '\(relativePath)' should have correct content")
 
         case let .pathValidationSucceeds(relativePath):
-            let path = await sandbox.root.appending(components: relativePath.split(separator: "/").map(String.init))
-            try await sandbox.validatePath(path)
+            let path = await transactionalWorkspace.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            try await transactionalWorkspace.validatePath(path)
 
-        case .discardRemovesSandbox:
-            let sandboxRoot = await sandbox.root
-            await sandbox.discard()
-            #expect(try await !fileSystem.exists(sandboxRoot), "Sandbox should be removed after discard")
+        case .discardRemovesWorkspace:
+            let workspaceRoot = await transactionalWorkspace.root
+            await transactionalWorkspace.discard()
+            #expect(try await !fileSystem.exists(workspaceRoot), "Transactional workspace should be removed after discard")
 
         case let .discardedState(expected):
-            let discarded = await sandbox.isDiscarded
+            let discarded = await transactionalWorkspace.isDiscarded
             #expect(discarded == expected, "Discarded state should be \(expected)")
 
         case .discardIsIdempotent:
-            await sandbox.discard()
-            await sandbox.discard()
-            await sandbox.discard()
-            let discarded = await sandbox.isDiscarded
+            await transactionalWorkspace.discard()
+            await transactionalWorkspace.discard()
+            await transactionalWorkspace.discard()
+            let discarded = await transactionalWorkspace.isDiscarded
             #expect(discarded, "Multiple discards should not throw")
 
         case .changeSummaryIgnoresGitDirectory:
-            // Modify files in sandbox: both .git and regular files
-            let sandboxRoot = await sandbox.root
-            let gitConfigPath = sandboxRoot.appending(components: [".git", "config"])
-            let gitNewFilePath = sandboxRoot.appending(components: [".git", "new-file"])
-            let readmePath = sandboxRoot.appending(component: "README.md")
+            // Modify files in transactional workspace: both .git and regular files
+            let workspaceRoot = await transactionalWorkspace.root
+            let gitConfigPath = workspaceRoot.appending(components: [".git", "config"])
+            let gitNewFilePath = workspaceRoot.appending(components: [".git", "new-file"])
+            let readmePath = workspaceRoot.appending(component: "README.md")
 
             // Modify .git files (remove and rewrite to trigger change)
             try await fileSystem.remove(gitConfigPath)
@@ -298,7 +298,7 @@ struct SandboxContextTests {
             try await fileSystem.writeText("modified readme", at: readmePath)
 
             // Compute change summary
-            let summary = try await sandbox.computeChangeSummary()
+            let summary = try await transactionalWorkspace.computeChangeSummary()
 
             // Verify .git paths are not in the summary
             let allPaths = summary.added + summary.modified + summary.deleted
@@ -314,11 +314,11 @@ struct SandboxContextTests {
     private func assertPathValidationFails(
         absolutePath: String,
         expectedErrorPath: String,
-        sandbox: SandboxContext
+        transactionalWorkspace: TransactionalWorkspaceContext
     ) async throws {
         let path = try AbsolutePath(validating: absolutePath)
-        let error = await #expect(throws: SandboxContext.Error.self) {
-            try await sandbox.validatePath(path)
+        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
+            try await transactionalWorkspace.validatePath(path)
         }
 
         guard case let .escapeAttempt(errorPath) = error else {
@@ -328,10 +328,10 @@ struct SandboxContextTests {
         #expect(errorPath == expectedErrorPath, "Expected error path '\(expectedErrorPath)', got '\(errorPath)'")
     }
 
-    private func assertPathValidationFailsOutsideSandbox(sandbox: SandboxContext) async {
-        let escapePath = await sandbox.root.parentDirectory.appending(component: "outside")
-        let error = await #expect(throws: SandboxContext.Error.self) {
-            try await sandbox.validatePath(escapePath)
+    private func assertPathValidationFailsOutsideWorkspace(transactionalWorkspace: TransactionalWorkspaceContext) async {
+        let escapePath = await transactionalWorkspace.root.parentDirectory.appending(component: "outside")
+        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
+            try await transactionalWorkspace.validatePath(escapePath)
         }
 
         guard case .escapeAttempt = error else {
@@ -340,28 +340,28 @@ struct SandboxContextTests {
         }
     }
 
-    private func assertValidationFailsAfterDiscard(sandbox: SandboxContext) async {
-        let sandboxRoot = await sandbox.root
-        await sandbox.discard()
-        let error = await #expect(throws: SandboxContext.Error.self) {
-            try await sandbox.validatePath(sandboxRoot)
+    private func assertValidationFailsAfterDiscard(transactionalWorkspace: TransactionalWorkspaceContext) async {
+        let workspaceRoot = await transactionalWorkspace.root
+        await transactionalWorkspace.discard()
+        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
+            try await transactionalWorkspace.validatePath(workspaceRoot)
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }
 
-    private func assertComputeChangeSummaryFailsAfterDiscard(sandbox: SandboxContext) async {
-        await sandbox.discard()
-        let error = await #expect(throws: SandboxContext.Error.self) {
-            _ = try await sandbox.computeChangeSummary()
+    private func assertComputeChangeSummaryFailsAfterDiscard(transactionalWorkspace: TransactionalWorkspaceContext) async {
+        await transactionalWorkspace.discard()
+        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
+            _ = try await transactionalWorkspace.computeChangeSummary()
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }
 
-    private func assertApplyChangesFailsAfterDiscard(sandbox: SandboxContext) async {
-        await sandbox.discard()
-        let error = await #expect(throws: SandboxContext.Error.self) {
+    private func assertApplyChangesFailsAfterDiscard(transactionalWorkspace: TransactionalWorkspaceContext) async {
+        await transactionalWorkspace.discard()
+        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
             let emptyChanges = ChangeSummary(added: [], modified: [], deleted: [])
-            _ = try await sandbox.applyChanges(emptyChanges, force: false)
+            _ = try await transactionalWorkspace.applyChanges(emptyChanges, force: false)
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }

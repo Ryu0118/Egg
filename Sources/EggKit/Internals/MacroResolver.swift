@@ -9,7 +9,7 @@ import Path
 ///
 /// ## Important
 /// The `workingDirectory` parameter should be the actual execution directory:
-/// - For sandboxed runners: the sandbox root directory
+/// - For transactional workspace runners: the workspace root directory
 /// - For non-sandboxed runners: the real working directory
 ///
 /// This ensures path-type macros resolve correctly relative to the execution context.

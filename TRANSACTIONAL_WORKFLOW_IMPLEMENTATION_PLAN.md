@@ -1,8 +1,8 @@
-# Sandboxed Workflow Runner Implementation Plan
+# Transactional Workflow Runner Implementation Plan
 
 ## Overview
 
-This document outlines the implementation plan for `SandboxedWorkflowRunner`, providing atomic all-or-nothing execution of the hatch lifecycle by running all operations in a sandbox (clone of working directory) with partial apply on success.
+This document outlines the implementation plan for `TransactionalWorkflowRunner`, providing atomic all-or-nothing execution of the hatch lifecycle by running all operations in a transactional workspace (clone of working directory) with partial apply on success.
 
 **Reference Documents:**
 - [SANDBOXED_WORKFLOW_DESIGN.md](./SANDBOXED_WORKFLOW_DESIGN.md) - Complete design specification
@@ -15,26 +15,26 @@ This document outlines the implementation plan for `SandboxedWorkflowRunner`, pr
 Before starting implementation:
 - [ ] Review SANDBOXED_WORKFLOW_DESIGN.md in full
 - [ ] Understand existing `LifecycleWorkflowRunner` implementation
-- [ ] Understand `StepOutputsStorage` actor pattern (reference for SandboxContext)
+- [ ] Understand `StepOutputsStorage` actor pattern (reference for TransactionalContext)
 - [ ] Understand FileSysteming protocol (APFS clone, path validation, etc.)
 
 ---
 
-## Phase 1: Foundation Layer (SandboxContext + Nested Errors)
+## Phase 1: Foundation Layer (TransactionalContext + Nested Errors)
 
-> Directory layout note: sandbox-specific sources live under `Sources/EggKit/WorkflowRunner/Sandbox/`, legacy runner under `WorkflowRunner/NoSandbox/`, and shared utilities under `WorkflowRunner/Shared/`. Tests mirror the same structure beneath `Tests/EggKitTests/WorkflowRunner/`.
+> Directory layout note: transactional-specific sources live under `Sources/EggKit/WorkflowRunner/Transactional/`, legacy runner under `WorkflowRunner/NonTransactional/`, and shared utilities under `WorkflowRunner/Shared/`. Tests mirror the same structure beneath `Tests/EggKitTests/WorkflowRunner/`.
 
-**Goal:** Create the core sandbox management components.
+**Goal:** Create the core transactional workspace management components.
 
-### 1.1 Create SandboxContext.Error
+### 1.1 Create TransactionalContext.Error
 
 **Files:**
-- `Sources/EggKit/WorkflowRunner/Sandbox/SandboxError.swift`
-- `Sources/EggKit/WorkflowRunner/Sandbox/ConflictInfo.swift`
-- `Sources/EggKit/WorkflowRunner/Sandbox/ChangeSummary.swift`
+- `Sources/EggKit/WorkflowRunner/Transactional/TransactionalError.swift`
+- `Sources/EggKit/WorkflowRunner/Transactional/ConflictInfo.swift`
+- `Sources/EggKit/WorkflowRunner/Transactional/ChangeSummary.swift`
 
 ```swift
-extension SandboxContext {
+extension TransactionalContext {
 enum Error: LocalizedError, Equatable {
     case alreadyDiscarded
     case creationFailed(reason: String)
@@ -69,9 +69,9 @@ struct ChangeSummary {
 - [x] Add `Equatable` conformance for testing
 - [x] Test: Error equality and description formatting
 
-### 1.2 Create SandboxContext Actor
+### 1.2 Create TransactionalContext Actor
 
-**File:** `Sources/EggKit/WorkflowRunner/Sandbox/SandboxContext.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Transactional/TransactionalContext.swift`
 
 **Implementation Order:**
 
@@ -80,11 +80,11 @@ struct ChangeSummary {
 static func create(
     cloning workingDirectory: AbsolutePath,
     fileSystem: any FileSysteming
-) async throws -> SandboxContext
+) async throws -> TransactionalContext
 ```
-- Create temp directory with prefix `egg-sandbox-`
+- Create temp directory with prefix `egg-workspace-`
 - Use APFS clone (`clonefile()`) for instant copy-on-write copy
-- Start sandbox + working-directory watchers immediately after cloning so that change tracking is watcher-driven from the very beginning
+- Start workspace + working-directory watchers immediately after cloning so that change tracking is watcher-driven from the very beginning
 - Handle symlinks (copy as symlinks)
 - Skip device files/sockets with warning
 
@@ -93,7 +93,7 @@ static func create(
 func validatePath(_ path: AbsolutePath) throws {
     let normalized = path.lexicallyNormalized()
     guard normalized.isDescendant(of: root) else {
-        throw SandboxContext.Error.escapeAttempt(path: path.pathString)
+        throw TransactionalContext.Error.escapeAttempt(path: path.pathString)
     }
 }
 ```
@@ -128,11 +128,11 @@ func discard(fileSystem: any FileSysteming) async {
 
 ### 2.1 Dual watcher infrastructure
 
-**Goal:** Capture touched paths in both sandbox and working directory without scanning entire trees.
+**Goal:** Capture touched paths in both transactional workspace and working directory without scanning entire trees.
 
 Steps:
 1. Implement `WorkingDirectoryWatcher` abstraction (FSEvents on macOS) with `start()`, `stop()`, `drainEvents()` returning `Set<RelativePath>`. Because this feature targets macOS only, no cross-platform fallback is required.
-2. Instantiate one watcher pointing at `sandbox.root`, another at `originalWorkingDirectory`.
+2. Instantiate one watcher pointing at `workspace.root`, another at `originalWorkingDirectory`.
 3. Normalize events:
    - Convert to relative paths (relative to respective roots)
    - Expand directory events to include descendants (e.g., rename)
@@ -150,9 +150,9 @@ Steps:
 
 1. **Guard discarded state**
 2. **Drain watcher events**:
-   - `sandboxTouched = sandboxWatcher.drainEvents()`
+   - `workspaceTouched = workspaceWatcher.drainEvents()`
    - `workingTouched = workingWatcher.drainEvents()`
-   - `targetPaths = sandboxTouched union workingTouched`
+   - `targetPaths = workspaceTouched union workingTouched`
 3. **Run git diff per target path (batched)**:
    - Invoke `git diff --no-index --name-status -z` restricted to `targetPaths`
    - Parse results into `ChangeEntry { path, kind (add/modify/delete) }`
@@ -160,13 +160,13 @@ Steps:
    - If `path` is in `workingTouched`, emit `ConflictInfo(type: .potentialOverlap)`
 5. **Handle conflicts**:
    - `isInteractive && !force`: display conflicts via Noora, prompt `Override these files?`; abort on negative response
-   - `!isInteractive && !force`: throw `SandboxContext.Error.conflictingFiles`
+   - `!isInteractive && !force`: throw `TransactionalContext.Error.conflictingFiles`
    - `force=true`: proceed but record conflicts for warning output
 6. **Apply changes (targeted + staged)**:
-   - For each path in `ChangeEntry`, materialize the new/removed state inside a temporary `applyStaging` directory located under the sandbox root.
+   - For each path in `ChangeEntry`, materialize the new/removed state inside a temporary `applyStaging` directory located under the workspace root.
    - Once staging succeeds, perform filesystem updates against the real working directory in the order Deletes -> Adds -> Modifies. Each step tracks success so that, if an error surfaces mid-apply, the runner can revert to the previous state by replaying the inverse operations from staging (or simply abort before touching the working tree when staging fails).
    - Applying only after staging completes ensures no partial updates remain even when an exception interrupts the operation.
-7. **Cleanup:** Remove sandbox directory and staging artifacts, stop watchers, set `isDiscarded = true`
+7. **Cleanup:** Remove workspace directory and staging artifacts, stop watchers, set `isDiscarded = true`
 8. **Return:** Conflicts list
 
 **Checklist:**
@@ -181,7 +181,7 @@ Steps:
 Create a dedicated helper type (struct or class) responsible for managing the temporary staging directory and the metadata required for rollback.
 
 - **Responsibilities**:
-  - Create `applyStagingRoot` via `FileSystem.makeTemporaryDirectory` (typically `/tmp/egg-apply-staging-XXXX`). Keeping staging outside the sandbox avoids surprise interactions with user files and ensures cleanup is trivial even if the sandbox is removed mid-run.
+  - Create `applyStagingRoot` via `FileSystem.makeTemporaryDirectory` (typically `/tmp/egg-apply-staging-XXXX`). Keeping staging outside the workspace avoids surprise interactions with user files and ensures cleanup is trivial even if the workspace is removed mid-run.
   - Mirror the change plan (adds/modifies/deletes) inside the staging root, including permissions and file contents.
   - Return a manifest describing which filesystem actions must be applied to the real working directory, plus the inverse operations in case rollback is required mid-flight. The caller retains this manifest so orchestration state never lives inside `ApplyStagingArea`.
   - Provide APIs:
@@ -191,10 +191,10 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 - **Error handling**:
   - If staging fails, abort before touching the real working directory and surface the error.
   - If applying fails halfway, use the inverse manifest to undo any writes already performed (or leave the working directory untouched when failure occurs prior to starting).
-  - Scope staging-specific failures to `ApplyStagingArea.Error` (nested enum) so that callers only need to reason about sandbox-level errors (`SandboxContext.Error`) vs. staging internals. The valid cases focus on rollback failures and missing staged artifacts; high-level lifecycle state is tracked by `SandboxContext`.
+  - Scope staging-specific failures to `ApplyStagingArea.Error` (nested enum) so that callers only need to reason about workspace-level errors (`TransactionalContext.Error`) vs. staging internals. The valid cases focus on rollback failures and missing staged artifacts; high-level lifecycle state is tracked by `TransactionalContext`.
 - **Extra considerations**:
   - Validate available disk space before staging large trees (compare `du` of change set vs. free space).
-  - Normalize ownership/permissions so staged artifacts exactly match the sandbox equivalents.
+  - Normalize ownership/permissions so staged artifacts exactly match the workspace equivalents.
   - Ensure staging paths are hidden from user templates to avoid accidental interactions (prefix with `.`).
 - **Tests**:
   - Successful staging/apply for add/modify/delete combinations.
@@ -205,7 +205,7 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 
 `git diff --no-index` can now be invoked with a narrowed list of `targetPaths`. Implementation notes:
 
-1. **Batch diff**: call `git diff --no-index --name-status -z sandbox/path working/path ...` once, enumerating pairs via arguments.
+1. **Batch diff**: call `git diff --no-index --name-status -z workspace/path working/path ...` once, enumerating pairs via arguments.
 2. **Rename detection**: when Git outputs `Rxxx`, treat it as a delete+add so downstream logic stays simple.
 3. **Ignore unchanged paths**: if Git reports "no differences" for a path, skip it from the apply set.
 
@@ -219,7 +219,7 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 
 ## Phase 3: Protocol and Existing Component Updates
 
-**Goal:** Create WorkflowRunning protocol and update existing components for sandbox support.
+**Goal:** Create WorkflowRunning protocol and update existing components for transactional workspace support.
 
 ### 3.1 Create WorkflowRunning Protocol
 
@@ -285,18 +285,18 @@ init(
 
 ---
 
-## Phase 4: SandboxedWorkflowRunner Implementation
+## Phase 4: TransactionalWorkflowRunner Implementation
 
 **Goal:** Create the main orchestrator that ties everything together.
 
-### 4.1 Create SandboxedWorkflowRunner
+### 4.1 Create TransactionalWorkflowRunner
 
-**File:** `Sources/EggKit/WorkflowRunner/Sandbox/SandboxedWorkflowRunner.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Transactional/TransactionalWorkflowRunner.swift`
 
 **Structure:**
 
 ```swift
-struct SandboxedWorkflowRunner: WorkflowRunning {
+struct TransactionalWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath
@@ -315,9 +315,9 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
 
 **Implementation Order:**
 
-1. **Sandbox creation:**
+1. **Transactional Workspace creation:**
 ```swift
-let sandbox = try await SandboxContext.create(
+let workspace = try await TransactionalContext.create(
     cloning: workingDirectory,
     fileSystem: fileSystem
 )
@@ -325,8 +325,8 @@ let sandbox = try await SandboxContext.create(
 
 2. **Environment variables:**
 ```swift
-let sandboxEnv = [
-    "EGG_SANDBOX_ROOT": sandbox.root.pathString,
+let workspaceEnv = [
+    "EGG_WORKSPACE_ROOT": workspace.root.pathString,
     "EGG_ORIGINAL_WORKING_DIR": workingDirectory.pathString
 ]
 ```
@@ -335,8 +335,8 @@ let sandboxEnv = [
 ```swift
 let preHatchRunner = LifecycleStepRunner(
     // ... existing params ...
-    workingDirectory: sandbox.root,
-    additionalEnvironment: sandboxEnv
+    workingDirectory: workspace.root,
+    additionalEnvironment: workspaceEnv
 )
 ```
 
@@ -344,10 +344,10 @@ let preHatchRunner = LifecycleStepRunner(
 ```swift
 // Resolve output path
 let resolvedOutput = try resolveOutputPath(...)
-let absoluteOutput = sandbox.root.appending(resolvedOutput)
+let absoluteOutput = workspace.root.appending(resolvedOutput)
 
-// Validate within sandbox
-try sandbox.validatePath(absoluteOutput)
+// Validate within workspace
+try workspace.validatePath(absoluteOutput)
 
 // Expand templates
 let expander = TemplateExpander(...)
@@ -358,14 +358,14 @@ try await expander.expand(to: absoluteOutput, ...)
 ```swift
 let postHatchRunner = LifecycleStepRunner(
     // ... existing params ...
-    workingDirectory: sandbox.root,
-    additionalEnvironment: sandboxEnv
+    workingDirectory: workspace.root,
+    additionalEnvironment: workspaceEnv
 )
 ```
 
 6. **User confirmation (unless force=true):**
 ```swift
-let changeSummary = try await sandbox.computeChangeSummary(fileSystem: fileSystem)
+let changeSummary = try await workspace.computeChangeSummary(fileSystem: fileSystem)
 
 if !force {
     // Display change summary to user
@@ -374,8 +374,8 @@ if !force {
     // Prompt for confirmation
     let confirmed = await noora.confirm("Apply these changes?")
     guard confirmed else {
-        await sandbox.discard(fileSystem: fileSystem)
-        throw SandboxContext.Error.userAborted
+        await workspace.discard(fileSystem: fileSystem)
+        throw TransactionalContext.Error.userAborted
     }
 }
 ```
@@ -383,7 +383,7 @@ if !force {
 7. **Stage + apply changes and display conflict warnings:**
 ```swift
 // Phase 1: build the staged diff. This touches only applyStagingRoot.
-let staging = try await sandbox.stageChanges(fileSystem: fileSystem, force: force)
+let staging = try await workspace.stageChanges(fileSystem: fileSystem, force: force)
 
 // Phase 2: push staged changes into the working directory (Deletes -> Adds -> Modifies)
 let overriddenConflicts = try await staging.apply(to: workingDirectory)
@@ -405,14 +405,14 @@ return workingDirectory.appending(resolvedOutput)
 do {
     // ... all operations ...
 } catch {
-    await sandbox.discard(fileSystem: fileSystem)
+    await workspace.discard(fileSystem: fileSystem)
     throw error
 }
 ```
 
 **Checklist:**
 - [x] Create basic structure with dependencies (including `force` parameter)
-- [x] Implement sandbox creation
+- [x] Implement workspace creation
 - [x] Implement pre_hatch execution with environment
 - [x] Implement output path validation
 - [x] Implement hatch execution
@@ -428,7 +428,7 @@ do {
 
 ## Phase 5: CLI Integration
 
-**Goal:** Integrate SandboxedWorkflowRunner into HatchRunner with `--no-sandbox` and `--force` options.
+**Goal:** Integrate TransactionalWorkflowRunner into HatchRunner with `--no-transactional-workspace` and `--force` options.
 
 ### 5.1 Update HatchRunner
 
@@ -436,11 +436,11 @@ do {
 
 **Changes:**
 
-1. **Add useSandbox and force parameters:**
+1. **Add useTransactionalWorkspace and force parameters:**
 ```swift
 init(
     // ... existing params ...
-    useSandbox: Bool = true,
+    useTransactionalWorkspace: Bool = true,
     force: Bool = false
 )
 ```
@@ -448,8 +448,8 @@ init(
 2. **Factory pattern for runner selection:**
 ```swift
 private func makeWorkflowRunner() -> any WorkflowRunning {
-    if useSandbox {
-        return SandboxedWorkflowRunner(
+    if useTransactionalWorkspace {
+        return TransactionalWorkflowRunner(
             processRunner: processRunner,
             fileSystem: fileSystem,
             workingDirectory: workingDirectory,
@@ -459,17 +459,17 @@ private func makeWorkflowRunner() -> any WorkflowRunning {
             force: force
         )
     } else {
-        noora.warning("Running without sandbox; filesystem changes are permanent")
+        noora.warning("Running without transactional workspace; filesystem changes are permanent")
         return LifecycleWorkflowRunner(...)
     }
 }
 ```
 
 **Checklist:**
-- [x] Add `useSandbox` and `force` parameters to HatchRunner
+- [x] Add `useTransactionalWorkspace` and `force` parameters to HatchRunner
 - [x] Implement runner factory method
-- [x] Pass `force` to SandboxedWorkflowRunner
-- [x] Add warning for no-sandbox mode
+- [x] Pass `force` to TransactionalWorkflowRunner
+- [x] Add warning for no-transactional-workspace mode
 - [x] Tests: Runner selection, force mode behavior
 
 ### 5.2 Update CLI Hatch Command
@@ -478,8 +478,8 @@ private func makeWorkflowRunner() -> any WorkflowRunning {
 
 **Changes:**
 ```swift
-@Flag(name: .long, help: "Disable sandboxing (filesystem changes are permanent)")
-var noSandbox: Bool = false
+@Flag(name: .long, help: "Disable transactional workspace (filesystem changes are permanent)")
+var noTransactionalWorkspace: Bool = false
 
 @Flag(name: .long, help: "Skip confirmation and override conflicts with warning")
 var force: Bool = false
@@ -489,17 +489,17 @@ Pass to HatchRunner:
 ```swift
 let runner = HatchRunner(
     // ... existing params ...
-    useSandbox: !noSandbox,
+    useTransactionalWorkspace: !noTransactionalWorkspace,
     force: force
 )
 ```
 
 **Checklist:**
-- [x] Add `--no-sandbox` flag
+- [x] Add `--no-transactional-workspace` flag
 - [x] Add `--force` flag
 - [x] Pass both flag values to HatchRunner
 - [x] Update help text for both flags
-- [x] Integration test: sandbox + no-sandbox + force combinations
+- [x] Integration test: transactional workspace + no-transactional-workspace + force combinations
 
 ---
 
@@ -510,12 +510,12 @@ let runner = HatchRunner(
 ### 6.1 Unit Tests
 
 **New Test Files:**
-- `Tests/EggKitTests/WorkflowRunner/SandboxContextTests.swift`
-- `Tests/EggKitTests/WorkflowRunner/SandboxedWorkflowRunnerTests.swift`
+- `Tests/EggKitTests/WorkflowRunner/TransactionalContextTests.swift`
+- `Tests/EggKitTests/WorkflowRunner/TransactionalWorkflowRunnerTests.swift`
 
 **Test Categories:**
 
-1. **SandboxContext Tests:**
+1. **TransactionalContext Tests:**
    - [ ] Creation clones all files
    - [ ] Baseline hashes computed correctly
    - [ ] Path validation: valid paths
@@ -529,31 +529,31 @@ let runner = HatchRunner(
    - [ ] Apply: conflict detection (deletedButModified)
    - [ ] Apply: empty working directory
 
-2. **SandboxedWorkflowRunner Tests:**
+2. **TransactionalWorkflowRunner Tests:**
    - [ ] Full workflow success (with user confirmation)
    - [ ] Force mode skips confirmation
-   - [ ] User abort discards sandbox
+   - [ ] User abort discards workspace
    - [ ] Conflict without force throws error
    - [ ] Conflict with force overrides and shows warning
-   - [ ] Pre-hatch failure discards sandbox
-   - [ ] Hatch failure discards sandbox
-   - [ ] Post-hatch failure discards sandbox
+   - [ ] Pre-hatch failure discards workspace
+   - [ ] Hatch failure discards workspace
+   - [ ] Post-hatch failure discards workspace
    - [ ] Output path escape throws error
    - [ ] Environment variables set correctly
 
 3. **Integration Tests:**
    - [ ] End-to-end with real filesystem (user confirms)
    - [ ] --force flag skips confirmation
-   - [ ] --no-sandbox flag works
+   - [ ] --no-transactional-workspace flag works
    - [ ] APFS clone performance (instant for large directories)
    - [ ] Symlink handling
 
 ### 6.2 Documentation Updates
 
-- [ ] Update README with sandbox feature
-- [ ] Document --no-sandbox flag
+- [ ] Update README with workspace feature
+- [ ] Document --no-transactional-workspace flag
 - [ ] Document conflict resolution workflow
-- [ ] Add examples of sandbox behavior
+- [ ] Add examples of workspace behavior
 
 ### 6.3 Error Messages
 
@@ -567,15 +567,15 @@ let runner = HatchRunner(
 
 | Phase | Components | Dependencies | Estimated Complexity |
 |-------|------------|--------------|---------------------|
-| 1 | SandboxContext.Error, SandboxContext (basic) | FileSysteming | Medium |
+| 1 | TransactionalContext.Error, TransactionalContext (basic) | FileSysteming | Medium |
 | 2 | Hash computation, Apply changes | Phase 1 | High |
 | 3 | WorkflowRunning protocol, Updates | Existing code | Low |
-| 4 | SandboxedWorkflowRunner | Phases 1-3 | High |
+| 4 | TransactionalWorkflowRunner | Phases 1-3 | High |
 | 5 | CLI integration | Phase 4 | Low |
 | 6 | Testing, documentation | Phases 1-5 | Medium |
 
 **Recommended Implementation Strategy:**
-1. Phases 1-2 first (core sandbox logic)
+1. Phases 1-2 first (core workspace logic)
 2. Phase 3 in parallel with testing Phase 1-2
 3. Phase 4 after Phases 1-3 complete
 4. Phases 5-6 last
@@ -586,15 +586,15 @@ let runner = HatchRunner(
 
 ### Functional Requirements
 
-- [ ] Sandbox clones working directory instantly (APFS clone)
-- [ ] All phases execute within sandbox
+- [ ] Transactional Workspace clones working directory instantly (APFS clone)
+- [ ] All phases execute within workspace
 - [ ] Escape attempts are detected and blocked
 - [ ] Change summary displayed before apply
 - [ ] User confirmation required (unless --force)
 - [ ] Partial apply only changes modified files
 - [ ] Conflicts detected with clear error messages
-- [ ] Sandbox discarded on failure or user abort
-- [ ] --no-sandbox falls back to legacy behavior
+- [ ] Transactional Workspace discarded on failure or user abort
+- [ ] --no-transactional-workspace falls back to legacy behavior
 - [ ] --force skips confirmation and overrides conflicts with warning
 
 ### Non-Functional Requirements
@@ -602,14 +602,14 @@ let runner = HatchRunner(
 - [ ] APFS clone is instant (regardless of directory size)
 - [ ] Hash computation is reasonably fast
 - [ ] Memory usage stays bounded
-- [ ] No orphaned sandbox directories on crash
+- [ ] No orphaned workspace directories on crash
 
 ### Test Coverage
 
-- [ ] All `SandboxContext.Error` cases covered (including userAborted)
-- [ ] SandboxContext: creation, validation, change summary, apply, discard
-- [ ] SandboxedWorkflowRunner: success, user confirmation, user abort, force mode
-- [ ] CLI integration: --no-sandbox, --force, combined flags
+- [ ] All `TransactionalContext.Error` cases covered (including userAborted)
+- [ ] TransactionalContext: creation, validation, change summary, apply, discard
+- [ ] TransactionalWorkflowRunner: success, user confirmation, user abort, force mode
+- [ ] CLI integration: --no-transactional-workspace, --force, combined flags
 
 ---
 
@@ -649,31 +649,31 @@ None required - using:
 
 | File | Description |
 |------|-------------|
-| `WorkflowRunner/Sandbox/SandboxError.swift` | Nested error types for sandbox operations |
-| `WorkflowRunner/Sandbox/SandboxContext.swift` | Actor managing sandbox lifecycle |
-| `WorkflowRunner/Sandbox/SandboxedWorkflowRunner.swift` | Main orchestrator |
-| `WorkflowRunner/Sandbox/ApplyStagingArea.swift` | Helper managing staged diff + rollback |
-| `WorkflowRunner/Sandbox/WorkingDirectoryWatcher.swift` | Dual FSEvents implementation |
+| `WorkflowRunner/Transactional/TransactionalError.swift` | Nested error types for transactional workspace operations |
+| `WorkflowRunner/Transactional/TransactionalContext.swift` | Actor managing transactional workspace lifecycle |
+| `WorkflowRunner/Transactional/TransactionalWorkflowRunner.swift` | Main orchestrator |
+| `WorkflowRunner/Transactional/ApplyStagingArea.swift` | Helper managing staged diff + rollback |
+| `WorkflowRunner/Transactional/WorkingDirectoryWatcher.swift` | Dual FSEvents implementation |
 | `WorkflowRunner/Shared/WorkflowRunning.swift` | Protocol for workflow runners |
-| `Tests/EggKitTests/WorkflowRunner/Sandbox/SandboxContextTests.swift` | Unit tests for SandboxContext |
-| `Tests/EggKitTests/WorkflowRunner/Sandbox/SandboxedWorkflowRunnerTests.swift` | Unit tests for runner |
-| `Tests/EggKitTests/WorkflowRunner/Sandbox/ApplyStagingAreaTests.swift` | Unit tests for staging helper |
+| `Tests/EggKitTests/WorkflowRunner/Transactional/TransactionalContextTests.swift` | Unit tests for TransactionalContext |
+| `Tests/EggKitTests/WorkflowRunner/Transactional/TransactionalWorkflowRunnerTests.swift` | Unit tests for runner |
+| `Tests/EggKitTests/WorkflowRunner/Transactional/ApplyStagingAreaTests.swift` | Unit tests for staging helper |
 
 ### Modified Files
 
 | File | Changes |
 |------|---------|
-| `WorkflowRunner/NoSandbox/LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
+| `WorkflowRunner/NonTransactional/LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
 | `WorkflowRunner/Shared/LifecycleStepRunner.swift` | Add additionalEnvironment parameter |
 | `WorkflowRunner/Shared/ShellScriptRunner.swift` | Add additionalEnvironment parameter |
-| `HatchRunner.swift` | Add useSandbox and force parameters, runner factory |
-| `EggCLI/Commands/HatchCommand.swift` | Add --no-sandbox and --force flags |
+| `HatchRunner.swift` | Add useTransactionalWorkspace and force parameters, runner factory |
+| `EggCLI/Commands/HatchCommand.swift` | Add --no-transactional-workspace and --force flags |
 
 ---
 
 ## Notes
 
-- Start with Phase 1-2 to establish core sandbox mechanics
+- Start with Phase 1-2 to establish core workspace mechanics
 - Test extensively before integrating with workflow
 - Actor pattern from StepOutputsStorage is good reference
 - APFS clone makes directory size irrelevant (instant copy-on-write)

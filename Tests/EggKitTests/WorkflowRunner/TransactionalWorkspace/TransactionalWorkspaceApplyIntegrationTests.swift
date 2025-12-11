@@ -5,17 +5,17 @@ import Path
 import ProcessRunning
 import Testing
 
-/// Integration tests for SandboxContext's applyChanges functionality.
+/// Integration tests for TransactionalWorkspaceContext's applyChanges functionality.
 ///
 /// These tests verify the full workflow of:
-/// 1. Creating a sandbox from working directory
-/// 2. Making changes in the sandbox
+/// 1. Creating a transactional workspace from working directory
+/// 2. Making changes in the transactional workspace
 /// 3. Applying changes back to the working directory
-struct SandboxApplyIntegrationTests {
+struct TransactionalWorkspaceApplyIntegrationTests {
     @Test(arguments: TestCase.allCases)
     func applyChanges(_ testCase: TestCase) async throws {
         let fileSystem = FileSystem()
-        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "sandbox-apply-test")
+        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "workspace-apply-test")
 
         defer {
             Task { try? await fileSystem.remove(tempDir) }
@@ -35,27 +35,27 @@ struct SandboxApplyIntegrationTests {
             try await fileSystem.writeText(file.content, at: filePath)
         }
 
-        // Create sandbox with mock watchers for predictable testing
-        let sandboxWatcher = MockDirectoryWatcher()
+        // Create transactional workspace with mock watchers for predictable testing
+        let workspaceWatcher = MockDirectoryWatcher()
         let workingDirWatcher = MockDirectoryWatcher()
 
-        let sandbox = try await SandboxContext.create(
+        let transactionalWorkspace = try await TransactionalWorkspaceContext.create(
             cloning: workingDir,
             fileSystem: fileSystem,
-            sandboxWatcher: sandboxWatcher,
+            workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirWatcher,
             processRunner: ProcessRunner()
         )
 
-        let sandboxRoot = await sandbox.root
+        let workspaceRoot = await transactionalWorkspace.root
 
         defer {
-            Task { await sandbox.discard() }
+            Task { await transactionalWorkspace.discard() }
         }
 
-        // Apply sandbox modifications
-        for modification in testCase.sandboxModifications {
-            let path = sandboxRoot.appending(components: modification.path.split(separator: "/").map(String.init))
+        // Apply transactional workspace modifications
+        for modification in testCase.workspaceModifications {
+            let path = workspaceRoot.appending(components: modification.path.split(separator: "/").map(String.init))
 
             switch modification.operation {
             case let .create(content):
@@ -66,17 +66,17 @@ struct SandboxApplyIntegrationTests {
                 try await fileSystem.writeText(content, at: path)
                 // Simulate watcher event
                 let relativePath = try RelativePath(validating: modification.path)
-                await sandboxWatcher.simulateEvent(at: relativePath)
+                await workspaceWatcher.simulateEvent(at: relativePath)
 
             case let .modify(content):
                 try await fileSystem.writeText(content, at: path, options: [.overwrite])
                 let relativePath = try RelativePath(validating: modification.path)
-                await sandboxWatcher.simulateEvent(at: relativePath)
+                await workspaceWatcher.simulateEvent(at: relativePath)
 
             case .delete:
                 try await fileSystem.remove(path)
                 let relativePath = try RelativePath(validating: modification.path)
-                await sandboxWatcher.simulateEvent(at: relativePath)
+                await workspaceWatcher.simulateEvent(at: relativePath)
             }
         }
 
@@ -109,8 +109,8 @@ struct SandboxApplyIntegrationTests {
         // Execute test expectation
         switch testCase.expectation {
         case let .successfulApply(expectedFiles):
-            let changes = try await sandbox.computeChangeSummary()
-            let conflicts = try await sandbox.applyChanges(changes, force: testCase.forceApply)
+            let changes = try await transactionalWorkspace.computeChangeSummary()
+            let conflicts = try await transactionalWorkspace.applyChanges(changes, force: testCase.forceApply)
             #expect(conflicts.isEmpty || testCase.forceApply, "Expected no conflicts when not forcing")
 
             // Verify expected files in working directory
@@ -128,9 +128,9 @@ struct SandboxApplyIntegrationTests {
 
         case let .conflictsDetected(expectedConflictPaths):
             // Without force, should throw conflict error
-            let changes = try await sandbox.computeChangeSummary()
-            let error = await #expect(throws: SandboxContext.Error.self) {
-                _ = try await sandbox.applyChanges(changes, force: false)
+            let changes = try await transactionalWorkspace.computeChangeSummary()
+            let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
+                _ = try await transactionalWorkspace.applyChanges(changes, force: false)
             }
 
             guard case let .conflictingFiles(conflicts) = error else {
@@ -142,7 +142,7 @@ struct SandboxApplyIntegrationTests {
             #expect(conflictPaths == expectedConflictPaths.sorted(), "Expected conflicts at \(expectedConflictPaths), got \(conflictPaths)")
 
         case .emptyChangeSummary:
-            let summary = try await sandbox.computeChangeSummary()
+            let summary = try await transactionalWorkspace.computeChangeSummary()
             #expect(summary.isEmpty, "Expected empty change summary")
         }
     }
@@ -171,7 +171,7 @@ struct SandboxApplyIntegrationTests {
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let initialFiles: [InitialFile]
-        let sandboxModifications: [Modification]
+        let workspaceModifications: [Modification]
         let workingDirModifications: [Modification]
         let forceApply: Bool
         let expectation: Expectation
@@ -181,14 +181,14 @@ struct SandboxApplyIntegrationTests {
         init(
             description: String,
             initialFiles: [InitialFile] = [],
-            sandboxModifications: [Modification] = [],
+            workspaceModifications: [Modification] = [],
             workingDirModifications: [Modification] = [],
             forceApply: Bool = false,
             expectation: Expectation
         ) {
             self.description = description
             self.initialFiles = initialFiles
-            self.sandboxModifications = sandboxModifications
+            self.workspaceModifications = workspaceModifications
             self.workingDirModifications = workingDirModifications
             self.forceApply = forceApply
             self.expectation = expectation
@@ -214,7 +214,7 @@ struct SandboxApplyIntegrationTests {
             TestCase(
                 description: "adds new file to working directory",
                 initialFiles: [],
-                sandboxModifications: [
+                workspaceModifications: [
                     Modification(path: "new.txt", operation: .create(content: "new content")),
                 ],
                 expectation: .successfulApply(expectedFiles: [
@@ -225,7 +225,7 @@ struct SandboxApplyIntegrationTests {
             TestCase(
                 description: "adds new file in subdirectory",
                 initialFiles: [],
-                sandboxModifications: [
+                workspaceModifications: [
                     Modification(path: "subdir/nested/new.txt", operation: .create(content: "nested content")),
                 ],
                 expectation: .successfulApply(expectedFiles: [
@@ -239,7 +239,7 @@ struct SandboxApplyIntegrationTests {
                 initialFiles: [
                     InitialFile(path: "file.txt", content: "original"),
                 ],
-                sandboxModifications: [
+                workspaceModifications: [
                     Modification(path: "file.txt", operation: .modify(content: "modified")),
                 ],
                 expectation: .successfulApply(expectedFiles: [
@@ -253,7 +253,7 @@ struct SandboxApplyIntegrationTests {
                 initialFiles: [
                     InitialFile(path: "delete-me.txt", content: "to delete"),
                 ],
-                sandboxModifications: [
+                workspaceModifications: [
                     Modification(path: "delete-me.txt", operation: .delete),
                 ],
                 expectation: .successfulApply(expectedFiles: [
@@ -269,7 +269,7 @@ struct SandboxApplyIntegrationTests {
                     InitialFile(path: "modify.txt", content: "original"),
                     InitialFile(path: "delete.txt", content: "to delete"),
                 ],
-                sandboxModifications: [
+                workspaceModifications: [
                     Modification(path: "modify.txt", operation: .modify(content: "modified")),
                     Modification(path: "delete.txt", operation: .delete),
                     Modification(path: "new.txt", operation: .create(content: "new")),
@@ -284,12 +284,12 @@ struct SandboxApplyIntegrationTests {
 
             // Conflict detection
             TestCase(
-                description: "detects conflict when both sandbox and working dir modify same file",
+                description: "detects conflict when both transactional workspace and working dir modify same file",
                 initialFiles: [
                     InitialFile(path: "conflict.txt", content: "original"),
                 ],
-                sandboxModifications: [
-                    Modification(path: "conflict.txt", operation: .modify(content: "sandbox version")),
+                workspaceModifications: [
+                    Modification(path: "conflict.txt", operation: .modify(content: "workspace version")),
                 ],
                 workingDirModifications: [
                     Modification(path: "conflict.txt", operation: .modify(content: "working dir version")),
@@ -303,15 +303,15 @@ struct SandboxApplyIntegrationTests {
                 initialFiles: [
                     InitialFile(path: "conflict.txt", content: "original"),
                 ],
-                sandboxModifications: [
-                    Modification(path: "conflict.txt", operation: .modify(content: "sandbox wins")),
+                workspaceModifications: [
+                    Modification(path: "conflict.txt", operation: .modify(content: "workspace wins")),
                 ],
                 workingDirModifications: [
                     Modification(path: "conflict.txt", operation: .modify(content: "working dir loses")),
                 ],
                 forceApply: true,
                 expectation: .successfulApply(expectedFiles: [
-                    ExpectedFile(path: "conflict.txt", expectedContent: "sandbox wins"),
+                    ExpectedFile(path: "conflict.txt", expectedContent: "workspace wins"),
                 ])
             ),
         ]

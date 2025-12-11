@@ -433,13 +433,13 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "env-test",
                         if: nil,
-                        run: "echo \"sandbox=$EGG_SANDBOX_ROOT\""
+                        run: "echo \"workspace=$EGG_WORKSPACE_ROOT\""
                     ),
                 ],
                 macros: [],
-                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
                 expectedOutputs: [
-                    TestOutput(phase: .preHatch, stepId: "env-test", values: ["sandbox": "/tmp/sandbox"]),
+                    TestOutput(phase: .preHatch, stepId: "env-test", values: ["workspace": "/tmp/workspace"]),
                 ]
             ),
 
@@ -452,19 +452,19 @@ struct LifecycleStepRunnerTests {
                         id: "multi-env",
                         if: nil,
                         run: """
-                        echo "sandbox=$EGG_SANDBOX_ROOT"
+                        echo "workspace=$EGG_WORKSPACE_ROOT"
                         echo "workdir=$EGG_ORIGINAL_WORKING_DIR"
                         """
                     ),
                 ],
                 macros: [],
                 additionalEnvironment: [
-                    "EGG_SANDBOX_ROOT": "/tmp/sandbox",
+                    "EGG_WORKSPACE_ROOT": "/tmp/workspace",
                     "EGG_ORIGINAL_WORKING_DIR": "/Users/test/project",
                 ],
                 expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "multi-env", values: [
-                        "sandbox": "/tmp/sandbox",
+                        "workspace": "/tmp/workspace",
                         "workdir": "/Users/test/project",
                     ]),
                 ]
@@ -478,15 +478,15 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "combined",
                         if: nil,
-                        run: "echo \"result=___PROJECT_NAME___:$EGG_SANDBOX_ROOT\""
+                        run: "echo \"result=___PROJECT_NAME___:$EGG_WORKSPACE_ROOT\""
                     ),
                 ],
                 macros: [
                     ResolvedMacro(name: "___PROJECT_NAME___", description: "Project Name", value: .string("MyApp")),
                 ],
-                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
                 expectedOutputs: [
-                    TestOutput(phase: .preHatch, stepId: "combined", values: ["result": "MyApp:/tmp/sandbox"]),
+                    TestOutput(phase: .preHatch, stepId: "combined", values: ["result": "MyApp:/tmp/workspace"]),
                 ]
             ),
 
@@ -522,13 +522,13 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "post-env",
                         if: nil,
-                        run: "echo \"sandbox=$EGG_SANDBOX_ROOT\""
+                        run: "echo \"workspace=$EGG_WORKSPACE_ROOT\""
                     ),
                 ],
                 macros: [],
-                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
+                additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
                 expectedOutputs: [
-                    TestOutput(phase: .postHatch, stepId: "post-env", values: ["sandbox": "/tmp/sandbox"]),
+                    TestOutput(phase: .postHatch, stepId: "post-env", values: ["workspace": "/tmp/workspace"]),
                 ]
             ),
 

@@ -30,7 +30,7 @@ public protocol DirectoryCloning: Sendable {
 /// ## Requirements
 /// - macOS with APFS filesystem
 /// - Source and destination must be on the same APFS volume for CoW benefits
-public struct APFSDirectoryCloner: DirectoryCloning {
+public struct APFSDirectoryCloner: DirectoryCloning, Sendable {
     public init() {}
 
     public func clone(from source: URL, to destination: URL) throws {
@@ -43,9 +43,6 @@ public struct APFSDirectoryCloner: DirectoryCloning {
                 guard let srcPath, let dstPath else {
                     return Int32(-1)
                 }
-                // Flag 0: default behavior
-                // - Recursively clones directories
-                // - Follows symbolic links
                 return clonefile(srcPath, dstPath, 0)
             }
         }

@@ -14,8 +14,8 @@ import ProcessRunning
 /// The workflow runner ensures that outputs from earlier phases are available to later phases,
 /// enabling complex multi-step template generation workflows.
 ///
-/// This is the legacy (non-sandboxed) implementation that operates directly on the working directory.
-/// For atomic all-or-nothing execution, use `SandboxedWorkflowRunner` instead.
+/// This is the legacy (non-transactional) implementation that operates directly on the working directory.
+/// For atomic all-or-nothing execution, use `TransactionalWorkflowRunner` instead.
 ///
 /// Example:
 /// ```swift
@@ -73,7 +73,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         macroInputs: MacroInputs,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
-        // Resolve macros (for non-sandboxed execution, use real working directory)
+        // Resolve macros (for non-transactional execution, use real working directory)
         let macros = try resolveMacros(macroInputs, config: config)
 
         let outputs = StepOutputsStorage()
@@ -123,7 +123,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         switch inputs {
         case let .parsed(parsedMacros):
             // Resolve parsed macros with real working directory
-            // (non-sandboxed execution uses the actual working directory)
+            // (non-transactional execution uses the actual working directory)
             let validator = ParsedMacroDefinitionValidator(
                 config: config,
                 workingDirectory: workingDirectory,

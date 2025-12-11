@@ -6,7 +6,7 @@ import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow with atomic all-or-nothing execution.
 ///
-/// SandboxedWorkflowRunner executes all phases in a sandbox (APFS clone of working directory),
+/// TransactionalWorkflowRunner executes all phases in a transactional workspace (APFS clone of working directory),
 /// then applies only the changed files to the real working directory on success.
 /// This provides:
 /// - **Atomic execution**: Either all changes apply or none do
@@ -16,7 +16,7 @@ import ProcessRunning
 ///
 /// Example:
 /// ```swift
-/// let runner = SandboxedWorkflowRunner(
+/// let runner = TransactionalWorkflowRunner(
 ///     processRunner: ProcessRunner(),
 ///     fileSystem: FileSystem(),
 ///     workingDirectory: try AbsolutePath(validating: "/tmp/project"),
@@ -32,7 +32,7 @@ import ProcessRunning
 ///     templateDirectory: templateDir
 /// )
 /// ```
-struct SandboxedWorkflowRunner: WorkflowRunning {
+struct TransactionalWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath
@@ -41,7 +41,7 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
     private let isInteractive: Bool
     private let force: Bool
     private let phaseRunner: PhaseRunner
-    private let sandboxWatcher: any DirectoryWatching
+    private let workspaceWatcher: any DirectoryWatching
     private let workingDirectoryWatcher: any DirectoryWatching
 
     init(
@@ -52,7 +52,7 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
         force: Bool = false,
-        sandboxWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
+        workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher()
     ) {
         self.processRunner = processRunner
@@ -70,57 +70,57 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
             isInteractive: isInteractive,
             force: force
         )
-        self.sandboxWatcher = sandboxWatcher
+        self.workspaceWatcher = workspaceWatcher
         self.workingDirectoryWatcher = workingDirectoryWatcher
     }
 
-    /// Executes the complete lifecycle workflow in a sandbox.
+    /// Executes the complete lifecycle workflow in a transactional workspace.
     ///
     /// - Parameters:
     ///   - config: Template configuration containing lifecycle steps and hatch configuration
     ///   - macroInputs: Macro inputs to be resolved (either already resolved or pending interactive prompts)
     ///   - templateDirectory: Source directory containing the template files
     /// - Returns: The resolved absolute path of the output directory (in the real working directory)
-    /// - Throws: `SandboxContext.Error` for sandbox-related failures, or other errors from phases
+    /// - Throws: `TransactionalWorkspaceContext.Error` for transactional workspace-related failures, or other errors from phases
     func run(
         config: Config,
         macroInputs: MacroInputs,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
-        // Step 1: Create sandbox (APFS clone of working directory)
-        noora.passthrough("🔒 Creating sandbox...\n")
-        let sandbox = try await SandboxContext.create(
+        // Step 1: Create transactional workspace (APFS clone of working directory)
+        noora.passthrough("🔒 Creating transactional workspace...\n")
+        let workspace = try await TransactionalWorkspaceContext.create(
             cloning: workingDirectory,
             homeDirectory: homeDirectory,
             fileSystem: fileSystem,
-            sandboxWatcher: sandboxWatcher,
+            workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner
         )
 
         // Register cleanup handler for SIGINT/SIGTERM (Control+C)
-        let cleanupHandlerId = await SandboxCleanupRegistry.shared.register {
-            await sandbox.discard()
+        let cleanupHandlerId = await TransactionalWorkspaceCleanupRegistry.shared.register {
+            await workspace.discard()
         }
 
         // Ensure cleanup handler is unregistered when we're done
         defer {
             Task {
-                await SandboxCleanupRegistry.shared.unregister(cleanupHandlerId)
+                await TransactionalWorkspaceCleanupRegistry.shared.unregister(cleanupHandlerId)
             }
         }
 
-        // Ensure sandbox is discarded on any failure
+        // Ensure transactional workspace is discarded on any failure
         do {
-            // Step 2: Resolve macros with sandbox root as working directory
+            // Step 2: Resolve macros with workspace root as working directory
             // This is critical for path-type macros to resolve correctly
-            let macros = try resolveMacros(macroInputs, config: config, sandboxRoot: sandbox.root)
+            let macros = try resolveMacros(macroInputs, config: config, workspaceRoot: workspace.root)
 
             let outputs = StepOutputsStorage()
 
-            // Step 2: Execute pre_hatch phase in sandbox (with OS-level sandboxing)
-            let executionEnvironment = ExecutionEnvironment.sandboxed(
-                root: sandbox.root,
+            // Step 2: Execute pre_hatch phase in transactional workspace (with OS-level sandboxing)
+            let executionEnvironment = ExecutionEnvironment.transactional(
+                root: workspace.root,
                 originalWorkingDirectory: workingDirectory
             )
 
@@ -129,49 +129,49 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
                     steps: preHatchSteps,
                     macros: macros,
                     outputs: outputs,
-                    workingDirectory: sandbox.root,
-                    additionalEnvironment: ["EGG_SANDBOX_ROOT": sandbox.root.pathString],
+                    workingDirectory: workspace.root,
+                    additionalEnvironment: ["EGG_SANDBOX_ROOT": workspace.root.pathString],
                     executionEnvironment: executionEnvironment
                 )
             }
 
-            // Step 4: Execute hatch phase (template expansion) in sandbox
-            let sandboxOutputDirectory = try await phaseRunner.executeHatch(
+            // Step 4: Execute hatch phase (template expansion) in transactional workspace
+            let workspaceOutputDirectory = try await phaseRunner.executeHatch(
                 config: config,
                 macros: macros,
                 outputs: outputs,
                 templateDirectory: templateDirectory,
-                workingDirectory: sandbox.root,
+                workingDirectory: workspace.root,
                 pathValidator: { path in
-                    try await sandbox.validatePath(path)
+                    try await workspace.validatePath(path)
                 }
             )
 
-            noora.passthrough("✅ Template hatched successfully in sandbox.\n", tab: 1)
+            noora.passthrough("✅ Template hatched successfully in transactional workspace.\n", tab: 1)
 
             // Calculate relative path for later use
             let resolvedOutputPath = try computeRelativePath(
-                outputDirectory: sandboxOutputDirectory,
-                sandboxRoot: sandbox.root
+                outputDirectory: workspaceOutputDirectory,
+                workspaceRoot: workspace.root
             )
 
-            // Step 5: Execute post_hatch phase in sandbox (with OS-level sandboxing)
+            // Step 5: Execute post_hatch phase in transactional workspace (with OS-level sandboxing)
             if let postHatchSteps = config.postHatch {
                 try await phaseRunner.executePostHatch(
                     steps: postHatchSteps,
                     macros: macros,
                     outputs: outputs,
-                    workingDirectory: sandbox.root,
+                    workingDirectory: workspace.root,
                     executionEnvironment: executionEnvironment
                 )
             }
 
             // Step 6: Compute changes and handle conflicts
-            let changeSummary = try await sandbox.computeChangeSummary()
+            let changeSummary = try await workspace.computeChangeSummary()
 
             if changeSummary.isEmpty {
                 noora.passthrough("ℹ️ No changes to apply.\n")
-                await sandbox.discard()
+                await workspace.discard()
                 return workingDirectory.appending(resolvedOutputPath)
             }
 
@@ -179,11 +179,11 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
             displayChangeSummary(changeSummary)
 
             // Step 8: Handle confirmation based on mode
-            try await confirmChanges(sandbox: sandbox)
+            try await confirmChanges(workspace: workspace)
 
             // Step 10: Apply changes to working directory
             noora.passthrough("📦 Applying changes...\n")
-            let overriddenConflicts = try await sandbox.applyChanges(changeSummary, force: force)
+            let overriddenConflicts = try await workspace.applyChanges(changeSummary, force: force)
 
             // Display warning for overridden conflicts (when force=true)
             if !overriddenConflicts.isEmpty {
@@ -199,33 +199,33 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
             return workingDirectory.appending(resolvedOutputPath)
 
         } catch {
-            // Ensure sandbox is always discarded on error
-            await sandbox.discard()
+            // Ensure transactional workspace is always discarded on error
+            await workspace.discard()
             throw error
         }
     }
 
-    /// Computes the relative path from sandbox root to output directory.
+    /// Computes the relative path from workspace root to output directory.
     ///
     /// - Parameters:
-    ///   - outputDirectory: The absolute output path within sandbox
-    ///   - sandboxRoot: The sandbox root path
-    /// - Returns: The relative path from sandbox root
+    ///   - outputDirectory: The absolute output path within transactional workspace
+    ///   - workspaceRoot: The transactional workspace root path
+    /// - Returns: The relative path from workspace root
     private func computeRelativePath(
         outputDirectory: AbsolutePath,
-        sandboxRoot: AbsolutePath
+        workspaceRoot: AbsolutePath
     ) throws -> RelativePath {
-        // If output is the sandbox root itself (output: "."), return "." as the relative path
-        if outputDirectory == sandboxRoot {
+        // If output is the workspace root itself (output: "."), return "." as the relative path
+        if outputDirectory == workspaceRoot {
             return try RelativePath(validating: ".")
         }
 
-        // Remove the sandbox root prefix to get the relative path
+        // Remove the workspace root prefix to get the relative path
         let pathString = outputDirectory.pathString
-        let rootPrefix = sandboxRoot.pathString + "/"
+        let rootPrefix = workspaceRoot.pathString + "/"
         guard pathString.hasPrefix(rootPrefix) else {
             throw LifecycleStepError.invalidOutputDirectory(
-                "Output path is not within sandbox: \(pathString)"
+                "Output path is not within transactional workspace: \(pathString)"
             )
         }
         let relative = String(pathString.dropFirst(rootPrefix.count))
@@ -239,10 +239,10 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
     /// - `force=false, isInteractive=true`: Prompt user for confirmation
     /// - `force=false, isInteractive=false, conflicts=empty`: Apply without confirmation
     /// - `force=false, isInteractive=false, conflicts=exists`: Throw error
-    private func confirmChanges(sandbox: SandboxContext) async throws {
+    private func confirmChanges(workspace: TransactionalWorkspaceContext) async throws {
         guard !force else { return }
 
-        let conflicts = try await sandbox.detectConflicts()
+        let conflicts = try await workspace.detectConflicts()
 
         if !conflicts.isEmpty {
             displayConflicts(conflicts)
@@ -250,17 +250,17 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
 
         if isInteractive {
             let confirmed = noora.yesOrNoChoicePrompt(
-                title: "Apply Changes",
-                question: "Do you want to apply these changes to the working directory?"
+                title: "Apply Changes (transactional workspace → current directory)",
+                question: "Apply to \(workspace.originalWorkingDirectory.pathString)?"
             )
             guard confirmed else {
                 noora.passthrough("❌ Changes discarded by user.\n")
-                await sandbox.discard()
-                throw SandboxContext.Error.userAborted
+                await workspace.discard()
+                throw TransactionalWorkspaceContext.Error.userAborted
             }
         } else if !conflicts.isEmpty {
-            await sandbox.discard()
-            throw SandboxContext.Error.conflictingFiles(conflicts)
+            await workspace.discard()
+            throw TransactionalWorkspaceContext.Error.conflictingFiles(conflicts)
         }
     }
 
@@ -315,28 +315,28 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
     /// - Parameters:
     ///   - inputs: The macro inputs (parsed from CLI or requiring interactive prompts)
     ///   - config: The template configuration containing macro definitions
-    ///   - sandboxRoot: The sandbox root directory (used as working directory for path resolution)
+    ///   - workspaceRoot: The transactional workspace root directory (used as working directory for path resolution)
     /// - Returns: Array of resolved macros
     /// - Throws: Validation errors for parsed macros
     private func resolveMacros(
         _ inputs: MacroInputs,
         config: Config,
-        sandboxRoot: AbsolutePath
+        workspaceRoot: AbsolutePath
     ) throws -> [ResolvedMacro] {
         switch inputs {
         case let .parsed(parsedMacros):
-            // Resolve parsed macros with sandbox root as working directory
-            // This ensures path-type macros are resolved relative to the sandbox
+            // Resolve parsed macros with workspace root as working directory
+            // This ensures path-type macros are resolved relative to the transactional workspace
             let validator = ParsedMacroDefinitionValidator(
                 config: config,
-                workingDirectory: sandboxRoot,
+                workingDirectory: workspaceRoot,
                 homeDirectory: homeDirectory
             )
             return try validator.validate(parsedMacros)
         case .interactive:
             let resolver = MacroResolver(
                 config: config,
-                workingDirectory: sandboxRoot,
+                workingDirectory: workspaceRoot,
                 homeDirectory: homeDirectory,
                 noora: noora
             )

@@ -1,16 +1,16 @@
 import Foundation
 import Path
 
-/// Errors that can occur during sandbox operations.
-extension SandboxContext {
+/// Errors that can occur during transactional workspace operations.
+extension TransactionalWorkspaceContext {
     enum Error: LocalizedError, Equatable {
-        /// Attempted to use a sandbox that has already been discarded.
+        /// Attempted to use a transactional workspace that has already been discarded.
         case alreadyDiscarded
 
-        /// Failed to create sandbox directory structure.
+        /// Failed to create transactional workspace directory structure.
         case creationFailed(reason: String)
 
-        /// Path attempted to escape sandbox boundaries.
+        /// Path attempted to escape transactional workspace boundaries.
         /// This can occur in pre_hatch, hatch output, or post_hatch.
         case escapeAttempt(path: String)
 
@@ -30,9 +30,9 @@ extension SandboxContext {
         var errorDescription: String? {
             switch self {
             case .alreadyDiscarded:
-                return "Sandbox has already been discarded"
+                return "Transactional workspace has already been discarded"
             case let .creationFailed(reason):
-                return "Failed to create sandbox: \(reason)"
+                return "Failed to create transactional workspace: \(reason)"
             case let .escapeAttempt(path):
                 return "Path escape attempt detected: \(path)"
             case let .conflictingFiles(conflicts):

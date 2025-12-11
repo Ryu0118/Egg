@@ -269,18 +269,18 @@ struct ShellScriptRunnerTests {
         static let allCases: [EnvironmentTestCase] = [
             EnvironmentTestCase(
                 description: "accesses single additional environment variable",
-                command: "echo $EGG_SANDBOX_ROOT",
-                additionalEnvironment: ["EGG_SANDBOX_ROOT": "/tmp/sandbox"],
-                expectedOutput: "/tmp/sandbox"
+                command: "echo $EGG_WORKSPACE_ROOT",
+                additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
+                expectedOutput: "/tmp/workspace"
             ),
             EnvironmentTestCase(
                 description: "accesses multiple additional environment variables",
-                command: "echo $EGG_SANDBOX_ROOT:$EGG_ORIGINAL_WORKING_DIR",
+                command: "echo $EGG_WORKSPACE_ROOT:$EGG_ORIGINAL_WORKING_DIR",
                 additionalEnvironment: [
-                    "EGG_SANDBOX_ROOT": "/tmp/sandbox",
+                    "EGG_WORKSPACE_ROOT": "/tmp/workspace",
                     "EGG_ORIGINAL_WORKING_DIR": "/Users/test/project",
                 ],
-                expectedOutput: "/tmp/sandbox:/Users/test/project"
+                expectedOutput: "/tmp/workspace:/Users/test/project"
             ),
             EnvironmentTestCase(
                 description: "additional environment variables are available in subshell",

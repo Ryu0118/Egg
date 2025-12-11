@@ -2,9 +2,9 @@ import FileSystem
 import Foundation
 import Path
 
-/// Manages a temporary staging area for applying sandbox changes atomically.
+/// Manages a temporary staging area for applying transactional workspace changes atomically.
 ///
-/// The staging area provides a two-phase commit for sandbox changes:
+/// The staging area provides a two-phase commit for transactional workspace changes:
 /// 1. Stage: Materialize all changes (adds/modifies/deletes) in a temporary directory
 /// 2. Apply: Transfer staged changes to the working directory
 ///
@@ -15,8 +15,8 @@ struct ApplyStagingArea {
     /// The root directory of the staging area.
     let root: AbsolutePath
 
-    /// The sandbox root directory (source of changes).
-    let sandboxRoot: AbsolutePath
+    /// The transactional workspace root directory (source of changes).
+    let workspaceRoot: AbsolutePath
 
     /// The original working directory (destination of changes).
     let workingDirectory: AbsolutePath
@@ -29,21 +29,21 @@ struct ApplyStagingArea {
         root.appending(component: "backup")
     }
 
-    private init(root: AbsolutePath, sandboxRoot: AbsolutePath, workingDirectory: AbsolutePath) {
+    private init(root: AbsolutePath, workspaceRoot: AbsolutePath, workingDirectory: AbsolutePath) {
         self.root = root
-        self.sandboxRoot = sandboxRoot
+        self.workspaceRoot = workspaceRoot
         self.workingDirectory = workingDirectory
     }
 
-    /// Creates a new staging area within the sandbox directory.
+    /// Creates a new staging area within the transactional workspace directory.
     ///
     /// - Parameters:
-    ///   - sandboxRoot: The sandbox root directory
+    ///   - workspaceRoot: The transactional workspace root directory
     ///   - workingDirectory: The original working directory
     ///   - fileSystem: File system for operations
     /// - Returns: A new ApplyStagingArea
     static func create(
-        sandboxRoot: AbsolutePath,
+        workspaceRoot: AbsolutePath,
         workingDirectory: AbsolutePath,
         fileSystem: any FileSysteming
     ) async throws -> ApplyStagingArea {
@@ -52,7 +52,7 @@ struct ApplyStagingArea {
 
         let area = ApplyStagingArea(
             root: stagingRoot,
-            sandboxRoot: sandboxRoot,
+            workspaceRoot: workspaceRoot,
             workingDirectory: workingDirectory
         )
 
@@ -69,20 +69,20 @@ struct ApplyStagingArea {
     /// capturing actor-isolated state, which would cause Swift 6 concurrency errors.
     ///
     /// - Parameters:
-    ///   - sandboxRoot: The sandbox root directory
+    ///   - workspaceRoot: The transactional workspace root directory
     ///   - workingDirectory: The original working directory
     ///   - fileSystem: File system for operations
     ///   - body: Closure that receives the staging area and file system
     /// - Returns: The result of the closure
     /// - Throws: Any error thrown by the closure or staging area creation
     static func withStaging<T: Sendable>(
-        sandboxRoot: AbsolutePath,
+        workspaceRoot: AbsolutePath,
         workingDirectory: AbsolutePath,
         fileSystem: any FileSysteming,
         body: @Sendable (ApplyStagingArea, any FileSysteming) async throws -> T
     ) async throws -> T {
         let staging = try await create(
-            sandboxRoot: sandboxRoot,
+            workspaceRoot: workspaceRoot,
             workingDirectory: workingDirectory,
             fileSystem: fileSystem
         )
@@ -97,10 +97,10 @@ struct ApplyStagingArea {
         }
     }
 
-    /// Stages all changes from the sandbox based on the change summary.
+    /// Stages all changes from the transactional workspace based on the change summary.
     ///
     /// This method prepares all file operations without touching the working directory:
-    /// - Copies new/modified files from sandbox to staging area
+    /// - Copies new/modified files from transactional workspace to staging area
     /// - Records deletions in the manifest
     ///
     /// - Parameters:
@@ -261,7 +261,7 @@ struct ApplyStagingArea {
         entries.reserveCapacity(paths.count)
 
         for path in paths {
-            let source = sandboxRoot.appending(path)
+            let source = workspaceRoot.appending(path)
             let stagedDestination = stagedPath(for: path)
             try await copyToStaging(source: source, destination: stagedDestination, fileSystem: fileSystem)
 
@@ -286,7 +286,7 @@ struct ApplyStagingArea {
         entries.reserveCapacity(paths.count)
 
         for path in paths {
-            let source = sandboxRoot.appending(path)
+            let source = workspaceRoot.appending(path)
             let stagedDestination = stagedPath(for: path)
             try await copyToStaging(source: source, destination: stagedDestination, fileSystem: fileSystem)
             let backup = try await backupOriginalIfNeeded(relativePath: path, fileSystem: fileSystem)

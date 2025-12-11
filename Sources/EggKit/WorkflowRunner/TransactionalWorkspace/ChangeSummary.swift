@@ -1,7 +1,7 @@
 import Foundation
 import Path
 
-/// Summary of changes to be applied from sandbox to working directory.
+/// Summary of changes to be applied from transactional workspace to working directory.
 struct ChangeSummary: Equatable, Sendable {
     let added: [RelativePath]
     let modified: [RelativePath]
@@ -14,6 +14,11 @@ struct ChangeSummary: Equatable, Sendable {
     /// Total number of changes.
     var totalCount: Int {
         added.count + modified.count + deleted.count
+    }
+
+    /// All paths that have any kind of change.
+    var allPaths: [RelativePath] {
+        added + modified + deleted
     }
 }
 

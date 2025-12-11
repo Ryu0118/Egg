@@ -13,7 +13,7 @@ package struct HatchRunner {
     private let projectDirectory: AbsolutePath
     private let templateFinder: TemplatesFinder
     private let processRunner: any ProcessRunning
-    private let useSandbox: Bool
+    private let useTransactionalWorkspace: Bool
     private let force: Bool
 
     package init(
@@ -24,7 +24,7 @@ package struct HatchRunner {
         fileSystem: some FileSysteming,
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
-        useSandbox: Bool = true,
+        useTransactionalWorkspace: Bool = true,
         force: Bool = false
     ) {
         self.mode = mode
@@ -34,7 +34,7 @@ package struct HatchRunner {
         self.fileSystem = fileSystem
         self.processRunner = processRunner
         self.noora = noora
-        self.useSandbox = useSandbox
+        self.useTransactionalWorkspace = useTransactionalWorkspace
         self.force = force
         templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
@@ -62,7 +62,7 @@ package struct HatchRunner {
 
             // Run workflow with interactive macro resolution
             // Macros will be resolved inside the workflow runner at the appropriate time
-            // (after sandbox creation for sandboxed execution)
+            // (after transactional workspace creation for transactional execution)
             _ = try await workflowRunner.run(
                 config: template.config,
                 macroInputs: .interactive,
@@ -74,7 +74,7 @@ package struct HatchRunner {
 
             // Run workflow with parsed macros (path resolution deferred to runner)
             // This ensures path-type macros are resolved relative to the correct
-            // working directory (sandbox root for sandboxed execution)
+            // working directory (transactional workspace root for transactional execution)
             _ = try await workflowRunner.run(
                 config: template.config,
                 macroInputs: .parsed(parsedMacros),
@@ -83,12 +83,12 @@ package struct HatchRunner {
         }
     }
 
-    /// Creates the appropriate workflow runner based on sandbox settings.
+    /// Creates the appropriate workflow runner based on transactional workspace settings.
     ///
-    /// - Returns: A workflow runner (sandboxed or non-sandboxed)
+    /// - Returns: A workflow runner (transactional or non-transactional)
     private func makeWorkflowRunner() -> any WorkflowRunning {
-        if useSandbox {
-            return SandboxedWorkflowRunner(
+        if useTransactionalWorkspace {
+            return TransactionalWorkflowRunner(
                 processRunner: processRunner,
                 fileSystem: fileSystem,
                 workingDirectory: workingDirectory,
@@ -98,7 +98,7 @@ package struct HatchRunner {
                 force: force
             )
         } else {
-            noora.warning("Running without sandbox. filesystem changes are permanent")
+            noora.warning("Running without transactional workspace. filesystem changes are permanent")
             return LifecycleWorkflowRunner(
                 processRunner: processRunner,
                 fileSystem: fileSystem,

@@ -27,7 +27,7 @@ struct GitDiffRunnerIntegrationTests {
             )
 
             let summary = try await runner.computeChanges(
-                sandboxRoot: sandboxDir,
+                workspaceRoot: sandboxDir,
                 workingDirectory: workingDir,
                 targetPaths: targetPaths
             )
@@ -302,7 +302,7 @@ struct GitDiffRunnerIntegrationTests {
             )
 
             let summary = try await runner.computeChanges(
-                sandboxRoot: sandboxDir,
+                workspaceRoot: sandboxDir,
                 workingDirectory: workingDir,
                 targetPaths: targetPaths
             )

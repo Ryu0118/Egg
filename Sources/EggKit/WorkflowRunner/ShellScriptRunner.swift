@@ -13,7 +13,7 @@ import Subprocess
 ///
 /// When `executionEnvironment` is `.sandboxed`, commands are executed within
 /// an OS-level sandbox using `sandbox-exec` that restricts file system access
-/// to only the sandbox directory.
+/// to only the transactional workspace directory.
 struct ShellScriptRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: AbsolutePath
@@ -40,7 +40,7 @@ struct ShellScriptRunner {
     func execute(_ command: String) async throws -> (stdout: String, stderr: String?) {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
-        // Resolve symlinks in working directory for sandbox compatibility
+        // Resolve symlinks in working directory for macOS sandbox-exec compatibility
         let resolvedWorkingDirectory = resolveRealPath(workingDirectory.pathString)
 
         let result = try await processRunner.run(
@@ -86,7 +86,7 @@ struct ShellScriptRunner {
     ) async throws -> String {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
-        // Resolve symlinks in working directory for sandbox compatibility
+        // Resolve symlinks in working directory for macOS sandbox-exec compatibility
         let resolvedWorkingDirectory = resolveRealPath(workingDirectory.pathString)
 
         let result = try await processRunner.run(
@@ -159,13 +159,13 @@ struct ShellScriptRunner {
     /// Returns the executable and arguments for running the command.
     ///
     /// When sandboxed, wraps the command in `sandbox-exec`
-    /// with a profile that restricts file system access to only the sandbox directory.
+    /// with a profile that restricts file system access to only the transactional workspace directory.
     private func makeExecutableAndArguments(for command: String) -> (Subprocess.Executable, Arguments) {
         switch executionEnvironment {
         case .normal:
             return (.path("/bin/sh"), ["-c", command])
 
-        case let .sandboxed(root, originalWorkingDirectory):
+        case let .transactional(root, originalWorkingDirectory):
             let profile = generateSandboxProfile(
                 allowingAccessTo: root,
                 denyingAccessTo: originalWorkingDirectory
@@ -184,7 +184,7 @@ struct ShellScriptRunner {
     /// - Denies all operations by default
     /// - Allows process execution (required for running commands)
     /// - Allows read access to all files
-    /// - Allows read/write access only to the sandbox root directory
+    /// - Allows read/write access only to the transactional workspace root directory
     /// - Explicitly denies write access to the original working directory
     /// - Allows network access (some scripts may need it)
     ///
@@ -195,11 +195,11 @@ struct ShellScriptRunner {
     ) -> String {
         // Resolve symlinks to get the real path (sandbox-exec uses real paths)
         // e.g., /var/folders/... -> /private/var/folders/...
-        let sandboxPath = resolveRealPath(sandboxRoot.pathString)
+        let workspaceRootPath = resolveRealPath(sandboxRoot.pathString)
         let originalPath = resolveRealPath(originalWorkingDirectory.pathString)
 
         // Escape quotes in paths for SBPL string literal
-        let escapedSandboxPath = sandboxPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedWorkspaceRootPath = workspaceRootPath.replacingOccurrences(of: "\"", with: "\\\"")
         let escapedOriginalPath = originalPath.replacingOccurrences(of: "\"", with: "\\\"")
 
         return """
@@ -211,10 +211,14 @@ struct ShellScriptRunner {
         (allow file-read*)
         ; Explicitly deny write access to original working directory
         (deny file-write* (subpath "\(escapedOriginalPath)"))
-        ; Allow full read/write access to sandbox directory only
-        (allow file-write* (subpath "\(escapedSandboxPath)"))
-        ; Allow write access to system temp directories (needed for Swift Package Manager locks, etc.)
+        (deny file-read* (subpath "\(escapedOriginalPath)"))
+        ; Allow full read/write access to transactional workspace directory only
+        (allow file-write* (subpath "\(escapedWorkspaceRootPath)"))
+        ; Allow read/write access to system temp directories (needed for atomic writes, locks, etc.)
+        (allow file-read* (subpath "/private/var/folders"))
+        (allow file-read* (subpath "/private/tmp"))
         (allow file-write* (subpath "/private/var/folders"))
+        (allow file-write* (subpath "/private/tmp"))
         ; Allow file I/O control operations
         (allow file-ioctl)
         ; Allow network (some scripts may need it)

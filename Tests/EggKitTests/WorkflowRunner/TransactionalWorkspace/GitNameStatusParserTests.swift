@@ -11,7 +11,7 @@ struct GitNameStatusParserTests {
 
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,
-            sandboxRoot: sandboxRoot
+            workspaceRoot: sandboxRoot
         )
 
         let result = parser.parse(components: testCase.components.map { Substring($0) })
@@ -28,7 +28,7 @@ struct GitNameStatusParserTests {
         let description: String
         let components: [String]
         let workingRoot: String
-        let sandboxRoot: String
+        let workspaceRoot: String
         let expectedAdded: [String]
         let expectedModified: [String]
         let expectedDeleted: [String]
@@ -40,7 +40,7 @@ struct GitNameStatusParserTests {
                 description: "parses empty components",
                 components: [],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: [],
                 expectedModified: [],
                 expectedDeleted: []
@@ -49,7 +49,7 @@ struct GitNameStatusParserTests {
                 description: "parses single added file",
                 components: ["A", "newfile.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["newfile.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -58,7 +58,7 @@ struct GitNameStatusParserTests {
                 description: "parses single modified file",
                 components: ["M", "existing.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: [],
                 expectedModified: ["existing.txt"],
                 expectedDeleted: []
@@ -67,7 +67,7 @@ struct GitNameStatusParserTests {
                 description: "parses single deleted file",
                 components: ["D", "removed.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: [],
                 expectedModified: [],
                 expectedDeleted: ["removed.txt"]
@@ -76,7 +76,7 @@ struct GitNameStatusParserTests {
                 description: "parses multiple changes of same type",
                 components: ["A", "file1.txt", "A", "file2.txt", "A", "file3.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["file1.txt", "file2.txt", "file3.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -85,7 +85,7 @@ struct GitNameStatusParserTests {
                 description: "parses mixed changes",
                 components: ["A", "new.txt", "M", "changed.txt", "D", "gone.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["new.txt"],
                 expectedModified: ["changed.txt"],
                 expectedDeleted: ["gone.txt"]
@@ -94,7 +94,7 @@ struct GitNameStatusParserTests {
                 description: "parses rename as delete and add",
                 components: ["R100", "old.txt", "new.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["new.txt"],
                 expectedModified: [],
                 expectedDeleted: ["old.txt"]
@@ -103,7 +103,7 @@ struct GitNameStatusParserTests {
                 description: "parses rename with similarity score",
                 components: ["R095", "original.txt", "renamed.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["renamed.txt"],
                 expectedModified: [],
                 expectedDeleted: ["original.txt"]
@@ -112,7 +112,7 @@ struct GitNameStatusParserTests {
                 description: "strips working root prefix from path",
                 components: ["A", "/work/src/file.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["src/file.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -121,7 +121,7 @@ struct GitNameStatusParserTests {
                 description: "strips sandbox root prefix from path",
                 components: ["M", "/sandbox/lib/module.swift"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: [],
                 expectedModified: ["lib/module.swift"],
                 expectedDeleted: []
@@ -130,7 +130,7 @@ struct GitNameStatusParserTests {
                 description: "handles paths with nested directories",
                 components: ["A", "src/components/Button.swift", "M", "tests/unit/ButtonTests.swift"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["src/components/Button.swift"],
                 expectedModified: ["tests/unit/ButtonTests.swift"],
                 expectedDeleted: []
@@ -139,7 +139,7 @@ struct GitNameStatusParserTests {
                 description: "handles unknown status by skipping",
                 components: ["X", "unknown.txt", "A", "valid.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["valid.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -148,7 +148,7 @@ struct GitNameStatusParserTests {
                 description: "handles copy status by skipping",
                 components: ["C", "src.txt", "dest.txt", "A", "new.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["new.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -157,7 +157,7 @@ struct GitNameStatusParserTests {
                 description: "sorts output paths alphabetically",
                 components: ["A", "zebra.txt", "A", "apple.txt", "A", "mango.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["apple.txt", "mango.txt", "zebra.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -166,7 +166,7 @@ struct GitNameStatusParserTests {
                 description: "handles empty status line gracefully",
                 components: ["", "A", "file.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["file.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -175,7 +175,7 @@ struct GitNameStatusParserTests {
                 description: "handles file paths with spaces",
                 components: ["A", "path with spaces/file name.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["path with spaces/file name.txt"],
                 expectedModified: [],
                 expectedDeleted: []
@@ -184,7 +184,7 @@ struct GitNameStatusParserTests {
                 description: "handles mixed root prefixes",
                 components: ["A", "/work/from-work.txt", "M", "/sandbox/from-sandbox.txt", "D", "no-prefix.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["from-work.txt"],
                 expectedModified: ["from-sandbox.txt"],
                 expectedDeleted: ["no-prefix.txt"]
@@ -193,7 +193,7 @@ struct GitNameStatusParserTests {
                 description: "handles rename across directories",
                 components: ["R100", "/work/old/file.txt", "/sandbox/new/file.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["new/file.txt"],
                 expectedModified: [],
                 expectedDeleted: ["old/file.txt"]
@@ -202,7 +202,7 @@ struct GitNameStatusParserTests {
                 description: "handles multiple renames",
                 components: ["R100", "a.txt", "b.txt", "R090", "x.txt", "y.txt"],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["b.txt", "y.txt"],
                 expectedModified: [],
                 expectedDeleted: ["a.txt", "x.txt"]
@@ -216,7 +216,7 @@ struct GitNameStatusParserTests {
                     "R100", "/work/Tests/OldTest.swift", "/sandbox/Tests/NewTest.swift",
                 ],
                 workingRoot: "/work",
-                sandboxRoot: "/sandbox",
+                workspaceRoot: "/sandbox",
                 expectedAdded: ["Sources/NewFeature.swift", "Tests/NewTest.swift"],
                 expectedModified: ["Sources/Existing.swift"],
                 expectedDeleted: ["Sources/Deprecated.swift", "Tests/OldTest.swift"]

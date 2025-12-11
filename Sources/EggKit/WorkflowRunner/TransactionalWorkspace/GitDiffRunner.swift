@@ -10,7 +10,7 @@ import Subprocess
     import SystemPackage
 #endif
 
-/// Runs git diff to detect changes between sandbox and working directory.
+/// Runs git diff to detect changes between transactional workspace and working directory.
 ///
 /// Uses `git diff --no-index` to compare directories without requiring a git repository.
 /// This leverages Git's efficient diff algorithm, rename detection, and large file handling.
@@ -30,18 +30,18 @@ struct GitDiffRunner {
         self.fileSystem = fileSystem
     }
 
-    /// Computes changes between sandbox and working directory for specific paths.
+    /// Computes changes between transactional workspace and working directory for specific paths.
     ///
     /// Only compares files at the specified relative paths (from watcher events).
     /// This targeted approach avoids scanning entire directory trees.
     ///
     /// - Parameters:
-    ///   - sandboxRoot: The sandbox root directory
+    ///   - workspaceRoot: The transactional workspace root directory
     ///   - workingDirectory: The original working directory
     ///   - targetPaths: Relative paths to compare (from watcher events)
     /// - Returns: Change summary with added, modified, and deleted files
     func computeChanges(
-        sandboxRoot: AbsolutePath,
+        workspaceRoot: AbsolutePath,
         workingDirectory: AbsolutePath,
         targetPaths: Set<RelativePath>
     ) async throws -> ChangeSummary {
@@ -51,25 +51,25 @@ struct GitDiffRunner {
 
         return try await fileSystem.withTemporaryDirectory(prefix: "egg-git-diff") { tempRoot in
             let workingTemp = tempRoot.appending(component: "working")
-            let sandboxTemp = tempRoot.appending(component: "sandbox")
+            let workspaceTemp = tempRoot.appending(component: "workspace")
 
             let hasCopiedFiles = try await copyTargetPaths(
                 targetPaths,
                 workingDirectory: workingDirectory,
-                sandboxRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingTemp: workingTemp,
-                sandboxTemp: sandboxTemp
+                workspaceTemp: workspaceTemp
             )
 
             guard hasCopiedFiles else {
                 return .none
             }
 
-            return try await runGitDiff(workingRoot: workingTemp, sandboxRoot: sandboxTemp)
+            return try await runGitDiff(workingRoot: workingTemp, workspaceRoot: workspaceTemp)
         }
     }
 
-    /// Copies target paths from working directory and sandbox to temporary directories for comparison.
+    /// Copies target paths from working directory and transactional workspace to temporary directories for comparison.
     ///
     /// Only copies **files** (not directories). Directory paths are skipped because:
     /// 1. FSEvents reports directory changes separately from file changes
@@ -80,26 +80,26 @@ struct GitDiffRunner {
     private func copyTargetPaths(
         _ targetPaths: Set<RelativePath>,
         workingDirectory: AbsolutePath,
-        sandboxRoot: AbsolutePath,
+        workspaceRoot: AbsolutePath,
         workingTemp: AbsolutePath,
-        sandboxTemp: AbsolutePath
+        workspaceTemp: AbsolutePath
     ) async throws -> Bool {
         try await fileSystem.makeDirectory(at: workingTemp)
-        try await fileSystem.makeDirectory(at: sandboxTemp)
+        try await fileSystem.makeDirectory(at: workspaceTemp)
 
         var copiedAny = false
 
         for relativePath in targetPaths {
             let workingPath = workingDirectory.appending(relativePath)
-            let sandboxPath = sandboxRoot.appending(relativePath)
+            let workspacePath = workspaceRoot.appending(relativePath)
 
             // Skip directories - only process files
             // FSEvents reports file changes individually, so directory-level events
             // don't need to trigger recursive copies which could include unchanged files
             let isWorkingDirectory = try await fileSystem.exists(workingPath, isDirectory: true)
-            let isSandboxDirectory = try await fileSystem.exists(sandboxPath, isDirectory: true)
+            let isWorkspaceDirectory = try await fileSystem.exists(workspacePath, isDirectory: true)
 
-            if isWorkingDirectory || isSandboxDirectory {
+            if isWorkingDirectory || isWorkspaceDirectory {
                 continue
             }
 
@@ -107,12 +107,12 @@ struct GitDiffRunner {
                 from: workingPath,
                 to: workingTemp.appending(relativePath)
             )
-            let copiedSandbox = try await fileSystem.copyIfExists(
-                from: sandboxPath,
-                to: sandboxTemp.appending(relativePath)
+            let copiedWorkspace = try await fileSystem.copyIfExists(
+                from: workspacePath,
+                to: workspaceTemp.appending(relativePath)
             )
 
-            if copiedWorking || copiedSandbox {
+            if copiedWorking || copiedWorkspace {
                 copiedAny = true
             }
         }
@@ -122,7 +122,7 @@ struct GitDiffRunner {
 
     private func runGitDiff(
         workingRoot: AbsolutePath,
-        sandboxRoot: AbsolutePath
+        workspaceRoot: AbsolutePath
     ) async throws -> ChangeSummary {
         let arguments = [
             "diff",
@@ -130,7 +130,7 @@ struct GitDiffRunner {
             "--name-status",
             "-z",
             workingRoot.pathString,
-            sandboxRoot.pathString,
+            workspaceRoot.pathString,
         ]
 
         let result = try await processRunner.run(
@@ -148,10 +148,10 @@ struct GitDiffRunner {
         case let .exited(code):
             // 0 = no differences, 1 = differences found
             guard code == 0 || code == 1 else {
-                throw SandboxContext.Error.gitDiffFailed(exitCode: code)
+                throw TransactionalWorkspaceContext.Error.gitDiffFailed(exitCode: code)
             }
         case .unhandledException:
-            throw SandboxContext.Error.gitDiffCrashed
+            throw TransactionalWorkspaceContext.Error.gitDiffCrashed
         }
 
         guard !result.standardOutput.isEmpty else {
@@ -162,18 +162,18 @@ struct GitDiffRunner {
         return parseNameStatusOutput(
             outputString,
             workingRoot: workingRoot,
-            sandboxRoot: sandboxRoot
+            workspaceRoot: workspaceRoot
         )
     }
 
     private func parseNameStatusOutput(
         _ output: String,
         workingRoot: AbsolutePath,
-        sandboxRoot: AbsolutePath
+        workspaceRoot: AbsolutePath
     ) -> ChangeSummary {
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,
-            sandboxRoot: sandboxRoot
+            workspaceRoot: workspaceRoot
         )
         return parser.parse(components: output.split(separator: "\0", omittingEmptySubsequences: false))
     }

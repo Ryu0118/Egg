@@ -1,24 +1,24 @@
 import Foundation
 
-/// Global registry for sandbox cleanup on process termination (e.g., Control+C).
+/// Global registry for transactional workspace cleanup on process termination (e.g., Control+C).
 ///
 /// This actor maintains a list of cleanup handlers that are invoked when
-/// the process receives SIGINT or SIGTERM. Each sandbox registers a cleanup
+/// the process receives SIGINT or SIGTERM. Each transactional workspace registers a cleanup
 /// handler when created and unregisters it when properly discarded.
 ///
 /// Usage:
 /// ```swift
 /// // Register cleanup handler
-/// let id = await SandboxCleanupRegistry.shared.register {
-///     await sandbox.discard()
+/// let id = await TransactionalWorkspaceCleanupRegistry.shared.register {
+///     await transactionalWorkspace.discard()
 /// }
 ///
 /// // Unregister when done
-/// await SandboxCleanupRegistry.shared.unregister(id)
+/// await TransactionalWorkspaceCleanupRegistry.shared.unregister(id)
 /// ```
-public actor SandboxCleanupRegistry {
+public actor TransactionalWorkspaceCleanupRegistry {
     /// Shared singleton instance.
-    public static let shared = SandboxCleanupRegistry()
+    public static let shared = TransactionalWorkspaceCleanupRegistry()
 
     /// Unique identifier for registered cleanup handlers.
     public struct HandlerID: Hashable, Sendable {
@@ -48,7 +48,7 @@ public actor SandboxCleanupRegistry {
 
     /// Unregisters a previously registered cleanup handler.
     ///
-    /// Call this when the sandbox is properly cleaned up to avoid
+    /// Call this when the transactional workspace is properly cleaned up to avoid
     /// unnecessary cleanup attempts during signal handling.
     ///
     /// - Parameter id: The handler identifier returned from `register`
@@ -74,7 +74,7 @@ public actor SandboxCleanupRegistry {
             // Signal handlers must be synchronous and signal-safe.
             // We use a detached task to call async cleanup code.
             Task {
-                await SandboxCleanupRegistry.shared.executeCleanup()
+                await TransactionalWorkspaceCleanupRegistry.shared.executeCleanup()
                 // Exit with the standard signal exit code
                 exit(130) // 128 + SIGINT (2)
             }
@@ -86,7 +86,7 @@ public actor SandboxCleanupRegistry {
         // Set up SIGTERM handler
         signal(SIGTERM) { _ in
             Task {
-                await SandboxCleanupRegistry.shared.executeCleanup()
+                await TransactionalWorkspaceCleanupRegistry.shared.executeCleanup()
                 exit(143) // 128 + SIGTERM (15)
             }
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 5))
