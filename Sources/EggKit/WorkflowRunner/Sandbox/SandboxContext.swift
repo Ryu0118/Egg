@@ -278,7 +278,7 @@ extension SandboxContext {
         }
 
         guard !targetPaths.isEmpty else {
-            return ChangeSummary(added: [], modified: [], deleted: [])
+            return .none
         }
 
         let diffRunner = GitDiffRunner(processRunner: processRunner, fileSystem: fileSystem)

@@ -77,6 +77,18 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
     }
 
     func drainEvents() async -> Set<RelativePath> {
+        // Flush any pending events from FSEvents before draining the buffer.
+        // This ensures all events are delivered to the callback before we process them.
+        // Use withCheckedContinuation to bridge from DispatchQueue to async context.
+        if let stream = eventStream {
+            await withCheckedContinuation { continuation in
+                dispatchQueue.async {
+                    FSEventStreamFlushSync(stream)
+                    continuation.resume()
+                }
+            }
+        }
+
         // Drain buffered events and process them
         let bufferedPaths = eventBuffer.drain()
 
@@ -107,10 +119,12 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
 
     /// Converts an absolute path string to a RelativePath relative to the watched directory.
     private func makeRelativePath(from absolutePath: String, relativeTo base: AbsolutePath) -> RelativePath? {
-        // Normalize both paths to resolve symlinks (e.g., /var -> /private/var)
-        // FSEvents reports real paths while the watched directory may use symlinked paths
-        let basePath = (base.pathString as NSString).standardizingPath
-        let normalizedPath = (absolutePath as NSString).standardizingPath
+        // Use realpath() to get the true canonical path.
+        // FSEvents always reports canonical paths (e.g., /private/var/folders/...)
+        // NSString.resolvingSymlinksInPath does NOT work correctly - it normalizes /private/var to /var
+        // which is the opposite of what we need.
+        let basePath = Self.canonicalPath(base.pathString)
+        let normalizedPath = Self.canonicalPath(absolutePath)
 
         // Ensure the path is within the watched directory
         guard normalizedPath.hasPrefix(basePath) else { return nil }
@@ -127,6 +141,17 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         guard !relativePart.isEmpty else { return nil }
 
         return try? RelativePath(validating: relativePart)
+    }
+
+    /// Returns the canonical path using realpath().
+    /// This resolves all symlinks to get the true filesystem path.
+    /// For example: /var/folders/... -> /private/var/folders/...
+    private static func canonicalPath(_ path: String) -> String {
+        guard let realPath = realpath(path, nil) else {
+            return path
+        }
+        defer { free(realPath) }
+        return String(cString: realPath)
     }
 
     private func cleanupStreamResources() {
