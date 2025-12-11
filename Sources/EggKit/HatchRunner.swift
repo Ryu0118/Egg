@@ -58,30 +58,26 @@ package struct HatchRunner {
             // Fetch template using TemplatesFinder
             let template = try await templateFinder.fetchTemplate(templateName)
 
-            // Generate questions using MacroQuestionGenerator
-            let generator = MacroQuestionGenerator(
-                config: template.config,
-                workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory,
-                noora: noora
-            )
+            let workflowRunner = makeWorkflowRunner()
 
-            let resolvedMacros = generator.generateQuestions()
-
-            let workflowRunner = makeWorkflowRunner(isInteractive: true)
-
+            // Run workflow with interactive macro resolution
+            // Macros will be resolved inside the workflow runner at the appropriate time
+            // (after sandbox creation for sandboxed execution)
             _ = try await workflowRunner.run(
                 config: template.config,
-                macros: resolvedMacros,
+                macroInputs: .interactive,
                 templateDirectory: template.path
             )
 
-        case let .direct(template, macros):
-            let workflowRunner = makeWorkflowRunner(isInteractive: false)
+        case let .direct(template, parsedMacros):
+            let workflowRunner = makeWorkflowRunner()
 
+            // Run workflow with parsed macros (path resolution deferred to runner)
+            // This ensures path-type macros are resolved relative to the correct
+            // working directory (sandbox root for sandboxed execution)
             _ = try await workflowRunner.run(
                 config: template.config,
-                macros: macros,
+                macroInputs: .parsed(parsedMacros),
                 templateDirectory: template.path
             )
         }
@@ -89,9 +85,8 @@ package struct HatchRunner {
 
     /// Creates the appropriate workflow runner based on sandbox settings.
     ///
-    /// - Parameter isInteractive: Whether the runner should operate in interactive mode
     /// - Returns: A workflow runner (sandboxed or non-sandboxed)
-    private func makeWorkflowRunner(isInteractive: Bool) -> any WorkflowRunning {
+    private func makeWorkflowRunner() -> any WorkflowRunning {
         if useSandbox {
             return SandboxedWorkflowRunner(
                 processRunner: processRunner,
@@ -99,7 +94,7 @@ package struct HatchRunner {
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 noora: noora,
-                isInteractive: isInteractive,
+                isInteractive: mode.isInteractive,
                 force: force
             )
         } else {
@@ -110,167 +105,20 @@ package struct HatchRunner {
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 noora: noora,
-                isInteractive: isInteractive,
+                isInteractive: mode.isInteractive,
                 force: force
             )
         }
     }
 }
 
-/// Generates Noora questions from Config macros
-private struct MacroQuestionGenerator {
-    private let config: Config
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
-    private let noora: any Noorable
-
-    init(
-        config: Config,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        noora: some Noorable
-    ) {
-        self.config = config
-        self.workingDirectory = workingDirectory
-        self.homeDirectory = homeDirectory
-        self.noora = noora
-    }
-
-    func generateQuestions() -> [ResolvedMacro] {
-        guard let macros = config.macros else { return [] }
-
-        var resolvedMacros: [ResolvedMacro] = []
-
-        for macro in macros {
-            let resolvedMacro = promptForMacro(macro)
-            resolvedMacros.append(resolvedMacro)
+extension HatchRunnerMode {
+    var isInteractive: Bool {
+        switch self {
+        case .interactive:
+            true
+        case .direct:
+            false
         }
-
-        return resolvedMacros
-    }
-
-    private func promptForMacro(_ macro: Config.Macro) -> ResolvedMacro {
-        switch macro.type {
-        case .string:
-            return promptForString(macro)
-        case .boolean:
-            return promptForBoolean(macro)
-        case .choice:
-            return promptForChoice(macro)
-        case .array:
-            return promptForArray(macro)
-        case .path:
-            return promptForPath(macro)
-        }
-    }
-
-    private func promptForString(_ macro: Config.Macro) -> ResolvedMacro {
-        var validationRules: [any ValidatableRule] = [
-            NonEmptyValidationRule(error: "\(macro.name) cannot be empty."),
-        ]
-
-        if let validatePattern = macro.validate {
-            validationRules.append(
-                RegexPatternValidationRule(
-                    pattern: validatePattern,
-                    error: "Value does not match the required pattern: '\(validatePattern)'"
-                )
-            )
-        }
-
-        let value = noora.textPrompt(
-            title: "\(macro.name)",
-            prompt: "\(macro.description)",
-            collapseOnAnswer: true,
-            validationRules: validationRules
-        )
-
-        return ResolvedMacro(
-            name: macro.name,
-            description: macro.description,
-            value: .string(value)
-        )
-    }
-
-    private func promptForBoolean(_ macro: Config.Macro) -> ResolvedMacro {
-        let value = noora.yesOrNoChoicePrompt(
-            title: "\(macro.name)",
-            question: "\(macro.description)"
-        )
-
-        return ResolvedMacro(
-            name: macro.name,
-            description: macro.description,
-            value: .boolean(value)
-        )
-    }
-
-    private func promptForChoice(_ macro: Config.Macro) -> ResolvedMacro {
-        guard let choices = macro.choices, !choices.isEmpty else {
-            fatalError("Macro '\(macro.name)' is of type 'choice' but no choices are defined.")
-        }
-
-        let value = noora.singleChoicePrompt(
-            title: "\(macro.name)",
-            question: "\(macro.description)",
-            options: choices
-        )
-
-        return ResolvedMacro(
-            name: macro.name,
-            description: macro.description,
-            value: .choice(value)
-        )
-    }
-
-    private func promptForArray(_ macro: Config.Macro) -> ResolvedMacro {
-        guard let choices = macro.choices, !choices.isEmpty else {
-            fatalError("Macro '\(macro.name)' is of type 'array' but no choices are defined.")
-        }
-
-        let values = noora.multipleChoicePrompt(
-            title: "\(macro.name)",
-            question: "\(macro.description)",
-            options: choices
-        )
-
-        return ResolvedMacro(
-            name: macro.name,
-            description: macro.description,
-            value: .array(values)
-        )
-    }
-
-    private func promptForPath(_ macro: Config.Macro) -> ResolvedMacro {
-        let pathValidationRule = PathValidationRule(
-            workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory,
-            error: "Invalid path for \(macro.name)"
-        )
-
-        let validationRules: [any ValidatableRule] = [
-            NonEmptyValidationRule(error: "\(macro.name) cannot be empty."),
-            pathValidationRule,
-        ]
-
-        let pathString = noora.textPrompt(
-            title: "\(macro.name)",
-            prompt: "\(macro.description)",
-            collapseOnAnswer: true,
-            validationRules: validationRules
-        )
-
-        // Resolve path using the standalone function
-        let absolutePath = try! resolveToAbsolutePath(
-            pathString,
-            workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
-        )
-
-        return ResolvedMacro(
-            name: macro.name,
-            description: macro.description,
-            value: .path(absolutePath)
-        )
     }
 }

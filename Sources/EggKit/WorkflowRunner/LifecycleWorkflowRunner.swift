@@ -28,12 +28,13 @@ import ProcessRunning
 ///
 /// try await runner.run(
 ///     config: config,
-///     macros: resolvedMacros,
+///     macroInputs: .interactive,
 ///     templateDirectory: templateDir
 /// )
 /// ```
 struct LifecycleWorkflowRunner: WorkflowRunning {
     private let workingDirectory: AbsolutePath
+    private let homeDirectory: AbsolutePath
     private let phaseRunner: PhaseRunner
     private let noora: any Noorable
 
@@ -47,6 +48,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         force: Bool = false
     ) {
         self.workingDirectory = workingDirectory
+        self.homeDirectory = homeDirectory
         self.noora = noora
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
@@ -62,15 +64,18 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     ///
     /// - Parameters:
     ///   - config: Template configuration containing lifecycle steps and hatch configuration
-    ///   - macros: Resolved macros to substitute throughout the workflow
+    ///   - macroInputs: Macro inputs to be resolved (either already resolved or pending interactive prompts)
     ///   - templateDirectory: Source directory containing the template files
     /// - Returns: The resolved absolute path of the output directory
     /// - Throws: `LifecycleStepError` if any step fails, or file system errors
     func run(
         config: Config,
-        macros: [ResolvedMacro],
+        macroInputs: MacroInputs,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
+        // Resolve macros (for non-sandboxed execution, use real working directory)
+        let macros = try resolveMacros(macroInputs, config: config)
+
         let outputs = StepOutputsStorage()
 
         // Phase 1: Execute pre_hatch
@@ -105,5 +110,34 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         }
 
         return outputDirectory
+    }
+
+    /// Resolves macros based on input type.
+    ///
+    /// - Parameters:
+    ///   - inputs: The macro inputs (parsed from CLI or requiring interactive prompts)
+    ///   - config: The template configuration containing macro definitions
+    /// - Returns: Array of resolved macros
+    /// - Throws: Validation errors for parsed macros
+    private func resolveMacros(_ inputs: MacroInputs, config: Config) throws -> [ResolvedMacro] {
+        switch inputs {
+        case let .parsed(parsedMacros):
+            // Resolve parsed macros with real working directory
+            // (non-sandboxed execution uses the actual working directory)
+            let validator = ParsedMacroDefinitionValidator(
+                config: config,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory
+            )
+            return try validator.validate(parsedMacros)
+        case .interactive:
+            let resolver = MacroResolver(
+                config: config,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory,
+                noora: noora
+            )
+            return resolver.resolve()
+        }
     }
 }

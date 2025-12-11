@@ -33,6 +33,7 @@ struct SandboxedWorkflowRunnerTests {
         let config = Config(
             name: "Test Template",
             description: "Test Description",
+            macros: testCase.macroDefinitions.isEmpty ? nil : testCase.macroDefinitions,
             preHatch: testCase.preHatchSteps,
             hatch: testCase.hatchConfig,
             postHatch: testCase.postHatchSteps
@@ -54,7 +55,7 @@ struct SandboxedWorkflowRunnerTests {
         do {
             let outputDir = try await runner.run(
                 config: config,
-                macros: testCase.macros,
+                macroInputs: .parsed(testCase.macros),
                 templateDirectory: templateDir
             )
 
@@ -78,7 +79,8 @@ struct SandboxedWorkflowRunnerTests {
         let description: String
         let workingDirSetup: [FileSetup]
         let templateSetup: [FileSetup]
-        let macros: [ResolvedMacro]
+        let macroDefinitions: [Config.Macro]
+        let macros: [ParsedMacroDefinition]
         let preHatchSteps: [Config.LifecycleStep]?
         let hatchConfig: Config.HatchConfig
         let postHatchSteps: [Config.LifecycleStep]?
@@ -91,7 +93,8 @@ struct SandboxedWorkflowRunnerTests {
             _ description: String,
             workingDirSetup: [FileSetup] = [],
             templateSetup: [FileSetup],
-            macros: [ResolvedMacro] = [],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
@@ -101,6 +104,7 @@ struct SandboxedWorkflowRunnerTests {
             self.description = description
             self.workingDirSetup = workingDirSetup
             self.templateSetup = templateSetup
+            self.macroDefinitions = macroDefinitions
             self.macros = macros
             self.preHatchSteps = preHatchSteps
             self.hatchConfig = hatchConfig
@@ -113,7 +117,8 @@ struct SandboxedWorkflowRunnerTests {
             _ description: String,
             workingDirSetup: [FileSetup] = [],
             templateSetup: [FileSetup],
-            macros: [ResolvedMacro] = [],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
@@ -124,6 +129,7 @@ struct SandboxedWorkflowRunnerTests {
                 description,
                 workingDirSetup: workingDirSetup,
                 templateSetup: templateSetup,
+                macroDefinitions: macroDefinitions,
                 macros: macros,
                 preHatchSteps: preHatchSteps,
                 hatchConfig: hatchConfig,
@@ -206,8 +212,11 @@ struct SandboxedWorkflowRunnerTests {
                 templateSetup: [
                     .file(path: "PROJECT", content: "___NAME___ v${{ pre_hatch.setup.outputs.version }}"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___NAME___", description: "Name", type: .string),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___NAME___", description: "Name", value: .string("MyApp")),
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["MyApp"]),
                 ],
                 preHatchSteps: [
                     Config.LifecycleStep(id: "setup", run: "echo version=2.0.0"),
@@ -227,9 +236,13 @@ struct SandboxedWorkflowRunnerTests {
                 templateSetup: [
                     .file(path: "config.txt", content: "name=___PROJECT___\nversion=___VERSION___"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___PROJECT___", description: "Project", type: .string),
+                    Config.Macro(name: "___VERSION___", description: "Version", type: .string),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___PROJECT___", description: "Project", value: .string("TestProject")),
-                    ResolvedMacro(name: "___VERSION___", description: "Version", value: .string("1.0.0")),
+                    ParsedMacroDefinition(macro: "___PROJECT___", values: ["TestProject"]),
+                    ParsedMacroDefinition(macro: "___VERSION___", values: ["1.0.0"]),
                 ],
                 verifications: [
                     .fileContent(path: "config.txt", expectedContent: "name=TestProject\nversion=1.0.0"),
@@ -381,8 +394,11 @@ struct SandboxedWorkflowRunnerTests {
                 templateSetup: [
                     .file(path: "README.md", content: "Project"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___ENABLE___", description: "Enable", type: .boolean),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___ENABLE___", description: "Enable", value: .boolean(true)),
+                    ParsedMacroDefinition(macro: "___ENABLE___", values: ["true"]),
                 ],
                 preHatchSteps: [
                     Config.LifecycleStep(

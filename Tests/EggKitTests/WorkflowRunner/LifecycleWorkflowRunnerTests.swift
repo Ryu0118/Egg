@@ -28,6 +28,7 @@ struct LifecycleWorkflowRunnerTests {
         let config = Config(
             name: "Test Template",
             description: "Test Description",
+            macros: testCase.macroDefinitions.isEmpty ? nil : testCase.macroDefinitions,
             preHatch: testCase.preHatchSteps,
             hatch: testCase.hatchConfig,
             postHatch: testCase.postHatchSteps
@@ -44,7 +45,7 @@ struct LifecycleWorkflowRunnerTests {
 
         let outputDir = try await runner.run(
             config: config,
-            macros: testCase.macros,
+            macroInputs: .parsed(testCase.macros),
             templateDirectory: templateDir
         )
 
@@ -55,7 +56,8 @@ struct LifecycleWorkflowRunnerTests {
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templateSetup: [TemplateSetup]
-        let macros: [ResolvedMacro]
+        let macroDefinitions: [Config.Macro]
+        let macros: [ParsedMacroDefinition]
         let preHatchSteps: [Config.LifecycleStep]?
         let hatchConfig: Config.HatchConfig
         let postHatchSteps: [Config.LifecycleStep]?
@@ -67,7 +69,8 @@ struct LifecycleWorkflowRunnerTests {
         init(
             _ description: String,
             templateSetup: [TemplateSetup],
-            macros: [ResolvedMacro] = [],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig,
             postHatchSteps: [Config.LifecycleStep]? = nil,
@@ -75,6 +78,7 @@ struct LifecycleWorkflowRunnerTests {
         ) {
             self.description = description
             self.templateSetup = templateSetup
+            self.macroDefinitions = macroDefinitions
             self.macros = macros
             self.preHatchSteps = preHatchSteps
             self.hatchConfig = hatchConfig
@@ -86,7 +90,8 @@ struct LifecycleWorkflowRunnerTests {
         static func success(
             _ description: String,
             templateSetup: [TemplateSetup],
-            macros: [ResolvedMacro] = [],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
@@ -95,6 +100,7 @@ struct LifecycleWorkflowRunnerTests {
             TestCase(
                 description,
                 templateSetup: templateSetup,
+                macroDefinitions: macroDefinitions,
                 macros: macros,
                 preHatchSteps: preHatchSteps,
                 hatchConfig: hatchConfig,
@@ -179,8 +185,11 @@ struct LifecycleWorkflowRunnerTests {
                 templateSetup: [
                     .file(path: "PROJECT", content: "___NAME___ v${{ pre_hatch.setup.outputs.version }}"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___NAME___", description: "Name", type: .string),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___NAME___", description: "Project Name", value: .string("MyApp")),
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["MyApp"]),
                 ],
                 preHatchSteps: [
                     Config.LifecycleStep(id: "setup", run: "echo version=2.0.0"),
@@ -240,8 +249,11 @@ struct LifecycleWorkflowRunnerTests {
                     .file(path: "keep.txt", content: "keep"),
                     .file(path: "debug.txt", content: "debug"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___DEBUG___", description: "Debug Mode", type: .boolean),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___DEBUG___", description: "Debug Mode", value: .boolean(true)),
+                    ParsedMacroDefinition(macro: "___DEBUG___", values: ["true"]),
                 ],
                 hatchConfig: Config.HatchConfig(
                     output: ".",
@@ -299,8 +311,11 @@ struct LifecycleWorkflowRunnerTests {
                 templateSetup: [
                     .file(path: "README.md", content: "Project"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___ENABLE___", description: "Enable Feature", type: .boolean),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___ENABLE___", description: "Enable Feature", value: .boolean(true)),
+                    ParsedMacroDefinition(macro: "___ENABLE___", values: ["true"]),
                 ],
                 preHatchSteps: [
                     Config.LifecycleStep(
@@ -338,8 +353,11 @@ struct LifecycleWorkflowRunnerTests {
                 templateSetup: [
                     .file(path: "README.md", content: "Hello"),
                 ],
+                macroDefinitions: [
+                    Config.Macro(name: "___OUTPUT___", description: "Output Directory", type: .string),
+                ],
                 macros: [
-                    ResolvedMacro(name: "___OUTPUT___", description: "Output Directory", value: .string("my-output")),
+                    ParsedMacroDefinition(macro: "___OUTPUT___", values: ["my-output"]),
                 ],
                 hatchConfig: Config.HatchConfig(output: "___OUTPUT___"),
                 verifications: [

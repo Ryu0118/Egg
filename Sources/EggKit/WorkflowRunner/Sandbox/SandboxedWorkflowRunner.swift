@@ -36,6 +36,7 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath
+    private let homeDirectory: AbsolutePath
     private let noora: any Noorable
     private let isInteractive: Bool
     private let force: Bool
@@ -57,6 +58,7 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
         self.processRunner = processRunner
         self.fileSystem = fileSystem
         self.workingDirectory = workingDirectory
+        self.homeDirectory = homeDirectory
         self.noora = noora
         self.isInteractive = isInteractive
         self.force = force
@@ -76,13 +78,13 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
     ///
     /// - Parameters:
     ///   - config: Template configuration containing lifecycle steps and hatch configuration
-    ///   - macros: Resolved macros to substitute throughout the workflow
+    ///   - macroInputs: Macro inputs to be resolved (either already resolved or pending interactive prompts)
     ///   - templateDirectory: Source directory containing the template files
     /// - Returns: The resolved absolute path of the output directory (in the real working directory)
     /// - Throws: `SandboxContext.Error` for sandbox-related failures, or other errors from phases
     func run(
         config: Config,
-        macros: [ResolvedMacro],
+        macroInputs: MacroInputs,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
         // Step 1: Create sandbox (APFS clone of working directory)
@@ -97,6 +99,10 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
 
         // Ensure sandbox is discarded on any failure
         do {
+            // Step 2: Resolve macros with sandbox root as working directory
+            // This is critical for path-type macros to resolve correctly
+            let macros = try resolveMacros(macroInputs, config: config, sandboxRoot: sandbox.root)
+
             let outputs = StepOutputsStorage()
 
             // Step 2: Execute pre_hatch phase in sandbox (with OS-level sandboxing)
@@ -288,5 +294,39 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
             noora.passthrough("- \(conflict.path.pathString): \(conflict.type.description)\n", tab: 1)
         }
         noora.passthrough("\n")
+    }
+
+    /// Resolves macros based on input type.
+    ///
+    /// - Parameters:
+    ///   - inputs: The macro inputs (parsed from CLI or requiring interactive prompts)
+    ///   - config: The template configuration containing macro definitions
+    ///   - sandboxRoot: The sandbox root directory (used as working directory for path resolution)
+    /// - Returns: Array of resolved macros
+    /// - Throws: Validation errors for parsed macros
+    private func resolveMacros(
+        _ inputs: MacroInputs,
+        config: Config,
+        sandboxRoot: AbsolutePath
+    ) throws -> [ResolvedMacro] {
+        switch inputs {
+        case let .parsed(parsedMacros):
+            // Resolve parsed macros with sandbox root as working directory
+            // This ensures path-type macros are resolved relative to the sandbox
+            let validator = ParsedMacroDefinitionValidator(
+                config: config,
+                workingDirectory: sandboxRoot,
+                homeDirectory: homeDirectory
+            )
+            return try validator.validate(parsedMacros)
+        case .interactive:
+            let resolver = MacroResolver(
+                config: config,
+                workingDirectory: sandboxRoot,
+                homeDirectory: homeDirectory,
+                noora: noora
+            )
+            return resolver.resolve()
+        }
     }
 }

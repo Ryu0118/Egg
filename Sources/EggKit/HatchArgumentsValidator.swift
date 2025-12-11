@@ -7,8 +7,6 @@ package struct HatchArgumentsValidator {
     private let macros: [String]
     private let templateFinder: TemplatesFinder
     private let parser: MacrosParser
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
 
     package init(
         templateName: String?,
@@ -26,8 +24,6 @@ package struct HatchArgumentsValidator {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
-        self.workingDirectory = workingDirectory
-        self.homeDirectory = homeDirectory
         parser = MacrosParser()
     }
 
@@ -41,19 +37,16 @@ package struct HatchArgumentsValidator {
 
         let template = try await templateFinder.fetchTemplate(templateName)
 
-        let validator = ParsedMacroDefinitionValidator(
-            config: template.config,
-            workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
-        )
+        // Perform basic validation (without path resolution)
+        // Path resolution will be done by the workflow runner after sandbox creation
+        let validator = ParsedMacroBasicValidator(config: template.config)
+        try validator.validate(parsedMacros)
 
-        let resolvedMacros = try validator.validate(parsedMacros)
-        print(resolvedMacros)
-        return .direct(template: template, macros: resolvedMacros)
+        return .direct(template: template, parsedMacros: parsedMacros)
     }
 }
 
 package enum HatchRunnerMode {
     case interactive
-    case direct(template: Template, macros: [ResolvedMacro])
+    case direct(template: Template, parsedMacros: [ParsedMacroDefinition])
 }

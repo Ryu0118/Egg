@@ -59,7 +59,7 @@ public struct APFSDirectoryCloner: DirectoryCloning {
 }
 
 /// Errors that can occur during directory cloning operations.
-public enum CloningError: Error, Sendable, LocalizedError {
+public enum CloningError: Error, Sendable, LocalizedError, Equatable {
     /// The provided URL is not a file URL.
     case invalidURL
 
