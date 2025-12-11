@@ -59,14 +59,14 @@ struct SandboxedWorkflowRunnerTests {
             )
 
             // Verify success expectations
-            if case .success(let verifications) = testCase.expectation {
+            if case let .success(verifications) = testCase.expectation {
                 try await verifyExpectations(verifications, in: outputDir, using: fileSystem)
             } else {
                 Issue.record("Expected error but succeeded")
             }
         } catch {
             // Verify error expectations
-            if case .error(let errorType) = testCase.expectation {
+            if case let .error(errorType) = testCase.expectation {
                 try verifyError(error, matches: errorType)
             } else {
                 throw error
@@ -403,8 +403,6 @@ struct SandboxedWorkflowRunnerTests {
     }
 }
 
-// MARK: - Helper Methods
-
 extension SandboxedWorkflowRunnerTests {
     private func setupItem(_ item: TestCase.FileSetup, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
         switch item {
@@ -478,4 +476,3 @@ extension SandboxedWorkflowRunnerTests {
         }
     }
 }
-

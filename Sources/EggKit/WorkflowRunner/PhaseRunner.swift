@@ -52,8 +52,6 @@ struct PhaseRunner {
         self.force = force
     }
 
-    // MARK: - Pre-hatch Phase
-
     /// Executes the pre_hatch lifecycle phase.
     ///
     /// Pre-hatch steps typically prepare the environment, validate inputs,
@@ -91,8 +89,6 @@ struct PhaseRunner {
             merging: outputs
         )
     }
-
-    // MARK: - Hatch Phase
 
     /// Executes the hatch phase (template expansion).
     ///
@@ -156,8 +152,6 @@ struct PhaseRunner {
 
         return outputDirectory
     }
-
-    // MARK: - Post-hatch Phase
 
     /// Executes the post_hatch lifecycle phase.
     ///

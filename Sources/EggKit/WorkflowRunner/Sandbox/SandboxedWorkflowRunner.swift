@@ -60,7 +60,7 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
         self.noora = noora
         self.isInteractive = isInteractive
         self.force = force
-        self.phaseRunner = PhaseRunner(
+        phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileSystem: fileSystem,
             homeDirectory: homeDirectory,
@@ -185,8 +185,6 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
         }
     }
 
-    // MARK: - Private Helper Methods
-
     /// Computes the relative path from sandbox root to output directory.
     ///
     /// - Parameters:
@@ -245,8 +243,6 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
             throw SandboxContext.Error.conflictingFiles(conflicts)
         }
     }
-
-    // MARK: - Private Display Methods
 
     /// Displays the change summary to the user.
     private func displayChangeSummary(_ summary: ChangeSummary) {

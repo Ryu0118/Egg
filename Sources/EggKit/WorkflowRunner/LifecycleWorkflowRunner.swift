@@ -48,7 +48,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     ) {
         self.workingDirectory = workingDirectory
         self.noora = noora
-        self.phaseRunner = PhaseRunner(
+        phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileSystem: fileSystem,
             homeDirectory: homeDirectory,
