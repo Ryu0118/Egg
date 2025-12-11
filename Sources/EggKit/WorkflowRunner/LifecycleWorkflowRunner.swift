@@ -98,7 +98,6 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         )
 
         noora.passthrough("✅ Template hatched successfully at \(outputDirectory.pathString)\n", tab: 1)
-
         // Phase 3: Execute post_hatch
         if let postHatchSteps = config.postHatch {
             try await phaseRunner.executePostHatch(

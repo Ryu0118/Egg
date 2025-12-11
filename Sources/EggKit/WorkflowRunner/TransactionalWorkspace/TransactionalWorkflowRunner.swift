@@ -150,7 +150,6 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
             }
 
             // Step 4: Execute hatch phase (template expansion) in transactional workspace
-            // useAtomicWrite: false because transactional workspace already provides atomicity
             let workspaceOutputDirectory = try await phaseRunner.executeHatch(
                 config: config,
                 macros: macros,
@@ -159,12 +158,10 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
                 workingDirectory: workspace.root,
                 pathValidator: { path in
                     try await workspace.validatePath(path)
-                },
-                useAtomicWrite: false
+                }
             )
 
             noora.passthrough("✅ Template hatched successfully in transactional workspace.\n", tab: 1)
-
             // Calculate relative path for later use
             let resolvedOutputPath = try computeRelativePath(
                 outputDirectory: workspaceOutputDirectory,
