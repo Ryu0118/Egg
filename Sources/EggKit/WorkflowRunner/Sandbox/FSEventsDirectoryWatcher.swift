@@ -81,12 +81,8 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         // This ensures all events are delivered to the callback before we process them.
         // Use withCheckedContinuation to bridge from DispatchQueue to async context.
         if let stream = eventStream {
-            await withCheckedContinuation { continuation in
-                dispatchQueue.async {
-                    FSEventStreamFlushSync(stream)
-                    continuation.resume()
-                }
-            }
+            FSEventStreamFlushSync(stream)
+            try? await Task.sleep(for: .milliseconds(200))
         }
 
         // Drain buffered events and process them

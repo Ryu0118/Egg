@@ -91,11 +91,24 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
         noora.passthrough("🔒 Creating sandbox...\n")
         let sandbox = try await SandboxContext.create(
             cloning: workingDirectory,
+            homeDirectory: homeDirectory,
             fileSystem: fileSystem,
             sandboxWatcher: sandboxWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner
         )
+
+        // Register cleanup handler for SIGINT/SIGTERM (Control+C)
+        let cleanupHandlerId = await SandboxCleanupRegistry.shared.register {
+            await sandbox.discard()
+        }
+
+        // Ensure cleanup handler is unregistered when we're done
+        defer {
+            Task {
+                await SandboxCleanupRegistry.shared.unregister(cleanupHandlerId)
+            }
+        }
 
         // Ensure sandbox is discarded on any failure
         do {
@@ -117,6 +130,7 @@ struct SandboxedWorkflowRunner: WorkflowRunning {
                     macros: macros,
                     outputs: outputs,
                     workingDirectory: sandbox.root,
+                    additionalEnvironment: ["EGG_SANDBOX_ROOT": sandbox.root.pathString],
                     executionEnvironment: executionEnvironment
                 )
             }

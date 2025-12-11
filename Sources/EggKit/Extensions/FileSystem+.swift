@@ -131,11 +131,6 @@ extension FileSysteming {
     ) async throws {
         let items = try await contentsOfDirectory(source)
 
-        // DEBUG
-        print("[DEBUG mergeDirectory] source: \(source.pathString)")
-        print("[DEBUG mergeDirectory] destination: \(destination.pathString)")
-        print("[DEBUG mergeDirectory] items: \(items.map(\.basename))")
-
         for item in items {
             let itemName = item.basename
             let destItem = destination.appending(component: itemName)
@@ -149,9 +144,6 @@ extension FileSysteming {
                 destIsDirectory = false
             }
 
-            // DEBUG
-            print("[DEBUG mergeDirectory] processing: \(itemName), sourceIsDir=\(sourceIsDirectory), destExists=\(destExists), destIsDir=\(destIsDirectory)")
-
             if sourceIsDirectory {
                 if destIsDirectory {
                     // Both are directories: recursively merge
@@ -164,7 +156,6 @@ extension FileSysteming {
                     if destExists {
                         try await remove(destItem)
                     }
-                    print("[DEBUG mergeDirectory] creating directory: \(destItem.pathString)")
                     try await makeDirectory(at: destItem)
                     try await mergeDirectory(from: item, to: destItem)
                 }
@@ -173,7 +164,6 @@ extension FileSysteming {
                 if destExists {
                     try await remove(destItem)
                 }
-                print("[DEBUG mergeDirectory] moving file: \(item.pathString) -> \(destItem.pathString)")
                 try await move(from: item, to: destItem)
             }
         }

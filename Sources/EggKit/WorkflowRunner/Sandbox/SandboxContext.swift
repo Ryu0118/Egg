@@ -79,6 +79,7 @@ actor SandboxContext {
     ///
     /// - Parameters:
     ///   - workingDirectory: The directory to clone into sandbox
+    ///   - homeDirectory: User's home directory (for ~/.eggs/sandboxes/)
     ///   - fileSystem: File system for operations
     ///   - sandboxWatcher: Watcher for sandbox changes
     ///   - workingDirectoryWatcher: Watcher for working directory changes
@@ -88,6 +89,7 @@ actor SandboxContext {
     /// - Throws: SandboxContext.Error.creationFailed on file system errors
     static func create(
         cloning workingDirectory: AbsolutePath,
+        homeDirectory: AbsolutePath,
         fileSystem: any FileSysteming,
         sandboxWatcher: some DirectoryWatching,
         workingDirectoryWatcher: some DirectoryWatching,
@@ -99,20 +101,20 @@ actor SandboxContext {
         nonisolated(unsafe) let fs = fileSystem
 
         do {
-            // Generate unique sandbox path in temp directory
-            let tempDirectory = try await fs.makeTemporaryDirectory(prefix: "egg-sandbox")
-            // Remove the empty directory so we can clone into it
-            try await fs.remove(tempDirectory)
+            // Create sandbox in ~/.eggs/sandboxes/{uuid}/
+            let sandboxesDirectory = homeDirectory.appending(components: ".eggs", "sandboxes")
+            try await fs.makeDirectory(at: sandboxesDirectory)
+            let sandboxDirectory = sandboxesDirectory.appending(component: UUID().uuidString)
 
             // Clone entire working directory using the provided cloner
-            try directoryCloner.clone(from: workingDirectory.asURL, to: tempDirectory.asURL)
+            try directoryCloner.clone(from: workingDirectory.asURL, to: sandboxDirectory.asURL)
 
             // Start watchers immediately after cloning
-            try await sandboxWatcher.start(watching: tempDirectory)
+            try await sandboxWatcher.start(watching: sandboxDirectory)
             try await workingDirectoryWatcher.start(watching: workingDirectory)
 
             return SandboxContext(
-                root: tempDirectory,
+                root: sandboxDirectory,
                 originalWorkingDirectory: workingDirectory,
                 fileSystem: fs,
                 sandboxWatcher: sandboxWatcher,
@@ -270,10 +272,6 @@ extension SandboxContext {
 
         let sandboxTouched = await sandboxWatcher.drainEvents()
         let workingTouched = await workingDirectoryWatcher.drainEvents()
-
-        // DEBUG
-        print("[DEBUG] sandboxTouched: \(sandboxTouched.map(\.pathString).sorted())")
-        print("[DEBUG] workingTouched: \(workingTouched.map(\.pathString).sorted())")
 
         return WatcherEvents(sandbox: sandboxTouched, working: workingTouched)
     }

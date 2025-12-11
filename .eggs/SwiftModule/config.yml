@@ -31,13 +31,12 @@ macros:
 
 pre_hatch:
   - run: |
-      cd ___PACKAGE_PATH___
+      export SWIFTPM_PACKAGE_WORKSPACE=$EGG_SANDBOX_ROOT
       xcrun swift package add-target ___MODULE_NAME___ --type ___MODULE_TYPE___
       rm -f Sources/___MODULE_NAME___/___MODULE_NAME___.swift
 
   - if: ___CREATE_TESTS___
     run: |
-      cd ___PACKAGE_PATH___
       xcrun swift package add-target ___MODULE_NAME___Tests --type test --dependencies ___MODULE_NAME___
       rm -f Tests/___MODULE_NAME___Tests/___MODULE_NAME___Tests.swift
 

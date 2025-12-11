@@ -37,7 +37,7 @@ struct ShellScriptRunner {
     /// - Parameter command: The shell command to execute
     /// - Returns: Tuple of (stdout, stderr)
     /// - Throws: LifecycleStepError.shellExecutionError if the command exits with non-zero status
-    func execute(_ command: String) async throws -> (stdout: String, stderr: String) {
+    func execute(_ command: String) async throws -> (stdout: String, stderr: String?) {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
         // Resolve symlinks in working directory for sandbox compatibility
@@ -50,12 +50,9 @@ struct ShellScriptRunner {
             workingDirectory: FilePath(resolvedWorkingDirectory),
             platformOptions: PlatformOptions(),
             input: .none,
-            output: .bytes(limit: .max),
-            error: .bytes(limit: .max)
+            output: .string(limit: .max, encoding: UTF8.self),
+            error: .string(limit: .max, encoding: UTF8.self)
         )
-
-        let stdout = String(decoding: result.standardOutput, as: UTF8.self)
-        let stderr = String(decoding: result.standardError, as: UTF8.self)
 
         guard result.terminationStatus.isSuccess else {
             let exitCode: Int32
@@ -68,11 +65,11 @@ struct ShellScriptRunner {
             throw LifecycleStepError.shellExecutionError(
                 command: command,
                 exitCode: exitCode,
-                stderr: stderr
+                stderr: result.standardError ?? ""
             )
         }
 
-        return (stdout: stdout, stderr: stderr)
+        return (stdout: result.standardOutput ?? "", stderr: result.standardError)
     }
 
     /// Executes a shell command and streams stdout in real-time.
@@ -96,7 +93,12 @@ struct ShellScriptRunner {
             executable,
             arguments: arguments,
             environment: mergedEnvironment,
-            workingDirectory: FilePath(resolvedWorkingDirectory)
+            workingDirectory: FilePath(resolvedWorkingDirectory),
+            platformOptions: .init(),
+            input: .none,
+            error: .standardError,
+            preferredBufferSize: nil,
+            isolation: nil
         ) { _, stdoutSequence in
             var stdoutBuffer = Data()
 
@@ -105,7 +107,6 @@ struct ShellScriptRunner {
                 chunk.withUnsafeBytes { ptr in
                     stdoutBuffer.append(contentsOf: ptr)
                 }
-
                 // Stream output to caller's closure
                 if let chunkString = String(data: Data(buffer: chunk), encoding: .utf8) {
                     onOutput(chunkString)
@@ -204,34 +205,26 @@ struct ShellScriptRunner {
         return """
         (version 1)
         (deny default)
-
         ; Allow all process operations (exec, fork, etc.)
         (allow process*)
-
         ; Allow reading all files
         (allow file-read*)
-
         ; Explicitly deny write access to original working directory
         (deny file-write* (subpath "\(escapedOriginalPath)"))
-
         ; Allow full read/write access to sandbox directory only
         (allow file-write* (subpath "\(escapedSandboxPath)"))
-
+        ; Allow write access to system temp directories (needed for Swift Package Manager locks, etc.)
+        (allow file-write* (subpath "/private/var/folders"))
         ; Allow file I/O control operations
         (allow file-ioctl)
-
         ; Allow network (some scripts may need it)
         (allow network*)
-
         ; Allow sysctl for process management
         (allow sysctl-read)
-
         ; Allow mach lookups for IPC
         (allow mach-lookup)
-
         ; Allow signal handling
         (allow signal)
-
         ; Allow IPC operations
         (allow ipc-posix*)
         """
