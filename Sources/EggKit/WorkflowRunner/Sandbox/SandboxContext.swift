@@ -245,6 +245,15 @@ actor SandboxContext {
 }
 
 extension SandboxContext {
+    /// Directories that should be excluded from change detection and conflict checks.
+    private static let excludedDirectories: Set<String> = [".git", ".eggs"]
+
+    /// Returns true if the path should be excluded from change detection.
+    private static func shouldExclude(_ path: RelativePath) -> Bool {
+        guard let first = path.components.first else { return false }
+        return excludedDirectories.contains(first)
+    }
+
     private struct WatcherEvents: Sendable {
         let sandbox: Set<RelativePath>
         let working: Set<RelativePath>
@@ -262,6 +271,10 @@ extension SandboxContext {
         let sandboxTouched = await sandboxWatcher.drainEvents()
         let workingTouched = await workingDirectoryWatcher.drainEvents()
 
+        // DEBUG
+        print("[DEBUG] sandboxTouched: \(sandboxTouched.map(\.pathString).sorted())")
+        print("[DEBUG] workingTouched: \(workingTouched.map(\.pathString).sorted())")
+
         return WatcherEvents(sandbox: sandboxTouched, working: workingTouched)
     }
 
@@ -270,12 +283,8 @@ extension SandboxContext {
             throw SandboxContext.Error.alreadyDiscarded
         }
 
-        // Filter out .git directory paths - these should never be included in change summaries
-        let targetPaths = events.targetPaths.filter { path in
-            let components = path.components
-            guard let first = components.first else { return true }
-            return first != ".git"
-        }
+        // Filter out excluded directory paths (e.g., .git, .eggs)
+        let targetPaths = events.targetPaths.filter { !Self.shouldExclude($0) }
 
         guard !targetPaths.isEmpty else {
             return .none
@@ -293,11 +302,13 @@ extension SandboxContext {
         using events: WatcherEvents,
         changeSummary: ChangeSummary
     ) -> [ConflictInfo] {
-        guard !events.working.isEmpty else { return [] }
+        // Filter out excluded directories from working directory changes
+        let workingChanges = events.working.filter { !Self.shouldExclude($0) }
+        guard !workingChanges.isEmpty else { return [] }
 
         let deletedPaths = Set(changeSummary.deleted)
 
-        let conflicts = events.working.map { path -> ConflictInfo in
+        let conflicts = workingChanges.map { path -> ConflictInfo in
             let type: ConflictInfo.ConflictType = deletedPaths.contains(path) ? .deletedButModified : .bothModified
             return ConflictInfo(path: path, type: type)
         }

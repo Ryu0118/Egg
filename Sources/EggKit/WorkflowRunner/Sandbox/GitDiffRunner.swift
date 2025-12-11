@@ -71,6 +71,11 @@ struct GitDiffRunner {
 
     /// Copies target paths from working directory and sandbox to temporary directories for comparison.
     ///
+    /// Only copies **files** (not directories). Directory paths are skipped because:
+    /// 1. FSEvents reports directory changes separately from file changes
+    /// 2. Copying an entire directory would include unchanged files, causing false positives
+    /// 3. If files within a directory changed, FSEvents also reports those individual files
+    ///
     /// - Returns: `true` if any files were copied, `false` otherwise.
     private func copyTargetPaths(
         _ targetPaths: Set<RelativePath>,
@@ -85,12 +90,25 @@ struct GitDiffRunner {
         var copiedAny = false
 
         for relativePath in targetPaths {
+            let workingPath = workingDirectory.appending(relativePath)
+            let sandboxPath = sandboxRoot.appending(relativePath)
+
+            // Skip directories - only process files
+            // FSEvents reports file changes individually, so directory-level events
+            // don't need to trigger recursive copies which could include unchanged files
+            let isWorkingDirectory = try await fileSystem.exists(workingPath, isDirectory: true)
+            let isSandboxDirectory = try await fileSystem.exists(sandboxPath, isDirectory: true)
+
+            if isWorkingDirectory || isSandboxDirectory {
+                continue
+            }
+
             let copiedWorking = try await fileSystem.copyIfExists(
-                from: workingDirectory.appending(relativePath),
+                from: workingPath,
                 to: workingTemp.appending(relativePath)
             )
             let copiedSandbox = try await fileSystem.copyIfExists(
-                from: sandboxRoot.appending(relativePath),
+                from: sandboxPath,
                 to: sandboxTemp.appending(relativePath)
             )
 

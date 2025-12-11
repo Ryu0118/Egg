@@ -355,6 +355,73 @@ extension FileSystemAtomicTests {
                     .fileContent(path: "c.txt", expected: "c"),
                 ])
             ),
+
+            // Recursive merge: preserves files in existing subdirectories
+            TestCase(
+                description: "recursively merges directories preserving existing files",
+                sourceSetup: [
+                    .file(path: "Sources/NewModule/NewModule.swift", content: "new module"),
+                ],
+                destSetup: [
+                    .file(path: "Sources/ExistingModule/Existing.swift", content: "existing"),
+                    .file(path: "Sources/ExistingModule/Helper.swift", content: "helper"),
+                ],
+                transform: { _ in },
+                expectation: .success(verifications: [
+                    // New content is added
+                    .directoryExists(path: "Sources/NewModule"),
+                    .fileContent(path: "Sources/NewModule/NewModule.swift", expected: "new module"),
+                    // Existing content is preserved
+                    .directoryExists(path: "Sources/ExistingModule"),
+                    .fileContent(path: "Sources/ExistingModule/Existing.swift", expected: "existing"),
+                    .fileContent(path: "Sources/ExistingModule/Helper.swift", expected: "helper"),
+                ])
+            ),
+
+            // Recursive merge: updates files in nested directories
+            TestCase(
+                description: "recursively merges and updates files in nested directories",
+                sourceSetup: [
+                    .file(path: "dir/subdir/updated.txt", content: "updated content"),
+                    .file(path: "dir/subdir/new.txt", content: "new file"),
+                ],
+                destSetup: [
+                    .file(path: "dir/subdir/updated.txt", content: "old content"),
+                    .file(path: "dir/subdir/preserved.txt", content: "should be preserved"),
+                    .file(path: "dir/other/other.txt", content: "other file"),
+                ],
+                transform: { _ in },
+                expectation: .success(verifications: [
+                    // Updated file has new content
+                    .fileContent(path: "dir/subdir/updated.txt", expected: "updated content"),
+                    // New file is added
+                    .fileContent(path: "dir/subdir/new.txt", expected: "new file"),
+                    // Existing file is preserved
+                    .fileContent(path: "dir/subdir/preserved.txt", expected: "should be preserved"),
+                    // Files in other directories preserved
+                    .fileContent(path: "dir/other/other.txt", expected: "other file"),
+                ])
+            ),
+
+            // Deep recursive merge
+            TestCase(
+                description: "handles deeply nested recursive merge",
+                sourceSetup: [
+                    .file(path: "a/b/c/d/new.txt", content: "deep new"),
+                ],
+                destSetup: [
+                    .file(path: "a/b/c/d/existing.txt", content: "deep existing"),
+                    .file(path: "a/b/c/sibling.txt", content: "sibling"),
+                    .file(path: "a/b/other/file.txt", content: "other branch"),
+                ],
+                transform: { _ in },
+                expectation: .success(verifications: [
+                    .fileContent(path: "a/b/c/d/new.txt", expected: "deep new"),
+                    .fileContent(path: "a/b/c/d/existing.txt", expected: "deep existing"),
+                    .fileContent(path: "a/b/c/sibling.txt", expected: "sibling"),
+                    .fileContent(path: "a/b/other/file.txt", expected: "other branch"),
+                ])
+            ),
         ]
     }
 

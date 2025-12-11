@@ -85,6 +85,7 @@ struct TemplateExpander {
     }
 
     /// Collects the list of files that will be generated (with transformed names).
+    /// Only includes files, not directories.
     private func collectFilesToGenerate(
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage,
@@ -93,7 +94,13 @@ struct TemplateExpander {
         let allPaths = try await collectAllPaths(in: templateDirectory, relativeTo: templateDirectory)
         var result: [String] = []
 
-        for (_, relativePath) in allPaths {
+        for (absolutePath, relativePath) in allPaths {
+            // Skip directories - only include files
+            let isDirectory = (try? await fileSystem.exists(absolutePath, isDirectory: true)) ?? false
+            if isDirectory {
+                continue
+            }
+
             // Skip excluded files
             if isExcluded(relativePath, by: patterns) {
                 continue

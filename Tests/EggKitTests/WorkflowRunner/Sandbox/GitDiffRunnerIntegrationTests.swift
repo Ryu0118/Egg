@@ -256,4 +256,65 @@ struct GitDiffRunnerIntegrationTests {
             ),
         ]
     }
+
+    /// Tests that directory paths in targetPaths are skipped and only file-level changes are detected.
+    @Test
+    func directoryPathsAreSkipped() async throws {
+        try await fileSystem.withTemporaryDirectory(prefix: "git-diff-dir-skip-test") { tempRoot in
+            let workingDir = tempRoot.appending(component: "working")
+            let sandboxDir = tempRoot.appending(component: "sandbox")
+
+            // Setup: both directories have identical content in Tests/EggKitTests/
+            // but we'll include the directory path "Tests/EggKitTests" in targetPaths
+            try await fileSystem.makeDirectory(at: workingDir)
+            try await fileSystem.makeDirectory(at: sandboxDir)
+
+            // Create identical files in both directories
+            let workingTestsDir = workingDir.appending(components: ["Tests", "EggKitTests"])
+            let sandboxTestsDir = sandboxDir.appending(components: ["Tests", "EggKitTests"])
+            try await fileSystem.makeDirectory(at: workingTestsDir, options: [.createTargetParentDirectories])
+            try await fileSystem.makeDirectory(at: sandboxTestsDir, options: [.createTargetParentDirectories])
+
+            try await fileSystem.writeText("test1", at: workingTestsDir.appending(component: "Test1.swift"))
+            try await fileSystem.writeText("test1", at: sandboxTestsDir.appending(component: "Test1.swift"))
+            try await fileSystem.writeText("test2", at: workingTestsDir.appending(component: "Test2.swift"))
+            try await fileSystem.writeText("test2", at: sandboxTestsDir.appending(component: "Test2.swift"))
+
+            // Create a file that was actually changed in sandbox
+            let workingSrcDir = workingDir.appending(component: "Sources")
+            let sandboxSrcDir = sandboxDir.appending(component: "Sources")
+            try await fileSystem.makeDirectory(at: workingSrcDir)
+            try await fileSystem.makeDirectory(at: sandboxSrcDir)
+
+            try await fileSystem.writeText("original", at: workingSrcDir.appending(component: "main.swift"))
+            try await fileSystem.writeText("modified", at: sandboxSrcDir.appending(component: "main.swift"))
+
+            // Include a directory path in targetPaths - this should be skipped
+            // In practice, this happens when FSEvents reports directory-level changes
+            let targetPaths: Set<RelativePath> = [
+                try RelativePath(validating: "Tests/EggKitTests"), // directory - should be skipped
+                try RelativePath(validating: "Sources/main.swift"), // file - should be processed
+            ]
+
+            let runner = GitDiffRunner(
+                processRunner: ProcessRunner(),
+                fileSystem: fileSystem
+            )
+
+            let summary = try await runner.computeChanges(
+                sandboxRoot: sandboxDir,
+                workingDirectory: workingDir,
+                targetPaths: targetPaths
+            )
+
+            // Only the file change should be detected; the directory path should be skipped
+            // and should NOT cause Test1.swift or Test2.swift to appear as deleted/modified
+            #expect(summary.added.isEmpty, "No files should be added")
+            #expect(
+                summary.modified.map(\.pathString) == ["Sources/main.swift"],
+                "Only Sources/main.swift should be modified"
+            )
+            #expect(summary.deleted.isEmpty, "No files should be deleted (directory path was skipped)")
+        }
+    }
 }

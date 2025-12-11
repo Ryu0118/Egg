@@ -83,6 +83,10 @@ extension FileSysteming {
     /// then atomically moves the result to the destination. If any step fails,
     /// the destination remains unchanged.
     ///
+    /// When merging with an existing destination:
+    /// - Files are replaced (existing file removed, new file moved in)
+    /// - Directories are merged recursively (contents combined, not replaced)
+    ///
     /// - Parameters:
     ///   - source: The source directory to copy from
     ///   - destination: The destination path where the result will be placed
@@ -101,23 +105,10 @@ extension FileSysteming {
 
             // Move the transformed content to destination
             // If destination doesn't exist, move the entire directory
-            // If destination exists, we need to merge contents
+            // If destination exists, we need to merge contents recursively
             if try await exists(destination) {
-                // Merge: copy items from workingDirectory into destination
-                let items = try await contentsOfDirectory(workingDirectory)
-                for item in items {
-                    let itemName = item.basename
-                    let destItem = destination.appending(component: itemName)
-
-                    // Remove existing item in destination if it exists
-                    if try await exists(destItem) {
-                        try await remove(destItem)
-                    }
-
-                    try await move(from: item, to: destItem)
-                }
+                try await mergeDirectory(from: workingDirectory, to: destination)
             } else {
-                // Destination doesn't exist, move entire directory
                 try await move(from: workingDirectory, to: destination)
             }
         } catch {
@@ -126,5 +117,65 @@ extension FileSysteming {
         }
 
         try await remove(tempDirectory)
+    }
+
+    /// Recursively merges the source directory into the destination.
+    ///
+    /// - Files: Replace existing files with source files
+    /// - Directories: Recursively merge contents (don't replace entire directory)
+    ///
+    /// This preserves existing files in destination directories that don't exist in source.
+    private func mergeDirectory(
+        from source: AbsolutePath,
+        to destination: AbsolutePath
+    ) async throws {
+        let items = try await contentsOfDirectory(source)
+
+        // DEBUG
+        print("[DEBUG mergeDirectory] source: \(source.pathString)")
+        print("[DEBUG mergeDirectory] destination: \(destination.pathString)")
+        print("[DEBUG mergeDirectory] items: \(items.map(\.basename))")
+
+        for item in items {
+            let itemName = item.basename
+            let destItem = destination.appending(component: itemName)
+
+            let sourceIsDirectory = try await exists(item, isDirectory: true)
+            let destExists = try await exists(destItem)
+            let destIsDirectory: Bool
+            if destExists {
+                destIsDirectory = try await exists(destItem, isDirectory: true)
+            } else {
+                destIsDirectory = false
+            }
+
+            // DEBUG
+            print("[DEBUG mergeDirectory] processing: \(itemName), sourceIsDir=\(sourceIsDirectory), destExists=\(destExists), destIsDir=\(destIsDirectory)")
+
+            if sourceIsDirectory {
+                if destIsDirectory {
+                    // Both are directories: recursively merge
+                    try await mergeDirectory(from: item, to: destItem)
+                } else {
+                    // Source is directory, destination is file (or doesn't exist)
+                    // Remove file if exists, create directory, and recursively merge
+                    // We use recursive merge instead of move to ensure FSEvents
+                    // reports file-level events (move would report directory-level)
+                    if destExists {
+                        try await remove(destItem)
+                    }
+                    print("[DEBUG mergeDirectory] creating directory: \(destItem.pathString)")
+                    try await makeDirectory(at: destItem)
+                    try await mergeDirectory(from: item, to: destItem)
+                }
+            } else {
+                // Source is a file: replace destination
+                if destExists {
+                    try await remove(destItem)
+                }
+                print("[DEBUG mergeDirectory] moving file: \(item.pathString) -> \(destItem.pathString)")
+                try await move(from: item, to: destItem)
+            }
+        }
     }
 }
