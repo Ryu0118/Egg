@@ -270,7 +270,12 @@ extension SandboxContext {
             throw SandboxContext.Error.alreadyDiscarded
         }
 
-        let targetPaths = events.targetPaths
+        // Filter out .git directory paths - these should never be included in change summaries
+        let targetPaths = events.targetPaths.filter { path in
+            let components = path.components
+            guard let first = components.first else { return true }
+            return first != ".git"
+        }
 
         guard !targetPaths.isEmpty else {
             return ChangeSummary(added: [], modified: [], deleted: [])

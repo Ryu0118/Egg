@@ -81,6 +81,7 @@ struct SandboxContextTests {
             case discardRemovesSandbox
             case discardedState(Bool)
             case discardIsIdempotent
+            case changeSummaryIgnoresGitDirectory
         }
 
         enum Expectation {
@@ -196,6 +197,19 @@ struct SandboxContextTests {
                 initialFiles: [],
                 expectation: .applyChangesFailsAfterDiscard
             ),
+
+            // .git directory ignore test
+            TestCase(
+                description: "computeChangeSummary ignores .git directory changes",
+                initialFiles: [
+                    InitialFile(path: ".git/config", content: "git config"),
+                    InitialFile(path: ".git/objects/abc", content: "object"),
+                    InitialFile(path: "README.md", content: "readme"),
+                ],
+                expectation: .success(checks: [
+                    .changeSummaryIgnoresGitDirectory,
+                ])
+            ),
         ]
     }
 
@@ -264,6 +278,36 @@ struct SandboxContextTests {
             await sandbox.discard()
             let discarded = await sandbox.isDiscarded
             #expect(discarded, "Multiple discards should not throw")
+
+        case .changeSummaryIgnoresGitDirectory:
+            // Modify files in sandbox: both .git and regular files
+            let sandboxRoot = await sandbox.root
+            let gitConfigPath = sandboxRoot.appending(components: [".git", "config"])
+            let gitNewFilePath = sandboxRoot.appending(components: [".git", "new-file"])
+            let readmePath = sandboxRoot.appending(component: "README.md")
+
+            // Modify .git files (remove and rewrite to trigger change)
+            try await fileSystem.remove(gitConfigPath)
+            try await fileSystem.writeText("modified git config", at: gitConfigPath)
+
+            // Add new file in .git
+            try await fileSystem.writeText("new file in git", at: gitNewFilePath)
+
+            // Modify regular file (remove and rewrite)
+            try await fileSystem.remove(readmePath)
+            try await fileSystem.writeText("modified readme", at: readmePath)
+
+            // Compute change summary
+            let summary = try await sandbox.computeChangeSummary()
+
+            // Verify .git paths are not in the summary
+            let allPaths = summary.added + summary.modified + summary.deleted
+            let gitPaths = allPaths.filter { $0.components.first == ".git" }
+            #expect(gitPaths.isEmpty, ".git paths should be ignored in change summary, but found: \(gitPaths)")
+
+            // Verify README.md is in the summary (as modified)
+            let hasReadme = summary.modified.contains { $0.pathString == "README.md" }
+            #expect(hasReadme, "README.md should be in modified list")
         }
     }
 
