@@ -6,7 +6,7 @@ import ProcessRunning
 import Testing
 
 /// Integration tests that verify GitDiffRunner correctly computes changes
-/// between working directory and sandbox using real file system and git.
+/// between working directory and workspace using real file system and git.
 struct GitDiffRunnerIntegrationTests {
     private let fileSystem = FileSystem()
 
@@ -14,10 +14,10 @@ struct GitDiffRunnerIntegrationTests {
     func computeChanges(_ testCase: TestCase) async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "git-diff-runner-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
-            let sandboxDir = tempRoot.appending(component: "sandbox")
+            let workspaceDir = tempRoot.appending(component: "sandbox")
 
             try await setupDirectory(workingDir, files: testCase.workingFiles)
-            try await setupDirectory(sandboxDir, files: testCase.sandboxFiles)
+            try await setupDirectory(workspaceDir, files: testCase.workspaceFiles)
 
             let targetPaths = try buildTargetPaths(testCase: testCase)
 
@@ -27,7 +27,7 @@ struct GitDiffRunnerIntegrationTests {
             )
 
             let summary = try await runner.computeChanges(
-                workspaceRoot: sandboxDir,
+                workspaceRoot: workspaceDir,
                 workingDirectory: workingDir,
                 targetPaths: targetPaths
             )
@@ -74,7 +74,7 @@ struct GitDiffRunnerIntegrationTests {
         for file in testCase.workingFiles {
             try paths.insert(RelativePath(validating: file.path))
         }
-        for file in testCase.sandboxFiles {
+        for file in testCase.workspaceFiles {
             try paths.insert(RelativePath(validating: file.path))
         }
         return paths
@@ -119,7 +119,7 @@ struct GitDiffRunnerIntegrationTests {
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let workingFiles: [FileEntry]
-        let sandboxFiles: [FileEntry]
+        let workspaceFiles: [FileEntry]
         let expectedAdded: [String]
         let expectedModified: [String]
         let expectedDeleted: [String]
@@ -132,7 +132,7 @@ struct GitDiffRunnerIntegrationTests {
                 workingFiles: [
                     FileEntry(path: "file.txt", content: "same content"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "file.txt", content: "same content"),
                 ],
                 expectedAdded: [],
@@ -142,7 +142,7 @@ struct GitDiffRunnerIntegrationTests {
             TestCase(
                 description: "detects single added file",
                 workingFiles: [],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "new.txt", content: "new content"),
                 ],
                 expectedAdded: ["new.txt"],
@@ -154,7 +154,7 @@ struct GitDiffRunnerIntegrationTests {
                 workingFiles: [
                     FileEntry(path: "file.txt", content: "original"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "file.txt", content: "modified"),
                 ],
                 expectedAdded: [],
@@ -166,7 +166,7 @@ struct GitDiffRunnerIntegrationTests {
                 workingFiles: [
                     FileEntry(path: "removed.txt", content: "will be removed"),
                 ],
-                sandboxFiles: [],
+                workspaceFiles: [],
                 expectedAdded: [],
                 expectedModified: [],
                 expectedDeleted: ["removed.txt"]
@@ -176,7 +176,7 @@ struct GitDiffRunnerIntegrationTests {
                 workingFiles: [
                     FileEntry(path: "src/main.swift", content: "original main"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "src/main.swift", content: "modified main"),
                     FileEntry(path: "src/utils/helper.swift", content: "new helper"),
                 ],
@@ -191,7 +191,7 @@ struct GitDiffRunnerIntegrationTests {
                     FileEntry(path: "modify.txt", content: "original"),
                     FileEntry(path: "delete.txt", content: "to delete"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "keep.txt", content: "unchanged"),
                     FileEntry(path: "modify.txt", content: "modified"),
                     FileEntry(path: "add.txt", content: "new file"),
@@ -203,7 +203,7 @@ struct GitDiffRunnerIntegrationTests {
             TestCase(
                 description: "handles files with spaces in names",
                 workingFiles: [],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "my file.txt", content: "content"),
                     FileEntry(path: "folder with space/another file.txt", content: "nested"),
                 ],
@@ -218,7 +218,7 @@ struct GitDiffRunnerIntegrationTests {
                     FileEntry(path: "b.txt", content: "b original"),
                     FileEntry(path: "c.txt", content: "c unchanged"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "a.txt", content: "a modified"),
                     FileEntry(path: "c.txt", content: "c unchanged"),
                     FileEntry(path: "d.txt", content: "d new"),
@@ -232,7 +232,7 @@ struct GitDiffRunnerIntegrationTests {
                 workingFiles: [
                     FileEntry(path: "a/b/c/d/deep.txt", content: "original"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "a/b/c/d/deep.txt", content: "modified"),
                     FileEntry(path: "a/b/c/d/e/deeper.txt", content: "new"),
                 ],
@@ -246,7 +246,7 @@ struct GitDiffRunnerIntegrationTests {
                     FileEntry(path: "src/old.swift", content: "old code"),
                     FileEntry(path: "tests/test.swift", content: "test code"),
                 ],
-                sandboxFiles: [
+                workspaceFiles: [
                     FileEntry(path: "src/new.swift", content: "new code"),
                     FileEntry(path: "tests/test.swift", content: "updated test"),
                 ],
@@ -262,32 +262,32 @@ struct GitDiffRunnerIntegrationTests {
     func directoryPathsAreSkipped() async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "git-diff-dir-skip-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
-            let sandboxDir = tempRoot.appending(component: "sandbox")
+            let workspaceDir = tempRoot.appending(component: "sandbox")
 
             // Setup: both directories have identical content in Tests/EggKitTests/
             // but we'll include the directory path "Tests/EggKitTests" in targetPaths
             try await fileSystem.makeDirectory(at: workingDir)
-            try await fileSystem.makeDirectory(at: sandboxDir)
+            try await fileSystem.makeDirectory(at: workspaceDir)
 
             // Create identical files in both directories
             let workingTestsDir = workingDir.appending(components: ["Tests", "EggKitTests"])
-            let sandboxTestsDir = sandboxDir.appending(components: ["Tests", "EggKitTests"])
+            let workspaceTestsDir = workspaceDir.appending(components: ["Tests", "EggKitTests"])
             try await fileSystem.makeDirectory(at: workingTestsDir, options: [.createTargetParentDirectories])
-            try await fileSystem.makeDirectory(at: sandboxTestsDir, options: [.createTargetParentDirectories])
+            try await fileSystem.makeDirectory(at: workspaceTestsDir, options: [.createTargetParentDirectories])
 
             try await fileSystem.writeText("test1", at: workingTestsDir.appending(component: "Test1.swift"))
-            try await fileSystem.writeText("test1", at: sandboxTestsDir.appending(component: "Test1.swift"))
+            try await fileSystem.writeText("test1", at: workspaceTestsDir.appending(component: "Test1.swift"))
             try await fileSystem.writeText("test2", at: workingTestsDir.appending(component: "Test2.swift"))
-            try await fileSystem.writeText("test2", at: sandboxTestsDir.appending(component: "Test2.swift"))
+            try await fileSystem.writeText("test2", at: workspaceTestsDir.appending(component: "Test2.swift"))
 
-            // Create a file that was actually changed in sandbox
+            // Create a file that was actually changed in workspace
             let workingSrcDir = workingDir.appending(component: "Sources")
-            let sandboxSrcDir = sandboxDir.appending(component: "Sources")
+            let workspaceSrcDir = workspaceDir.appending(component: "Sources")
             try await fileSystem.makeDirectory(at: workingSrcDir)
-            try await fileSystem.makeDirectory(at: sandboxSrcDir)
+            try await fileSystem.makeDirectory(at: workspaceSrcDir)
 
             try await fileSystem.writeText("original", at: workingSrcDir.appending(component: "main.swift"))
-            try await fileSystem.writeText("modified", at: sandboxSrcDir.appending(component: "main.swift"))
+            try await fileSystem.writeText("modified", at: workspaceSrcDir.appending(component: "main.swift"))
 
             // Include a directory path in targetPaths - this should be skipped
             // In practice, this happens when FSEvents reports directory-level changes
@@ -302,7 +302,7 @@ struct GitDiffRunnerIntegrationTests {
             )
 
             let summary = try await runner.computeChanges(
-                workspaceRoot: sandboxDir,
+                workspaceRoot: workspaceDir,
                 workingDirectory: workingDir,
                 targetPaths: targetPaths
             )

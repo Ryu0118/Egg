@@ -7,11 +7,11 @@ struct GitNameStatusParserTests {
     @Test(arguments: TestCase.allCases)
     func parse(_ testCase: TestCase) throws {
         let workingRoot = try AbsolutePath(validating: testCase.workingRoot)
-        let sandboxRoot = try AbsolutePath(validating: testCase.sandboxRoot)
+        let workspaceRoot = try AbsolutePath(validating: testCase.workspaceRoot)
 
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,
-            workspaceRoot: sandboxRoot
+            workspaceRoot: workspaceRoot
         )
 
         let result = parser.parse(components: testCase.components.map { Substring($0) })

@@ -23,6 +23,7 @@ struct TransactionalWorkspaceContextTests {
 
         let transactionalWorkspace = try await TransactionalWorkspaceContext.create(
             cloning: workingDir,
+            homeDirectory: tempDir,
             fileSystem: fileSystem,
             workspaceWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),

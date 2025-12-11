@@ -87,16 +87,33 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         macroInputs: MacroInputs,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
-        // Step 1: Create transactional workspace (APFS clone of working directory)
+        // Step 1: Start transactional workspace creation in parallel with macro collection
         noora.passthrough("🔒 Creating transactional workspace...\n")
-        let workspace = try await TransactionalWorkspaceContext.create(
-            cloning: workingDirectory,
-            homeDirectory: homeDirectory,
-            fileSystem: fileSystem,
-            workspaceWatcher: workspaceWatcher,
-            workingDirectoryWatcher: workingDirectoryWatcher,
-            processRunner: processRunner
-        )
+
+        // Capture all values needed for workspace creation to avoid capturing self
+        nonisolated(unsafe) let fs = fileSystem
+        let workingDir = workingDirectory
+        let homeDir = homeDirectory
+        let wsWatcher = workspaceWatcher
+        let wdWatcher = workingDirectoryWatcher
+        let procRunner = processRunner
+
+        let workspaceTask = Task {
+            try await TransactionalWorkspaceContext.create(
+                cloning: workingDir,
+                homeDirectory: homeDir,
+                fileSystem: fs,
+                workspaceWatcher: wsWatcher,
+                workingDirectoryWatcher: wdWatcher,
+                processRunner: procRunner
+            )
+        }
+
+        // Step 2: Collect macro values (runs in parallel with workspace creation)
+        let collectedMacroValues = collectMacroValues(macroInputs, config: config)
+
+        // Wait for workspace creation to complete
+        let workspace = try await workspaceTask.value
 
         // Register cleanup handler for SIGINT/SIGTERM (Control+C)
         let cleanupHandlerId = await TransactionalWorkspaceCleanupRegistry.shared.register {
@@ -112,9 +129,9 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
 
         // Ensure transactional workspace is discarded on any failure
         do {
-            // Step 2: Resolve macros with workspace root as working directory
+            // Step 4: Resolve macros with workspace root as working directory
             // This is critical for path-type macros to resolve correctly
-            let macros = try resolveMacros(macroInputs, config: config, workspaceRoot: workspace.root)
+            let macros = try finalizeMacros(collectedMacroValues, config: config, workspaceRoot: workspace.root)
 
             let outputs = StepOutputsStorage()
 
@@ -136,6 +153,7 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
             }
 
             // Step 4: Execute hatch phase (template expansion) in transactional workspace
+            // useAtomicWrite: false because transactional workspace already provides atomicity
             let workspaceOutputDirectory = try await phaseRunner.executeHatch(
                 config: config,
                 macros: macros,
@@ -144,7 +162,8 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
                 workingDirectory: workspace.root,
                 pathValidator: { path in
                     try await workspace.validatePath(path)
-                }
+                },
+                useAtomicWrite: false
             )
 
             noora.passthrough("✅ Template hatched successfully in transactional workspace.\n", tab: 1)
@@ -270,31 +289,22 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
 
         if !summary.added.isEmpty {
             noora.passthrough("Added (\(summary.added.count)):\n", tab: 1)
-            for path in summary.added.prefix(10) {
+            for path in summary.added {
                 noora.passthrough("+ \(path.pathString)\n", tab: 2)
-            }
-            if summary.added.count > 10 {
-                noora.passthrough("... and \(summary.added.count - 10) more\n", tab: 2)
             }
         }
 
         if !summary.modified.isEmpty {
             noora.passthrough("Modified (\(summary.modified.count)):\n", tab: 1)
-            for path in summary.modified.prefix(10) {
+            for path in summary.modified {
                 noora.passthrough("~ \(path.pathString)\n", tab: 2)
-            }
-            if summary.modified.count > 10 {
-                noora.passthrough("... and \(summary.modified.count - 10) more\n", tab: 2)
             }
         }
 
         if !summary.deleted.isEmpty {
             noora.passthrough("Deleted (\(summary.deleted.count)):\n", tab: 1)
-            for path in summary.deleted.prefix(10) {
+            for path in summary.deleted {
                 noora.passthrough("- \(path.pathString)\n", tab: 2)
-            }
-            if summary.deleted.count > 10 {
-                noora.passthrough("... and \(summary.deleted.count - 10) more\n", tab: 2)
             }
         }
 
@@ -310,37 +320,114 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         noora.passthrough("\n")
     }
 
-    /// Resolves macros based on input type.
+    /// Creates a detached task for workspace creation to enable parallel execution.
+    ///
+    /// This helper method isolates the non-Sendable FileSysteming type by using
+    /// `sending` parameters and `nonisolated(unsafe)` to safely pass it to the task.
+    ///
+    /// - Returns: A task that creates the transactional workspace
+    private nonisolated static func createWorkspaceTask(
+        workingDirectory: AbsolutePath,
+        homeDirectory: AbsolutePath,
+        fileSystem: sending any FileSysteming,
+        workspaceWatcher: any DirectoryWatching,
+        workingDirectoryWatcher: any DirectoryWatching,
+        processRunner: any ProcessRunning
+    ) -> Task<TransactionalWorkspaceContext, any Error> {
+        // Use nonisolated(unsafe) to safely capture the fileSystem in the task
+        // FileSystem is actually thread-safe but not marked Sendable
+        nonisolated(unsafe) let fs = fileSystem
+
+        return Task {
+            try await TransactionalWorkspaceContext.create(
+                cloning: workingDirectory,
+                homeDirectory: homeDirectory,
+                fileSystem: fs,
+                workspaceWatcher: workspaceWatcher,
+                workingDirectoryWatcher: workingDirectoryWatcher,
+                processRunner: processRunner
+            )
+        }
+    }
+
+    /// Intermediate representation for collected macro values before workspace-relative path resolution.
+    private enum CollectedMacroValues {
+        /// Pre-validated parsed macros from CLI arguments (need workspace-relative path resolution)
+        case parsed([ParsedMacroDefinition])
+        /// Interactively collected macros using original working directory (need workspace-relative path re-resolution)
+        case interactive([ResolvedMacro])
+    }
+
+    /// Collects macro values from user input or CLI arguments.
+    ///
+    /// For interactive mode, this prompts the user and collects values while workspace creation
+    /// proceeds in parallel. Path validation uses the original working directory (which has the
+    /// same structure as the workspace clone).
     ///
     /// - Parameters:
     ///   - inputs: The macro inputs (parsed from CLI or requiring interactive prompts)
     ///   - config: The template configuration containing macro definitions
-    ///   - workspaceRoot: The transactional workspace root directory (used as working directory for path resolution)
-    /// - Returns: Array of resolved macros
+    /// - Returns: Collected macro values ready for workspace-relative finalization
+    private func collectMacroValues(_ inputs: MacroInputs, config: Config) -> CollectedMacroValues {
+        switch inputs {
+        case let .parsed(parsedMacros):
+            // Pass through parsed macros for later validation
+            return .parsed(parsedMacros)
+        case .interactive:
+            // Collect user input using original working directory for path validation
+            // Since workspace is an APFS clone, relative paths resolve the same
+            let resolver = MacroResolver(
+                config: config,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory,
+                noora: noora
+            )
+            return .interactive(resolver.resolve())
+        }
+    }
+
+    /// Finalizes macro resolution with workspace-relative paths.
+    ///
+    /// For parsed macros, validates and resolves paths relative to workspace root.
+    /// For interactive macros, re-resolves path values relative to workspace root.
+    ///
+    /// - Parameters:
+    ///   - collected: The collected macro values from `collectMacroValues`
+    ///   - config: The template configuration containing macro definitions
+    ///   - workspaceRoot: The transactional workspace root directory
+    /// - Returns: Array of resolved macros with workspace-relative paths
     /// - Throws: Validation errors for parsed macros
-    private func resolveMacros(
-        _ inputs: MacroInputs,
+    private func finalizeMacros(
+        _ collected: CollectedMacroValues,
         config: Config,
         workspaceRoot: AbsolutePath
     ) throws -> [ResolvedMacro] {
-        switch inputs {
+        switch collected {
         case let .parsed(parsedMacros):
-            // Resolve parsed macros with workspace root as working directory
-            // This ensures path-type macros are resolved relative to the transactional workspace
+            // Validate and resolve parsed macros with workspace root
             let validator = ParsedMacroDefinitionValidator(
                 config: config,
                 workingDirectory: workspaceRoot,
                 homeDirectory: homeDirectory
             )
             return try validator.validate(parsedMacros)
-        case .interactive:
-            let resolver = MacroResolver(
-                config: config,
-                workingDirectory: workspaceRoot,
-                homeDirectory: homeDirectory,
-                noora: noora
-            )
-            return resolver.resolve()
+        case let .interactive(resolvedMacros):
+            // Re-resolve path macros relative to workspace root
+            // Since workspace is an APFS clone, paths resolve to equivalent locations
+            return resolvedMacros.map { macro in
+                guard case let .path(originalPath) = macro.value else {
+                    return macro
+                }
+                // Compute relative path from original working directory
+                let relativePath = originalPath.relative(to: workingDirectory)
+                // Re-resolve relative to workspace root
+                let workspacePath = workspaceRoot.appending(relativePath)
+                return ResolvedMacro(
+                    name: macro.name,
+                    description: macro.description,
+                    value: .path(workspacePath)
+                )
+            }
         }
     }
 }

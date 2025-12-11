@@ -44,13 +44,13 @@ extension ApplyStagingAreaTests {
             let fileSystem = FileSystem()
             let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "staging-test")
 
-            let sandboxRoot = tempDir.appending(component: "sandbox")
+            let workspaceRoot = tempDir.appending(component: "workspace")
             let workingDir = tempDir.appending(component: "working")
 
-            try await fileSystem.makeDirectory(at: sandboxRoot)
+            try await fileSystem.makeDirectory(at: workspaceRoot)
             try await fileSystem.makeDirectory(at: workingDir)
 
-            try await createFiles(testCase.sandboxFiles, in: sandboxRoot, fileSystem: fileSystem)
+            try await createFiles(testCase.workspaceFiles, in: workspaceRoot, fileSystem: fileSystem)
             try await createFiles(testCase.workingDirFiles, in: workingDir, fileSystem: fileSystem)
 
             let changes = try buildChangeSummary(testCase: testCase)
@@ -58,7 +58,7 @@ extension ApplyStagingAreaTests {
             return TestContext(
                 fileSystem: fileSystem,
                 tempDir: tempDir,
-                workspaceRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingDir: workingDir,
                 changes: changes
             )
@@ -70,7 +70,7 @@ extension ApplyStagingAreaTests {
 
         func executeStageAndApply() async throws {
             try await ApplyStagingArea.withStaging(
-                workspaceRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             ) { staging, fs in
@@ -81,7 +81,7 @@ extension ApplyStagingAreaTests {
 
         func executeStageAndApplyReturningRoot() async throws -> AbsolutePath {
             let staging = try await ApplyStagingArea.create(
-                workspaceRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             )
@@ -101,7 +101,7 @@ extension ApplyStagingAreaTests {
 
         func executeStagingWithError() async throws -> AbsolutePath {
             let staging = try await ApplyStagingArea.create(
-                workspaceRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             )
@@ -149,7 +149,7 @@ extension ApplyStagingAreaTests {
 
         func verifyEmptyManifest() async throws {
             try await ApplyStagingArea.withStaging(
-                workspaceRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             ) { staging, fs in
@@ -160,7 +160,7 @@ extension ApplyStagingAreaTests {
 
         func verifyManifestCounts(add: Int, modify: Int, delete: Int) async throws {
             try await ApplyStagingArea.withStaging(
-                workspaceRoot: sandboxRoot,
+                workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
                 fileSystem: fileSystem
             ) { staging, fs in
@@ -217,7 +217,7 @@ extension ApplyStagingAreaTests {
 
     struct TestCase: CustomTestStringConvertible {
         let description: String
-        let sandboxFiles: [FileEntry]
+        let workspaceFiles: [FileEntry]
         let workingDirFiles: [FileEntry]
         let addedPaths: [String]
         let modifiedPaths: [String]
@@ -228,7 +228,7 @@ extension ApplyStagingAreaTests {
 
         init(
             description: String,
-            sandboxFiles: [FileEntry] = [],
+            workspaceFiles: [FileEntry] = [],
             workingDirFiles: [FileEntry] = [],
             addedPaths: [String] = [],
             modifiedPaths: [String] = [],
@@ -236,7 +236,7 @@ extension ApplyStagingAreaTests {
             expectation: Expectation
         ) {
             self.description = description
-            self.sandboxFiles = sandboxFiles
+            self.workspaceFiles = workspaceFiles
             self.workingDirFiles = workingDirFiles
             self.addedPaths = addedPaths
             self.modifiedPaths = modifiedPaths
@@ -273,7 +273,7 @@ extension ApplyStagingAreaTests.TestCase {
     private static let addOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies single added file",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "new.txt", content: "new content"),
             ],
             addedPaths: ["new.txt"],
@@ -283,7 +283,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies added file in subdirectory",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "subdir/nested/file.txt", content: "nested content"),
             ],
             addedPaths: ["subdir/nested/file.txt"],
@@ -293,7 +293,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies multiple added files",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "file1.txt", content: "content1"),
                 ApplyStagingAreaTests.FileEntry(path: "file2.txt", content: "content2"),
                 ApplyStagingAreaTests.FileEntry(path: "dir/file3.txt", content: "content3"),
@@ -310,7 +310,7 @@ extension ApplyStagingAreaTests.TestCase {
     private static let modifyOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies single modified file",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "existing.txt", content: "modified content"),
             ],
             workingDirFiles: [
@@ -323,7 +323,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies multiple modified files",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "file1.txt", content: "modified1"),
                 ApplyStagingAreaTests.FileEntry(path: "dir/file2.txt", content: "modified2"),
             ],
@@ -372,7 +372,7 @@ extension ApplyStagingAreaTests.TestCase {
     private static let mixedOperationCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies mixed operations",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "new.txt", content: "new content"),
                 ApplyStagingAreaTests.FileEntry(path: "modify.txt", content: "modified content"),
             ],
@@ -396,7 +396,7 @@ extension ApplyStagingAreaTests.TestCase {
     private static let manifestCountCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "manifest has correct counts for adds",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "a.txt", content: "a"),
                 ApplyStagingAreaTests.FileEntry(path: "b.txt", content: "b"),
             ],
@@ -405,7 +405,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "manifest has correct counts for modifies",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "a.txt", content: "mod-a"),
                 ApplyStagingAreaTests.FileEntry(path: "b.txt", content: "mod-b"),
                 ApplyStagingAreaTests.FileEntry(path: "c.txt", content: "mod-c"),
@@ -429,7 +429,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "manifest has correct mixed counts",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "new1.txt", content: "n1"),
                 ApplyStagingAreaTests.FileEntry(path: "new2.txt", content: "n2"),
                 ApplyStagingAreaTests.FileEntry(path: "mod1.txt", content: "mod"),
@@ -450,7 +450,7 @@ extension ApplyStagingAreaTests.TestCase {
     private static let cleanupCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "staging directory is cleaned up after successful apply",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "file.txt", content: "content"),
             ],
             addedPaths: ["file.txt"],
@@ -465,7 +465,7 @@ extension ApplyStagingAreaTests.TestCase {
     private static let edgeCases: [ApplyStagingAreaTests.TestCase] = [
         ApplyStagingAreaTests.TestCase(
             description: "handles file with special characters in name",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "file with spaces.txt", content: "spaces"),
             ],
             addedPaths: ["file with spaces.txt"],
@@ -475,7 +475,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "handles deeply nested paths",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "a/b/c/d/e/file.txt", content: "deep"),
             ],
             addedPaths: ["a/b/c/d/e/file.txt"],
@@ -485,7 +485,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "preserves files not in change summary",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "new.txt", content: "new"),
             ],
             workingDirFiles: [
@@ -499,7 +499,7 @@ extension ApplyStagingAreaTests.TestCase {
         ),
         ApplyStagingAreaTests.TestCase(
             description: "handles empty file content",
-            sandboxFiles: [
+            workspaceFiles: [
                 ApplyStagingAreaTests.FileEntry(path: "empty.txt", content: ""),
             ],
             addedPaths: ["empty.txt"],

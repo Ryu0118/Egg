@@ -44,9 +44,9 @@ struct ShellScriptRunnerTests {
 
             if let expectedStderr {
                 if expectedStderr.isEmpty {
-                    #expect(stderr.isEmpty)
+                    #expect(stderr?.isEmpty ?? true)
                 } else {
-                    #expect(stderr.contains(expectedStderr))
+                    #expect(stderr?.contains(expectedStderr) ?? false)
                 }
             }
         case let .failure(expectedExitCode):

@@ -41,6 +41,7 @@ struct TransactionalWorkspaceApplyIntegrationTests {
 
         let transactionalWorkspace = try await TransactionalWorkspaceContext.create(
             cloning: workingDir,
+            homeDirectory: tempDir,
             fileSystem: fileSystem,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirWatcher,
