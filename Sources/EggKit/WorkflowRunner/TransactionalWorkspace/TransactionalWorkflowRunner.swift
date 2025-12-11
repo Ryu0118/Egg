@@ -94,13 +94,16 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         // FileSystem is thread-safe but not marked Sendable
         nonisolated(unsafe) let fs = fileSystem
 
+        nonisolated(unsafe) let nra = noora
+
         let workspaceTask = Self.createWorkspaceTask(
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             fileSystem: fs,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
-            processRunner: processRunner
+            processRunner: processRunner,
+            noora: nra
         )
 
         // Step 2: Collect macro values (runs in parallel with workspace creation)
@@ -141,7 +144,7 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
                     macros: macros,
                     outputs: outputs,
                     workingDirectory: workspace.root,
-                    additionalEnvironment: ["EGG_SANDBOX_ROOT": workspace.root.pathString],
+                    additionalEnvironment: ["EGG_TRANSACTIONAL_ROOT": workspace.root.pathString],
                     executionEnvironment: executionEnvironment
                 )
             }
@@ -326,11 +329,13 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         fileSystem: sending any FileSysteming,
         workspaceWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
-        processRunner: any ProcessRunning
+        processRunner: any ProcessRunning,
+        noora: sending any Noorable
     ) -> Task<TransactionalWorkspaceContext, any Error> {
-        // Use nonisolated(unsafe) to safely capture the fileSystem in the task
-        // FileSystem is actually thread-safe but not marked Sendable
+        // Use nonisolated(unsafe) to safely capture non-Sendable types in the task
+        // FileSystem and Noora are actually thread-safe but not marked Sendable
         nonisolated(unsafe) let fs = fileSystem
+        nonisolated(unsafe) let nra = noora
 
         return Task {
             try await TransactionalWorkspaceContext.create(
@@ -339,7 +344,8 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
                 fileSystem: fs,
                 workspaceWatcher: workspaceWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
-                processRunner: processRunner
+                processRunner: processRunner,
+                noora: nra
             )
         }
     }

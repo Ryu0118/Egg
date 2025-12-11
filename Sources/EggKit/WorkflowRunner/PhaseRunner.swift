@@ -102,8 +102,6 @@ struct PhaseRunner {
     ///   - templateDirectory: Source directory containing template files
     ///   - workingDirectory: Base directory for resolving output path
     ///   - pathValidator: Optional closure to validate the output path (e.g., transactional workspace boundary check)
-    ///   - useAtomicWrite: Whether to use atomic copy-and-write for template expansion (default: true).
-    ///                     Set to false for transactional workspace mode where atomicity is already guaranteed.
     /// - Returns: The resolved absolute path of the output directory
     func executeHatch(
         config: Config,
@@ -111,8 +109,7 @@ struct PhaseRunner {
         outputs: StepOutputsStorage,
         templateDirectory: AbsolutePath,
         workingDirectory: AbsolutePath,
-        pathValidator: ((AbsolutePath) async throws -> Void)? = nil,
-        useAtomicWrite: Bool = true
+        pathValidator: ((AbsolutePath) async throws -> Void)? = nil
     ) async throws -> AbsolutePath {
         noora.passthrough("🐣 Hatching \(config.name)...\n")
 
@@ -144,8 +141,7 @@ struct PhaseRunner {
             outputDirectory: outputDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            force: force,
-            useAtomicWrite: useAtomicWrite
+            force: force
         )
 
         try await expander.expand(

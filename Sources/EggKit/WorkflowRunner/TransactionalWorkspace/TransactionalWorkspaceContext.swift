@@ -1,5 +1,6 @@
 import FileSystem
 import Foundation
+import Noora
 import Path
 import ProcessRunning
 
@@ -61,6 +62,9 @@ actor TransactionalWorkspaceContext {
     /// Directory cloner for creating transactional workspace copies.
     private let directoryCloner: any DirectoryCloning
 
+    /// Noora instance for logging output.
+    private nonisolated(unsafe) let noora: any Noorable
+
     private init(
         root: AbsolutePath,
         reference: AbsolutePath,
@@ -69,7 +73,8 @@ actor TransactionalWorkspaceContext {
         workspaceWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
-        directoryCloner: any DirectoryCloning
+        directoryCloner: any DirectoryCloning,
+        noora: any Noorable
     ) {
         self.root = root
         self.reference = reference
@@ -79,6 +84,7 @@ actor TransactionalWorkspaceContext {
         self.workingDirectoryWatcher = workingDirectoryWatcher
         self.processRunner = processRunner
         self.directoryCloner = directoryCloner
+        self.noora = noora
     }
 
     /// Creates a new transactional workspace context by cloning the working directory.
@@ -108,11 +114,13 @@ actor TransactionalWorkspaceContext {
         workspaceWatcher: some DirectoryWatching,
         workingDirectoryWatcher: some DirectoryWatching,
         processRunner: some ProcessRunning,
-        directoryCloner: some DirectoryCloning = APFSDirectoryCloner()
+        directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
+        noora: some Noorable = Noora()
     ) async throws -> TransactionalWorkspaceContext {
         // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
-        // FileSystem is actually thread-safe and all its methods are nonisolated.
+        // FileSystem and Noora are actually thread-safe and all their methods are nonisolated.
         nonisolated(unsafe) let fs = fileSystem
+        nonisolated(unsafe) let nra = noora
 
         do {
             // Create transactional workspace base directory in ~/.eggs/workspaces/{uuid}/
@@ -143,7 +151,8 @@ actor TransactionalWorkspaceContext {
                 workspaceWatcher: workspaceWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
-                directoryCloner: directoryCloner
+                directoryCloner: directoryCloner,
+                noora: nra
             )
         } catch let error as TransactionalWorkspaceContext.Error {
             throw error
@@ -263,7 +272,7 @@ actor TransactionalWorkspaceContext {
     func discard() async {
         guard !isDiscarded else { return }
 
-        print("🗑️ Discarding transactional workspace at \(root.pathString)...")
+        noora.passthrough("🗑️ Discarding transactional workspace at \(root.pathString)...\n")
 
         // Stop watchers
         await workspaceWatcher.stop()

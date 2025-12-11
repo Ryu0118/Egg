@@ -14,7 +14,7 @@ struct GitDiffRunnerIntegrationTests {
     func computeChanges(_ testCase: TestCase) async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "git-diff-runner-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
-            let workspaceDir = tempRoot.appending(component: "sandbox")
+            let workspaceDir = tempRoot.appending(component: "transactional")
 
             try await setupDirectory(workingDir, files: testCase.workingFiles)
             try await setupDirectory(workspaceDir, files: testCase.workspaceFiles)
@@ -262,7 +262,7 @@ struct GitDiffRunnerIntegrationTests {
     func directoryPathsAreSkipped() async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "git-diff-dir-skip-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
-            let workspaceDir = tempRoot.appending(component: "sandbox")
+            let workspaceDir = tempRoot.appending(component: "transactional")
 
             // Setup: both directories have identical content in Tests/EggKitTests/
             // but we'll include the directory path "Tests/EggKitTests" in targetPaths

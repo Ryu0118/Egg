@@ -38,7 +38,7 @@ package struct HatchArgumentsValidator {
         let template = try await templateFinder.fetchTemplate(templateName)
 
         // Perform basic validation (without path resolution)
-        // Path resolution will be done by the workflow runner after sandbox creation
+        // Path resolution will be done by the workflow runner after transactional workspace creation
         let validator = ParsedMacroBasicValidator(config: template.config)
         try validator.validate(parsedMacros)
 

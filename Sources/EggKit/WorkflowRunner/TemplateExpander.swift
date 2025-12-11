@@ -19,7 +19,6 @@ struct TemplateExpander {
     private let noora: any Noorable
     private let isInteractive: Bool
     private let force: Bool
-    private let useAtomicWrite: Bool
 
     init(
         fileSystem: any FileSysteming,
@@ -27,8 +26,7 @@ struct TemplateExpander {
         outputDirectory: AbsolutePath,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        force: Bool = false,
-        useAtomicWrite: Bool = true
+        force: Bool = false
     ) {
         self.fileSystem = fileSystem
         self.templateDirectory = templateDirectory
@@ -36,17 +34,12 @@ struct TemplateExpander {
         self.noora = noora
         self.isInteractive = isInteractive
         self.force = force
-        self.useAtomicWrite = useAtomicWrite
     }
 
     /// Expands the template by copying and transforming all non-excluded files.
     ///
-    /// When `useAtomicWrite` is true (default), files are first copied to a temporary directory,
-    /// transformed in place, and then moved to the output directory atomically.
-    ///
-    /// When `useAtomicWrite` is false (transactional workspace mode), files are copied and
-    /// transformed directly in the output directory since atomicity is already guaranteed
-    /// by the transactional workspace.
+    /// Files are first copied to a temporary directory, transformed in place,
+    /// and then moved to the output directory atomically.
     ///
     /// - Parameters:
     ///   - macros: Resolved macro values to substitute in filenames and contents
@@ -80,25 +73,14 @@ struct TemplateExpander {
             }
         }
 
-        if useAtomicWrite {
-            // Atomic mode: copy to temp directory, transform, then move to output
-            try await fileSystem.withAtomicCopyAndWrite(
-                from: templateDirectory,
-                to: outputDirectory
-            ) { workingDirectory in
-                try await removeConfigFile(in: workingDirectory)
-                try await removeExcludedFiles(in: workingDirectory, matching: excludePatterns)
-                try await transformFilenames(in: workingDirectory, substituting: macros, with: outputs)
-                try await transformFileContents(in: workingDirectory, substituting: macros, with: outputs)
-            }
-        } else {
-            // Direct mode (transactional workspace): copy and transform directly
-            // Atomicity is guaranteed by the transactional workspace layer
-            try await fileSystem.copy(templateDirectory, to: outputDirectory)
-            try await removeConfigFile(in: outputDirectory)
-            try await removeExcludedFiles(in: outputDirectory, matching: excludePatterns)
-            try await transformFilenames(in: outputDirectory, substituting: macros, with: outputs)
-            try await transformFileContents(in: outputDirectory, substituting: macros, with: outputs)
+        try await fileSystem.withAtomicCopyAndWrite(
+            from: templateDirectory,
+            to: outputDirectory
+        ) { workingDirectory in
+            try await removeConfigFile(in: workingDirectory)
+            try await removeExcludedFiles(in: workingDirectory, matching: excludePatterns)
+            try await transformFilenames(in: workingDirectory, substituting: macros, with: outputs)
+            try await transformFileContents(in: workingDirectory, substituting: macros, with: outputs)
         }
     }
 

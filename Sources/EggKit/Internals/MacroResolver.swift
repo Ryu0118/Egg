@@ -10,7 +10,7 @@ import Path
 /// ## Important
 /// The `workingDirectory` parameter should be the actual execution directory:
 /// - For transactional workspace runners: the workspace root directory
-/// - For non-sandboxed runners: the real working directory
+/// - For non-transactional runners: the real working directory
 ///
 /// This ensures path-type macros resolve correctly relative to the execution context.
 package struct MacroResolver {
