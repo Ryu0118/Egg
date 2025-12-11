@@ -466,11 +466,11 @@ private func makeWorkflowRunner() -> any WorkflowRunning {
 ```
 
 **Checklist:**
-- [ ] Add `useSandbox` and `force` parameters to HatchRunner
-- [ ] Implement runner factory method
-- [ ] Pass `force` to SandboxedWorkflowRunner
-- [ ] Add warning for no-sandbox mode
-- [ ] Tests: Runner selection, force mode behavior
+- [x] Add `useSandbox` and `force` parameters to HatchRunner
+- [x] Implement runner factory method
+- [x] Pass `force` to SandboxedWorkflowRunner
+- [x] Add warning for no-sandbox mode
+- [x] Tests: Runner selection, force mode behavior
 
 ### 5.2 Update CLI Hatch Command
 
@@ -495,11 +495,11 @@ let runner = HatchRunner(
 ```
 
 **Checklist:**
-- [ ] Add `--no-sandbox` flag
-- [ ] Add `--force` flag
-- [ ] Pass both flag values to HatchRunner
-- [ ] Update help text for both flags
-- [ ] Integration test: sandbox + no-sandbox + force combinations
+- [x] Add `--no-sandbox` flag
+- [x] Add `--force` flag
+- [x] Pass both flag values to HatchRunner
+- [x] Update help text for both flags
+- [x] Integration test: sandbox + no-sandbox + force combinations
 
 ---
 

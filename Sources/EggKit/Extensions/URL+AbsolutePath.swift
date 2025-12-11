@@ -9,3 +9,9 @@ package extension URL {
         }
     }
 }
+
+public extension AbsolutePath {
+    var asURL: URL {
+        URL(filePath: pathString)
+    }
+}

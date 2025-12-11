@@ -13,6 +13,7 @@ package struct HatchRunner {
     private let projectDirectory: AbsolutePath
     private let templateFinder: TemplatesFinder
     private let processRunner: any ProcessRunning
+    private let useSandbox: Bool
     private let force: Bool
 
     package init(
@@ -23,6 +24,7 @@ package struct HatchRunner {
         fileSystem: some FileSysteming,
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
+        useSandbox: Bool = true,
         force: Bool = false
     ) {
         self.mode = mode
@@ -32,6 +34,7 @@ package struct HatchRunner {
         self.fileSystem = fileSystem
         self.processRunner = processRunner
         self.noora = noora
+        self.useSandbox = useSandbox
         self.force = force
         templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
@@ -65,15 +68,7 @@ package struct HatchRunner {
 
             let resolvedMacros = generator.generateQuestions()
 
-            let workflowRunner = LifecycleWorkflowRunner(
-                processRunner: processRunner,
-                fileSystem: fileSystem,
-                workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory,
-                noora: noora,
-                isInteractive: true,
-                force: force
-            )
+            let workflowRunner = makeWorkflowRunner(isInteractive: true)
 
             _ = try await workflowRunner.run(
                 config: template.config,
@@ -82,20 +77,41 @@ package struct HatchRunner {
             )
 
         case let .direct(template, macros):
-            let workflowRunner = LifecycleWorkflowRunner(
-                processRunner: processRunner,
-                fileSystem: fileSystem,
-                workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory,
-                noora: noora,
-                isInteractive: false,
-                force: force
-            )
+            let workflowRunner = makeWorkflowRunner(isInteractive: false)
 
             _ = try await workflowRunner.run(
                 config: template.config,
                 macros: macros,
                 templateDirectory: template.path
+            )
+        }
+    }
+
+    /// Creates the appropriate workflow runner based on sandbox settings.
+    ///
+    /// - Parameter isInteractive: Whether the runner should operate in interactive mode
+    /// - Returns: A workflow runner (sandboxed or non-sandboxed)
+    private func makeWorkflowRunner(isInteractive: Bool) -> any WorkflowRunning {
+        if useSandbox {
+            return SandboxedWorkflowRunner(
+                processRunner: processRunner,
+                fileSystem: fileSystem,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory,
+                noora: noora,
+                isInteractive: isInteractive,
+                force: force
+            )
+        } else {
+            noora.warning("Running without sandbox. filesystem changes are permanent")
+            return LifecycleWorkflowRunner(
+                processRunner: processRunner,
+                fileSystem: fileSystem,
+                workingDirectory: workingDirectory,
+                homeDirectory: homeDirectory,
+                noora: noora,
+                isInteractive: isInteractive,
+                force: force
             )
         }
     }

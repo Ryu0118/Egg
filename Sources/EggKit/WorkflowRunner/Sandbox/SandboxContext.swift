@@ -54,13 +54,17 @@ actor SandboxContext {
     /// Process runner for git diff operations.
     private let processRunner: any ProcessRunning
 
+    /// Directory cloner for creating sandbox copies.
+    private let directoryCloner: any DirectoryCloning
+
     private init(
         root: AbsolutePath,
         originalWorkingDirectory: AbsolutePath,
         fileSystem: sending any FileSysteming,
         sandboxWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
-        processRunner: any ProcessRunning
+        processRunner: any ProcessRunning,
+        directoryCloner: any DirectoryCloning
     ) {
         self.root = root
         self.originalWorkingDirectory = originalWorkingDirectory
@@ -68,6 +72,7 @@ actor SandboxContext {
         self.sandboxWatcher = sandboxWatcher
         self.workingDirectoryWatcher = workingDirectoryWatcher
         self.processRunner = processRunner
+        self.directoryCloner = directoryCloner
     }
 
     /// Creates a new sandbox context by cloning the working directory.
@@ -78,6 +83,7 @@ actor SandboxContext {
     ///   - sandboxWatcher: Watcher for sandbox changes
     ///   - workingDirectoryWatcher: Watcher for working directory changes
     ///   - processRunner: Process runner for git operations
+    ///   - directoryCloner: Cloner for creating sandbox copy (defaults to APFS cloner)
     /// - Returns: A new SandboxContext with cloned directory
     /// - Throws: SandboxContext.Error.creationFailed on file system errors
     static func create(
@@ -85,7 +91,8 @@ actor SandboxContext {
         fileSystem: any FileSysteming,
         sandboxWatcher: some DirectoryWatching,
         workingDirectoryWatcher: some DirectoryWatching,
-        processRunner: some ProcessRunning
+        processRunner: some ProcessRunning,
+        directoryCloner: some DirectoryCloning = APFSDirectoryCloner()
     ) async throws -> SandboxContext {
         // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
         // FileSystem is actually thread-safe and all its methods are nonisolated.
@@ -97,8 +104,8 @@ actor SandboxContext {
             // Remove the empty directory so we can clone into it
             try await fs.remove(tempDirectory)
 
-            // Clone entire working directory using APFS copy-on-write
-            try await fs.copy(workingDirectory, to: tempDirectory)
+            // Clone entire working directory using the provided cloner
+            try directoryCloner.clone(from: workingDirectory.asURL, to: tempDirectory.asURL)
 
             // Start watchers immediately after cloning
             try await sandboxWatcher.start(watching: tempDirectory)
@@ -110,7 +117,8 @@ actor SandboxContext {
                 fileSystem: fs,
                 sandboxWatcher: sandboxWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
-                processRunner: processRunner
+                processRunner: processRunner,
+                directoryCloner: directoryCloner
             )
         } catch let error as SandboxContext.Error {
             throw error
