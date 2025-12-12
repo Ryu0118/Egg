@@ -267,12 +267,12 @@ actor StagingContext {
 
     /// Discards the staging area without applying changes.
     ///
-    /// Removes all staging contents (both work and reference directories) and stops watchers.
+    /// Moves staging contents to Trash for fast deletion (similar to Finder).
     /// Safe to call multiple times (idempotent).
     func discard() async {
         guard !isDiscarded else { return }
 
-        noora.passthrough("🗑️ Discarding staging area at \(root.pathString)...\n")
+        noora.passthrough("🗑️ Discarding staging area...\n")
 
         // Stop watchers
         await workspaceWatcher.stop()
@@ -283,7 +283,15 @@ actor StagingContext {
         // Remove the parent staging directory (contains both work and reference)
         // root is ~/.eggs/workspaces/{uuid}/work, so parent is ~/.eggs/workspaces/{uuid}
         let workspaceBaseDirectory = root.parentDirectory
-        try? await fileSystem.remove(workspaceBaseDirectory)
+
+        // Use trashItem for instant deletion (moves to Trash instead of recursive delete)
+        // This is much faster than removeItem, especially for APFS clones
+        do {
+            try FileManager.default.trashItem(at: workspaceBaseDirectory.asURL, resultingItemURL: nil)
+        } catch {
+            // Fallback to regular removal if trash fails (e.g., on systems without Trash)
+            try? await fileSystem.remove(workspaceBaseDirectory)
+        }
     }
 
     /// Returns whether the staging area has been discarded.
