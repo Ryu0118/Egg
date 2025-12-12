@@ -67,7 +67,7 @@ package struct OpenArgumentsValidator {
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
 
-        return if try fileManager.exists(globalPath) && templatePath == globalPath {
+        return if fileManager.exists(globalPath) && templatePath == globalPath {
             TemplateLocationType.global
         } else {
             TemplateLocationType.project(

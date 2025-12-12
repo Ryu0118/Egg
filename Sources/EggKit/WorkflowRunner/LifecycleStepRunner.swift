@@ -36,7 +36,7 @@ struct LifecycleStepRunner {
         workingDirectory: URL,
         noora: some Noorable = Noora(),
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .normal
+        executionEnvironment: ExecutionEnvironment = .unsandboxed
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory

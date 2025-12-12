@@ -39,6 +39,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let noora: any Noorable
     private let isInteractive: Bool
     private let override: Bool
+    private let sandboxDisabled: Bool
     private let phaseRunner: PhaseRunner
     private let workspaceWatcher: any DirectoryWatching
     private let workingDirectoryWatcher: any DirectoryWatching
@@ -51,6 +52,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
         override: Bool = false,
+        sandboxDisabled: Bool = false,
         workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher()
     ) {
@@ -61,6 +63,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.noora = noora
         self.isInteractive = isInteractive
         self.override = override
+        self.sandboxDisabled = sandboxDisabled
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileManager: fileManager,
@@ -132,10 +135,12 @@ struct StagingWorkflowRunner: WorkflowRunning {
             let outputs = StepOutputsStorage()
 
             // Step 2: Execute pre_hatch phase in staging workspace (with OS-level sandboxing)
-            let executionEnvironment = ExecutionEnvironment.staging(
-                root: staging.root,
-                originalWorkingDirectory: workingDirectory
-            )
+            let executionEnvironment: ExecutionEnvironment =
+                if sandboxDisabled {
+                    .unsandboxed
+                } else {
+                    .sandboxed(.staging(root: staging.root, originalWorkingDirectory: workingDirectory))
+                }
 
             if let preHatchSteps = config.preHatch {
                 try await phaseRunner.executePreHatch(

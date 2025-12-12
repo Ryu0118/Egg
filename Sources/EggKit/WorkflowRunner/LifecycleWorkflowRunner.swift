@@ -36,6 +36,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     private let homeDirectory: URL
     private let phaseRunner: PhaseRunner
     private let noora: any Noorable
+    private let sandboxDisabled: Bool
 
     init(
         processRunner: any ProcessRunning,
@@ -44,11 +45,13 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         homeDirectory: URL,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        override: Bool = false
+        override: Bool = false,
+        sandboxDisabled: Bool = true
     ) {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.noora = noora
+        self.sandboxDisabled = sandboxDisabled
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileManager: fileManager,
@@ -78,12 +81,16 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         let outputs = StepOutputsStorage()
 
         // Phase 1: Execute pre_hatch
+        let executionEnvironment: ExecutionEnvironment =
+            sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory))
+
         if let preHatchSteps = config.preHatch {
             try await phaseRunner.executePreHatch(
                 steps: preHatchSteps,
                 macros: macros,
                 outputs: outputs,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
+                executionEnvironment: executionEnvironment
             )
         }
 
@@ -103,7 +110,8 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 steps: postHatchSteps,
                 macros: macros,
                 outputs: outputs,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
+                executionEnvironment: executionEnvironment
             )
         }
 

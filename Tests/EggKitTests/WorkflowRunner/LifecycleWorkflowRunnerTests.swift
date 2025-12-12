@@ -41,7 +41,8 @@ struct LifecycleWorkflowRunnerTests {
             fileManager: fileManager,
             workingDirectory: workingDir,
             homeDirectory: homeDir,
-            noora: nooraMock
+            noora: nooraMock,
+            sandboxDisabled: true
         )
 
         let outputDir = try await runner.run(

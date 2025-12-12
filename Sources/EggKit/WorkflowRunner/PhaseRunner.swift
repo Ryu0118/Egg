@@ -69,7 +69,7 @@ struct PhaseRunner {
         outputs: StepOutputsStorage,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .normal
+        executionEnvironment: ExecutionEnvironment = .unsandboxed
     ) async throws {
         noora.passthrough("🥚 Pre-hatch script executing...\n")
 
@@ -170,7 +170,7 @@ struct PhaseRunner {
         outputs: StepOutputsStorage,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .normal
+        executionEnvironment: ExecutionEnvironment = .unsandboxed
     ) async throws {
         noora.passthrough("🐥 Post-hatch script executing...\n")
 

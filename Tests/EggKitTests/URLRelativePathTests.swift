@@ -44,6 +44,14 @@ struct URLRelativePathTests {
 
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects")
     }
+
+    @Test
+    func appendingRelativePathWithDot() {
+        let base = URL(filePath: "/Users/user/Projects")
+        let result = base.appendingRelativePath(".")
+
+        #expect(result.path(percentEncoded: false) == "/Users/user/Projects")
+    }
 }
 
 // MARK: - Test Cases

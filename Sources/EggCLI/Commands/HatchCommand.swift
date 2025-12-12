@@ -37,6 +37,9 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Flag(name: .long, help: "Override conflicts and overwrite existing files without prompting.")
     package var override: Bool = false
 
+    @Flag(name: .long, help: "Disable sandbox-exec safety guard for lifecycle scripts.")
+    package var noSandbox: Bool = false
+
     package static let fileManager: any FileManagerProtocol = FileManager.default
 
     package init() {}
@@ -51,7 +54,8 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             projectDirectory: try await resolveProjectDirectory(),
             fileManager: Self.fileManager,
             useStaging: !noStaging,
-            override: override
+            override: override,
+            sandboxDisabled: noSandbox
         ).run()
     }
 

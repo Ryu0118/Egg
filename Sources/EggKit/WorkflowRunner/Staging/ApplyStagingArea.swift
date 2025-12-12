@@ -206,7 +206,7 @@ struct ApplyStagingArea {
 
             switch entry.kind {
             case .delete:
-                if let backupPath = entry.backupPath, try fileManager.exists(backupPath) {
+                if let backupPath = entry.backupPath, fileManager.exists(backupPath) {
                     try ensureParentDirectory(for: targetPath, fileManager: fileManager)
                     try fileManager.copyItem(at: backupPath, to: targetPath)
                 }
@@ -217,7 +217,7 @@ struct ApplyStagingArea {
             case .modify:
                 try fileManager.removeIfExists(targetPath)
 
-                if let backupPath = entry.backupPath, try fileManager.exists(backupPath) {
+                if let backupPath = entry.backupPath, fileManager.exists(backupPath) {
                     try ensureParentDirectory(for: targetPath, fileManager: fileManager)
                     try fileManager.copyItem(at: backupPath, to: targetPath)
                 }
@@ -342,7 +342,7 @@ struct ApplyStagingArea {
         fileManager: some FileManagerProtocol
     ) throws -> URL? {
         let original = targetPath(for: relativePath)
-        guard try fileManager.exists(original) else {
+        guard fileManager.exists(original) else {
             return nil
         }
 

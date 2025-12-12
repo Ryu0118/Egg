@@ -16,11 +16,15 @@ package func resolveToAbsoluteURL(
 
     // Try to resolve as absolute path first
     if expandedValue.hasPrefix("/") {
-        return URL(filePath: expandedValue)
+        return URL(filePath: expandedValue).standardizedFileURL
     }
 
-    // Otherwise, resolve as relative path from working directory
-    return URL(filePath: expandedValue, relativeTo: workingDirectory)
+    // Otherwise, resolve relative to the provided working directory.
+    // Using `appending(path:)` preserves directory semantics (e.g., "." stays within the working directory)
+    // while still allowing standardization to collapse ".." segments safely.
+    return workingDirectory
+        .appending(path: expandedValue)
+        .standardizedFileURL
 }
 
 enum PathResolutionError: LocalizedError {

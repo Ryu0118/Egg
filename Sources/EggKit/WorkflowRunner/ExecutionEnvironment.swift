@@ -1,18 +1,39 @@
 import Foundation
 
-/// Defines the execution environment for shell commands.
+/// Defines whether lifecycle shell commands run inside an OS sandbox.
 ///
-/// This enum clearly separates staging workspace execution (with OS-level restrictions)
-/// from normal execution, making the code intent explicit and preventing
-/// confusion about which parameters are required in each mode.
+/// - `.sandboxed`: Commands run via `sandbox-exec` with the provided configuration.
+/// - `.unsandboxed`: Commands run directly without sandbox restrictions.
 enum ExecutionEnvironment {
-    /// Normal execution without staging workspace restrictions.
-    case normal
+    case sandboxed(SandboxConfiguration)
+    case unsandboxed
+}
 
-    /// Staging workspace execution with OS-level restrictions (macOS sandbox-exec).
-    ///
-    /// - Parameters:
-    ///   - root: The staging workspace root directory where write access is allowed
-    ///   - originalWorkingDirectory: The original working directory to block writes to
-    case staging(root: URL, originalWorkingDirectory: URL)
+/// Configuration describing the sandbox boundaries.
+struct SandboxConfiguration {
+    /// Directory where shell commands are allowed to write.
+    let writableRoot: URL
+    /// Paths that should be explicitly denied for read/write access.
+    let deniedPaths: [URL]
+
+    init(writableRoot: URL, deniedPaths: [URL] = []) {
+        self.writableRoot = writableRoot
+        self.deniedPaths = deniedPaths
+    }
+}
+
+extension SandboxConfiguration {
+    /// Sandbox configuration for direct (non-staging) execution.
+    static func workingDirectory(_ directory: URL) -> SandboxConfiguration {
+        SandboxConfiguration(writableRoot: directory)
+    }
+
+    /// Sandbox configuration for staging execution that blocks access
+    /// to the original working directory.
+    static func staging(root: URL, originalWorkingDirectory: URL) -> SandboxConfiguration {
+        SandboxConfiguration(
+            writableRoot: root,
+            deniedPaths: [originalWorkingDirectory]
+        )
+    }
 }

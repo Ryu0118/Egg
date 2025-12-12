@@ -64,58 +64,6 @@ extension FileManagerProtocol {
         return true
     }
 
-    /// Executes a closure with a temporary directory that is automatically cleaned up.
-    func withTemporaryDirectory<T: Sendable>(
-        prefix: String,
-        _ action: (URL) throws -> T
-    ) throws -> T {
-        let tempDir = try makeTemporaryDirectory(prefix: prefix)
-        defer { try? removeItem(at: tempDir) }
-        return try action(tempDir)
-    }
-
-    /// Performs an atomic copy-and-write operation.
-    ///
-    /// Copies the source to a temporary directory, applies the transformation,
-    /// then atomically moves the result to the destination. If any step fails,
-    /// the destination remains unchanged.
-    ///
-    /// When merging with an existing destination:
-    /// - Files are replaced (existing file removed, new file moved in)
-    /// - Directories are merged recursively (contents combined, not replaced)
-    ///
-    /// - Parameters:
-    ///   - source: The source directory to copy from
-    ///   - destination: The destination URL where the result will be placed
-    ///   - transform: A closure that transforms the copied directory in place
-    func withAtomicCopyAndWrite(
-        from source: URL,
-        to destination: URL,
-        perform transform: (URL) throws -> Void
-    ) throws {
-        let tempDirectory = try makeTemporaryDirectory(prefix: "egg-atomic")
-        let workingDirectory = tempDirectory.appendingPathComponent("work")
-
-        do {
-            try copyItem(at: source, to: workingDirectory)
-            try transform(workingDirectory)
-
-            // Move the transformed content to destination
-            // If destination doesn't exist, move the entire directory
-            // If destination exists, we need to merge contents recursively
-            if exists(destination) {
-                try mergeDirectory(from: workingDirectory, to: destination)
-            } else {
-                try moveItem(at: workingDirectory, to: destination)
-            }
-        } catch {
-            try? removeItem(at: tempDirectory)
-            throw error
-        }
-
-        try removeItem(at: tempDirectory)
-    }
-
     /// Performs an atomic copy-and-write operation with async transformation.
     ///
     /// Copies the source to a temporary directory, applies the async transformation,
@@ -148,6 +96,10 @@ extension FileManagerProtocol {
             if exists(destination) {
                 try mergeDirectory(from: workingDirectory, to: destination)
             } else {
+                let parentDirectory = destination.deletingLastPathComponent()
+                if !exists(parentDirectory) {
+                    try createDirectory(at: parentDirectory, withIntermediateDirectories: true, attributes: nil)
+                }
                 try moveItem(at: workingDirectory, to: destination)
             }
         } catch {

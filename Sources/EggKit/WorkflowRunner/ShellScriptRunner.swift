@@ -23,7 +23,7 @@ struct ShellScriptRunner {
         processRunner: any ProcessRunning,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .normal
+        executionEnvironment: ExecutionEnvironment = .unsandboxed
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
@@ -161,15 +161,11 @@ struct ShellScriptRunner {
     /// with a profile that restricts file system access to only the staging directory.
     private func makeExecutableAndArguments(for command: String) -> (Subprocess.Executable, Arguments) {
         switch executionEnvironment {
-        case .normal:
+        case .unsandboxed:
             return (.path("/bin/sh"), ["-c", command])
 
-        case let .staging(root, originalWorkingDirectory):
-            let profile = generateSandboxProfile(
-                allowingAccessTo: root,
-                denyingAccessTo: originalWorkingDirectory
-            )
-            // sandbox-exec -p '<profile>' /bin/sh -c '<command>'
+        case let .sandboxed(configuration):
+            let profile = generateSandboxProfile(for: configuration)
             return (
                 .path("/usr/bin/sandbox-exec"),
                 ["-p", profile, "/bin/sh", "-c", command]
@@ -188,18 +184,18 @@ struct ShellScriptRunner {
     /// - Allows network access (some scripts may need it)
     ///
     /// Reference: https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf
-    private func generateSandboxProfile(
-        allowingAccessTo sandboxRoot: URL,
-        denyingAccessTo originalWorkingDirectory: URL
-    ) -> String {
-        // Resolve symlinks to get the real path (sandbox-exec uses real paths)
-        // e.g., /var/folders/... -> /private/var/folders/...
-        let workspaceRootPath = resolveRealPath(sandboxRoot.path(percentEncoded: false))
-        let originalPath = resolveRealPath(originalWorkingDirectory.path(percentEncoded: false))
+    private func generateSandboxProfile(for configuration: SandboxConfiguration) -> String {
+        let writableRootPath = resolveRealPath(configuration.writableRoot.path(percentEncoded: false))
+        let escapedWritableRoot = writableRootPath.replacingOccurrences(of: "\"", with: "\\\"")
 
-        // Escape quotes in paths for SBPL string literal
-        let escapedWorkspaceRootPath = workspaceRootPath.replacingOccurrences(of: "\"", with: "\\\"")
-        let escapedOriginalPath = originalPath.replacingOccurrences(of: "\"", with: "\\\"")
+        let deniedRules = configuration.deniedPaths.map { path -> String in
+            let resolved = resolveRealPath(path.path(percentEncoded: false))
+            let escaped = resolved.replacingOccurrences(of: "\"", with: "\\\"")
+            return """
+            (deny file-write* (subpath "\(escaped)"))
+            (deny file-read* (subpath "\(escaped)"))
+            """
+        }.joined(separator: "\n")
 
         return """
         (version 1)
@@ -208,11 +204,9 @@ struct ShellScriptRunner {
         (allow process*)
         ; Allow reading all files
         (allow file-read*)
-        ; Explicitly deny write access to original working directory
-        (deny file-write* (subpath "\(escapedOriginalPath)"))
-        (deny file-read* (subpath "\(escapedOriginalPath)"))
-        ; Allow full read/write access to staging directory only
-        (allow file-write* (subpath "\(escapedWorkspaceRootPath)"))
+        \(deniedRules)
+        ; Allow full read/write access to sandbox directory only
+        (allow file-write* (subpath "\(escapedWritableRoot)"))
         ; Allow read/write access to system temp directories (needed for atomic writes, locks, etc.)
         (allow file-read* (subpath "/private/var/folders"))
         (allow file-read* (subpath "/private/tmp"))

@@ -18,8 +18,8 @@ package extension URL {
     /// same.relativePath(from: working) // "."
     /// ```
     func relativePath(from base: URL) -> String {
-        let targetPath = self.path(percentEncoded: false)
-        let basePath = base.path(percentEncoded: false)
+        let targetPath = self.standardizedFileURL.path(percentEncoded: false)
+        let basePath = base.standardizedFileURL.path(percentEncoded: false)
 
         // Normalize paths by removing trailing slashes for comparison
         let normalizedTarget = targetPath.hasSuffix("/") ? String(targetPath.dropLast()) : targetPath
@@ -49,7 +49,10 @@ package extension URL {
     /// - Parameter relativePath: The relative path to append.
     /// - Returns: A new URL with the path appended.
     func appendingRelativePath(_ relativePath: String) -> URL {
-        appending(path: relativePath)
+        guard !relativePath.isEmpty, relativePath != "." else {
+            return self
+        }
+        return appending(path: relativePath)
     }
 
     /// Returns true if this URL is located under the given base URL.
@@ -57,8 +60,8 @@ package extension URL {
     /// - Parameter base: The base URL to check against.
     /// - Returns: True if this URL's path starts with the base URL's path.
     func isUnder(_ base: URL) -> Bool {
-        let targetPath = self.path(percentEncoded: false)
-        let basePath = base.path(percentEncoded: false)
+        let targetPath = self.standardizedFileURL.path(percentEncoded: false)
+        let basePath = base.standardizedFileURL.path(percentEncoded: false)
 
         let normalizedTarget = targetPath.hasSuffix("/") ? String(targetPath.dropLast()) : targetPath
         let normalizedBase = basePath.hasSuffix("/") ? String(basePath.dropLast()) : basePath

@@ -169,10 +169,22 @@ actor StagingContext {
             throw StagingContext.Error.alreadyDiscarded
         }
 
-        // Check if path is within staging area by comparing standardized paths
-        let standardizedPath = path.standardized.path
-        let standardizedRoot = root.standardized.path
-        guard standardizedPath.hasPrefix(standardizedRoot) else {
+        func normalizedComponents(for url: URL) -> [String] {
+            var components = url.standardizedFileURL.pathComponents
+            if components.count > 2, components[1] == "private", components[2] == "var" {
+                components.remove(at: 1)
+            }
+            return components
+        }
+
+        let pathComponents = normalizedComponents(for: path)
+        let rootComponents = normalizedComponents(for: root)
+
+        let isWithinRoot =
+            pathComponents.count >= rootComponents.count &&
+            zip(rootComponents, pathComponents).allSatisfy { $0 == $1 }
+
+        guard isWithinRoot else {
             throw StagingContext.Error.escapeAttempt(path: path.path)
         }
     }

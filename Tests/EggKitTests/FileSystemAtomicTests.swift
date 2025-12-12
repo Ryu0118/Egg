@@ -5,7 +5,7 @@ import Testing
 
 struct FileSystemAtomicTests {
     @Test(arguments: TestCase.allCases)
-    func withAtomicCopyAndWrite(_ testCase: TestCase) throws {
+    func withAtomicCopyAndWrite(_ testCase: TestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempBase = try fileManager.makeTemporaryDirectory(prefix: "atomic-test")
 
@@ -21,7 +21,7 @@ struct FileSystemAtomicTests {
 
         switch testCase.expectation {
         case let .success(verifications):
-            try executeAtomicCopy(
+            try await executeAtomicCopy(
                 from: sourceDir,
                 to: destDir,
                 transform: testCase.transform,
@@ -30,8 +30,8 @@ struct FileSystemAtomicTests {
             try verify(verifications, in: destDir, using: fileManager)
 
         case .failure:
-            expectFailure {
-                try self.executeAtomicCopy(
+            await expectFailure {
+                try await self.executeAtomicCopy(
                     from: sourceDir,
                     to: destDir,
                     transform: testCase.transform,
@@ -95,7 +95,7 @@ extension FileSystemAtomicTests {
         using fileManager: some FileManagerProtocol
     ) throws {
         let parent = path.deletingLastPathComponent()
-        if try !fileManager.exists(parent) {
+        if !fileManager.exists(parent) {
             try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
         }
     }
@@ -107,17 +107,19 @@ extension FileSystemAtomicTests {
         to destination: URL,
         transform: @Sendable (URL) throws -> Void,
         using fileManager: some FileManagerProtocol
-    ) throws {
-        try fileManager.withAtomicCopyAndWrite(
+    ) async throws {
+        try await fileManager.withAtomicCopyAndWrite(
             from: source,
             to: destination,
-            perform: transform
+            perform: { workingDirectory in
+                try transform(workingDirectory)
+            }
         )
     }
 
-    private func expectFailure(_ operation: () throws -> Void) {
-        #expect(throws: (any Swift.Error).self) {
-            try operation()
+    private func expectFailure(_ operation: () async throws -> Void) async {
+        await #expect(throws: (any Swift.Error).self) {
+            try await operation()
         }
     }
 }
@@ -141,7 +143,7 @@ extension FileSystemAtomicTests {
         switch verification {
         case let .fileExists(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try fileManager.exists(fullPath)
+            let exists = fileManager.exists(fullPath)
             #expect(exists, "Expected file to exist at \(path)")
 
         case let .fileContent(path, expected):
@@ -152,12 +154,12 @@ extension FileSystemAtomicTests {
 
         case let .fileDoesNotExist(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try fileManager.exists(fullPath)
+            let exists = fileManager.exists(fullPath)
             #expect(!exists, "Expected file NOT to exist at \(path)")
 
         case let .directoryExists(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try fileManager.exists(fullPath) && (try? fileManager.isDirectory(at: fullPath)) == true
+            let exists = fileManager.exists(fullPath) && fileManager.isDirectory(at: fullPath)
             #expect(exists, "Expected directory to exist at \(path)")
         }
     }
