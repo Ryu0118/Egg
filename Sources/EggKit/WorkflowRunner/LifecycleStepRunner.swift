@@ -128,7 +128,11 @@ struct LifecycleStepRunner {
             return true
         }
 
-        let evaluator = ConditionEvaluator(macros: macros, outputs: outputs)
+        let evaluator = ConditionEvaluator(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: builtInMacroContext
+        )
         return try await evaluator.evaluate(condition)
     }
 

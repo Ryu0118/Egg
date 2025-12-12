@@ -190,7 +190,11 @@ struct TemplateExpander {
                 try patterns.append(Glob.Pattern(pattern))
 
             case let .conditional(conditional):
-                let evaluator = ConditionEvaluator(macros: macros, outputs: outputs)
+                let evaluator = ConditionEvaluator(
+                    macros: macros,
+                    outputs: outputs,
+                    builtInMacroContext: builtInMacroContext
+                )
                 let shouldExclude = try await evaluator.evaluate(conditional.if)
 
                 if shouldExclude {

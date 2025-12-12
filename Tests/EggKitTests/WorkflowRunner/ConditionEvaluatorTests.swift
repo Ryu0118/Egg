@@ -3,6 +3,14 @@ import Foundation
 import Testing
 
 struct ConditionEvaluatorTests {
+    private static let defaultBuiltInMacroContext = BuiltInMacroContext(
+        outputDirectory: nil,
+        workingDirectory: URL(filePath: "/tmp/work"),
+        homeDirectory: URL(filePath: "/tmp/home"),
+        currentDate: Date(timeIntervalSince1970: 0),
+        environment: [:]
+    )
+
     @Test(arguments: TestCase.allCases)
     func evaluate(_ testCase: TestCase) async throws {
         let outputs = StepOutputsStorage()
@@ -12,7 +20,11 @@ struct ConditionEvaluatorTests {
             await outputs.store(phase: output.phase, stepId: output.stepId, outputs: output.values)
         }
 
-        let evaluator = ConditionEvaluator(macros: testCase.macros, outputs: outputs)
+        let evaluator = ConditionEvaluator(
+            macros: testCase.macros,
+            outputs: outputs,
+            builtInMacroContext: Self.defaultBuiltInMacroContext
+        )
 
         switch testCase.expectation {
         case let .success(expectedResult):

@@ -48,7 +48,11 @@ struct VariableResolver {
         var result = text
 
         for macro in macros {
-            let stringValue = MacroStringConverter.toShellString(macro.value)
+            let stringValue = MacroStringConverter.toShellString(
+                macro.value,
+                workingDirectory: builtInMacroContext.workingDirectory,
+                homeDirectory: builtInMacroContext.homeDirectory
+            )
             result = result.replacingOccurrences(of: macro.name, with: stringValue)
         }
 

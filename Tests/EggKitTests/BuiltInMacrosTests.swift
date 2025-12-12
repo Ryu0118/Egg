@@ -2,6 +2,7 @@
 import Foundation
 import Testing
 
+@Suite(.serialized)
 struct BuiltInMacrosTests {
     // MARK: - isReserved Tests
 

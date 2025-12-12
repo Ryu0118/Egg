@@ -106,11 +106,11 @@ struct StagingWorkflowRunner: WorkflowRunning {
             noora: nra
         )
 
-        // Step 2: Collect macro values (runs in parallel with workspace creation)
-        let collectedMacroValues = collectMacroValues(macroInputs, config: config)
-
         // Wait for workspace creation to complete
         let staging = try await workspaceTask.value
+
+        // Step 2: Collect macro values (runs in parallel with workspace creation)
+        let collectedMacroValues = collectMacroValues(macroInputs, config: config)
 
         // Register cleanup handler for SIGINT/SIGTERM (Control+C)
         let cleanupHandlerId = await StagingCleanupRegistry.shared.register {

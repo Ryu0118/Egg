@@ -5,6 +5,7 @@ import Noora
 import ProcessRunning
 import Testing
 
+@Suite(.serialized)
 struct StagingWorkflowRunnerTests {
     @Test(arguments: TestCase.allCases)
     func run(_ testCase: TestCase) async throws {
@@ -18,6 +19,8 @@ struct StagingWorkflowRunnerTests {
         try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+
+        try initializeGitRepository(at: workingDir)
 
         // Setup initial working directory files
         for item in testCase.workingDirSetup {
@@ -410,6 +413,23 @@ struct StagingWorkflowRunnerTests {
             ),
         ]
     }
+}
+
+private func initializeGitRepository(at directory: URL) throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+    process.arguments = ["init"]
+    process.currentDirectoryURL = directory
+    try process.run()
+    process.waitUntilExit()
+
+    guard process.terminationStatus == 0 else {
+        throw GitInitializationError.failed(status: process.terminationStatus)
+    }
+}
+
+private enum GitInitializationError: Error {
+    case failed(status: Int32)
 }
 
 extension StagingWorkflowRunnerTests {

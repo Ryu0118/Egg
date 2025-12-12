@@ -27,6 +27,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
     private let apfsCloner: any DirectoryCloning
+    private let gitRepositoryChecker: GitRepositoryChecker
     nonisolated(unsafe) private let noora: any Noorable
 
     init(
@@ -38,6 +39,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         self.processRunner = processRunner
         self.fileManager = fileManager
         self.apfsCloner = apfsCloner
+        self.gitRepositoryChecker = GitRepositoryChecker(processRunner: processRunner)
         self.noora = noora
     }
 
@@ -47,9 +49,8 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         }
 
         // Check if source is a git repository
-        guard await isGitRepository(source) else {
+        guard await gitRepositoryChecker.isGitRepository(source) else {
             // Fall back to APFS cloning for non-git directories
-            noora.warning("Since this directory is not tracked by git, all files will be copied. This may take some time.")
             try await apfsCloner.clone(from: source, to: destination)
             return
         }
@@ -87,29 +88,6 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
             }
 
             try await self.apfsCloner.clone(from: sourceFile, to: destFile)
-        }
-    }
-
-    /// Checks if the directory is inside a git repository.
-    private func isGitRepository(_ directory: URL) async -> Bool {
-        let result = try? await processRunner.run(
-            .path("/usr/bin/git"),
-            arguments: Arguments(["rev-parse", "--is-inside-work-tree"]),
-            environment: .inherit,
-            workingDirectory: FilePath(directory.path),
-            platformOptions: PlatformOptions(),
-            input: .none,
-            output: .bytes(limit: 1024),
-            error: .bytes(limit: 1024)
-        )
-
-        guard let result else { return false }
-
-        switch result.terminationStatus {
-        case let .exited(code):
-            return code == 0
-        case .unhandledException:
-            return false
         }
     }
 

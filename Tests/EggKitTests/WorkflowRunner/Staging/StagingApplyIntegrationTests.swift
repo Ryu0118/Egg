@@ -1,6 +1,7 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
+import Noora
 import ProcessRunning
 import Testing
 
@@ -10,6 +11,7 @@ import Testing
 /// 1. Creating a staging area from working directory
 /// 2. Making changes in the staging area
 /// 3. Applying changes back to the working directory
+@Suite(.serialized)
 struct StagingApplyIntegrationTests {
     @Test(arguments: TestCase.allCases)
     func applyChanges(_ testCase: TestCase) async throws {
@@ -48,7 +50,9 @@ struct StagingApplyIntegrationTests {
             fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirWatcher,
-            processRunner: ProcessRunner()
+            processRunner: ProcessRunner(),
+            requireGitRepository: false,
+            noora: NooraMock()
         )
 
         let workspaceRoot = await staging.root
@@ -326,5 +330,22 @@ struct StagingApplyIntegrationTests {
                 ])
             ),
         ]
+    }
+
+    private func initializeGitRepository(at directory: URL) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["init"]
+        process.currentDirectoryURL = directory
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw GitInitializationError.failed(status: process.terminationStatus)
+        }
+    }
+
+    private enum GitInitializationError: Error {
+        case failed(status: Int32)
     }
 }

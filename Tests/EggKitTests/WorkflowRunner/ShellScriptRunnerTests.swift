@@ -22,6 +22,7 @@ actor StreamCollector {
     }
 }
 
+@Suite(.serialized)
 struct ShellScriptRunnerTests {
     @Test(arguments: TestCase.allCases)
     func execute(_ testCase: TestCase) async throws {

@@ -3,9 +3,16 @@ import Testing
 import Foundation
 
 struct MacroStringConverterTests {
+    private static let workingDirectory = URL(filePath: "/tmp/work", directoryHint: .isDirectory, relativeTo: nil)
+    private static let homeDirectory = URL(filePath: "/tmp/home", directoryHint: .isDirectory, relativeTo: nil)
+
     @Test(arguments: ShellStringTestCase.allCases)
     func toShellString(_ testCase: ShellStringTestCase) {
-        let result = MacroStringConverter.toShellString(testCase.value)
+        let result = MacroStringConverter.toShellString(
+            testCase.value,
+            workingDirectory: Self.workingDirectory,
+            homeDirectory: Self.homeDirectory
+        )
         #expect(result == testCase.expectedResult)
     }
 
@@ -101,12 +108,26 @@ struct MacroStringConverterTests {
                 value: .path(URL(filePath: "/tmp/My Folder")),
                 expectedResult: "/tmp/My Folder"
             ),
+            ShellStringTestCase(
+                description: "normalizes dot components in absolute path",
+                value: .path(
+                    MacroStringConverterTests.workingDirectory
+                        .appending(path: ".")
+                        .appending(path: "Sources")
+                        .appending(path: "Hoge")
+                ),
+                expectedResult: "/tmp/work/Sources/Hoge"
+            ),
         ]
     }
 
     @Test(arguments: JavaScriptLiteralTestCase.allCases)
     func toJavaScriptLiteral(_ testCase: JavaScriptLiteralTestCase) {
-        let result = MacroStringConverter.toJavaScriptLiteral(testCase.value)
+        let result = MacroStringConverter.toJavaScriptLiteral(
+            testCase.value,
+            workingDirectory: Self.workingDirectory,
+            homeDirectory: Self.homeDirectory
+        )
         #expect(result == testCase.expectedResult)
     }
 
@@ -221,6 +242,16 @@ struct MacroStringConverterTests {
                 description: "quotes path with spaces",
                 value: .path(URL(filePath: "/tmp/My Folder")),
                 expectedResult: "\"/tmp/My Folder\""
+            ),
+            JavaScriptLiteralTestCase(
+                description: "normalizes dot components in quoted path",
+                value: .path(
+                    MacroStringConverterTests.workingDirectory
+                        .appending(path: ".")
+                        .appending(path: "Sources")
+                        .appending(path: "Hoge")
+                ),
+                expectedResult: "\"/tmp/work/Sources/Hoge\""
             ),
         ]
     }

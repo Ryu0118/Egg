@@ -13,10 +13,16 @@ import JavaScriptCore
 struct ConditionEvaluator {
     let macros: [ResolvedMacro]
     let outputs: StepOutputsStorage
+    let builtInMacroContext: BuiltInMacroContext
 
-    init(macros: [ResolvedMacro], outputs: StepOutputsStorage) {
+    init(
+        macros: [ResolvedMacro],
+        outputs: StepOutputsStorage,
+        builtInMacroContext: BuiltInMacroContext
+    ) {
         self.macros = macros
         self.outputs = outputs
+        self.builtInMacroContext = builtInMacroContext
     }
 
     /// Evaluates a conditional expression.
@@ -47,12 +53,16 @@ struct ConditionEvaluator {
     /// - `.boolean(b)` → `true` or `false` (unquoted)
     /// - `.choice(c)` → `"c"` (quoted)
     /// - `.array(a)` → `["item1", "item2"]` (JSON array)
-    /// - `.path(p)` → `"path"` (quoted)
+    /// - `.path(p)` → `"path"` (quoted, resolved absolute path)
     private func resolveMacros(_ text: String) -> String {
         var result = text
 
         for macro in macros {
-            let stringValue = MacroStringConverter.toJavaScriptLiteral(macro.value)
+            let stringValue = MacroStringConverter.toJavaScriptLiteral(
+                macro.value,
+                workingDirectory: builtInMacroContext.workingDirectory,
+                homeDirectory: builtInMacroContext.homeDirectory
+            )
             result = result.replacingOccurrences(of: macro.name, with: stringValue)
         }
 

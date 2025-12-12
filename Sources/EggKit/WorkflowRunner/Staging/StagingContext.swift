@@ -112,6 +112,7 @@ actor StagingContext {
         workingDirectoryWatcher: some DirectoryWatching,
         processRunner: some ProcessRunning,
         directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
+        requireGitRepository: Bool = true,
         noora: some Noorable = Noora()
     ) async throws -> StagingContext {
         // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
@@ -127,6 +128,25 @@ actor StagingContext {
 
             try fileManager.createDirectory(at: workspacesDirectory, withIntermediateDirectories: true)
             try fileManager.createDirectory(at: workspaceBaseDirectory, withIntermediateDirectories: true)
+
+            let readyToCopyToStaging: Bool =
+                if !requireGitRepository {
+                    true
+                } else if !(await GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
+                    // If not under git management, copying all directories may take a very long time.
+                    // Proceed anyway? Or consider using --no-staging mode instead.
+                    noora.yesOrNoChoicePrompt(
+                        title: "Copying All Files May Take Time",
+                        question: "The working directory is not under git management. Copying all directories may take a very long time. Proceed anyway? (Consider using --no-staging mode instead)"
+                    )
+                } else {
+                    true
+                }
+
+            // If not ready, throw StagingContext.Error.userAborted here.
+            guard readyToCopyToStaging else {
+                throw StagingContext.Error.userAborted
+            }
 
             // Create work workspace (where modifications happen)
             async let workDirCloning: () = try directoryCloner.clone(from: workingDirectory, to: workDirectory)
@@ -280,7 +300,7 @@ actor StagingContext {
     func discard() async {
         guard !isDiscarded else { return }
 
-        noora.passthrough("🗑️ Discarding staging area...\n")
+        noora.passthrough("🗑️ Discarding staging workspace...\n")
 
         // Stop watchers
         await workspaceWatcher.stop()

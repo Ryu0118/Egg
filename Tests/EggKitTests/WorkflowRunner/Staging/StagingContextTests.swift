@@ -1,11 +1,12 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
+import Noora
 import ProcessRunning
 import Testing
 
 struct StagingContextTests {
-    @Test(arguments: TestCase.allCases)
+    @Test(.serialized, arguments: TestCase.allCases)
     func stagingContext(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-test")
@@ -26,7 +27,9 @@ struct StagingContextTests {
             fileManager: fileManager,
             workspaceWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
-            processRunner: ProcessRunner()
+            processRunner: ProcessRunner(),
+            requireGitRepository: false,
+            noora: NooraMock()
         )
 
         defer {
@@ -221,6 +224,8 @@ struct StagingContextTests {
         let workingDir = tempDir.appending(path: "working")
         try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
 
+        try initializeGitRepository(at: workingDir)
+
         for file in initialFiles {
             let components = file.path.split(separator: "/").map(String.init)
             var filePath = workingDir
@@ -237,6 +242,23 @@ struct StagingContextTests {
         }
 
         return workingDir
+    }
+
+    private func initializeGitRepository(at directory: URL) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["init"]
+        process.currentDirectoryURL = directory
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw GitInitializationError.failed(status: process.terminationStatus)
+        }
+    }
+
+    private enum GitInitializationError: Error {
+        case failed(status: Int32)
     }
 
     private func assertSuccessCheck(
