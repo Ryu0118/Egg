@@ -68,7 +68,7 @@ package struct DeleteRunner {
         case let .direct(name, pathString, location):
             try confirmAndDelete(
                 templateName: name,
-                path: URL(fileURLWithPath: pathString),
+                path: URL(filePath: pathString),
                 location: location
             )
         }

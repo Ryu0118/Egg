@@ -18,8 +18,8 @@ import ProcessRunning
 /// let runner = StagingWorkflowRunner(
 ///     processRunner: ProcessRunner(),
 ///     fileManager: FileManager.default,
-///     workingDirectory: URL(fileURLWithPath: "/tmp/project"),
-///     homeDirectory: URL(fileURLWithPath: NSHomeDirectory()),
+///     workingDirectory: URL(filePath: "/tmp/project"),
+///     homeDirectory: URL(filePath: NSHomeDirectory()),
 ///     noora: Noora(),
 ///     isInteractive: true,
 ///     override: false

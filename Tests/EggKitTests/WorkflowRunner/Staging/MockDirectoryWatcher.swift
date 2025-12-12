@@ -1,21 +1,20 @@
 @testable import EggKit
 import Foundation
-import Path
 
 /// Mock implementation of DirectoryWatching for testing.
 ///
 /// Allows tests to simulate file system events without actual FSEvents.
 actor MockDirectoryWatcher: DirectoryWatching {
     /// The directory being "watched".
-    private var watchedDirectory: AbsolutePath?
+    private var watchedDirectory: URL?
 
     /// Whether the watcher is running.
     private var isRunning: Bool = false
 
     /// Events that will be returned by drainEvents().
-    private var simulatedEvents: Set<RelativePath> = []
+    private var simulatedEvents: Set<String> = []
 
-    func start(watching directory: AbsolutePath) async throws {
+    func start(watching directory: URL) async throws {
         guard !isRunning else {
             throw DirectoryWatcherError.alreadyStarted
         }
@@ -28,26 +27,20 @@ actor MockDirectoryWatcher: DirectoryWatching {
         watchedDirectory = nil
     }
 
-    func drainEvents() async -> Set<RelativePath> {
+    func drainEvents() async -> Set<String> {
         simulatedEvents
     }
 
     /// Simulates a file event at the given relative path.
-    func simulateEvent(at relativePath: RelativePath) {
+    func simulateEvent(at relativePath: String) {
         simulatedEvents.insert(relativePath)
     }
 
     /// Simulates multiple file events.
-    func simulateEvents(_ relativePaths: [RelativePath]) {
+    func simulateEvents(_ relativePaths: [String]) {
         for path in relativePaths {
             simulatedEvents.insert(path)
         }
-    }
-
-    /// Simulates a file event from a string path.
-    func simulateEvent(at pathString: String) throws {
-        let relativePath = try RelativePath(validating: pathString)
-        simulatedEvents.insert(relativePath)
     }
 
     /// Clears all simulated events.

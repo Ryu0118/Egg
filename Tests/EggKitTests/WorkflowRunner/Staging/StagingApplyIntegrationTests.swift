@@ -1,7 +1,6 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 import ProcessRunning
 import Testing
 
@@ -14,25 +13,29 @@ import Testing
 struct StagingApplyIntegrationTests {
     @Test(arguments: TestCase.allCases)
     func applyChanges(_ testCase: TestCase) async throws {
-        let fileSystem = FileSystem()
-        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "workspace-apply-test")
+        let fileManager: some FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-apply-test")
 
         defer {
-            Task { try? await fileSystem.remove(tempDir) }
+            try? fileManager.removeItem(at: tempDir)
         }
 
         // Setup working directory
-        let workingDir = tempDir.appending(component: "working")
-        try await fileSystem.makeDirectory(at: workingDir)
+        let workingDir = tempDir.appending(path: "working")
+        try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
 
         // Create initial files in working directory
         for file in testCase.initialFiles {
-            let filePath = workingDir.appending(components: file.path.split(separator: "/").map(String.init))
-            let parent = filePath.parentDirectory
-            if try await !fileSystem.exists(parent) {
-                try await fileSystem.makeDirectory(at: parent)
+            let components = file.path.split(separator: "/").map(String.init)
+            var filePath = workingDir
+            for component in components {
+                filePath = filePath.appending(path: component)
             }
-            try await fileSystem.writeText(file.content, at: filePath)
+            let parent = filePath.deletingLastPathComponent()
+            if !fileManager.exists(parent) {
+                try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
+            }
+            try fileManager.writeText(file.content, at: filePath, encoding: .utf8)
         }
 
         // Create staging area with mock watchers for predictable testing
@@ -42,7 +45,7 @@ struct StagingApplyIntegrationTests {
         let staging = try await StagingContext.create(
             cloning: workingDir,
             homeDirectory: tempDir,
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirWatcher,
             processRunner: ProcessRunner()
@@ -56,54 +59,56 @@ struct StagingApplyIntegrationTests {
 
         // Apply staging area modifications
         for modification in testCase.workspaceModifications {
-            let path = workspaceRoot.appending(components: modification.path.split(separator: "/").map(String.init))
+            let components = modification.path.split(separator: "/").map(String.init)
+            var path = workspaceRoot
+            for component in components {
+                path = path.appending(path: component)
+            }
 
             switch modification.operation {
             case let .create(content):
-                let parent = path.parentDirectory
-                if try await !fileSystem.exists(parent) {
-                    try await fileSystem.makeDirectory(at: parent)
+                let parent = path.deletingLastPathComponent()
+                if !fileManager.exists(parent) {
+                    try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
                 }
-                try await fileSystem.writeText(content, at: path)
+                try fileManager.writeText(content, at: path, encoding: .utf8)
                 // Simulate watcher event
-                let relativePath = try RelativePath(validating: modification.path)
-                await workspaceWatcher.simulateEvent(at: relativePath)
+                await workspaceWatcher.simulateEvent(at: modification.path)
 
             case let .modify(content):
-                try await fileSystem.writeText(content, at: path, options: [.overwrite])
-                let relativePath = try RelativePath(validating: modification.path)
-                await workspaceWatcher.simulateEvent(at: relativePath)
+                try fileManager.writeText(content, at: path, encoding: .utf8)
+                await workspaceWatcher.simulateEvent(at: modification.path)
 
             case .delete:
-                try await fileSystem.remove(path)
-                let relativePath = try RelativePath(validating: modification.path)
-                await workspaceWatcher.simulateEvent(at: relativePath)
+                try fileManager.removeItem(at: path)
+                await workspaceWatcher.simulateEvent(at: modification.path)
             }
         }
 
         // Simulate concurrent working directory modifications if any
         for modification in testCase.workingDirModifications {
-            let path = workingDir.appending(components: modification.path.split(separator: "/").map(String.init))
+            let components = modification.path.split(separator: "/").map(String.init)
+            var path = workingDir
+            for component in components {
+                path = path.appending(path: component)
+            }
 
             switch modification.operation {
             case let .create(content):
-                let parent = path.parentDirectory
-                if try await !fileSystem.exists(parent) {
-                    try await fileSystem.makeDirectory(at: parent)
+                let parent = path.deletingLastPathComponent()
+                if !fileManager.exists(parent) {
+                    try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
                 }
-                try await fileSystem.writeText(content, at: path)
-                let relativePath = try RelativePath(validating: modification.path)
-                await workingDirWatcher.simulateEvent(at: relativePath)
+                try fileManager.writeText(content, at: path, encoding: .utf8)
+                await workingDirWatcher.simulateEvent(at: modification.path)
 
             case let .modify(content):
-                try await fileSystem.writeText(content, at: path, options: [.overwrite])
-                let relativePath = try RelativePath(validating: modification.path)
-                await workingDirWatcher.simulateEvent(at: relativePath)
+                try fileManager.writeText(content, at: path, encoding: .utf8)
+                await workingDirWatcher.simulateEvent(at: modification.path)
 
             case .delete:
-                try await fileSystem.remove(path)
-                let relativePath = try RelativePath(validating: modification.path)
-                await workingDirWatcher.simulateEvent(at: relativePath)
+                try fileManager.removeItem(at: path)
+                await workingDirWatcher.simulateEvent(at: modification.path)
             }
         }
 
@@ -116,14 +121,19 @@ struct StagingApplyIntegrationTests {
 
             // Verify expected files in working directory
             for expectedFile in expectedFiles {
-                let filePath = workingDir.appending(components: expectedFile.path.split(separator: "/").map(String.init))
+                let components = expectedFile.path.split(separator: "/").map(String.init)
+                var filePath = workingDir
+                for component in components {
+                    filePath = filePath.appending(path: component)
+                }
 
                 if let expectedContent = expectedFile.expectedContent {
-                    #expect(try await fileSystem.exists(filePath), "File '\(expectedFile.path)' should exist")
-                    let content = try await fileSystem.readTextFile(at: filePath)
-                    #expect(content == expectedContent, "File '\(expectedFile.path)' should have content '\(expectedContent)', got '\(content)'")
+                    #expect(fileManager.exists(filePath), "File '\(expectedFile.path)' should exist")
+                    let data = try fileManager.readFile(at: filePath)
+                    let content = String(data: data, encoding: .utf8)
+                    #expect(content == expectedContent, "File '\(expectedFile.path)' should have content '\(expectedContent)', got '\(content ?? "nil")'")
                 } else {
-                    #expect(try await !fileSystem.exists(filePath), "File '\(expectedFile.path)' should not exist")
+                    #expect(!fileManager.exists(filePath), "File '\(expectedFile.path)' should not exist")
                 }
             }
 

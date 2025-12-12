@@ -21,8 +21,8 @@ import ProcessRunning
 /// let runner = LifecycleWorkflowRunner(
 ///     processRunner: ProcessRunner(),
 ///     fileManager: FileManager.default,
-///     workingDirectory: URL(fileURLWithPath: "/tmp/work"),
-///     homeDirectory: URL(fileURLWithPath: NSHomeDirectory())
+///     workingDirectory: URL(filePath: "/tmp/work"),
+///     homeDirectory: URL(filePath: NSHomeDirectory())
 /// )
 ///
 /// try await runner.run(

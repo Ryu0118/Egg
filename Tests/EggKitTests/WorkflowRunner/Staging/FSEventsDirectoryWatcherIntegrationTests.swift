@@ -78,7 +78,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             defer { Task { await watcher.stop() } }
 
             // Use Data.write for modification
-            try Data("modified".utf8).write(to: URL(fileURLWithPath: filePath.pathString))
+            try Data("modified".utf8).write(to: URL(filePath: filePath.pathString))
 
             try await Task.sleep(for: .milliseconds(200))
 

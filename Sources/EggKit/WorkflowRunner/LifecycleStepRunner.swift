@@ -14,7 +14,7 @@ import ProcessRunning
 /// ```swift
 /// let runner = LifecycleStepRunner(
 ///     processRunner: ProcessRunner(),
-///     workingDirectory: URL(fileURLWithPath: "/tmp/project")
+///     workingDirectory: URL(filePath: "/tmp/project")
 /// )
 ///
 /// let outputs = try await runner.execute(

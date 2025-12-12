@@ -1,62 +1,61 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 import Testing
 
 struct ApplyStagingAreaTests {
     @Test(arguments: TestCase.allCases)
-    func applyStagingArea(_ testCase: TestCase) async throws {
-        let context = try await TestContext.setUp(testCase: testCase)
-        defer { Task { await context.tearDown() } }
+    func applyStagingArea(_ testCase: TestCase) throws {
+        let context = try TestContext.setUp(testCase: testCase)
+        defer { try? context.tearDown() }
 
         switch testCase.expectation {
         case let .success(expectedFiles):
-            try await context.executeStageAndApply()
-            try await context.verifyExpectedFiles(expectedFiles)
+            try context.executeStageAndApply()
+            try context.verifyExpectedFiles(expectedFiles)
 
         case .emptyManifest:
-            try await context.verifyEmptyManifest()
+            try context.verifyEmptyManifest()
 
         case let .manifestCounts(add, modify, delete):
-            try await context.verifyManifestCounts(add: add, modify: modify, delete: delete)
+            try context.verifyManifestCounts(add: add, modify: modify, delete: delete)
 
         case .stagingCleanedUp:
-            let stagingRoot = try await context.executeStageAndApplyReturningRoot()
-            try await context.verifyStagingCleanedUp(stagingRoot: stagingRoot)
+            let stagingRoot = try context.executeStageAndApplyReturningRoot()
+            try context.verifyStagingCleanedUp(stagingRoot: stagingRoot)
 
         case .stagingCleanedUpOnError:
-            let stagingRoot = try await context.executeStagingWithError()
-            try await context.verifyStagingCleanedUp(stagingRoot: stagingRoot)
+            let stagingRoot = try context.executeStagingWithError()
+            try context.verifyStagingCleanedUp(stagingRoot: stagingRoot)
         }
     }
 }
 
 extension ApplyStagingAreaTests {
     struct TestContext {
-        let fileSystem: FileSystem
-        let tempDir: AbsolutePath
-        let workspaceRoot: AbsolutePath
-        let workingDir: AbsolutePath
+        let fileManager: any FileManagerProtocol
+        let tempDir: URL
+        let workspaceRoot: URL
+        let workingDir: URL
         let changes: ChangeSummary
 
-        static func setUp(testCase: TestCase) async throws -> TestContext {
-            let fileSystem = FileSystem()
-            let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "staging-test")
+        static func setUp(testCase: TestCase) throws -> TestContext {
+            let fileManager = FileManager.default as any FileManagerProtocol
+            let tempDir = try fileManager.makeTemporaryDirectory(prefix: "staging-test")
 
-            let workspaceRoot = tempDir.appending(component: "workspace")
-            let workingDir = tempDir.appending(component: "working")
+            let workspaceRoot = tempDir.appending(path: "workspace")
+            let workingDir = tempDir.appending(path: "working")
 
-            try await fileSystem.makeDirectory(at: workspaceRoot)
-            try await fileSystem.makeDirectory(at: workingDir)
+            try fileManager.createDirectory(at: workspaceRoot, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
 
-            try await createFiles(testCase.workspaceFiles, in: workspaceRoot, fileSystem: fileSystem)
-            try await createFiles(testCase.workingDirFiles, in: workingDir, fileSystem: fileSystem)
+            try createFiles(testCase.workspaceFiles, in: workspaceRoot, fileManager: fileManager)
+            try createFiles(testCase.workingDirFiles, in: workingDir, fileManager: fileManager)
 
-            let changes = try buildChangeSummary(testCase: testCase)
+            let changes = buildChangeSummary(testCase: testCase)
 
             return TestContext(
-                fileSystem: fileSystem,
+                fileManager: fileManager,
                 tempDir: tempDir,
                 workspaceRoot: workspaceRoot,
                 workingDir: workingDir,
@@ -64,142 +63,142 @@ extension ApplyStagingAreaTests {
             )
         }
 
-        func tearDown() async {
-            try? await fileSystem.remove(tempDir)
+        func tearDown() throws {
+            try fileManager.removeItem(at: tempDir)
         }
 
-        func executeStageAndApply() async throws {
-            try await ApplyStagingArea.withStaging(
+        func executeStageAndApply() throws {
+            try ApplyStagingArea.withStaging(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileSystem: fileSystem
+                fileManager: fileManager
             ) { staging, fs in
-                let manifest = try await staging.stage(changes: changes, fileSystem: fs)
-                try await staging.apply(manifest: manifest, fileSystem: fs)
+                let manifest = try staging.stage(changes: changes, fileManager: fs)
+                try staging.apply(manifest: manifest, fileManager: fs)
             }
         }
 
-        func executeStageAndApplyReturningRoot() async throws -> AbsolutePath {
-            let staging = try await ApplyStagingArea.create(
+        func executeStageAndApplyReturningRoot() throws -> URL {
+            let staging = try ApplyStagingArea.create(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileSystem: fileSystem
+                fileManager: fileManager
             )
             let root = staging.root
 
             do {
-                let manifest = try await staging.stage(changes: changes, fileSystem: fileSystem)
-                try await staging.apply(manifest: manifest, fileSystem: fileSystem)
-                await staging.cleanup(fileSystem: fileSystem)
+                let manifest = try staging.stage(changes: changes, fileManager: fileManager)
+                try staging.apply(manifest: manifest, fileManager: fileManager)
+                staging.cleanup(fileManager: fileManager)
             } catch {
-                await staging.cleanup(fileSystem: fileSystem)
+                staging.cleanup(fileManager: fileManager)
                 throw error
             }
 
             return root
         }
 
-        func executeStagingWithError() async throws -> AbsolutePath {
-            let staging = try await ApplyStagingArea.create(
+        func executeStagingWithError() throws -> URL {
+            let staging = try ApplyStagingArea.create(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileSystem: fileSystem
+                fileManager: fileManager
             )
             let root = staging.root
 
             do {
-                let badChanges = try ChangeSummary(
-                    added: [RelativePath(validating: "nonexistent.txt")],
+                let badChanges = ChangeSummary(
+                    added: ["nonexistent.txt"],
                     modified: [],
                     deleted: []
                 )
-                _ = try await staging.stage(changes: badChanges, fileSystem: fileSystem)
-                await staging.cleanup(fileSystem: fileSystem)
+                _ = try staging.stage(changes: badChanges, fileManager: fileManager)
+                staging.cleanup(fileManager: fileManager)
             } catch {
-                await staging.cleanup(fileSystem: fileSystem)
+                staging.cleanup(fileManager: fileManager)
             }
 
             return root
         }
 
-        func verifyExpectedFiles(_ expectedFiles: [ExpectedFile]) async throws {
+        func verifyExpectedFiles(_ expectedFiles: [ExpectedFile]) throws {
             for expectedFile in expectedFiles {
                 let filePath = workingDir.appending(
-                    components: expectedFile.path.split(separator: "/").map(String.init)
+                    path: expectedFile.path
                 )
 
                 if let expectedContent = expectedFile.expectedContent {
                     #expect(
-                        try await fileSystem.exists(filePath),
+                        fileManager.exists(filePath),
                         "File '\(expectedFile.path)' should exist"
                     )
-                    let content = try await fileSystem.readTextFile(at: filePath)
+                    let data = try fileManager.readFile(at: filePath)
+                    let content = String(data: data, encoding: .utf8) ?? ""
                     #expect(
                         content == expectedContent,
                         "File '\(expectedFile.path)' content mismatch: expected '\(expectedContent)', got '\(content)'"
                     )
                 } else {
                     #expect(
-                        try await !fileSystem.exists(filePath),
+                        !fileManager.exists(filePath),
                         "File '\(expectedFile.path)' should not exist"
                     )
                 }
             }
         }
 
-        func verifyEmptyManifest() async throws {
-            try await ApplyStagingArea.withStaging(
+        func verifyEmptyManifest() throws {
+            try ApplyStagingArea.withStaging(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileSystem: fileSystem
+                fileManager: fileManager
             ) { staging, fs in
-                let manifest = try await staging.stage(changes: changes, fileSystem: fs)
+                let manifest = try staging.stage(changes: changes, fileManager: fs)
                 #expect(manifest.totalCount == 0, "Expected empty manifest")
             }
         }
 
-        func verifyManifestCounts(add: Int, modify: Int, delete: Int) async throws {
-            try await ApplyStagingArea.withStaging(
+        func verifyManifestCounts(add: Int, modify: Int, delete: Int) throws {
+            try ApplyStagingArea.withStaging(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileSystem: fileSystem
+                fileManager: fileManager
             ) { staging, fs in
-                let manifest = try await staging.stage(changes: changes, fileSystem: fs)
+                let manifest = try staging.stage(changes: changes, fileManager: fs)
                 #expect(manifest.addCount == add, "Expected \(add) adds, got \(manifest.addCount)")
                 #expect(manifest.modifyCount == modify, "Expected \(modify) modifies, got \(manifest.modifyCount)")
                 #expect(manifest.deleteCount == delete, "Expected \(delete) deletes, got \(manifest.deleteCount)")
             }
         }
 
-        func verifyStagingCleanedUp(stagingRoot: AbsolutePath) async throws {
+        func verifyStagingCleanedUp(stagingRoot: URL) throws {
             #expect(
-                try await !fileSystem.exists(stagingRoot),
+                !fileManager.exists(stagingRoot),
                 "Staging directory should be cleaned up"
             )
         }
 
         private static func createFiles(
             _ files: [FileEntry],
-            in directory: AbsolutePath,
-            fileSystem: FileSystem
-        ) async throws {
+            in directory: URL,
+            fileManager: any FileManagerProtocol
+        ) throws {
             for file in files {
-                let filePath = directory.appending(
-                    components: file.path.split(separator: "/").map(String.init)
-                )
-                let parent = filePath.parentDirectory
-                if try await !fileSystem.exists(parent) {
-                    try await fileSystem.makeDirectory(at: parent)
+                let filePath = directory.appending(path: file.path)
+                let parent = filePath.deletingLastPathComponent()
+                if !fileManager.exists(parent) {
+                    try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
                 }
-                try await fileSystem.writeText(file.content, at: filePath)
+                try fileManager.writeText(file.content, at: filePath, encoding: .utf8)
             }
         }
 
-        private static func buildChangeSummary(testCase: TestCase) throws -> ChangeSummary {
-            let added = try testCase.addedPaths.map { try RelativePath(validating: $0) }
-            let modified = try testCase.modifiedPaths.map { try RelativePath(validating: $0) }
-            let deleted = try testCase.deletedPaths.map { try RelativePath(validating: $0) }
-            return ChangeSummary(added: added, modified: modified, deleted: deleted)
+        private static func buildChangeSummary(testCase: TestCase) -> ChangeSummary {
+            return ChangeSummary(
+                added: testCase.addedPaths,
+                modified: testCase.modifiedPaths,
+                deleted: testCase.deletedPaths
+            )
         }
     }
 }

@@ -1,32 +1,31 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 import ProcessRunning
 import Testing
 
 struct StagingContextTests {
     @Test(arguments: TestCase.allCases)
     func stagingContext(_ testCase: TestCase) async throws {
-        let fileSystem = FileSystem()
-        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "workspace-test")
+        let fileManager: some FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-test")
 
         defer {
-            Task { try? await fileSystem.remove(tempDir) }
+            try? fileManager.removeItem(at: tempDir)
         }
 
-        let workingDir = try await setupWorkingDirectory(
+        let workingDir = try setupWorkingDirectory(
             in: tempDir,
             initialFiles: testCase.initialFiles,
-            fileSystem: fileSystem
+            fileManager: fileManager
         )
 
         let staging = try await StagingContext.create(
             cloning: workingDir,
             homeDirectory: tempDir,
-            fileSystem: fileSystem,
-            workspaceWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
-            workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: fileSystem),
+            fileSystem: fileManager,
+            workspaceWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
+            workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             processRunner: ProcessRunner()
         )
 
@@ -37,7 +36,7 @@ struct StagingContextTests {
         switch testCase.expectation {
         case let .success(checks):
             for check in checks {
-                try await assertSuccessCheck(check, staging: staging, workingDir: workingDir, fileSystem: fileSystem)
+                try await assertSuccessCheck(check, staging: staging, workingDir: workingDir, fileManager: fileManager)
             }
 
         case let .pathValidationFails(absolutePath, expectedErrorPath):
@@ -215,22 +214,26 @@ struct StagingContextTests {
     }
 
     private func setupWorkingDirectory(
-        in tempDir: AbsolutePath,
+        in tempDir: URL,
         initialFiles: [InitialFile],
-        fileSystem: FileSystem
-    ) async throws -> AbsolutePath {
-        let workingDir = tempDir.appending(component: "working")
-        try await fileSystem.makeDirectory(at: workingDir)
+        fileManager: some FileManagerProtocol
+    ) throws -> URL {
+        let workingDir = tempDir.appending(path: "working")
+        try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
 
         for file in initialFiles {
-            let filePath = workingDir.appending(components: file.path.split(separator: "/").map(String.init))
-            let parent = filePath.parentDirectory
+            let components = file.path.split(separator: "/").map(String.init)
+            var filePath = workingDir
+            for component in components {
+                filePath = filePath.appending(path: component)
+            }
+            let parent = filePath.deletingLastPathComponent()
 
-            if try await !fileSystem.exists(parent) {
-                try await fileSystem.makeDirectory(at: parent)
+            if !fileManager.exists(parent) {
+                try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
             }
 
-            try await fileSystem.writeText(file.content, at: filePath)
+            try fileManager.writeText(file.content, at: filePath, encoding: .utf8)
         }
 
         return workingDir
@@ -239,35 +242,48 @@ struct StagingContextTests {
     private func assertSuccessCheck(
         _ check: TestCase.SuccessCheck,
         staging: StagingContext,
-        workingDir: AbsolutePath,
-        fileSystem: FileSystem
+        workingDir: URL,
+        fileManager: some FileManagerProtocol
     ) async throws {
         switch check {
         case .workspaceExists:
             let workspaceRoot = await staging.root
-            #expect(try await fileSystem.exists(workspaceRoot), "Staging area root should exist")
+            #expect(fileManager.exists(workspaceRoot), "Staging area root should exist")
 
         case .originalWorkingDirectoryStored:
             let originalDir = await staging.originalWorkingDirectory
             #expect(originalDir == workingDir, "Original working directory should match")
 
         case let .fileCloned(relativePath):
-            let filePath = await staging.root.appending(components: relativePath.split(separator: "/").map(String.init))
-            #expect(try await fileSystem.exists(filePath), "File '\(relativePath)' should be cloned")
+            let components = relativePath.split(separator: "/").map(String.init)
+            var filePath = await staging.root
+            for component in components {
+                filePath = filePath.appending(path: component)
+            }
+            #expect(fileManager.exists(filePath), "File '\(relativePath)' should be cloned")
 
         case let .fileContent(relativePath, expectedContent):
-            let filePath = await staging.root.appending(components: relativePath.split(separator: "/").map(String.init))
-            let content = try await fileSystem.readTextFile(at: filePath)
+            let components = relativePath.split(separator: "/").map(String.init)
+            var filePath = await staging.root
+            for component in components {
+                filePath = filePath.appending(path: component)
+            }
+            let data = try fileManager.readFile(at: filePath)
+            let content = String(data: data, encoding: .utf8)
             #expect(content == expectedContent, "File '\(relativePath)' should have correct content")
 
         case let .pathValidationSucceeds(relativePath):
-            let path = await staging.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            let components = relativePath.split(separator: "/").map(String.init)
+            var path = await staging.root
+            for component in components {
+                path = path.appending(path: component)
+            }
             try await staging.validatePath(path)
 
         case .discardRemovesWorkspace:
             let workspaceRoot = await staging.root
             await staging.discard()
-            #expect(try await !fileSystem.exists(workspaceRoot), "Staging area should be removed after discard")
+            #expect(!fileManager.exists(workspaceRoot), "Staging area should be removed after discard")
 
         case let .discardedState(expected):
             let discarded = await staging.isDiscarded
@@ -283,20 +299,20 @@ struct StagingContextTests {
         case .changeSummaryIgnoresGitDirectory:
             // Modify files in staging area: both .git and regular files
             let workspaceRoot = await staging.root
-            let gitConfigPath = workspaceRoot.appending(components: [".git", "config"])
-            let gitNewFilePath = workspaceRoot.appending(components: [".git", "new-file"])
-            let readmePath = workspaceRoot.appending(component: "README.md")
+            let gitConfigPath = workspaceRoot.appending(path: ".git").appending(path: "config")
+            let gitNewFilePath = workspaceRoot.appending(path: ".git").appending(path: "new-file")
+            let readmePath = workspaceRoot.appending(path: "README.md")
 
             // Modify .git files (remove and rewrite to trigger change)
-            try await fileSystem.remove(gitConfigPath)
-            try await fileSystem.writeText("modified git config", at: gitConfigPath)
+            try fileManager.removeItem(at: gitConfigPath)
+            try fileManager.writeText("modified git config", at: gitConfigPath, encoding: .utf8)
 
             // Add new file in .git
-            try await fileSystem.writeText("new file in git", at: gitNewFilePath)
+            try fileManager.writeText("new file in git", at: gitNewFilePath, encoding: .utf8)
 
             // Modify regular file (remove and rewrite)
-            try await fileSystem.remove(readmePath)
-            try await fileSystem.writeText("modified readme", at: readmePath)
+            try fileManager.removeItem(at: readmePath)
+            try fileManager.writeText("modified readme", at: readmePath, encoding: .utf8)
 
             // Compute change summary
             let summary = try await staging.computeChangeSummary()
@@ -317,7 +333,7 @@ struct StagingContextTests {
         expectedErrorPath: String,
         staging: StagingContext
     ) async throws {
-        let path = try AbsolutePath(validating: absolutePath)
+        let path = URL(filePath: absolutePath)
         let error = await #expect(throws: StagingContext.Error.self) {
             try await staging.validatePath(path)
         }
@@ -330,7 +346,7 @@ struct StagingContextTests {
     }
 
     private func assertPathValidationFailsOutsideWorkspace(staging: StagingContext) async {
-        let escapePath = await staging.root.parentDirectory.appending(component: "outside")
+        let escapePath = await staging.root.deletingLastPathComponent().appending(path: "outside")
         let error = await #expect(throws: StagingContext.Error.self) {
             try await staging.validatePath(escapePath)
         }

@@ -1,14 +1,13 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Path
 
 /// A directory watcher that scans all files on drainEvents() instead of relying on FSEvents.
 ///
 /// This is useful for testing where FSEvents may not deliver events quickly enough.
 /// Instead of tracking events, it scans the directory when asked and reports all files.
 actor ScanningDirectoryWatcher: DirectoryWatching {
-    private var watchedDirectory: AbsolutePath?
+    private var watchedDirectory: URL?
     private var isRunning: Bool = false
     private let fileManager: FileManagerProtocol
 
@@ -16,7 +15,7 @@ actor ScanningDirectoryWatcher: DirectoryWatching {
         self.fileManager = fileManager
     }
 
-    func start(watching directory: AbsolutePath) async throws {
+    func start(watching directory: URL) async throws {
         guard !isRunning else {
             throw DirectoryWatcherError.alreadyStarted
         }
@@ -29,17 +28,17 @@ actor ScanningDirectoryWatcher: DirectoryWatching {
         watchedDirectory = nil
     }
 
-    func drainEvents() async -> Set<RelativePath> {
+    func drainEvents() async -> Set<String> {
         guard let directory = watchedDirectory else {
             return []
         }
 
         // Scan all files in directory recursively and return as events
-        var events: Set<RelativePath> = []
+        var events: Set<String> = []
 
         do {
             // Recursively enumerate all files in the directory
-            try await enumerateFiles(in: directory, baseDirectory: directory, events: &events)
+            enumerateFiles(in: directory, baseDirectory: directory, events: &events)
         } catch {
             // If we can't scan, return empty set
         }
@@ -49,32 +48,38 @@ actor ScanningDirectoryWatcher: DirectoryWatching {
 
     /// Recursively enumerates all files in a directory and collects relative paths.
     private func enumerateFiles(
-        in directory: AbsolutePath,
-        baseDirectory: AbsolutePath,
-        events: inout Set<RelativePath>
-    ) async throws {
-        let directoryURL = URL(filePath: directory.pathString)
-        let contents = try await fileManager.contentsOfDirectory(
-            at: directoryURL,
-            includingPropertiesForKeys: [.isDirectoryKey]
-        )
+        in directory: URL,
+        baseDirectory: URL,
+        events: inout Set<String>
+    ) {
+        guard let contents = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: []
+        ) else {
+            return
+        }
+
+        let basePath = baseDirectory.path(percentEncoded: false)
 
         for itemURL in contents {
-            let itemPath = itemURL.path
+            let itemPath = itemURL.path(percentEncoded: false)
 
             // Calculate relative path from base directory
-            let basePath = baseDirectory.pathString + "/"
             if itemPath.hasPrefix(basePath) {
-                let relativePart = String(itemPath.dropFirst(basePath.count))
-                if let relativePath = try? RelativePath(validating: relativePart) {
-                    events.insert(relativePath)
+                var relativePart = String(itemPath.dropFirst(basePath.count))
+                // Remove leading slash if present
+                if relativePart.hasPrefix("/") {
+                    relativePart = String(relativePart.dropFirst())
+                }
+                if !relativePart.isEmpty {
+                    events.insert(relativePart)
                 }
             }
 
             // Recursively enumerate subdirectories
-            if try await fileManager.isDirectory(at: itemURL) {
-                let subdirectoryPath = try AbsolutePath(validating: itemPath)
-                try await enumerateFiles(in: subdirectoryPath, baseDirectory: baseDirectory, events: &events)
+            if fileManager.isDirectory(at: itemURL) {
+                enumerateFiles(in: itemURL, baseDirectory: baseDirectory, events: &events)
             }
         }
     }

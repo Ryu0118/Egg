@@ -1,34 +1,31 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 import Testing
 
 struct StagingWorkflowRunnerTests {
-    @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
+    @Test(arguments: TestCase.allCases)
     func run(_ testCase: TestCase) async throws {
-        guard let tempDir = FileSystem.temporaryTestDirectory else {
-            throw TestError.temporaryDirectoryNotAvailable
-        }
+        let fileManager: some FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "StagingWorkflowRunnerTests")
 
-        let fileSystem = FileSystem()
-        let workingDir = tempDir.appending(component: "work")
-        let homeDir = tempDir.appending(component: "home")
-        let templateDir = tempDir.appending(component: "template")
+        let workingDir = tempDir.appending(path: "work")
+        let homeDir = tempDir.appending(path: "home")
+        let templateDir = tempDir.appending(path: "template")
 
-        try await fileSystem.makeDirectory(at: workingDir, options: [.createTargetParentDirectories])
-        try await fileSystem.makeDirectory(at: homeDir, options: [.createTargetParentDirectories])
-        try await fileSystem.makeDirectory(at: templateDir, options: [.createTargetParentDirectories])
+        try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
 
         // Setup initial working directory files
         for item in testCase.workingDirSetup {
-            try await setupItem(item, in: workingDir, using: fileSystem)
+            try setupItem(item, in: workingDir, using: fileManager)
         }
 
         // Setup template
-        try await setupTemplate(testCase.templateSetup, in: templateDir, using: fileSystem)
+        try setupTemplate(testCase.templateSetup, in: templateDir, using: fileManager)
 
         let config = Config(
             name: "Test Template",
@@ -42,14 +39,14 @@ struct StagingWorkflowRunnerTests {
         let nooraMock = NooraMock()
         let runner = StagingWorkflowRunner(
             processRunner: ProcessRunner(),
-            fileSystem: fileSystem,
+            fileSystem: fileManager,
             workingDirectory: workingDir,
             homeDirectory: homeDir,
             noora: nooraMock,
             isInteractive: false,
             override: testCase.override,
-            workspaceWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem()),
-            workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem())
+            workspaceWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default),
+            workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default)
         )
 
         do {
@@ -61,7 +58,7 @@ struct StagingWorkflowRunnerTests {
 
             // Verify success expectations
             if case let .success(verifications) = testCase.expectation {
-                try await verifyExpectations(verifications, in: outputDir, using: fileSystem)
+                try verifyExpectations(verifications, in: outputDir, using: fileManager)
             } else {
                 Issue.record("Expected error but succeeded")
             }
@@ -413,61 +410,78 @@ struct StagingWorkflowRunnerTests {
             ),
         ]
     }
-
-    enum TestError: Error {
-        case temporaryDirectoryNotAvailable
-    }
 }
 
 extension StagingWorkflowRunnerTests {
-    private func setupItem(_ item: TestCase.FileSetup, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func setupItem(_ item: TestCase.FileSetup, in baseDir: URL, using fileManager: some FileManagerProtocol) throws {
         switch item {
         case let .file(path, content):
-            try await createFile(at: path, content: content, in: baseDir, using: fileSystem)
+            try createFile(at: path, content: content, in: baseDir, using: fileManager)
         case let .directory(path):
-            let dirPath = baseDir.appending(components: path.split(separator: "/").map(String.init))
-            try await fileSystem.makeDirectory(at: dirPath, options: [.createTargetParentDirectories])
+            var dirPath = baseDir
+            for component in path.split(separator: "/").map(String.init) {
+                dirPath = dirPath.appending(path: component)
+            }
+            try fileManager.createDirectory(at: dirPath, withIntermediateDirectories: true)
         }
     }
 
-    private func setupTemplate(_ setup: [TestCase.FileSetup], in templateDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func setupTemplate(_ setup: [TestCase.FileSetup], in templateDir: URL, using fileManager: some FileManagerProtocol) throws {
         for item in setup {
-            try await setupItem(item, in: templateDir, using: fileSystem)
+            try setupItem(item, in: templateDir, using: fileManager)
         }
     }
 
-    private func createFile(at path: String, content: String, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func createFile(at path: String, content: String, in baseDir: URL, using fileManager: some FileManagerProtocol) throws {
         let components = path.split(separator: "/").map(String.init)
-        let filePath = baseDir.appending(components: components)
+        var filePath = baseDir
+        for component in components {
+            filePath = filePath.appending(path: component)
+        }
 
         if components.count > 1 {
-            let parentPath = baseDir.appending(components: Array(components.dropLast()))
-            try await fileSystem.makeDirectory(at: parentPath, options: [.createTargetParentDirectories])
+            var parentPath = baseDir
+            for component in Array(components.dropLast()) {
+                parentPath = parentPath.appending(path: component)
+            }
+            try fileManager.createDirectory(at: parentPath, withIntermediateDirectories: true)
         }
 
-        try await fileSystem.writeText(content, at: filePath)
+        try fileManager.writeText(content, at: filePath, encoding: .utf8)
     }
 
-    private func verifyExpectations(_ verifications: [TestCase.Verification], in outputDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func verifyExpectations(_ verifications: [TestCase.Verification], in outputDir: URL, using fileManager: some FileManagerProtocol) throws {
         for verification in verifications {
             switch verification {
             case let .fileExists(path):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                #expect(try await fileSystem.exists(filePath), "Expected file to exist: \(path)")
+                var filePath = outputDir
+                for component in path.split(separator: "/").map(String.init) {
+                    filePath = filePath.appending(path: component)
+                }
+                #expect(fileManager.exists(filePath), "Expected file to exist: \(path)")
 
             case let .fileNotExists(path):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                #expect(try await !fileSystem.exists(filePath), "Expected file to not exist: \(path)")
+                var filePath = outputDir
+                for component in path.split(separator: "/").map(String.init) {
+                    filePath = filePath.appending(path: component)
+                }
+                #expect(!fileManager.exists(filePath), "Expected file to not exist: \(path)")
 
             case let .fileContent(path, expectedContent):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                let data = try await fileSystem.readFile(at: filePath)
+                var filePath = outputDir
+                for component in path.split(separator: "/").map(String.init) {
+                    filePath = filePath.appending(path: component)
+                }
+                let data = try fileManager.readFile(at: filePath)
                 let actualContent = String(data: data, encoding: .utf8) ?? ""
                 #expect(actualContent == expectedContent, "Content mismatch in \(path)")
 
             case let .directoryExists(path):
-                let dirPath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                #expect(try await fileSystem.exists(dirPath, isDirectory: true), "Expected directory to exist: \(path)")
+                var dirPath = outputDir
+                for component in path.split(separator: "/").map(String.init) {
+                    dirPath = dirPath.appending(path: component)
+                }
+                #expect(fileManager.isDirectory(at: dirPath), "Expected directory to exist: \(path)")
             }
         }
     }

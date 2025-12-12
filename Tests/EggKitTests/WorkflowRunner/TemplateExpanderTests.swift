@@ -478,7 +478,7 @@ extension TemplateExpanderTests {
             try await fileSystem.makeDirectory(at: parentPath, options: [.createTargetParentDirectories])
         }
 
-        try data.write(to: URL(fileURLWithPath: filePath.pathString))
+        try data.write(to: URL(filePath: filePath.pathString))
     }
 
     private func setupExistingFiles(_ existingFiles: [TestCase.ExistingFile], in outputDir: AbsolutePath, using fileSystem: FileSystem) async throws {

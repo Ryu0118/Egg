@@ -47,7 +47,7 @@ package struct DuplicateRunner {
             try await runInteractiveMode()
         case let .direct(_, sourcePath, sourceLocation, newName, newDescription):
             try await duplicateTemplate(
-                sourcePath: URL(fileURLWithPath: sourcePath),
+                sourcePath: URL(filePath: sourcePath),
                 sourceLocation: sourceLocation,
                 newName: newName,
                 newDescription: newDescription
