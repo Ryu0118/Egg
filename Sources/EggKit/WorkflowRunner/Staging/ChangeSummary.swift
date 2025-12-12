@@ -1,7 +1,7 @@
 import Foundation
 import Path
 
-/// Summary of changes to be applied from transactional workspace to working directory.
+/// Summary of changes to be applied from staging to working directory.
 struct ChangeSummary: Equatable, Sendable {
     let added: [RelativePath]
     let modified: [RelativePath]

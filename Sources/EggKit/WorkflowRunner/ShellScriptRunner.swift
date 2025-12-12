@@ -13,7 +13,7 @@ import Subprocess
 ///
 /// When `executionEnvironment` is `.sandboxed`, commands are executed within
 /// an OS-level sandbox using `sandbox-exec` that restricts file system access
-/// to only the transactional workspace directory.
+/// to only the staging directory.
 struct ShellScriptRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: AbsolutePath
@@ -159,13 +159,13 @@ struct ShellScriptRunner {
     /// Returns the executable and arguments for running the command.
     ///
     /// When sandboxed, wraps the command in `sandbox-exec`
-    /// with a profile that restricts file system access to only the transactional workspace directory.
+    /// with a profile that restricts file system access to only the staging directory.
     private func makeExecutableAndArguments(for command: String) -> (Subprocess.Executable, Arguments) {
         switch executionEnvironment {
         case .normal:
             return (.path("/bin/sh"), ["-c", command])
 
-        case let .transactional(root, originalWorkingDirectory):
+        case let .staging(root, originalWorkingDirectory):
             let profile = generateSandboxProfile(
                 allowingAccessTo: root,
                 denyingAccessTo: originalWorkingDirectory
@@ -184,7 +184,7 @@ struct ShellScriptRunner {
     /// - Denies all operations by default
     /// - Allows process execution (required for running commands)
     /// - Allows read access to all files
-    /// - Allows read/write access only to the transactional workspace root directory
+    /// - Allows read/write access only to the staging root directory
     /// - Explicitly denies write access to the original working directory
     /// - Allows network access (some scripts may need it)
     ///
@@ -212,7 +212,7 @@ struct ShellScriptRunner {
         ; Explicitly deny write access to original working directory
         (deny file-write* (subpath "\(escapedOriginalPath)"))
         (deny file-read* (subpath "\(escapedOriginalPath)"))
-        ; Allow full read/write access to transactional workspace directory only
+        ; Allow full read/write access to staging directory only
         (allow file-write* (subpath "\(escapedWorkspaceRootPath)"))
         ; Allow read/write access to system temp directories (needed for atomic writes, locks, etc.)
         (allow file-read* (subpath "/private/var/folders"))

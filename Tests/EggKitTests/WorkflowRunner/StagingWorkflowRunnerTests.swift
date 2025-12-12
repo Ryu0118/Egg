@@ -6,7 +6,7 @@ import Path
 import ProcessRunning
 import Testing
 
-struct TransactionalWorkflowRunnerTests {
+struct StagingWorkflowRunnerTests {
     @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
     func run(_ testCase: TestCase) async throws {
         guard let tempDir = FileSystem.temporaryTestDirectory else {
@@ -40,7 +40,7 @@ struct TransactionalWorkflowRunnerTests {
         )
 
         let nooraMock = NooraMock()
-        let runner = TransactionalWorkflowRunner(
+        let runner = StagingWorkflowRunner(
             processRunner: ProcessRunner(),
             fileSystem: fileSystem,
             workingDirectory: workingDir,
@@ -162,9 +162,9 @@ struct TransactionalWorkflowRunnerTests {
         }
 
         static let allCases: [TestCase] = [
-            // Basic workflow in transactional workspace
+            // Basic workflow in staging workspace
             .success(
-                "executes complete workflow in transactional workspace",
+                "executes complete workflow in staging workspace",
                 templateSetup: [
                     .file(path: "README.md", content: "Hello World"),
                 ],
@@ -249,7 +249,7 @@ struct TransactionalWorkflowRunnerTests {
                 ]
             ),
 
-            // Environment variables available in transactional workspace scripts
+            // Environment variables available in staging workspace scripts
             .success(
                 "workspace env vars available in pre_hatch",
                 templateSetup: [
@@ -419,7 +419,7 @@ struct TransactionalWorkflowRunnerTests {
     }
 }
 
-extension TransactionalWorkflowRunnerTests {
+extension StagingWorkflowRunnerTests {
     private func setupItem(_ item: TestCase.FileSetup, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
         switch item {
         case let .file(path, content):
@@ -475,7 +475,7 @@ extension TransactionalWorkflowRunnerTests {
     private func verifyError(_ error: Error, matches expectedType: TestCase.ExpectedError) throws {
         switch expectedType {
         case .userAborted:
-            guard let workspaceError = error as? TransactionalWorkspaceContext.Error,
+            guard let workspaceError = error as? StagingContext.Error,
                   case .userAborted = workspaceError
             else {
                 Issue.record("Expected userAborted error, got: \(error)")
@@ -483,7 +483,7 @@ extension TransactionalWorkflowRunnerTests {
             }
 
         case .escapeAttempt:
-            guard let workspaceError = error as? TransactionalWorkspaceContext.Error,
+            guard let workspaceError = error as? StagingContext.Error,
                   case .escapeAttempt = workspaceError
             else {
                 Issue.record("Expected escapeAttempt error, got: \(error)")

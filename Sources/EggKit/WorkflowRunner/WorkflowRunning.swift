@@ -5,11 +5,11 @@ import Path
 /// WorkflowRunning defines the common interface for executing the entire hatch lifecycle
 /// (pre_hatch → hatch → post_hatch). This allows different implementations:
 /// - `LifecycleWorkflowRunner`: Legacy runner that operates directly on the working directory
-/// - `TransactionalWorkflowRunner`: Atomic runner that executes in a transactional workspace with partial apply
+/// - `StagingWorkflowRunner`: Atomic runner that executes in a staging workspace with partial apply
 ///
 /// Example:
 /// ```swift
-/// let runner: any WorkflowRunning = TransactionalWorkflowRunner(...)
+/// let runner: any WorkflowRunning = StagingWorkflowRunner(...)
 /// let outputPath = try await runner.run(
 ///     config: config,
 ///     macroInputs: macroInputs,
@@ -20,8 +20,8 @@ protocol WorkflowRunning {
     /// Executes the complete lifecycle workflow.
     ///
     /// The runner is responsible for resolving macros at the appropriate time,
-    /// which is especially important for transactional execution where paths must be
-    /// resolved relative to the transactional workspace root.
+    /// which is especially important for staging execution where paths must be
+    /// resolved relative to the staging root.
     ///
     /// - Parameters:
     ///   - config: Template configuration containing lifecycle steps and hatch configuration
@@ -43,7 +43,7 @@ protocol WorkflowRunning {
 /// - `interactive`: Macros need to be prompted interactively
 ///
 /// The workflow runner is responsible for resolving macros at the appropriate time
-/// (after transactional workspace creation for transactional runners), especially for path-type macros.
+/// (after staging creation for staging runners), especially for path-type macros.
 enum MacroInputs: Sendable {
     /// Parsed macro definitions from CLI arguments.
     /// Path-type macros will be resolved by the workflow runner.

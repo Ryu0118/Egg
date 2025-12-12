@@ -4,7 +4,7 @@ import Path
 /// Protocol for watching file system changes in a directory.
 ///
 /// Implementations capture paths that have been modified (created, updated, deleted, renamed)
-/// within the watched directory. This is used for change detection during transactional workspace execution.
+/// within the watched directory. This is used for change detection during staging execution.
 protocol DirectoryWatching: Sendable {
     /// Starts watching the specified directory for changes.
     ///

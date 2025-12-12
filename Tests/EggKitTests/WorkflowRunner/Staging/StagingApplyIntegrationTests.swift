@@ -5,13 +5,13 @@ import Path
 import ProcessRunning
 import Testing
 
-/// Integration tests for TransactionalWorkspaceContext's applyChanges functionality.
+/// Integration tests for StagingContext's applyChanges functionality.
 ///
 /// These tests verify the full workflow of:
-/// 1. Creating a transactional workspace from working directory
-/// 2. Making changes in the transactional workspace
+/// 1. Creating a staging area from working directory
+/// 2. Making changes in the staging area
 /// 3. Applying changes back to the working directory
-struct TransactionalWorkspaceApplyIntegrationTests {
+struct StagingApplyIntegrationTests {
     @Test(arguments: TestCase.allCases)
     func applyChanges(_ testCase: TestCase) async throws {
         let fileSystem = FileSystem()
@@ -35,11 +35,11 @@ struct TransactionalWorkspaceApplyIntegrationTests {
             try await fileSystem.writeText(file.content, at: filePath)
         }
 
-        // Create transactional workspace with mock watchers for predictable testing
+        // Create staging area with mock watchers for predictable testing
         let workspaceWatcher = MockDirectoryWatcher()
         let workingDirWatcher = MockDirectoryWatcher()
 
-        let transactionalWorkspace = try await TransactionalWorkspaceContext.create(
+        let staging = try await StagingContext.create(
             cloning: workingDir,
             homeDirectory: tempDir,
             fileSystem: fileSystem,
@@ -48,13 +48,13 @@ struct TransactionalWorkspaceApplyIntegrationTests {
             processRunner: ProcessRunner()
         )
 
-        let workspaceRoot = await transactionalWorkspace.root
+        let workspaceRoot = await staging.root
 
         defer {
-            Task { await transactionalWorkspace.discard() }
+            Task { await staging.discard() }
         }
 
-        // Apply transactional workspace modifications
+        // Apply staging area modifications
         for modification in testCase.workspaceModifications {
             let path = workspaceRoot.appending(components: modification.path.split(separator: "/").map(String.init))
 
@@ -110,8 +110,8 @@ struct TransactionalWorkspaceApplyIntegrationTests {
         // Execute test expectation
         switch testCase.expectation {
         case let .successfulApply(expectedFiles):
-            let changes = try await transactionalWorkspace.computeChangeSummary()
-            let conflicts = try await transactionalWorkspace.applyChanges(changes, force: testCase.forceApply)
+            let changes = try await staging.computeChangeSummary()
+            let conflicts = try await staging.applyChanges(changes, force: testCase.forceApply)
             #expect(conflicts.isEmpty || testCase.forceApply, "Expected no conflicts when not forcing")
 
             // Verify expected files in working directory
@@ -129,9 +129,9 @@ struct TransactionalWorkspaceApplyIntegrationTests {
 
         case let .conflictsDetected(expectedConflictPaths):
             // Without force, should throw conflict error
-            let changes = try await transactionalWorkspace.computeChangeSummary()
-            let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
-                _ = try await transactionalWorkspace.applyChanges(changes, force: false)
+            let changes = try await staging.computeChangeSummary()
+            let error = await #expect(throws: StagingContext.Error.self) {
+                _ = try await staging.applyChanges(changes, force: false)
             }
 
             guard case let .conflictingFiles(conflicts) = error else {
@@ -143,7 +143,7 @@ struct TransactionalWorkspaceApplyIntegrationTests {
             #expect(conflictPaths == expectedConflictPaths.sorted(), "Expected conflicts at \(expectedConflictPaths), got \(conflictPaths)")
 
         case .emptyChangeSummary:
-            let summary = try await transactionalWorkspace.computeChangeSummary()
+            let summary = try await staging.computeChangeSummary()
             #expect(summary.isEmpty, "Expected empty change summary")
         }
     }
@@ -285,7 +285,7 @@ struct TransactionalWorkspaceApplyIntegrationTests {
 
             // Conflict detection
             TestCase(
-                description: "detects conflict when both transactional workspace and working dir modify same file",
+                description: "detects conflict when both staging area and working dir modify same file",
                 initialFiles: [
                     InitialFile(path: "conflict.txt", content: "original"),
                 ],

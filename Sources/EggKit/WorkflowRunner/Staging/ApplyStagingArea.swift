@@ -2,9 +2,9 @@ import FileSystem
 import Foundation
 import Path
 
-/// Manages a temporary staging area for applying transactional workspace changes atomically.
+/// Manages a temporary staging area for applying staging changes atomically.
 ///
-/// The staging area provides a two-phase commit for transactional workspace changes:
+/// The staging area provides a two-phase commit for staging changes:
 /// 1. Stage: Materialize all changes (adds/modifies/deletes) in a temporary directory
 /// 2. Apply: Transfer staged changes to the working directory
 ///
@@ -15,7 +15,7 @@ struct ApplyStagingArea {
     /// The root directory of the staging area.
     let root: AbsolutePath
 
-    /// The transactional workspace root directory (source of changes).
+    /// The staging root directory (source of changes).
     let workspaceRoot: AbsolutePath
 
     /// The original working directory (destination of changes).
@@ -35,10 +35,10 @@ struct ApplyStagingArea {
         self.workingDirectory = workingDirectory
     }
 
-    /// Creates a new staging area within the transactional workspace directory.
+    /// Creates a new staging area within the staging directory.
     ///
     /// - Parameters:
-    ///   - workspaceRoot: The transactional workspace root directory
+    ///   - workspaceRoot: The staging root directory
     ///   - workingDirectory: The original working directory
     ///   - fileSystem: File system for operations
     /// - Returns: A new ApplyStagingArea
@@ -69,7 +69,7 @@ struct ApplyStagingArea {
     /// capturing actor-isolated state, which would cause Swift 6 concurrency errors.
     ///
     /// - Parameters:
-    ///   - workspaceRoot: The transactional workspace root directory
+    ///   - workspaceRoot: The staging root directory
     ///   - workingDirectory: The original working directory
     ///   - fileSystem: File system for operations
     ///   - body: Closure that receives the staging area and file system
@@ -97,10 +97,10 @@ struct ApplyStagingArea {
         }
     }
 
-    /// Stages all changes from the transactional workspace based on the change summary.
+    /// Stages all changes from the staging based on the change summary.
     ///
     /// This method prepares all file operations without touching the working directory:
-    /// - Copies new/modified files from transactional workspace to staging area
+    /// - Copies new/modified files from staging to staging area
     /// - Records deletions in the manifest
     ///
     /// - Parameters:

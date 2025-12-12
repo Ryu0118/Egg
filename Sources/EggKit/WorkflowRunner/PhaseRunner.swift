@@ -7,7 +7,7 @@ import ProcessRunning
 /// Executes individual workflow phases (pre_hatch, hatch, post_hatch).
 ///
 /// PhaseRunner encapsulates the common logic for executing each phase of the workflow,
-/// allowing both `LifecycleWorkflowRunner` and `TransactionalWorkflowRunner` to share
+/// allowing both `LifecycleWorkflowRunner` and `StagingWorkflowRunner` to share
 /// the same implementation while differing only in their orchestration strategy.
 ///
 /// Example:
@@ -63,7 +63,7 @@ struct PhaseRunner {
     ///   - outputs: Storage for step outputs
     ///   - workingDirectory: Directory where steps execute
     ///   - additionalEnvironment: Extra environment variables for step execution
-    ///   - executionEnvironment: Execution environment (normal or transactional workspace)
+    ///   - executionEnvironment: Execution environment (normal or staging)
     func executePreHatch(
         steps: [Config.LifecycleStep],
         macros: [ResolvedMacro],
@@ -101,7 +101,7 @@ struct PhaseRunner {
     ///   - outputs: Step outputs from pre_hatch phase
     ///   - templateDirectory: Source directory containing template files
     ///   - workingDirectory: Base directory for resolving output path
-    ///   - pathValidator: Optional closure to validate the output path (e.g., transactional workspace boundary check)
+    ///   - pathValidator: Optional closure to validate the output path (e.g., staging boundary check)
     /// - Returns: The resolved absolute path of the output directory
     func executeHatch(
         config: Config,
@@ -123,7 +123,7 @@ struct PhaseRunner {
             homeDirectory: homeDirectory
         )
 
-        // Optional path validation (used by transactional workspace to ensure path is within bounds)
+        // Optional path validation (used by staging to ensure path is within bounds)
         if let validator = pathValidator {
             try await validator(outputDirectory)
         }
@@ -164,7 +164,7 @@ struct PhaseRunner {
     ///   - outputs: Step outputs from pre_hatch and hatch phases
     ///   - workingDirectory: Directory where steps execute
     ///   - additionalEnvironment: Extra environment variables for step execution
-    ///   - executionEnvironment: Execution environment (normal or transactional workspace)
+    ///   - executionEnvironment: Execution environment (normal or staging)
     func executePostHatch(
         steps: [Config.LifecycleStep],
         macros: [ResolvedMacro],

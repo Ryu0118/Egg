@@ -1,16 +1,16 @@
 import Foundation
 import Path
 
-/// Errors that can occur during transactional workspace operations.
-extension TransactionalWorkspaceContext {
+/// Errors that can occur during staging operations.
+extension StagingContext {
     enum Error: LocalizedError, Equatable {
-        /// Attempted to use a transactional workspace that has already been discarded.
+        /// Attempted to use a staging area that has already been discarded.
         case alreadyDiscarded
 
-        /// Failed to create transactional workspace directory structure.
+        /// Failed to create staging directory structure.
         case creationFailed(reason: String)
 
-        /// Path attempted to escape transactional workspace boundaries.
+        /// Path attempted to escape staging boundaries.
         /// This can occur in pre_hatch, hatch output, or post_hatch.
         case escapeAttempt(path: String)
 
@@ -30,9 +30,9 @@ extension TransactionalWorkspaceContext {
         var errorDescription: String? {
             switch self {
             case .alreadyDiscarded:
-                return "Transactional workspace has already been discarded"
+                return "Staging area has already been discarded"
             case let .creationFailed(reason):
-                return "Failed to create transactional workspace: \(reason)"
+                return "Failed to create staging area: \(reason)"
             case let .escapeAttempt(path):
                 return "Path escape attempt detected: \(path)"
             case let .conflictingFiles(conflicts):

@@ -31,8 +31,8 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
     package var macros: [String] = []
 
-    @Flag(name: [.long, .customLong("direct")], help: "Disable transactional workspace. When set, changes are applied directly without preview or rollback capability.")
-    package var noTransactionalWorkspace: Bool = false
+    @Flag(name: [.long, .customLong("direct")], help: "Disable staging. When set, changes are applied directly without preview or rollback capability.")
+    package var noStaging: Bool = false
 
     @Flag(name: .long, help: "Force overwrite existing files without prompting.")
     package var force: Bool = false
@@ -50,7 +50,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
             projectDirectory: resolveProjectDirectory(),
             fileSystem: Self.fileSystem,
-            useTransactionalWorkspace: !noTransactionalWorkspace,
+            useStaging: !noStaging,
             force: force
         ).run()
     }

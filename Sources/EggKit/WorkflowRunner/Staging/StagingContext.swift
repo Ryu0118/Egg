@@ -4,19 +4,19 @@ import Noora
 import Path
 import ProcessRunning
 
-/// Manages a transactional workspace environment for atomic workflow execution.
+/// Manages a staging environment for atomic workflow execution.
 ///
-/// TransactionalWorkspaceContext creates a temporary directory that is a clone of the working directory.
-/// All workflow operations execute within this transactional workspace. Only when all operations complete
+/// StagingContext creates a temporary directory that is a clone of the working directory.
+/// All workflow operations execute within this staging area. Only when all operations complete
 /// successfully are the changes applied back to the real working directory.
 ///
-/// The transactional workspace uses APFS copy-on-write cloning for instant creation regardless of
+/// The staging area uses APFS copy-on-write cloning for instant creation regardless of
 /// directory size. Changes are detected via filesystem watchers and applied as a
 /// partial diff.
 ///
 /// ## Usage
 /// ```swift
-/// let workspace = try await TransactionalWorkspaceContext.create(
+/// let workspace = try await StagingContext.create(
 ///     cloning: workingDirectory,
 ///     fileSystem: fileSystem
 /// )
@@ -30,8 +30,8 @@ import ProcessRunning
 /// // Or discard on failure
 /// await workspace.discard()
 /// ```
-actor TransactionalWorkspaceContext {
-    /// The transactional workspace root directory (clone of workingDirectory) where work is performed.
+actor StagingContext {
+    /// The staging root directory (clone of workingDirectory) where work is performed.
     let root: AbsolutePath
 
     /// Reference workspace directory (clean clone for comparison).
@@ -47,19 +47,19 @@ actor TransactionalWorkspaceContext {
     /// warnings when calling nonisolated async methods from actor context.
     private nonisolated(unsafe) let fileSystem: any FileSysteming
 
-    /// Watcher for transactional workspace directory changes.
+    /// Watcher for staging directory changes.
     private let workspaceWatcher: any DirectoryWatching
 
     /// Watcher for working directory changes (to detect concurrent modifications).
     private let workingDirectoryWatcher: any DirectoryWatching
 
-    /// Whether the transactional workspace has been discarded.
+    /// Whether the staging area has been discarded.
     private(set) var isDiscarded: Bool = false
 
     /// Process runner for git diff operations.
     private let processRunner: any ProcessRunning
 
-    /// Directory cloner for creating transactional workspace copies.
+    /// Directory cloner for creating staging copies.
     private let directoryCloner: any DirectoryCloning
 
     /// Noora instance for logging output.
@@ -87,7 +87,7 @@ actor TransactionalWorkspaceContext {
         self.noora = noora
     }
 
-    /// Creates a new transactional workspace context by cloning the working directory.
+    /// Creates a new staging context by cloning the working directory.
     ///
     /// Creates two workspace clones:
     /// 1. **Work workspace (root)**: Where template expansion and modifications occur
@@ -98,15 +98,15 @@ actor TransactionalWorkspaceContext {
     /// FSEvents that trigger on file access (not just modifications).
     ///
     /// - Parameters:
-    ///   - workingDirectory: The directory to clone into transactional workspace
+    ///   - workingDirectory: The directory to clone into staging area
     ///   - homeDirectory: User's home directory (for ~/.eggs/workspaces/)
     ///   - fileSystem: File system for operations
-    ///   - workspaceWatcher: Watcher for transactional workspace changes
+    ///   - workspaceWatcher: Watcher for staging changes
     ///   - workingDirectoryWatcher: Watcher for working directory changes
     ///   - processRunner: Process runner for git operations
-    ///   - directoryCloner: Cloner for creating transactional workspace copy (defaults to APFS cloner)
-    /// - Returns: A new TransactionalWorkspaceContext with cloned directories
-    /// - Throws: TransactionalWorkspaceContext.Error.creationFailed on file system errors
+    ///   - directoryCloner: Cloner for creating staging copy (defaults to APFS cloner)
+    /// - Returns: A new StagingContext with cloned directories
+    /// - Throws: StagingContext.Error.creationFailed on file system errors
     static func create(
         cloning workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
@@ -116,14 +116,14 @@ actor TransactionalWorkspaceContext {
         processRunner: some ProcessRunning,
         directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
         noora: some Noorable = Noora()
-    ) async throws -> TransactionalWorkspaceContext {
+    ) async throws -> StagingContext {
         // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
         // FileSystem and Noora are actually thread-safe and all their methods are nonisolated.
         nonisolated(unsafe) let fs = fileSystem
         nonisolated(unsafe) let nra = noora
 
         do {
-            // Create transactional workspace base directory in ~/.eggs/workspaces/{uuid}/
+            // Create staging base directory in ~/.eggs/workspaces/{uuid}/
             let workspacesDirectory = homeDirectory.appending(components: ".eggs", "workspaces")
             let workspaceBaseDirectory = workspacesDirectory.appending(component: UUID().uuidString)
             let workDirectory = workspaceBaseDirectory.appending(component: "work")
@@ -143,7 +143,7 @@ actor TransactionalWorkspaceContext {
             try await workspaceWatcher.start(watching: workDirectory)
             try await workingDirectoryWatcher.start(watching: workingDirectory)
 
-            return TransactionalWorkspaceContext(
+            return StagingContext(
                 root: workDirectory,
                 reference: referenceDirectory,
                 originalWorkingDirectory: workingDirectory,
@@ -154,46 +154,46 @@ actor TransactionalWorkspaceContext {
                 directoryCloner: directoryCloner,
                 noora: nra
             )
-        } catch let error as TransactionalWorkspaceContext.Error {
+        } catch let error as StagingContext.Error {
             throw error
         } catch {
-            throw TransactionalWorkspaceContext.Error.creationFailed(reason: error.localizedDescription)
+            throw StagingContext.Error.creationFailed(reason: error.localizedDescription)
         }
     }
 
-    /// Validates that a path is within transactional workspace boundaries.
+    /// Validates that a path is within staging boundaries.
     ///
     /// This method performs syntactic validation only (no filesystem access).
-    /// It checks that the path, after normalization, is a descendant of the transactional workspace root.
+    /// It checks that the path, after normalization, is a descendant of the staging root.
     ///
     /// - Parameter path: Absolute path to validate
-    /// - Throws: TransactionalWorkspaceContext.Error.escapeAttempt if path escapes transactional workspace
+    /// - Throws: StagingContext.Error.escapeAttempt if path escapes staging area
     func validatePath(_ path: AbsolutePath) throws {
         guard !isDiscarded else {
-            throw TransactionalWorkspaceContext.Error.alreadyDiscarded
+            throw StagingContext.Error.alreadyDiscarded
         }
 
         // Path library automatically normalizes paths during initialization,
         // resolving .. and . components syntactically.
-        // Use isDescendantOfOrEqual to check if path is within transactional workspace.
+        // Use isDescendantOfOrEqual to check if path is within staging area.
         guard path.isDescendantOfOrEqual(to: root) else {
-            throw TransactionalWorkspaceContext.Error.escapeAttempt(path: path.pathString)
+            throw StagingContext.Error.escapeAttempt(path: path.pathString)
         }
     }
 
-    /// Computes the summary of changes between transactional workspace and original working directory.
+    /// Computes the summary of changes between staging area and original working directory.
     ///
     /// This method drains watcher events and uses git diff to determine which files
-    /// were added, modified, or deleted in the transactional workspace compared to the original.
+    /// were added, modified, or deleted in the staging area compared to the original.
     ///
     /// - Returns: Summary of changes to be applied
-    /// - Throws: TransactionalWorkspaceContext.Error.alreadyDiscarded if transactional workspace was already discarded
+    /// - Throws: StagingContext.Error.alreadyDiscarded if staging area was already discarded
     func computeChangeSummary() async throws -> ChangeSummary {
         let events = try await collectWatcherEvents()
         return try await computeChangeSummary(using: events)
     }
 
-    /// Detects actual conflicts by comparing both transactional workspace and working directory against reference.
+    /// Detects actual conflicts by comparing both staging area and working directory against reference.
     ///
     /// A conflict is detected when the same file was actually modified in both:
     /// - The work workspace (compared to reference workspace)
@@ -209,7 +209,7 @@ actor TransactionalWorkspaceContext {
         return detectConflicts(using: events, changeSummary: workspaceChanges, workingDirectoryChanges: workingChanges)
     }
 
-    /// Applies transactional workspace changes to the original working directory.
+    /// Applies staging changes to the original working directory.
     ///
     /// Uses the provided change summary (from `computeChangeSummary()`) and applies:
     /// - New files: Added to working directory
@@ -224,10 +224,10 @@ actor TransactionalWorkspaceContext {
     ///   - changes: The change summary to apply (obtained from `computeChangeSummary()`)
     ///   - force: If true, override conflicts with warning. If false, throw error on conflicts.
     /// - Returns: List of conflicts that were overridden (empty if no conflicts or force=false)
-    /// - Throws: TransactionalWorkspaceContext.Error.conflictingFiles if conflicts detected and force=false
+    /// - Throws: StagingContext.Error.conflictingFiles if conflicts detected and force=false
     func applyChanges(_ changes: ChangeSummary, force: Bool) async throws -> [ConflictInfo] {
         guard !isDiscarded else {
-            throw TransactionalWorkspaceContext.Error.alreadyDiscarded
+            throw StagingContext.Error.alreadyDiscarded
         }
 
         // Collect watcher events to detect working directory conflicts
@@ -236,12 +236,12 @@ actor TransactionalWorkspaceContext {
         // Compute actual working directory changes (compare against reference)
         let workingChanges = try await computeWorkingDirectoryChanges(using: events)
 
-        // Detect conflicts: paths modified in both transactional workspace and working directory
+        // Detect conflicts: paths modified in both staging area and working directory
         let conflicts = detectConflicts(using: events, changeSummary: changes, workingDirectoryChanges: workingChanges)
 
         // Handle conflicts
         if !conflicts.isEmpty, !force {
-            throw TransactionalWorkspaceContext.Error.conflictingFiles(conflicts)
+            throw StagingContext.Error.conflictingFiles(conflicts)
         }
 
         // Skip if no changes
@@ -265,14 +265,14 @@ actor TransactionalWorkspaceContext {
         return conflicts
     }
 
-    /// Discards the transactional workspace without applying changes.
+    /// Discards the staging area without applying changes.
     ///
-    /// Removes all transactional workspace contents (both work and reference directories) and stops watchers.
+    /// Removes all staging contents (both work and reference directories) and stops watchers.
     /// Safe to call multiple times (idempotent).
     func discard() async {
         guard !isDiscarded else { return }
 
-        noora.passthrough("🗑️ Discarding transactional workspace at \(root.pathString)...\n")
+        noora.passthrough("🗑️ Discarding staging area at \(root.pathString)...\n")
 
         // Stop watchers
         await workspaceWatcher.stop()
@@ -280,19 +280,19 @@ actor TransactionalWorkspaceContext {
 
         isDiscarded = true
 
-        // Remove the parent transactional workspace directory (contains both work and reference)
+        // Remove the parent staging directory (contains both work and reference)
         // root is ~/.eggs/workspaces/{uuid}/work, so parent is ~/.eggs/workspaces/{uuid}
         let workspaceBaseDirectory = root.parentDirectory
         try? await fileSystem.remove(workspaceBaseDirectory)
     }
 
-    /// Returns whether the transactional workspace has been discarded.
+    /// Returns whether the staging area has been discarded.
     var discarded: Bool {
         isDiscarded
     }
 }
 
-extension TransactionalWorkspaceContext {
+extension StagingContext {
     /// Directories that should be excluded from change detection and conflict checks.
     private static let excludedDirectories: Set<String> = [".git", ".eggs"]
 
@@ -313,7 +313,7 @@ extension TransactionalWorkspaceContext {
 
     private func collectWatcherEvents() async throws -> WatcherEvents {
         guard !isDiscarded else {
-            throw TransactionalWorkspaceContext.Error.alreadyDiscarded
+            throw StagingContext.Error.alreadyDiscarded
         }
 
         let workspaceTouched = await workspaceWatcher.drainEvents()
@@ -329,7 +329,7 @@ extension TransactionalWorkspaceContext {
     /// FSEvents that trigger on file access (read) rather than actual modifications.
     private nonisolated func computeChangeSummary(using events: WatcherEvents) async throws -> ChangeSummary {
         guard await !isDiscarded else {
-            throw TransactionalWorkspaceContext.Error.alreadyDiscarded
+            throw StagingContext.Error.alreadyDiscarded
         }
 
         // Filter out excluded directory paths (e.g., .git, .eggs)
@@ -355,7 +355,7 @@ extension TransactionalWorkspaceContext {
     /// FSEvents that trigger on file access (read) rather than actual modifications.
     private nonisolated func computeWorkingDirectoryChanges(using events: WatcherEvents) async throws -> ChangeSummary {
         guard await !isDiscarded else {
-            throw TransactionalWorkspaceContext.Error.alreadyDiscarded
+            throw StagingContext.Error.alreadyDiscarded
         }
 
         // Filter out excluded directory paths (e.g., .git, .eggs)
@@ -374,15 +374,15 @@ extension TransactionalWorkspaceContext {
         )
     }
 
-    /// Detects conflicts by comparing both working directory and transactional workspace changes against reference.
+    /// Detects conflicts by comparing both working directory and staging changes against reference.
     ///
     /// A conflict occurs when:
     /// 1. A file was actually modified in the working directory (compared to reference)
-    /// 2. The same file was also actually modified in the transactional workspace (in changeSummary)
+    /// 2. The same file was also actually modified in the staging area (in changeSummary)
     ///
     /// This filters out false positives from FSEvents that trigger on file access.
     private func detectConflicts(
-        using events: WatcherEvents,
+        using _: WatcherEvents,
         changeSummary: ChangeSummary,
         workingDirectoryChanges: ChangeSummary
     ) -> [ConflictInfo] {
@@ -390,7 +390,7 @@ extension TransactionalWorkspaceContext {
         let actualWorkingChanges = Set(workingDirectoryChanges.allPaths)
         guard !actualWorkingChanges.isEmpty else { return [] }
 
-        // Get paths that were actually modified in transactional workspace
+        // Get paths that were actually modified in staging area
         let actualWorkspaceChanges = Set(changeSummary.allPaths)
 
         // Conflicts are paths modified in both

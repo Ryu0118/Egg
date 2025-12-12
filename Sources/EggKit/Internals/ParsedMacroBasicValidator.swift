@@ -131,7 +131,7 @@ struct ParsedMacroBasicValidator {
         guard let value = values.first else { return nil }
 
         let lowercased = value.lowercased()
-        if lowercased != "true" && lowercased != "false" {
+        if lowercased != "true", lowercased != "false" {
             return .invalidBooleanValue(macro: macroName, value: value)
         }
 

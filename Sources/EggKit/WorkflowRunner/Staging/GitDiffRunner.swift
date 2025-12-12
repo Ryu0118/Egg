@@ -10,7 +10,7 @@ import Subprocess
     import SystemPackage
 #endif
 
-/// Runs git diff to detect changes between transactional workspace and working directory.
+/// Runs git diff to detect changes between staging and working directory.
 ///
 /// Uses `git diff --no-index` to compare directories without requiring a git repository.
 /// This leverages Git's efficient diff algorithm, rename detection, and large file handling.
@@ -30,13 +30,13 @@ struct GitDiffRunner {
         self.fileSystem = fileSystem
     }
 
-    /// Computes changes between transactional workspace and working directory for specific paths.
+    /// Computes changes between staging and working directory for specific paths.
     ///
     /// Only compares files at the specified relative paths (from watcher events).
     /// This targeted approach avoids scanning entire directory trees.
     ///
     /// - Parameters:
-    ///   - workspaceRoot: The transactional workspace root directory
+    ///   - workspaceRoot: The staging root directory
     ///   - workingDirectory: The original working directory
     ///   - targetPaths: Relative paths to compare (from watcher events)
     /// - Returns: Change summary with added, modified, and deleted files
@@ -69,7 +69,7 @@ struct GitDiffRunner {
         }
     }
 
-    /// Copies target paths from working directory and transactional workspace to temporary directories for comparison.
+    /// Copies target paths from working directory and staging to temporary directories for comparison.
     ///
     /// Only copies **files** (not directories). Directory paths are skipped because:
     /// 1. FSEvents reports directory changes separately from file changes
@@ -148,10 +148,10 @@ struct GitDiffRunner {
         case let .exited(code):
             // 0 = no differences, 1 = differences found
             guard code == 0 || code == 1 else {
-                throw TransactionalWorkspaceContext.Error.gitDiffFailed(exitCode: code)
+                throw StagingContext.Error.gitDiffFailed(exitCode: code)
             }
         case .unhandledException:
-            throw TransactionalWorkspaceContext.Error.gitDiffCrashed
+            throw StagingContext.Error.gitDiffCrashed
         }
 
         guard !result.standardOutput.isEmpty else {

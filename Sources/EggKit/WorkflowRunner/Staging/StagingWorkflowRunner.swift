@@ -6,7 +6,7 @@ import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow with atomic all-or-nothing execution.
 ///
-/// TransactionalWorkflowRunner executes all phases in a transactional workspace (APFS clone of working directory),
+/// StagingWorkflowRunner executes all phases in a staging workspace (APFS clone of working directory),
 /// then applies only the changed files to the real working directory on success.
 /// This provides:
 /// - **Atomic execution**: Either all changes apply or none do
@@ -16,7 +16,7 @@ import ProcessRunning
 ///
 /// Example:
 /// ```swift
-/// let runner = TransactionalWorkflowRunner(
+/// let runner = StagingWorkflowRunner(
 ///     processRunner: ProcessRunner(),
 ///     fileSystem: FileSystem(),
 ///     workingDirectory: try AbsolutePath(validating: "/tmp/project"),
@@ -32,7 +32,7 @@ import ProcessRunning
 ///     templateDirectory: templateDir
 /// )
 /// ```
-struct TransactionalWorkflowRunner: WorkflowRunning {
+struct StagingWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath
@@ -74,21 +74,21 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         self.workingDirectoryWatcher = workingDirectoryWatcher
     }
 
-    /// Executes the complete lifecycle workflow in a transactional workspace.
+    /// Executes the complete lifecycle workflow in a staging workspace.
     ///
     /// - Parameters:
     ///   - config: Template configuration containing lifecycle steps and hatch configuration
     ///   - macroInputs: Macro inputs to be resolved (either already resolved or pending interactive prompts)
     ///   - templateDirectory: Source directory containing the template files
     /// - Returns: The resolved absolute path of the output directory (in the real working directory)
-    /// - Throws: `TransactionalWorkspaceContext.Error` for transactional workspace-related failures, or other errors from phases
+    /// - Throws: `StagingContext.Error` for staging workspace-related failures, or other errors from phases
     func run(
         config: Config,
         macroInputs: MacroInputs,
         templateDirectory: AbsolutePath
     ) async throws -> AbsolutePath {
-        // Step 1: Start transactional workspace creation in parallel with macro collection
-        noora.passthrough("🔒 Creating transactional workspace...\n")
+        // Step 1: Start staging workspace creation in parallel with macro collection
+        noora.passthrough("🔒 Creating staging workspace...\n")
 
         // Copy fileSystem to a local variable to satisfy sending requirement
         // FileSystem is thread-safe but not marked Sendable
@@ -110,31 +110,31 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         let collectedMacroValues = collectMacroValues(macroInputs, config: config)
 
         // Wait for workspace creation to complete
-        let workspace = try await workspaceTask.value
+        let staging = try await workspaceTask.value
 
         // Register cleanup handler for SIGINT/SIGTERM (Control+C)
-        let cleanupHandlerId = await TransactionalWorkspaceCleanupRegistry.shared.register {
-            await workspace.discard()
+        let cleanupHandlerId = await StagingCleanupRegistry.shared.register {
+            await staging.discard()
         }
 
         // Ensure cleanup handler is unregistered when we're done
         defer {
             Task {
-                await TransactionalWorkspaceCleanupRegistry.shared.unregister(cleanupHandlerId)
+                await StagingCleanupRegistry.shared.unregister(cleanupHandlerId)
             }
         }
 
-        // Ensure transactional workspace is discarded on any failure
+        // Ensure staging workspace is discarded on any failure
         do {
             // Step 4: Resolve macros with workspace root as working directory
             // This is critical for path-type macros to resolve correctly
-            let macros = try finalizeMacros(collectedMacroValues, config: config, workspaceRoot: workspace.root)
+            let macros = try finalizeMacros(collectedMacroValues, config: config, workspaceRoot: staging.root)
 
             let outputs = StepOutputsStorage()
 
-            // Step 2: Execute pre_hatch phase in transactional workspace (with OS-level sandboxing)
-            let executionEnvironment = ExecutionEnvironment.transactional(
-                root: workspace.root,
+            // Step 2: Execute pre_hatch phase in staging workspace (with OS-level sandboxing)
+            let executionEnvironment = ExecutionEnvironment.staging(
+                root: staging.root,
                 originalWorkingDirectory: workingDirectory
             )
 
@@ -143,48 +143,48 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
                     steps: preHatchSteps,
                     macros: macros,
                     outputs: outputs,
-                    workingDirectory: workspace.root,
-                    additionalEnvironment: ["EGG_TRANSACTIONAL_ROOT": workspace.root.pathString],
+                    workingDirectory: staging.root,
+                    additionalEnvironment: ["EGG_STAGING_ROOT": staging.root.pathString],
                     executionEnvironment: executionEnvironment
                 )
             }
 
-            // Step 4: Execute hatch phase (template expansion) in transactional workspace
+            // Step 4: Execute hatch phase (template expansion) in staging workspace
             let workspaceOutputDirectory = try await phaseRunner.executeHatch(
                 config: config,
                 macros: macros,
                 outputs: outputs,
                 templateDirectory: templateDirectory,
-                workingDirectory: workspace.root,
+                workingDirectory: staging.root,
                 pathValidator: { path in
-                    try await workspace.validatePath(path)
+                    try await staging.validatePath(path)
                 }
             )
 
-            noora.passthrough("✅ Template hatched successfully in transactional workspace.\n", tab: 1)
+            noora.passthrough("✅ Template hatched successfully in staging workspace.\n", tab: 1)
             // Calculate relative path for later use
             let resolvedOutputPath = try computeRelativePath(
                 outputDirectory: workspaceOutputDirectory,
-                workspaceRoot: workspace.root
+                workspaceRoot: staging.root
             )
 
-            // Step 5: Execute post_hatch phase in transactional workspace (with OS-level sandboxing)
+            // Step 5: Execute post_hatch phase in staging workspace (with OS-level sandboxing)
             if let postHatchSteps = config.postHatch {
                 try await phaseRunner.executePostHatch(
                     steps: postHatchSteps,
                     macros: macros,
                     outputs: outputs,
-                    workingDirectory: workspace.root,
+                    workingDirectory: staging.root,
                     executionEnvironment: executionEnvironment
                 )
             }
 
             // Step 6: Compute changes and handle conflicts
-            let changeSummary = try await workspace.computeChangeSummary()
+            let changeSummary = try await staging.computeChangeSummary()
 
             if changeSummary.isEmpty {
                 noora.passthrough("ℹ️ No changes to apply.\n")
-                await workspace.discard()
+                await staging.discard()
                 return workingDirectory.appending(resolvedOutputPath)
             }
 
@@ -192,11 +192,11 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
             displayChangeSummary(changeSummary)
 
             // Step 8: Handle confirmation based on mode
-            try await confirmChanges(workspace: workspace)
+            try await confirmChanges(staging: staging)
 
             // Step 10: Apply changes to working directory
             noora.passthrough("📦 Applying changes...\n")
-            let overriddenConflicts = try await workspace.applyChanges(changeSummary, force: force)
+            let overriddenConflicts = try await staging.applyChanges(changeSummary, force: force)
 
             // Display warning for overridden conflicts (when force=true)
             if !overriddenConflicts.isEmpty {
@@ -212,8 +212,8 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
             return workingDirectory.appending(resolvedOutputPath)
 
         } catch {
-            // Ensure transactional workspace is always discarded on error
-            await workspace.discard()
+            // Ensure staging workspace is always discarded on error
+            await staging.discard()
             throw error
         }
     }
@@ -221,8 +221,8 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
     /// Computes the relative path from workspace root to output directory.
     ///
     /// - Parameters:
-    ///   - outputDirectory: The absolute output path within transactional workspace
-    ///   - workspaceRoot: The transactional workspace root path
+    ///   - outputDirectory: The absolute output path within staging workspace
+    ///   - workspaceRoot: The staging workspace root path
     /// - Returns: The relative path from workspace root
     private func computeRelativePath(
         outputDirectory: AbsolutePath,
@@ -238,7 +238,7 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         let rootPrefix = workspaceRoot.pathString + "/"
         guard pathString.hasPrefix(rootPrefix) else {
             throw LifecycleStepError.invalidOutputDirectory(
-                "Output path is not within transactional workspace: \(pathString)"
+                "Output path is not within staging workspace: \(pathString)"
             )
         }
         let relative = String(pathString.dropFirst(rootPrefix.count))
@@ -252,10 +252,10 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
     /// - `force=false, isInteractive=true`: Prompt user for confirmation
     /// - `force=false, isInteractive=false, conflicts=empty`: Apply without confirmation
     /// - `force=false, isInteractive=false, conflicts=exists`: Throw error
-    private func confirmChanges(workspace: TransactionalWorkspaceContext) async throws {
+    private func confirmChanges(staging: StagingContext) async throws {
         guard !force else { return }
 
-        let conflicts = try await workspace.detectConflicts()
+        let conflicts = try await staging.detectConflicts()
 
         if !conflicts.isEmpty {
             displayConflicts(conflicts)
@@ -263,17 +263,17 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
 
         if isInteractive {
             let confirmed = noora.yesOrNoChoicePrompt(
-                title: "Apply Changes (transactional workspace → current directory)",
-                question: "Apply to \(workspace.originalWorkingDirectory.pathString)?"
+                title: "Apply Changes (staging workspace → current directory)",
+                question: "Apply to \(staging.originalWorkingDirectory.pathString)?"
             )
             guard confirmed else {
                 noora.passthrough("❌ Changes discarded by user.\n")
-                await workspace.discard()
-                throw TransactionalWorkspaceContext.Error.userAborted
+                await staging.discard()
+                throw StagingContext.Error.userAborted
             }
         } else if !conflicts.isEmpty {
-            await workspace.discard()
-            throw TransactionalWorkspaceContext.Error.conflictingFiles(conflicts)
+            await staging.discard()
+            throw StagingContext.Error.conflictingFiles(conflicts)
         }
     }
 
@@ -319,7 +319,7 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
     /// This helper method isolates the non-Sendable FileSysteming type by using
     /// `sending` parameters and `nonisolated(unsafe)` to safely pass it to the task.
     ///
-    /// - Returns: A task that creates the transactional workspace
+    /// - Returns: A task that creates the staging workspace
     private nonisolated static func createWorkspaceTask(
         workingDirectory: AbsolutePath,
         homeDirectory: AbsolutePath,
@@ -328,14 +328,14 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
         noora: sending any Noorable
-    ) -> Task<TransactionalWorkspaceContext, any Error> {
+    ) -> Task<StagingContext, any Error> {
         // Use nonisolated(unsafe) to safely capture non-Sendable types in the task
         // FileSystem and Noora are actually thread-safe but not marked Sendable
         nonisolated(unsafe) let fs = fileSystem
         nonisolated(unsafe) let nra = noora
 
         return Task {
-            try await TransactionalWorkspaceContext.create(
+            try await StagingContext.create(
                 cloning: workingDirectory,
                 homeDirectory: homeDirectory,
                 fileSystem: fs,
@@ -391,7 +391,7 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
     /// - Parameters:
     ///   - collected: The collected macro values from `collectMacroValues`
     ///   - config: The template configuration containing macro definitions
-    ///   - workspaceRoot: The transactional workspace root directory
+    ///   - workspaceRoot: The staging workspace root directory
     /// - Returns: Array of resolved macros with workspace-relative paths
     /// - Throws: Validation errors for parsed macros
     private func finalizeMacros(

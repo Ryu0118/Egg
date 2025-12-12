@@ -1,8 +1,8 @@
-# Transactional Workflow Runner Design Document
+# Staging Workflow Runner Design Document
 
 ## Overview
 
-TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle (pre_hatch → hatch → post_hatch) atomically in a transactional workspace. All file system changes occur within a temporary transactional workspace directory (a clone of the working directory), and changes are applied to the real working directory only when all phases complete successfully.
+StagingWorkflowRunner is a system for executing the entire hatch lifecycle (pre_hatch → hatch → post_hatch) atomically in a staging. All file system changes occur within a temporary staging directory (a clone of the working directory), and changes are applied to the real working directory only when all phases complete successfully.
 
 ## Problem Statement
 
@@ -13,13 +13,13 @@ TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle
 │ LifecycleWorkflowRunner (Current)                                │
 │                                                                  │
 │   1. pre_hatch: Shell commands run in workingDirectory           │
-│      └─ Changes are PERMANENT (not transactional)                │
+│      └─ Changes are PERMANENT (not atomic)                       │
 │                                                                  │
 │   2. hatch: TemplateExpander uses withAtomicCopyAndWrite         │
-│      └─ Changes are ATOMIC (transactional)                       │
+│      └─ Changes are ATOMIC (staged)                              │
 │                                                                  │
 │   3. post_hatch: Shell commands ALSO run in workingDirectory     │
-│      └─ Changes are PERMANENT (not transactional)                │
+│      └─ Changes are PERMANENT (not atomic)                       │
 │                                                                  │
 │   PROBLEM: workingDirectory (often user's repo root)             │
 │            accumulates pre/post side effects even on failure     │
@@ -35,7 +35,7 @@ TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle
 ### Desired Behavior
 
 - All operations (pre_hatch → hatch → post_hatch) should be atomic as a unit
-- Work should be done in a transactional workspace (clone of working directory)
+- Work should be done in a staging (clone of working directory)
 - Only when ALL phases complete successfully should changes be applied
 - If any phase fails, all file system changes should be discarded
 - Changes are applied as partial diff, not full replacement
@@ -45,11 +45,11 @@ TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle
 ## Core Design Principles
 
 1. **All-or-nothing execution**: Either the entire workflow succeeds, or no changes are made
-2. **Transactional workspace = workingDirectory clone**: Single transactional workspace directory that mirrors the working directory
-3. **Workspace isolation**: All operations must stay within transactional workspace boundaries
+2. **Staging = workingDirectory clone**: Single staging directory that mirrors the working directory
+3. **Workspace isolation**: All operations must stay within staging boundaries
 4. **Partial apply**: Only changed files are applied back to working directory
 5. **Conflict detection**: Detect concurrent modifications and fail safely
-6. **Automatic cleanup**: Transactional workspace is discarded on failure, no manual cleanup needed
+6. **Automatic cleanup**: Staging is discarded on failure, no manual cleanup needed
 
 ---
 
@@ -57,22 +57,22 @@ TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│ TransactionalWorkflowRunner (Top-level Orchestrator)                      │
+│ StagingWorkflowRunner (Top-level Orchestrator)                      │
 │                                                                           │
 │  run(config, macros, templateDirectory)                                   │
 │                                                                           │
 │  ┌─────────────────────────────────────────────────────────────────────┐ │
-│  │ 1. Create Transactional Workspace (clone of workingDirectory)       │ │
-│  │    └─ TransactionalContext.create(cloning: workingDirectory)        │ │
+│  │ 1. Create Staging (clone of workingDirectory)       │ │
+│  │    └─ StagingContext.create(cloning: workingDirectory)        │ │
 │  │                                                                      │ │
-│  │ 2. Execute pre_hatch in transactional workspace                      │ │
+│  │ 2. Execute pre_hatch in staging                      │ │
 │  │    └─ LifecycleStepRunner(workingDir: workspace.root)               │ │
 │  │                                                                      │ │
-│  │ 3. Execute hatch to transactional workspace                          │ │
+│  │ 3. Execute hatch to staging                          │ │
 │  │    └─ TemplateExpander.expand(outputDir: workspace.root/output)     │ │
-│  │    └─ Validate: output path must be within transactional workspace   │ │
+│  │    └─ Validate: output path must be within staging   │ │
 │  │                                                                      │ │
-│  │ 4. Execute post_hatch in transactional workspace                     │ │
+│  │ 4. Execute post_hatch in staging                     │ │
 │  │    └─ LifecycleStepRunner(workingDir: workspace.root)               │ │
 │  │                                                                      │ │
   │  │ 5. Partial apply workspace changes via staging                      │ │
@@ -81,7 +81,7 @@ TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle
 │  └─────────────────────────────────────────────────────────────────────┘ │
 │                                                                           │
 │  On any failure:                                                          │
-│    └─ workspace.discard() → Removes all transactional workspace contents  │
+│    └─ workspace.discard() → Removes all staging contents  │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -89,20 +89,20 @@ TransactionalWorkflowRunner is a system for executing the entire hatch lifecycle
 
 ## Component Design
 
-### 1. TransactionalContext (Actor)
+### 1. StagingContext (Actor)
 
 **Responsibility**: Manages the lifecycle of a workspace environment
 
-**File**: `Sources/EggKit/WorkflowRunner/Transactional Workspace/TransactionalContext.swift`
+**File**: `Sources/EggKit/WorkflowRunner/Staging/StagingContext.swift`
 
 **Interface**:
 ```swift
 /// Manages a workspaceed environment for atomic workflow execution.
 ///
-/// TransactionalContext creates a temporary directory that is a clone of the working directory.
+/// StagingContext creates a temporary directory that is a clone of the working directory.
 /// All workflow operations execute within this workspace. Only when all operations complete
 /// successfully are the changes applied back to the real working directory.
-actor TransactionalContext {
+actor StagingContext {
     /// The workspace root directory (clone of workingDirectory).
     var root: AbsolutePath { get }
 
@@ -118,17 +118,17 @@ actor TransactionalContext {
     /// - Parameters:
     ///   - workingDirectory: The directory to clone into workspace
     ///   - fileSystem: File system for operations
-    /// - Returns: A new TransactionalContext with cloned directory
-    /// - Throws: TransactionalContext.Error.creationFailed on file system errors
+    /// - Returns: A new StagingContext with cloned directory
+    /// - Throws: StagingContext.Error.creationFailed on file system errors
     static func create(
         cloning workingDirectory: AbsolutePath,
         fileSystem: any FileSysteming
-    ) async throws -> TransactionalContext
+    ) async throws -> StagingContext
 
     /// Validates that a path is within workspace boundaries.
     ///
     /// - Parameter path: Path to validate (can be relative or absolute)
-    /// - Throws: TransactionalContext.Error.escapeAttempt if path escapes workspace
+    /// - Throws: StagingContext.Error.escapeAttempt if path escapes workspace
     func validatePath(_ path: AbsolutePath) throws
 
     /// Applies workspace changes to the original working directory.
@@ -142,7 +142,7 @@ actor TransactionalContext {
     ///   - fileSystem: File system for operations
     ///   - force: If true, override conflicts with warning. If false, throw error on conflicts.
     /// - Returns: List of conflicts that were overridden (empty if no conflicts or force=false)
-    /// - Throws: TransactionalContext.Error.conflictingFiles if conflicts detected and force=false
+    /// - Throws: StagingContext.Error.conflictingFiles if conflicts detected and force=false
     func applyChanges(
         fileSystem: any FileSysteming,
         force: Bool
@@ -187,18 +187,18 @@ struct ChangeSummary {
 
 ---
 
-### 2. Transactional Workspace Errors and Types
+### 2. Staging Errors and Types
 
 **Responsibility**: Define workspace-specific errors and supporting types
 
 **Files**:
-- `Sources/EggKit/WorkflowRunner/Transactional Workspace/Transactional WorkspaceError.swift`
-- `Sources/EggKit/WorkflowRunner/Transactional Workspace/ConflictInfo.swift`
-- `Sources/EggKit/WorkflowRunner/Transactional Workspace/ChangeSummary.swift`
+- `Sources/EggKit/WorkflowRunner/Staging/StagingError.swift`
+- `Sources/EggKit/WorkflowRunner/Staging/ConflictInfo.swift`
+- `Sources/EggKit/WorkflowRunner/Staging/ChangeSummary.swift`
 
 **Interface**:
 ```swift
-extension TransactionalContext {
+extension StagingContext {
     enum Error: LocalizedError, Equatable {
         case alreadyDiscarded
         case creationFailed(reason: String)
@@ -217,7 +217,7 @@ extension TransactionalContext {
 
 **Responsibility**: Detect changes and apply only the diff to working directory.
 
-**File**: Logic lives inside `TransactionalContext.applyChanges`
+**File**: Logic lives inside `StagingContext.applyChanges`
 
 **Change Detection Approach (Dual FSEvents)**:
 
@@ -228,7 +228,7 @@ extension TransactionalContext {
 
 **Conflict Matrix**:
 
-| Transactional Workspace | Working Dir Event | Result |
+| Staging | Working Dir Event | Result |
 |---------|-------------------|--------|
 | Added   | No                | Add |
 | Added   | Yes               | Potential conflict (new file created both sides) |
@@ -248,9 +248,9 @@ This targeted approach dramatically reduces work on large projects (e.g., untouc
 
 - **Purpose**: guarantee that no partial changes reach the real working directory even if a late failure occurs.
 - **Mechanics**:
-  1. `TransactionalContext` materializes every add/modify/delete described by the watcher-derived change set inside a temporary `applyStagingRoot` created via `FileSystem.makeTemporaryDirectory` (typically under `/tmp/egg-apply-staging-XXXXXX`). This keeps staging isolated from both the workspace and working directories while still benefiting from fast local storage.
+  1. `StagingContext` materializes every add/modify/delete described by the watcher-derived change set inside a temporary `applyStagingRoot` created via `FileSystem.makeTemporaryDirectory` (typically under `/tmp/egg-apply-staging-XXXXXX`). This keeps staging isolated from both the workspace and working directories while still benefiting from fast local storage.
   2. The staging step performs file copies, deletions, permission updates, and conflict resolution exactly as they would occur on the real tree, but against the staging root. Errors (permission issues, disk full, template bugs) surface here before the working directory is touched.
-  3. Once staging succeeds, the helper returns a `ChangeManifest` describing everything that was materialized. `TransactionalContext` owns this manifest (ensuring single source of truth) and passes it back to the helper for the apply phase.
+  3. Once staging succeeds, the helper returns a `ChangeManifest` describing everything that was materialized. `StagingContext` owns this manifest (ensuring single source of truth) and passes it back to the helper for the apply phase.
   4. A final, deterministic pass streams staged contents into the real working directory (Deletes → Adds → Modifies). Because all side effects are already computed, this pass is a simple transfer with well-defined rollback data.
 - **Additional requirements**:
   - `applyStagingRoot` must be automatically cleaned up, even on crash/abort.
@@ -262,10 +262,10 @@ This targeted approach dramatically reduces work on large projects (e.g., untouc
 ### Conflict confirmation UX
 
 - **Interactive mode**: if potential conflicts exist and `--force` is not supplied, Noora lists the paths and prompts `Override these files? [y/N]`. Choosing `y` proceeds (equivalent to force for this apply), otherwise the run aborts cleanly.
-- **Non-interactive / direct mode**: potential conflicts immediately raise `TransactionalContext.Error.conflictingFiles` unless `--force` was set on the CLI.
+- **Non-interactive / direct mode**: potential conflicts immediately raise `StagingContext.Error.conflictingFiles` unless `--force` was set on the CLI.
 - **Force flag**: skips prompts in both modes and records overridden paths for warning output after apply.
 
-### 4. Transactional Workspace Escape Detection
+### 4. Staging Escape Detection
 
 **Responsibility**: Prevent operations from accessing paths outside the workspace.
 
@@ -281,14 +281,14 @@ This targeted approach dramatically reduces work on large projects (e.g., untouc
 func validatePath(_ path: AbsolutePath) throws {
     let normalizedPath = path.lexicallyNormalized()
     guard normalizedPath.isDescendant(of: root) else {
-        throw TransactionalContext.Error.escapeAttempt(path: path.pathString)
+        throw StagingContext.Error.escapeAttempt(path: path.pathString)
     }
 }
 ```
 
 2. **Environment Variables** (for shell scripts):
 ```bash
-EGG_WORKSPACE_ROOT=/tmp/egg-workspace-xxx
+STAGING_ROOT=/tmp/egg-workspace-xxx
 EGG_ORIGINAL_WORKING_DIR=/Users/user/projects  # Read-only reference
 ```
 
@@ -301,10 +301,10 @@ EGG_ORIGINAL_WORKING_DIR=/Users/user/projects  # Read-only reference
 
 The current implementation does **not** use OS-level sandboxing. It only provides:
 - Working directory set to workspace.root
-- Environment variables (`EGG_WORKSPACE_ROOT`, `EGG_ORIGINAL_WORKING_DIR`) for reference
+- Environment variables (`STAGING_ROOT`, `EGG_ORIGINAL_WORKING_DIR`) for reference
 - Path validation for explicit outputs (hatch output directory)
 
-⚠️ **This is insufficient.** Shell scripts can escape the transactional workspace via `cd ..`, absolute paths, or symlinks.
+⚠️ **This is insufficient.** Shell scripts can escape the staging via `cd ..`, absolute paths, or symlinks.
 
 **Required Implementation (TODO)**:
 
@@ -312,20 +312,20 @@ OS-level sandboxing **must** be implemented:
 - macOS: `sandbox-exec` with generated profile restricting file access to workspace.root
 - Linux: `landlock` or similar mechanism
 
-Without this, the transactional workspace only provides atomicity but not security isolation. This is a **required feature**, not optional.
+Without this, the staging only provides atomicity but not security isolation. This is a **required feature**, not optional.
 
 ---
 
-### 5. TransactionalWorkflowRunner
+### 5. StagingWorkflowRunner
 
 **Responsibility**: Orchestrate the complete lifecycle workflow atomically within a workspace
 
-**File**: `Sources/EggKit/WorkflowRunner/TransactionalWorkflowRunner.swift`
+**File**: `Sources/EggKit/WorkflowRunner/StagingWorkflowRunner.swift`
 
 **Interface**:
 ```swift
 /// Orchestrates atomic lifecycle workflow execution in a workspaceed environment.
-struct TransactionalWorkflowRunner: WorkflowRunning {
+struct StagingWorkflowRunner: WorkflowRunning {
     init(
         processRunner: any ProcessRunning,
         fileSystem: any FileSysteming,
@@ -362,15 +362,15 @@ Input:
   └─ templateDirectory: AbsolutePath
 
 Flow:
-  1. Create Transactional Workspace (clone workingDirectory)
-     ├─ TransactionalContext.create(cloning: workingDirectory)
+  1. Create Staging (clone workingDirectory)
+     ├─ StagingContext.create(cloning: workingDirectory)
      ├─ Copy all files from workingDirectory to workspace.root
      └─ Attach workspace + workingDir watchers to capture touched paths
 
   2. Execute pre_hatch (in workspace.root)
      ├─ LifecycleStepRunner(workingDirectory: workspace.root)
      ├─ Shell commands run, outputs captured
-     ├─ Any path escape attempt → TransactionalContext.Error.escapeAttempt
+     ├─ Any path escape attempt → StagingContext.Error.escapeAttempt
      └─ StepOutputsStorage updated with pre_hatch outputs
 
   3. Execute hatch (to workspace.root/output)
@@ -382,7 +382,7 @@ Flow:
   4. Execute post_hatch (in workspace.root)
      ├─ LifecycleStepRunner(workingDirectory: workspace.root)
      ├─ Shell commands run in workspace
-     ├─ Any path escape attempt → TransactionalContext.Error.escapeAttempt
+     ├─ Any path escape attempt → StagingContext.Error.escapeAttempt
      └─ StepOutputsStorage updated with post_hatch outputs
 
   5. Partial apply (on success only)
@@ -412,7 +412,7 @@ All phases execute in the same workspace directory:
 
 **Environment Variables**:
 ```bash
-EGG_WORKSPACE_ROOT=/tmp/egg-workspace-xxx
+STAGING_ROOT=/tmp/egg-workspace-xxx
 EGG_ORIGINAL_WORKING_DIR=/Users/user/projects  # Read-only reference
 ```
 
@@ -424,7 +424,7 @@ EGG_ORIGINAL_WORKING_DIR=/Users/user/projects  # Read-only reference
 
 ```
 Timeline:
-  t0: Transactional Workspace created (clone of workingDirectory)
+  t0: Staging created (clone of workingDirectory)
       └─ Watchers attached to workspace + workingDirectory
   t1: pre_hatch, hatch, post_hatch execute in workspace
       └─ Watchers record any touched files
@@ -473,7 +473,7 @@ Apply these changes? [y/N]
 
 **Implementation**:
 ```swift
-// In TransactionalWorkflowRunner
+// In StagingWorkflowRunner
 let changeSummary = try await workspace.computeChangeSummary(fileSystem: fileSystem)
 
 if !force {
@@ -481,7 +481,7 @@ if !force {
     let confirmed = await noora.confirm("Apply these changes?")
     guard confirmed else {
         await workspace.discard(fileSystem: fileSystem)
-        throw TransactionalContext.Error.userAborted
+        throw StagingContext.Error.userAborted
     }
 }
 
@@ -499,7 +499,7 @@ if !overriddenConflicts.isEmpty {
 
 ### Performance Considerations
 
-**Transactional Workspace Clone (APFS Copy-on-Write)**:
+**Staging Clone (APFS Copy-on-Write)**:
 - On macOS with APFS, directory cloning uses copy-on-write (CoW)
 - Clone operation is **instant** regardless of directory size
 - Disk space is only consumed for files that are actually modified
@@ -521,7 +521,7 @@ try fileSystem.copy(from: workingDirectory, to: workspace.root, usingClone: true
 
 ### Git diff-based change detection
 
-`git diff --no-index <baseline> <workspace>` runs Git の差分エンジンをディレクトリ同士に直接適用できる。TransactionalContext がこのコマンドを呼び出して `--raw` や `--name-status -z` の結果をパースすれば、Git の stat キャッシュ／rename 検出／巨大ファイル処理などをそのまま再利用可能。すでに Git 依存はあるため追加のライブラリ導入も不要で、`computeChangeSummary` / `applyChanges` は Git の出力をトリガにコピー・削除を行うだけで済む。libgit2 を組み込むより手軽に「Git と同じ方法」を実現できる。
+`git diff --no-index <baseline> <workspace>` runs Git の差分エンジンをディレクトリ同士に直接適用できる。StagingContext がこのコマンドを呼び出して `--raw` や `--name-status -z` の結果をパースすれば、Git の stat キャッシュ／rename 検出／巨大ファイル処理などをそのまま再利用可能。すでに Git 依存はあるため追加のライブラリ導入も不要で、`computeChangeSummary` / `applyChanges` は Git の出力をトリガにコピー・削除を行うだけで済む。libgit2 を組み込むより手軽に「Git と同じ方法」を実現できる。
 
 ---
 
@@ -530,9 +530,9 @@ try fileSystem.copy(from: workingDirectory, to: workspace.root, usingClone: true
 ### Error Propagation
 
 ```
-TransactionalContext.Error.escapeAttempt        ───┐
-TransactionalContext.Error.conflictingFiles        │
-ShellExecutionError                  ├──► TransactionalWorkflowRunner
+StagingContext.Error.escapeAttempt        ───┐
+StagingContext.Error.conflictingFiles        │
+ShellExecutionError                  ├──► StagingWorkflowRunner
 UndefinedOutputReferenceError        │           │
 ConditionEvaluationError             │           ▼
 TemplateExpander.Error           ───┘    workspace.discard()
@@ -545,7 +545,7 @@ TemplateExpander.Error           ───┘    workspace.discard()
 
 ```swift
 func run(...) async throws -> AbsolutePath {
-    let workspace = try await TransactionalContext.create(
+    let workspace = try await StagingContext.create(
         cloning: workingDirectory,
         fileSystem: fileSystem
     )
@@ -577,31 +577,31 @@ Sources/EggKit/
 │   │   ├── LifecycleStepRunner.swift
 │   │   ├── ShellScriptRunner.swift
 │   │   └── TemplateExpander.swift
-│   ├── NonTransactional/
+│   ├── NonStaging/
 │   │   └── LifecycleWorkflowRunner.swift
-│   └── Transactional/
-│       ├── TransactionalWorkflowRunner.swift
-│       ├── TransactionalContext.swift
+│   └── Staging/
+│       ├── StagingWorkflowRunner.swift
+│       ├── StagingContext.swift
 │       ├── ApplyStagingArea.swift
-│       ├── TransactionalError.swift
+│       ├── StagingError.swift
 │       ├── WorkingDirectoryWatcher.swift
 │       └── (supporting internals)
-└── HatchRunner.swift                     (factory: transactional vs legacy)
+└── HatchRunner.swift                     (factory: staging vs legacy)
 ```
 
-This separation keeps transactional-specific logic isolated, retains the legacy runner in `NonTransactional/`, and leaves reusable components accessible under `Shared/`.
+This separation keeps staging-specific logic isolated, retains the legacy runner in `NonStaging/`, and leaves reusable components accessible under `Shared/`.
 
 ---
 
 ## CLI Options
 
-### `--no-transactional-workspace`
+### `--no-staging`
 
-Disables transactional workspace and uses legacy `LifecycleWorkflowRunner`:
+Disables staging and uses legacy `LifecycleWorkflowRunner`:
 
-- **Default**: transactional workspace enabled (new behavior)
-- `--no-transactional-workspace`: falls back to legacy behavior
-- Emits warning: `⚠️ Running without transactional workspace; filesystem changes are permanent`
+- **Default**: staging enabled (new behavior)
+- `--no-staging`: falls back to legacy behavior
+- Emits warning: `⚠️ Running without staging; filesystem changes are permanent`
 
 ### `--force`
 
@@ -612,9 +612,9 @@ Skips user confirmation and overrides conflicts:
 
 ```bash
 # Examples
-$ egg hatch MyTemplate                              # transactional workspace ON, prompt before apply
-$ egg hatch MyTemplate --force                      # transactional workspace ON, no prompt, override conflicts
-$ egg hatch MyTemplate --no-transactional-workspace # transactional workspace OFF (legacy behavior)
+$ egg hatch MyTemplate                              # staging ON, prompt before apply
+$ egg hatch MyTemplate --force                      # staging ON, no prompt, override conflicts
+$ egg hatch MyTemplate --no-staging # staging OFF (legacy behavior)
 
 # Normal flow (without --force)
 $ egg hatch MyTemplate
@@ -648,7 +648,7 @@ $ egg hatch MyTemplate --force
 
 ## Edge Cases and Considerations
 
-### 1. Output Directory Outside Transactional Workspace
+### 1. Output Directory Outside Staging
 
 **Problem**: `config.hatch.output` resolves to path outside workspace (e.g., `../other-project`)
 
@@ -687,7 +687,7 @@ try workspace.validatePath(absoluteOutput)  // Throws if escape attempt
 ### 5. Empty Working Directory
 
 **Behavior**:
-- Transactional Workspace created as empty directory
+- Staging created as empty directory
 - All hatch output becomes "new files"
 - Apply simply copies all new files
 
@@ -745,7 +745,7 @@ try workspace.validatePath(absoluteOutput)  // Throws if escape attempt
 - Warning ensures user is aware of what was overwritten (not silent)
 - Enables CI/CD automation without manual intervention
 
-### Why actor for TransactionalContext?
+### Why actor for StagingContext?
 
 **Answer**:
 - Thread-safe state management without locks
@@ -780,14 +780,14 @@ post_hatch:
       echo "Project version: ${{ pre_hatch.setup.outputs.version }}"
 ```
 
-### Execution (Transactional Workspaceed):
+### Execution (Staginged):
 
-**Step 1: Create Transactional Workspace**
+**Step 1: Create Staging**
 ```
 Working Directory: /Users/user/projects/
 Contains: README.md, existing-file.txt
 
-Transactional Workspace Created: /tmp/egg-workspace-abc123/
+Staging Created: /tmp/egg-workspace-abc123/
 Contains: README.md, existing-file.txt (cloned)
 Baseline Hashes: { README.md: abc..., existing-file.txt: def... }
 ```
@@ -795,12 +795,12 @@ Baseline Hashes: { README.md: abc..., existing-file.txt: def... }
 **Step 2: Execute pre_hatch (in workspace)**
 - Command 1: Creates `version=1.0.0` output, creates `.egg-config` file
 - Command 2: Echoes version
-- Transactional Workspace now contains: `README.md`, `existing-file.txt`, `.egg-config`
+- Staging now contains: `README.md`, `existing-file.txt`, `.egg-config`
 
 **Step 3: Execute hatch (to workspace/MyProject/)**
 - Validate: `./MyProject` is within workspace ✓
 - Template expanded to `/tmp/egg-workspace-abc123/MyProject/`
-- Transactional Workspace now contains: `README.md`, `existing-file.txt`, `.egg-config`, `MyProject/`
+- Staging now contains: `README.md`, `existing-file.txt`, `.egg-config`, `MyProject/`
 
 **Step 4: Execute post_hatch (in workspace)**
 - Git init runs in `workspace/MyProject/`
@@ -808,7 +808,7 @@ Baseline Hashes: { README.md: abc..., existing-file.txt: def... }
 
 **Step 5: Partial Apply**
 ```
-Transactional Workspace State:
+Staging State:
   - README.md (unchanged)
   - existing-file.txt (unchanged)
   - .egg-config (NEW)
@@ -832,7 +832,7 @@ Unchanged (not touched):
 
 ```
 Timeline:
-  t0: Transactional Workspace created, watchers attach
+  t0: Staging created, watchers attach
   t1: User edits README.md in working directory → working watcher records `README.md`
   t2: post_hatch modifies README.md in workspace → workspace watcher records `README.md`
   t3: Apply drains both watcher sets, union contains `README.md`
@@ -841,7 +841,7 @@ Timeline:
       → Potential conflict surfaced to user
 
 Error:
-  TransactionalContext.Error.conflictingFiles([
+  StagingContext.Error.conflictingFiles([
     ConflictInfo(path: "README.md", type: .bothModified)
   ])
 ```
@@ -853,11 +853,11 @@ Error:
 | Feature | Description |
 |---------|-------------|
 | **Single workspace** | Clone of workingDirectory (APFS instant clone), all operations here |
-| **Transactional Workspace isolation** | Escape attempts detected and blocked |
+| **Staging isolation** | Escape attempts detected and blocked |
 | **Partial apply** | Only changed files applied via diff |
 | **User confirmation** | Show changes and prompt before apply (skip with `--force`) |
 | **Conflict handling** | Error by default; `--force` overrides with warning |
-| **Automatic cleanup** | Transactional Workspace discarded on any failure or user abort |
+| **Automatic cleanup** | Staging discarded on any failure or user abort |
 | **Watcher-driven diff** | Only touched paths are compared/applied |
 | **Actor-based safety** | Thread-safe workspace management |
 

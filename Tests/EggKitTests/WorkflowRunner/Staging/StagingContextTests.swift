@@ -5,9 +5,9 @@ import Path
 import ProcessRunning
 import Testing
 
-struct TransactionalWorkspaceContextTests {
+struct StagingContextTests {
     @Test(arguments: TestCase.allCases)
-    func transactionalWorkspaceContext(_ testCase: TestCase) async throws {
+    func stagingContext(_ testCase: TestCase) async throws {
         let fileSystem = FileSystem()
         let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "workspace-test")
 
@@ -21,7 +21,7 @@ struct TransactionalWorkspaceContextTests {
             fileSystem: fileSystem
         )
 
-        let transactionalWorkspace = try await TransactionalWorkspaceContext.create(
+        let staging = try await StagingContext.create(
             cloning: workingDir,
             homeDirectory: tempDir,
             fileSystem: fileSystem,
@@ -31,33 +31,33 @@ struct TransactionalWorkspaceContextTests {
         )
 
         defer {
-            Task { await transactionalWorkspace.discard() }
+            Task { await staging.discard() }
         }
 
         switch testCase.expectation {
         case let .success(checks):
             for check in checks {
-                try await assertSuccessCheck(check, transactionalWorkspace: transactionalWorkspace, workingDir: workingDir, fileSystem: fileSystem)
+                try await assertSuccessCheck(check, staging: staging, workingDir: workingDir, fileSystem: fileSystem)
             }
 
         case let .pathValidationFails(absolutePath, expectedErrorPath):
             try await assertPathValidationFails(
                 absolutePath: absolutePath,
                 expectedErrorPath: expectedErrorPath,
-                transactionalWorkspace: transactionalWorkspace
+                staging: staging
             )
 
         case .pathValidationFailsOutsideWorkspace:
-            await assertPathValidationFailsOutsideWorkspace(transactionalWorkspace: transactionalWorkspace)
+            await assertPathValidationFailsOutsideWorkspace(staging: staging)
 
         case .validationFailsAfterDiscard:
-            await assertValidationFailsAfterDiscard(transactionalWorkspace: transactionalWorkspace)
+            await assertValidationFailsAfterDiscard(staging: staging)
 
         case .computeChangeSummaryFailsAfterDiscard:
-            await assertComputeChangeSummaryFailsAfterDiscard(transactionalWorkspace: transactionalWorkspace)
+            await assertComputeChangeSummaryFailsAfterDiscard(staging: staging)
 
         case .applyChangesFailsAfterDiscard:
-            await assertApplyChangesFailsAfterDiscard(transactionalWorkspace: transactionalWorkspace)
+            await assertApplyChangesFailsAfterDiscard(staging: staging)
         }
     }
 
@@ -97,7 +97,7 @@ struct TransactionalWorkspaceContextTests {
         static let allCases: [TestCase] = [
             // Creation tests
             TestCase(
-                description: "creates transactional workspace from working directory with files",
+                description: "creates staging area from working directory with files",
                 initialFiles: [
                     InitialFile(path: "file1.txt", content: "content1"),
                     InitialFile(path: "file2.txt", content: "content2"),
@@ -113,7 +113,7 @@ struct TransactionalWorkspaceContextTests {
             ),
 
             TestCase(
-                description: "creates transactional workspace from empty working directory",
+                description: "creates staging area from empty working directory",
                 initialFiles: [],
                 expectation: .success(checks: [
                     .workspaceExists,
@@ -130,7 +130,7 @@ struct TransactionalWorkspaceContextTests {
 
             // Path validation tests
             TestCase(
-                description: "validates path inside transactional workspace",
+                description: "validates path inside staging area",
                 initialFiles: [],
                 expectation: .success(checks: [
                     .pathValidationSucceeds(relativePath: "file.txt"),
@@ -139,7 +139,7 @@ struct TransactionalWorkspaceContextTests {
             ),
 
             TestCase(
-                description: "rejects path outside transactional workspace (absolute path)",
+                description: "rejects path outside staging area (absolute path)",
                 initialFiles: [],
                 expectation: .pathValidationFails(
                     absolutePath: "/etc/passwd",
@@ -161,7 +161,7 @@ struct TransactionalWorkspaceContextTests {
 
             // Discard tests
             TestCase(
-                description: "discard removes transactional workspace directory",
+                description: "discard removes staging area directory",
                 initialFiles: [
                     InitialFile(path: "file.txt", content: "content"),
                 ],
@@ -238,51 +238,51 @@ struct TransactionalWorkspaceContextTests {
 
     private func assertSuccessCheck(
         _ check: TestCase.SuccessCheck,
-        transactionalWorkspace: TransactionalWorkspaceContext,
+        staging: StagingContext,
         workingDir: AbsolutePath,
         fileSystem: FileSystem
     ) async throws {
         switch check {
         case .workspaceExists:
-            let workspaceRoot = await transactionalWorkspace.root
-            #expect(try await fileSystem.exists(workspaceRoot), "Transactional workspace root should exist")
+            let workspaceRoot = await staging.root
+            #expect(try await fileSystem.exists(workspaceRoot), "Staging area root should exist")
 
         case .originalWorkingDirectoryStored:
-            let originalDir = await transactionalWorkspace.originalWorkingDirectory
+            let originalDir = await staging.originalWorkingDirectory
             #expect(originalDir == workingDir, "Original working directory should match")
 
         case let .fileCloned(relativePath):
-            let filePath = await transactionalWorkspace.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            let filePath = await staging.root.appending(components: relativePath.split(separator: "/").map(String.init))
             #expect(try await fileSystem.exists(filePath), "File '\(relativePath)' should be cloned")
 
         case let .fileContent(relativePath, expectedContent):
-            let filePath = await transactionalWorkspace.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            let filePath = await staging.root.appending(components: relativePath.split(separator: "/").map(String.init))
             let content = try await fileSystem.readTextFile(at: filePath)
             #expect(content == expectedContent, "File '\(relativePath)' should have correct content")
 
         case let .pathValidationSucceeds(relativePath):
-            let path = await transactionalWorkspace.root.appending(components: relativePath.split(separator: "/").map(String.init))
-            try await transactionalWorkspace.validatePath(path)
+            let path = await staging.root.appending(components: relativePath.split(separator: "/").map(String.init))
+            try await staging.validatePath(path)
 
         case .discardRemovesWorkspace:
-            let workspaceRoot = await transactionalWorkspace.root
-            await transactionalWorkspace.discard()
-            #expect(try await !fileSystem.exists(workspaceRoot), "Transactional workspace should be removed after discard")
+            let workspaceRoot = await staging.root
+            await staging.discard()
+            #expect(try await !fileSystem.exists(workspaceRoot), "Staging area should be removed after discard")
 
         case let .discardedState(expected):
-            let discarded = await transactionalWorkspace.isDiscarded
+            let discarded = await staging.isDiscarded
             #expect(discarded == expected, "Discarded state should be \(expected)")
 
         case .discardIsIdempotent:
-            await transactionalWorkspace.discard()
-            await transactionalWorkspace.discard()
-            await transactionalWorkspace.discard()
-            let discarded = await transactionalWorkspace.isDiscarded
+            await staging.discard()
+            await staging.discard()
+            await staging.discard()
+            let discarded = await staging.isDiscarded
             #expect(discarded, "Multiple discards should not throw")
 
         case .changeSummaryIgnoresGitDirectory:
-            // Modify files in transactional workspace: both .git and regular files
-            let workspaceRoot = await transactionalWorkspace.root
+            // Modify files in staging area: both .git and regular files
+            let workspaceRoot = await staging.root
             let gitConfigPath = workspaceRoot.appending(components: [".git", "config"])
             let gitNewFilePath = workspaceRoot.appending(components: [".git", "new-file"])
             let readmePath = workspaceRoot.appending(component: "README.md")
@@ -299,7 +299,7 @@ struct TransactionalWorkspaceContextTests {
             try await fileSystem.writeText("modified readme", at: readmePath)
 
             // Compute change summary
-            let summary = try await transactionalWorkspace.computeChangeSummary()
+            let summary = try await staging.computeChangeSummary()
 
             // Verify .git paths are not in the summary
             let allPaths = summary.added + summary.modified + summary.deleted
@@ -315,11 +315,11 @@ struct TransactionalWorkspaceContextTests {
     private func assertPathValidationFails(
         absolutePath: String,
         expectedErrorPath: String,
-        transactionalWorkspace: TransactionalWorkspaceContext
+        staging: StagingContext
     ) async throws {
         let path = try AbsolutePath(validating: absolutePath)
-        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
-            try await transactionalWorkspace.validatePath(path)
+        let error = await #expect(throws: StagingContext.Error.self) {
+            try await staging.validatePath(path)
         }
 
         guard case let .escapeAttempt(errorPath) = error else {
@@ -329,10 +329,10 @@ struct TransactionalWorkspaceContextTests {
         #expect(errorPath == expectedErrorPath, "Expected error path '\(expectedErrorPath)', got '\(errorPath)'")
     }
 
-    private func assertPathValidationFailsOutsideWorkspace(transactionalWorkspace: TransactionalWorkspaceContext) async {
-        let escapePath = await transactionalWorkspace.root.parentDirectory.appending(component: "outside")
-        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
-            try await transactionalWorkspace.validatePath(escapePath)
+    private func assertPathValidationFailsOutsideWorkspace(staging: StagingContext) async {
+        let escapePath = await staging.root.parentDirectory.appending(component: "outside")
+        let error = await #expect(throws: StagingContext.Error.self) {
+            try await staging.validatePath(escapePath)
         }
 
         guard case .escapeAttempt = error else {
@@ -341,28 +341,28 @@ struct TransactionalWorkspaceContextTests {
         }
     }
 
-    private func assertValidationFailsAfterDiscard(transactionalWorkspace: TransactionalWorkspaceContext) async {
-        let workspaceRoot = await transactionalWorkspace.root
-        await transactionalWorkspace.discard()
-        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
-            try await transactionalWorkspace.validatePath(workspaceRoot)
+    private func assertValidationFailsAfterDiscard(staging: StagingContext) async {
+        let workspaceRoot = await staging.root
+        await staging.discard()
+        let error = await #expect(throws: StagingContext.Error.self) {
+            try await staging.validatePath(workspaceRoot)
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }
 
-    private func assertComputeChangeSummaryFailsAfterDiscard(transactionalWorkspace: TransactionalWorkspaceContext) async {
-        await transactionalWorkspace.discard()
-        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
-            _ = try await transactionalWorkspace.computeChangeSummary()
+    private func assertComputeChangeSummaryFailsAfterDiscard(staging: StagingContext) async {
+        await staging.discard()
+        let error = await #expect(throws: StagingContext.Error.self) {
+            _ = try await staging.computeChangeSummary()
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }
 
-    private func assertApplyChangesFailsAfterDiscard(transactionalWorkspace: TransactionalWorkspaceContext) async {
-        await transactionalWorkspace.discard()
-        let error = await #expect(throws: TransactionalWorkspaceContext.Error.self) {
+    private func assertApplyChangesFailsAfterDiscard(staging: StagingContext) async {
+        await staging.discard()
+        let error = await #expect(throws: StagingContext.Error.self) {
             let emptyChanges = ChangeSummary(added: [], modified: [], deleted: [])
-            _ = try await transactionalWorkspace.applyChanges(emptyChanges, force: false)
+            _ = try await staging.applyChanges(emptyChanges, force: false)
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }

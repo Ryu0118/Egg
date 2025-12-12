@@ -1,8 +1,8 @@
-# Transactional Workflow Runner Implementation Plan
+# Staging Workflow Runner Implementation Plan
 
 ## Overview
 
-This document outlines the implementation plan for `TransactionalWorkflowRunner`, providing atomic all-or-nothing execution of the hatch lifecycle by running all operations in a transactional workspace (clone of working directory) with partial apply on success.
+This document outlines the implementation plan for `StagingWorkflowRunner`, providing atomic all-or-nothing execution of the hatch lifecycle by running all operations in a staging (clone of working directory) with partial apply on success.
 
 **Reference Documents:**
 - [SANDBOXED_WORKFLOW_DESIGN.md](./SANDBOXED_WORKFLOW_DESIGN.md) - Complete design specification
@@ -15,26 +15,26 @@ This document outlines the implementation plan for `TransactionalWorkflowRunner`
 Before starting implementation:
 - [ ] Review SANDBOXED_WORKFLOW_DESIGN.md in full
 - [ ] Understand existing `LifecycleWorkflowRunner` implementation
-- [ ] Understand `StepOutputsStorage` actor pattern (reference for TransactionalContext)
+- [ ] Understand `StepOutputsStorage` actor pattern (reference for StagingContext)
 - [ ] Understand FileSysteming protocol (APFS clone, path validation, etc.)
 
 ---
 
-## Phase 1: Foundation Layer (TransactionalContext + Nested Errors)
+## Phase 1: Foundation Layer (StagingContext + Nested Errors)
 
-> Directory layout note: transactional-specific sources live under `Sources/EggKit/WorkflowRunner/Transactional/`, legacy runner under `WorkflowRunner/NonTransactional/`, and shared utilities under `WorkflowRunner/Shared/`. Tests mirror the same structure beneath `Tests/EggKitTests/WorkflowRunner/`.
+> Directory layout note: staging-specific sources live under `Sources/EggKit/WorkflowRunner/Staging/`, legacy runner under `WorkflowRunner/NonStaging/`, and shared utilities under `WorkflowRunner/Shared/`. Tests mirror the same structure beneath `Tests/EggKitTests/WorkflowRunner/`.
 
-**Goal:** Create the core transactional workspace management components.
+**Goal:** Create the core staging management components.
 
-### 1.1 Create TransactionalContext.Error
+### 1.1 Create StagingContext.Error
 
 **Files:**
-- `Sources/EggKit/WorkflowRunner/Transactional/TransactionalError.swift`
-- `Sources/EggKit/WorkflowRunner/Transactional/ConflictInfo.swift`
-- `Sources/EggKit/WorkflowRunner/Transactional/ChangeSummary.swift`
+- `Sources/EggKit/WorkflowRunner/Staging/StagingError.swift`
+- `Sources/EggKit/WorkflowRunner/Staging/ConflictInfo.swift`
+- `Sources/EggKit/WorkflowRunner/Staging/ChangeSummary.swift`
 
 ```swift
-extension TransactionalContext {
+extension StagingContext {
 enum Error: LocalizedError, Equatable {
     case alreadyDiscarded
     case creationFailed(reason: String)
@@ -69,9 +69,9 @@ struct ChangeSummary {
 - [x] Add `Equatable` conformance for testing
 - [x] Test: Error equality and description formatting
 
-### 1.2 Create TransactionalContext Actor
+### 1.2 Create StagingContext Actor
 
-**File:** `Sources/EggKit/WorkflowRunner/Transactional/TransactionalContext.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Staging/StagingContext.swift`
 
 **Implementation Order:**
 
@@ -80,7 +80,7 @@ struct ChangeSummary {
 static func create(
     cloning workingDirectory: AbsolutePath,
     fileSystem: any FileSysteming
-) async throws -> TransactionalContext
+) async throws -> StagingContext
 ```
 - Create temp directory with prefix `egg-workspace-`
 - Use APFS clone (`clonefile()`) for instant copy-on-write copy
@@ -93,7 +93,7 @@ static func create(
 func validatePath(_ path: AbsolutePath) throws {
     let normalized = path.lexicallyNormalized()
     guard normalized.isDescendant(of: root) else {
-        throw TransactionalContext.Error.escapeAttempt(path: path.pathString)
+        throw StagingContext.Error.escapeAttempt(path: path.pathString)
     }
 }
 ```
@@ -128,7 +128,7 @@ func discard(fileSystem: any FileSysteming) async {
 
 ### 2.1 Dual watcher infrastructure
 
-**Goal:** Capture touched paths in both transactional workspace and working directory without scanning entire trees.
+**Goal:** Capture touched paths in both staging and working directory without scanning entire trees.
 
 Steps:
 1. Implement `WorkingDirectoryWatcher` abstraction (FSEvents on macOS) with `start()`, `stop()`, `drainEvents()` returning `Set<RelativePath>`. Because this feature targets macOS only, no cross-platform fallback is required.
@@ -160,7 +160,7 @@ Steps:
    - If `path` is in `workingTouched`, emit `ConflictInfo(type: .potentialOverlap)`
 5. **Handle conflicts**:
    - `isInteractive && !force`: display conflicts via Noora, prompt `Override these files?`; abort on negative response
-   - `!isInteractive && !force`: throw `TransactionalContext.Error.conflictingFiles`
+   - `!isInteractive && !force`: throw `StagingContext.Error.conflictingFiles`
    - `force=true`: proceed but record conflicts for warning output
 6. **Apply changes (targeted + staged)**:
    - For each path in `ChangeEntry`, materialize the new/removed state inside a temporary `applyStaging` directory located under the workspace root.
@@ -191,7 +191,7 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 - **Error handling**:
   - If staging fails, abort before touching the real working directory and surface the error.
   - If applying fails halfway, use the inverse manifest to undo any writes already performed (or leave the working directory untouched when failure occurs prior to starting).
-  - Scope staging-specific failures to `ApplyStagingArea.Error` (nested enum) so that callers only need to reason about workspace-level errors (`TransactionalContext.Error`) vs. staging internals. The valid cases focus on rollback failures and missing staged artifacts; high-level lifecycle state is tracked by `TransactionalContext`.
+  - Scope staging-specific failures to `ApplyStagingArea.Error` (nested enum) so that callers only need to reason about workspace-level errors (`StagingContext.Error`) vs. staging internals. The valid cases focus on rollback failures and missing staged artifacts; high-level lifecycle state is tracked by `StagingContext`.
 - **Extra considerations**:
   - Validate available disk space before staging large trees (compare `du` of change set vs. free space).
   - Normalize ownership/permissions so staged artifacts exactly match the workspace equivalents.
@@ -219,7 +219,7 @@ Create a dedicated helper type (struct or class) responsible for managing the te
 
 ## Phase 3: Protocol and Existing Component Updates
 
-**Goal:** Create WorkflowRunning protocol and update existing components for transactional workspace support.
+**Goal:** Create WorkflowRunning protocol and update existing components for staging support.
 
 ### 3.1 Create WorkflowRunning Protocol
 
@@ -285,18 +285,18 @@ init(
 
 ---
 
-## Phase 4: TransactionalWorkflowRunner Implementation
+## Phase 4: StagingWorkflowRunner Implementation
 
 **Goal:** Create the main orchestrator that ties everything together.
 
-### 4.1 Create TransactionalWorkflowRunner
+### 4.1 Create StagingWorkflowRunner
 
-**File:** `Sources/EggKit/WorkflowRunner/Transactional/TransactionalWorkflowRunner.swift`
+**File:** `Sources/EggKit/WorkflowRunner/Staging/StagingWorkflowRunner.swift`
 
 **Structure:**
 
 ```swift
-struct TransactionalWorkflowRunner: WorkflowRunning {
+struct StagingWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileSystem: any FileSysteming
     private let workingDirectory: AbsolutePath
@@ -315,9 +315,9 @@ struct TransactionalWorkflowRunner: WorkflowRunning {
 
 **Implementation Order:**
 
-1. **Transactional Workspace creation:**
+1. **Staging creation:**
 ```swift
-let workspace = try await TransactionalContext.create(
+let workspace = try await StagingContext.create(
     cloning: workingDirectory,
     fileSystem: fileSystem
 )
@@ -326,7 +326,7 @@ let workspace = try await TransactionalContext.create(
 2. **Environment variables:**
 ```swift
 let workspaceEnv = [
-    "EGG_WORKSPACE_ROOT": workspace.root.pathString,
+    "STAGING_ROOT": workspace.root.pathString,
     "EGG_ORIGINAL_WORKING_DIR": workingDirectory.pathString
 ]
 ```
@@ -375,7 +375,7 @@ if !force {
     let confirmed = await noora.confirm("Apply these changes?")
     guard confirmed else {
         await workspace.discard(fileSystem: fileSystem)
-        throw TransactionalContext.Error.userAborted
+        throw StagingContext.Error.userAborted
     }
 }
 ```
@@ -428,7 +428,7 @@ do {
 
 ## Phase 5: CLI Integration
 
-**Goal:** Integrate TransactionalWorkflowRunner into HatchRunner with `--no-transactional-workspace` and `--force` options.
+**Goal:** Integrate StagingWorkflowRunner into HatchRunner with `--no-staging` and `--force` options.
 
 ### 5.1 Update HatchRunner
 
@@ -436,11 +436,11 @@ do {
 
 **Changes:**
 
-1. **Add useTransactionalWorkspace and force parameters:**
+1. **Add useStaging and force parameters:**
 ```swift
 init(
     // ... existing params ...
-    useTransactionalWorkspace: Bool = true,
+    useStaging: Bool = true,
     force: Bool = false
 )
 ```
@@ -448,8 +448,8 @@ init(
 2. **Factory pattern for runner selection:**
 ```swift
 private func makeWorkflowRunner() -> any WorkflowRunning {
-    if useTransactionalWorkspace {
-        return TransactionalWorkflowRunner(
+    if useStaging {
+        return StagingWorkflowRunner(
             processRunner: processRunner,
             fileSystem: fileSystem,
             workingDirectory: workingDirectory,
@@ -459,17 +459,17 @@ private func makeWorkflowRunner() -> any WorkflowRunning {
             force: force
         )
     } else {
-        noora.warning("Running without transactional workspace; filesystem changes are permanent")
+        noora.warning("Running without staging; filesystem changes are permanent")
         return LifecycleWorkflowRunner(...)
     }
 }
 ```
 
 **Checklist:**
-- [x] Add `useTransactionalWorkspace` and `force` parameters to HatchRunner
+- [x] Add `useStaging` and `force` parameters to HatchRunner
 - [x] Implement runner factory method
-- [x] Pass `force` to TransactionalWorkflowRunner
-- [x] Add warning for no-transactional-workspace mode
+- [x] Pass `force` to StagingWorkflowRunner
+- [x] Add warning for no-staging mode
 - [x] Tests: Runner selection, force mode behavior
 
 ### 5.2 Update CLI Hatch Command
@@ -478,8 +478,8 @@ private func makeWorkflowRunner() -> any WorkflowRunning {
 
 **Changes:**
 ```swift
-@Flag(name: .long, help: "Disable transactional workspace (filesystem changes are permanent)")
-var noTransactionalWorkspace: Bool = false
+@Flag(name: .long, help: "Disable staging (filesystem changes are permanent)")
+var noStaging: Bool = false
 
 @Flag(name: .long, help: "Skip confirmation and override conflicts with warning")
 var force: Bool = false
@@ -489,17 +489,17 @@ Pass to HatchRunner:
 ```swift
 let runner = HatchRunner(
     // ... existing params ...
-    useTransactionalWorkspace: !noTransactionalWorkspace,
+    useStaging: !noStaging,
     force: force
 )
 ```
 
 **Checklist:**
-- [x] Add `--no-transactional-workspace` flag
+- [x] Add `--no-staging` flag
 - [x] Add `--force` flag
 - [x] Pass both flag values to HatchRunner
 - [x] Update help text for both flags
-- [x] Integration test: transactional workspace + no-transactional-workspace + force combinations
+- [x] Integration test: staging + no-staging + force combinations
 
 ---
 
@@ -510,12 +510,12 @@ let runner = HatchRunner(
 ### 6.1 Unit Tests
 
 **New Test Files:**
-- `Tests/EggKitTests/WorkflowRunner/TransactionalContextTests.swift`
-- `Tests/EggKitTests/WorkflowRunner/TransactionalWorkflowRunnerTests.swift`
+- `Tests/EggKitTests/WorkflowRunner/StagingContextTests.swift`
+- `Tests/EggKitTests/WorkflowRunner/StagingWorkflowRunnerTests.swift`
 
 **Test Categories:**
 
-1. **TransactionalContext Tests:**
+1. **StagingContext Tests:**
    - [ ] Creation clones all files
    - [ ] Baseline hashes computed correctly
    - [ ] Path validation: valid paths
@@ -529,7 +529,7 @@ let runner = HatchRunner(
    - [ ] Apply: conflict detection (deletedButModified)
    - [ ] Apply: empty working directory
 
-2. **TransactionalWorkflowRunner Tests:**
+2. **StagingWorkflowRunner Tests:**
    - [ ] Full workflow success (with user confirmation)
    - [ ] Force mode skips confirmation
    - [ ] User abort discards workspace
@@ -544,14 +544,14 @@ let runner = HatchRunner(
 3. **Integration Tests:**
    - [ ] End-to-end with real filesystem (user confirms)
    - [ ] --force flag skips confirmation
-   - [ ] --no-transactional-workspace flag works
+   - [ ] --no-staging flag works
    - [ ] APFS clone performance (instant for large directories)
    - [ ] Symlink handling
 
 ### 6.2 Documentation Updates
 
 - [ ] Update README with workspace feature
-- [ ] Document --no-transactional-workspace flag
+- [ ] Document --no-staging flag
 - [ ] Document conflict resolution workflow
 - [ ] Add examples of workspace behavior
 
@@ -567,10 +567,10 @@ let runner = HatchRunner(
 
 | Phase | Components | Dependencies | Estimated Complexity |
 |-------|------------|--------------|---------------------|
-| 1 | TransactionalContext.Error, TransactionalContext (basic) | FileSysteming | Medium |
+| 1 | StagingContext.Error, StagingContext (basic) | FileSysteming | Medium |
 | 2 | Hash computation, Apply changes | Phase 1 | High |
 | 3 | WorkflowRunning protocol, Updates | Existing code | Low |
-| 4 | TransactionalWorkflowRunner | Phases 1-3 | High |
+| 4 | StagingWorkflowRunner | Phases 1-3 | High |
 | 5 | CLI integration | Phase 4 | Low |
 | 6 | Testing, documentation | Phases 1-5 | Medium |
 
@@ -586,15 +586,15 @@ let runner = HatchRunner(
 
 ### Functional Requirements
 
-- [ ] Transactional Workspace clones working directory instantly (APFS clone)
+- [ ] Staging clones working directory instantly (APFS clone)
 - [ ] All phases execute within workspace
 - [ ] Escape attempts are detected and blocked
 - [ ] Change summary displayed before apply
 - [ ] User confirmation required (unless --force)
 - [ ] Partial apply only changes modified files
 - [ ] Conflicts detected with clear error messages
-- [ ] Transactional Workspace discarded on failure or user abort
-- [ ] --no-transactional-workspace falls back to legacy behavior
+- [ ] Staging discarded on failure or user abort
+- [ ] --no-staging falls back to legacy behavior
 - [ ] --force skips confirmation and overrides conflicts with warning
 
 ### Non-Functional Requirements
@@ -606,10 +606,10 @@ let runner = HatchRunner(
 
 ### Test Coverage
 
-- [ ] All `TransactionalContext.Error` cases covered (including userAborted)
-- [ ] TransactionalContext: creation, validation, change summary, apply, discard
-- [ ] TransactionalWorkflowRunner: success, user confirmation, user abort, force mode
-- [ ] CLI integration: --no-transactional-workspace, --force, combined flags
+- [ ] All `StagingContext.Error` cases covered (including userAborted)
+- [ ] StagingContext: creation, validation, change summary, apply, discard
+- [ ] StagingWorkflowRunner: success, user confirmation, user abort, force mode
+- [ ] CLI integration: --no-staging, --force, combined flags
 
 ---
 
@@ -649,25 +649,25 @@ None required - using:
 
 | File | Description |
 |------|-------------|
-| `WorkflowRunner/Transactional/TransactionalError.swift` | Nested error types for transactional workspace operations |
-| `WorkflowRunner/Transactional/TransactionalContext.swift` | Actor managing transactional workspace lifecycle |
-| `WorkflowRunner/Transactional/TransactionalWorkflowRunner.swift` | Main orchestrator |
-| `WorkflowRunner/Transactional/ApplyStagingArea.swift` | Helper managing staged diff + rollback |
-| `WorkflowRunner/Transactional/WorkingDirectoryWatcher.swift` | Dual FSEvents implementation |
+| `WorkflowRunner/Staging/StagingError.swift` | Nested error types for staging operations |
+| `WorkflowRunner/Staging/StagingContext.swift` | Actor managing staging lifecycle |
+| `WorkflowRunner/Staging/StagingWorkflowRunner.swift` | Main orchestrator |
+| `WorkflowRunner/Staging/ApplyStagingArea.swift` | Helper managing staged diff + rollback |
+| `WorkflowRunner/Staging/WorkingDirectoryWatcher.swift` | Dual FSEvents implementation |
 | `WorkflowRunner/Shared/WorkflowRunning.swift` | Protocol for workflow runners |
-| `Tests/EggKitTests/WorkflowRunner/Transactional/TransactionalContextTests.swift` | Unit tests for TransactionalContext |
-| `Tests/EggKitTests/WorkflowRunner/Transactional/TransactionalWorkflowRunnerTests.swift` | Unit tests for runner |
-| `Tests/EggKitTests/WorkflowRunner/Transactional/ApplyStagingAreaTests.swift` | Unit tests for staging helper |
+| `Tests/EggKitTests/WorkflowRunner/Staging/StagingContextTests.swift` | Unit tests for StagingContext |
+| `Tests/EggKitTests/WorkflowRunner/Staging/StagingWorkflowRunnerTests.swift` | Unit tests for runner |
+| `Tests/EggKitTests/WorkflowRunner/Staging/ApplyStagingAreaTests.swift` | Unit tests for staging helper |
 
 ### Modified Files
 
 | File | Changes |
 |------|---------|
-| `WorkflowRunner/NonTransactional/LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
+| `WorkflowRunner/NonStaging/LifecycleWorkflowRunner.swift` | Add WorkflowRunning conformance |
 | `WorkflowRunner/Shared/LifecycleStepRunner.swift` | Add additionalEnvironment parameter |
 | `WorkflowRunner/Shared/ShellScriptRunner.swift` | Add additionalEnvironment parameter |
-| `HatchRunner.swift` | Add useTransactionalWorkspace and force parameters, runner factory |
-| `EggCLI/Commands/HatchCommand.swift` | Add --no-transactional-workspace and --force flags |
+| `HatchRunner.swift` | Add useStaging and force parameters, runner factory |
+| `EggCLI/Commands/HatchCommand.swift` | Add --no-staging and --force flags |
 
 ---
 

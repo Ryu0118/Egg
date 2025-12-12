@@ -14,7 +14,7 @@ struct GitDiffRunnerIntegrationTests {
     func computeChanges(_ testCase: TestCase) async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "git-diff-runner-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
-            let workspaceDir = tempRoot.appending(component: "transactional")
+            let workspaceDir = tempRoot.appending(component: "staging")
 
             try await setupDirectory(workingDir, files: testCase.workingFiles)
             try await setupDirectory(workspaceDir, files: testCase.workspaceFiles)
@@ -262,7 +262,7 @@ struct GitDiffRunnerIntegrationTests {
     func directoryPathsAreSkipped() async throws {
         try await fileSystem.withTemporaryDirectory(prefix: "git-diff-dir-skip-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
-            let workspaceDir = tempRoot.appending(component: "transactional")
+            let workspaceDir = tempRoot.appending(component: "staging")
 
             // Setup: both directories have identical content in Tests/EggKitTests/
             // but we'll include the directory path "Tests/EggKitTests" in targetPaths
@@ -291,9 +291,9 @@ struct GitDiffRunnerIntegrationTests {
 
             // Include a directory path in targetPaths - this should be skipped
             // In practice, this happens when FSEvents reports directory-level changes
-            let targetPaths: Set<RelativePath> = [
-                try RelativePath(validating: "Tests/EggKitTests"), // directory - should be skipped
-                try RelativePath(validating: "Sources/main.swift"), // file - should be processed
+            let targetPaths: Set<RelativePath> = try [
+                RelativePath(validating: "Tests/EggKitTests"), // directory - should be skipped
+                RelativePath(validating: "Sources/main.swift"), // file - should be processed
             ]
 
             let runner = GitDiffRunner(
