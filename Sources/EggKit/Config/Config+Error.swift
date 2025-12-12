@@ -6,6 +6,7 @@ extension ConfigValidator {
         case macroNameEmpty(context: String)
         case macroDescriptionEmpty(context: String)
         case invalidMacroNameFormat(context: String, name: String)
+        case reservedMacroName(context: String, name: String)
         case duplicateMacroName(context: String, name: String)
         case choiceTypeMissingChoices(context: String, name: String)
         case choiceTypeEmptyChoices(context: String, name: String)
@@ -39,6 +40,8 @@ extension ConfigValidator {
                 "\(context): Macro description cannot be empty."
             case let .invalidMacroNameFormat(context, name):
                 "\(context): Macro name '\(name)' must be in the format '___MACRO_NAME___' (three underscores, uppercase letters)."
+            case let .reservedMacroName(context, name):
+                "\(context): Macro name '\(name)' is reserved for built-in macros and cannot be used."
             case let .duplicateMacroName(context, name):
                 "\(context): Duplicate macro name '\(name)'."
             case let .choiceTypeMissingChoices(context, name):

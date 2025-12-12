@@ -92,8 +92,8 @@ private extension BuiltInMacros {
     }
 
     static func makePattern(for macro: BuiltInMacro) -> Regex<AnyRegexOutput> {
-        if macro.acceptsFormat {
-            // Match both ___NAME___ and ___NAME(format)___
+        if macro.acceptsArgument {
+            // Match both ___NAME___ and ___NAME(arg)___
             let baseName = String(macro.name.dropFirst(3).dropLast(3)) // DATE
             let pattern = "___\(baseName)(?:\\([^)]+\\))?___"
             return try! Regex(pattern).matchingSemantics(.graphemeCluster)

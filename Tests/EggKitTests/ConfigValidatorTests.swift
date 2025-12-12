@@ -247,6 +247,20 @@ struct ConfigValidatorTests {
                 expected: .success
             ),
             TestCase(
+                description: "passes with built-in macros referenced in run command",
+                config: Config(
+                    name: "TestTemplate",
+                    description: "Test",
+                    macros: nil,
+                    preHatch: [
+                        Config.LifecycleStep(run: "echo ___DATE___ ___YEAR___ ___SYSTEM_USER___ ___UUID___"),
+                    ],
+                    hatch: Config.HatchConfig(output: "output"),
+                    postHatch: nil
+                ),
+                expected: .success
+            ),
+            TestCase(
                 description: "fails when template name violates validation rules",
                 config: makeValidConfig(name: "/invalid"),
                 expected: .failure([
@@ -288,6 +302,42 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .duplicateMacroName(context: "macros[1]", name: "___DUP___"),
+                ])
+            ),
+            TestCase(
+                description: "detects reserved macro name ___DATE___",
+                config: makeValidConfig(macros: [
+                    Config.Macro(name: "___DATE___", description: "desc"),
+                ]),
+                expected: .failure([
+                    .reservedMacroName(context: "macros[0]", name: "___DATE___"),
+                ])
+            ),
+            TestCase(
+                description: "detects reserved macro name ___YEAR___",
+                config: makeValidConfig(macros: [
+                    Config.Macro(name: "___YEAR___", description: "desc"),
+                ]),
+                expected: .failure([
+                    .reservedMacroName(context: "macros[0]", name: "___YEAR___"),
+                ])
+            ),
+            TestCase(
+                description: "detects reserved macro name ___SYSTEM_USER___",
+                config: makeValidConfig(macros: [
+                    Config.Macro(name: "___SYSTEM_USER___", description: "desc"),
+                ]),
+                expected: .failure([
+                    .reservedMacroName(context: "macros[0]", name: "___SYSTEM_USER___"),
+                ])
+            ),
+            TestCase(
+                description: "detects reserved macro name ___UUID___",
+                config: makeValidConfig(macros: [
+                    Config.Macro(name: "___UUID___", description: "desc"),
+                ]),
+                expected: .failure([
+                    .reservedMacroName(context: "macros[0]", name: "___UUID___"),
                 ])
             ),
             TestCase(

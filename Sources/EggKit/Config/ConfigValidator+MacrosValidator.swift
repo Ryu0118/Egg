@@ -10,7 +10,7 @@ extension ConfigValidator {
                 let context = "macros[\(index)]"
 
                 errors += validateRequiredFields(macro, context: context)
-                    + validateMacroName(macro, context: context).asErrors
+                    + validateMacroName(macro, context: context)
                     + validateMacroType(macro, context: context)
                     + validateMacroValidation(macro, context: context).asErrors
             }
@@ -81,12 +81,22 @@ extension ConfigValidator {
             return errors
         }
 
-        private func validateMacroName(_ macro: Config.Macro, context: String) -> Error? {
+        private func validateMacroName(_ macro: Config.Macro, context: String) -> [Error] {
             guard !macro.name.isEmpty else {
-                return nil
+                return []
             }
 
-            return !isValidMacroName(macro.name) ? .invalidMacroNameFormat(context: context, name: macro.name) : nil
+            var errors: [Error] = []
+
+            if !isValidMacroName(macro.name) {
+                errors.append(.invalidMacroNameFormat(context: context, name: macro.name))
+            }
+
+            if BuiltInMacros.isReserved(macro.name) {
+                errors.append(.reservedMacroName(context: context, name: macro.name))
+            }
+
+            return errors
         }
 
         private func validateMacroNameUniqueness(_ macros: [Config.Macro]) -> [Error] {
@@ -231,7 +241,11 @@ extension ConfigValidator {
             let referencedMacros = extractMacroReferences(from: text)
 
             return referencedMacros.compactMap { macroName in
-                definedMacroNames.contains(macroName) ? nil : Error.undefinedMacroReferenced(context: context, macroName: macroName)
+                // Built-in macros are always available
+                if BuiltInMacros.isReserved(macroName) {
+                    return nil
+                }
+                return definedMacroNames.contains(macroName) ? nil : Error.undefinedMacroReferenced(context: context, macroName: macroName)
             }
         }
 
