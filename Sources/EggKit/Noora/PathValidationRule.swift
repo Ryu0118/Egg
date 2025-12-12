@@ -1,13 +1,12 @@
 import Foundation
 import Noora
-import Path
 
 package struct PathValidationRule: ValidatableRule {
     package let error: any ValidatableError
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
+    private let workingDirectory: URL
+    private let homeDirectory: URL
 
-    package init(workingDirectory: AbsolutePath, homeDirectory: AbsolutePath, error: String) {
+    package init(workingDirectory: URL, homeDirectory: URL, error: String) {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.error = error
@@ -18,7 +17,7 @@ package struct PathValidationRule: ValidatableRule {
 
         // Try to resolve the path
         do {
-            let _ = try resolveToAbsolutePath(
+            let _ = try resolveToAbsoluteURL(
                 input,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory

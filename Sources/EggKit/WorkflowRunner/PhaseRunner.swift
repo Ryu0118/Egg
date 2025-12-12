@@ -1,7 +1,6 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 /// Executes individual workflow phases (pre_hatch, hatch, post_hatch).
@@ -14,7 +13,7 @@ import ProcessRunning
 /// ```swift
 /// let phaseRunner = PhaseRunner(
 ///     processRunner: ProcessRunner(),
-///     fileSystem: FileSystem(),
+///     fileManager: FileManager.default,
 ///     homeDirectory: homeDir,
 ///     noora: Noora(),
 ///     isInteractive: true,
@@ -30,22 +29,22 @@ import ProcessRunning
 /// ```
 struct PhaseRunner {
     private let processRunner: any ProcessRunning
-    private let fileSystem: any FileSysteming
-    private let homeDirectory: AbsolutePath
+    private let fileManager: any FileManagerProtocol
+    private let homeDirectory: URL
     private let noora: any Noorable
     private let isInteractive: Bool
     private let override: Bool
 
     init(
         processRunner: any ProcessRunning,
-        fileSystem: any FileSysteming,
-        homeDirectory: AbsolutePath,
-        noora: any Noorable,
+        fileManager: some FileManagerProtocol,
+        homeDirectory: URL,
+        noora: some Noorable,
         isInteractive: Bool,
         override: Bool
     ) {
         self.processRunner = processRunner
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.homeDirectory = homeDirectory
         self.noora = noora
         self.isInteractive = isInteractive
@@ -68,7 +67,7 @@ struct PhaseRunner {
         steps: [Config.LifecycleStep],
         macros: [ResolvedMacro],
         outputs: StepOutputsStorage,
-        workingDirectory: AbsolutePath,
+        workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .normal
     ) async throws {
@@ -107,17 +106,17 @@ struct PhaseRunner {
         config: Config,
         macros: [ResolvedMacro],
         outputs: StepOutputsStorage,
-        templateDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        pathValidator: ((AbsolutePath) async throws -> Void)? = nil
-    ) async throws -> AbsolutePath {
+        templateDirectory: URL,
+        workingDirectory: URL,
+        pathValidator: ((URL) async throws -> Void)? = nil
+    ) async throws -> URL {
         noora.passthrough("🐣 Hatching \(config.name)...\n")
 
         // Resolve macros in the output path first
         let resolver = VariableResolver(macros: macros, outputs: outputs)
         let resolvedOutput = try await resolver.resolve(config.hatch.output)
 
-        let outputDirectory = try resolveToAbsolutePath(
+        let outputDirectory = try resolveToAbsoluteURL(
             resolvedOutput,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -131,12 +130,12 @@ struct PhaseRunner {
         // Safety check: output cannot be same as template
         if outputDirectory == templateDirectory {
             throw LifecycleStepError.invalidOutputDirectory(
-                "Output directory cannot be the same as template directory: \(outputDirectory.pathString)"
+                "Output directory cannot be the same as template directory: \(outputDirectory.path(percentEncoded: false))"
             )
         }
 
         let expander = TemplateExpander(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             templateDirectory: templateDirectory,
             outputDirectory: outputDirectory,
             noora: noora,
@@ -169,7 +168,7 @@ struct PhaseRunner {
         steps: [Config.LifecycleStep],
         macros: [ResolvedMacro],
         outputs: StepOutputsStorage,
-        workingDirectory: AbsolutePath,
+        workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .normal
     ) async throws {

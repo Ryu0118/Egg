@@ -1,16 +1,15 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import Yams
 
 package struct DuplicateRunner {
     private let mode: DuplicateRunnerMode
     private let templateLocation: TemplateLocation
     private let templatesFinder: TemplatesFinder
-    private let projectDirectory: AbsolutePath
-    private let workingDirectory: AbsolutePath
-    private let fileSystem: any FileSysteming
+    private let projectDirectory: URL
+    private let workingDirectory: URL
+    private let fileManager: any FileManagerProtocol
     private let noora: any Noorable
 
     let decoder = YAMLDecoder()
@@ -19,12 +18,12 @@ package struct DuplicateRunner {
 
     package init(
         mode: DuplicateRunnerMode,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming,
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora()
-    ) async {
+    ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory
         )
@@ -32,10 +31,10 @@ package struct DuplicateRunner {
         self.templateLocation = templateLocation
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.noora = noora
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -48,7 +47,7 @@ package struct DuplicateRunner {
             try await runInteractiveMode()
         case let .direct(_, sourcePath, sourceLocation, newName, newDescription):
             try await duplicateTemplate(
-                sourcePath: AbsolutePath(validating: sourcePath),
+                sourcePath: URL(fileURLWithPath: sourcePath),
                 sourceLocation: sourceLocation,
                 newName: newName,
                 newDescription: newDescription
@@ -162,7 +161,7 @@ package struct DuplicateRunner {
     }
 
     private func duplicateTemplate(
-        sourcePath: AbsolutePath,
+        sourcePath: URL,
         sourceLocation: TemplateLocationType,
         newName: String,
         newDescription: String
@@ -171,31 +170,31 @@ package struct DuplicateRunner {
         let targetPath = templateLocation.template(newName, type: sourceLocation)
 
         // Ensure target directory doesn't exist
-        guard try !(await fileSystem.exists(targetPath)) else {
+        guard !fileManager.fileExists(atPath: targetPath.path) else {
             throw Error.targetAlreadyExists(name: newName)
         }
 
         // Copy entire template directory
-        try await fileSystem.copy(sourcePath, to: targetPath)
+        try fileManager.copyItem(at: sourcePath, to: targetPath)
 
         // Update config.yml with new name and description
-        let configPath = targetPath.appending(component: "config.yml")
+        let configPath = targetPath.appendingPathComponent("config.yml")
         try await updateConfig(
             at: configPath,
             newName: newName,
             newDescription: newDescription
         )
 
-        noora.success("Successfully duplicated template '\(newName)' at \(targetPath.pathString)")
+        noora.success("Successfully duplicated template '\(newName)' at \(targetPath.path)")
     }
 
     private func updateConfig(
-        at configPath: AbsolutePath,
+        at configPath: URL,
         newName: String,
         newDescription: String
     ) async throws {
         // Read existing config
-        let configData = try await fileSystem.readFile(at: configPath)
+        let configData = try fileManager.readFile(at: configPath)
         var config = try decoder.decode(Config.self, from: configData)
 
         // Update name and description
@@ -213,7 +212,7 @@ package struct DuplicateRunner {
         try await validator.validate(config)
 
         // Write updated config
-        try await fileSystem.writeAsYAML(config, at: configPath, encoder: encoder, options: [.overwrite])
+        try fileManager.writeAsYAML(config, at: configPath, encoder: encoder)
     }
 
     private func generateDefaultName(

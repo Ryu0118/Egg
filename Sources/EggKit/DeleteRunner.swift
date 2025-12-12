@@ -1,27 +1,26 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 
 package struct DeleteRunner {
     private let mode: DeleteRunnerMode
     private let templateLocation: TemplateLocation
     private let templatesFinder: TemplatesFinder
-    private let projectDirectory: AbsolutePath
-    private let workingDirectory: AbsolutePath
+    private let projectDirectory: URL
+    private let workingDirectory: URL
     private let force: Bool
-    private let fileSystem: any FileSysteming
+    private let fileManager: any FileManagerProtocol
     private let noora: any Noorable
 
     package init(
         mode: DeleteRunnerMode,
         force: Bool,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming,
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora()
-    ) async {
+    ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory
         )
@@ -30,10 +29,10 @@ package struct DeleteRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.force = force
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.noora = noora
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -60,16 +59,16 @@ package struct DeleteRunner {
             let templatePath = selectedOption.template.path
             let templateLocationType = selectedOption.location
 
-            try await confirmAndDelete(
+            try confirmAndDelete(
                 templateName: templateName,
                 path: templatePath,
                 location: templateLocationType
             )
 
         case let .direct(name, pathString, location):
-            try await confirmAndDelete(
+            try confirmAndDelete(
                 templateName: name,
-                path: AbsolutePath(validating: pathString),
+                path: URL(fileURLWithPath: pathString),
                 location: location
             )
         }
@@ -77,9 +76,9 @@ package struct DeleteRunner {
 
     private func confirmAndDelete(
         templateName: String,
-        path: AbsolutePath,
+        path: URL,
         location: TemplateLocationType
-    ) async throws {
+    ) throws {
         // Confirmation (skip if force is true)
         if !force {
             let confirm = noora.yesOrNoChoicePrompt(
@@ -93,12 +92,12 @@ package struct DeleteRunner {
             }
         }
 
-        try await deleteTemplate(at: path, name: templateName, location: location)
+        try deleteTemplate(at: path, name: templateName, location: location)
     }
 
-    private func deleteTemplate(at path: AbsolutePath, name: String, location: TemplateLocationType) async throws {
+    private func deleteTemplate(at path: URL, name: String, location: TemplateLocationType) throws {
         do {
-            try await fileSystem.remove(path)
+            try fileManager.removeItem(at: path)
             noora.success("Successfully deleted template '\(name)' from \(location.dir)")
         } catch {
             throw Error.deletionFailed(name: name, underlying: error)

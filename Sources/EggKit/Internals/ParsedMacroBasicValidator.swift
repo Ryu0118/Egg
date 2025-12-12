@@ -1,5 +1,4 @@
 import Foundation
-import Path
 
 /// Performs basic validation of parsed macro definitions without path resolution.
 ///

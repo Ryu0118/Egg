@@ -1,6 +1,5 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 import ProcessRunning
 import Subprocess
 
@@ -15,19 +14,19 @@ import Subprocess
 /// Uses `git diff --no-index` to compare directories without requiring a git repository.
 /// This leverages Git's efficient diff algorithm, rename detection, and large file handling.
 ///
-/// Note: Using nonisolated(unsafe) for fileSystem because FileSysteming protocol
+/// Note: Using nonisolated(unsafe) for fileManager because FileManagerProtocol
 /// is not Sendable but the concrete implementations are thread-safe. This allows
 /// GitDiffRunner to be created and used from actor-isolated contexts.
 struct GitDiffRunner {
     private let processRunner: any ProcessRunning
-    private let fileSystem: any FileSysteming
+    private let fileManager: any FileManagerProtocol
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),
-        fileSystem: any FileSysteming
+        fileManager: some FileManagerProtocol
     ) {
         self.processRunner = processRunner
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
     }
 
     /// Computes changes between staging and working directory for specific paths.
@@ -41,32 +40,33 @@ struct GitDiffRunner {
     ///   - targetPaths: Relative paths to compare (from watcher events)
     /// - Returns: Change summary with added, modified, and deleted files
     func computeChanges(
-        workspaceRoot: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        targetPaths: Set<RelativePath>
+        workspaceRoot: URL,
+        workingDirectory: URL,
+        targetPaths: Set<String>
     ) async throws -> ChangeSummary {
         guard !targetPaths.isEmpty else {
             return .none
         }
 
-        return try await fileSystem.withTemporaryDirectory(prefix: "egg-git-diff") { tempRoot in
-            let workingTemp = tempRoot.appending(component: "working")
-            let workspaceTemp = tempRoot.appending(component: "workspace")
+        let tempRoot = try fileManager.makeTemporaryDirectory(prefix: "egg-git-diff")
+        defer { try? fileManager.removeItem(at: tempRoot) }
 
-            let hasCopiedFiles = try await copyTargetPaths(
-                targetPaths,
-                workingDirectory: workingDirectory,
-                workspaceRoot: workspaceRoot,
-                workingTemp: workingTemp,
-                workspaceTemp: workspaceTemp
-            )
+        let workingTemp = tempRoot.appending(path: "working")
+        let workspaceTemp = tempRoot.appending(path: "workspace")
 
-            guard hasCopiedFiles else {
-                return .none
-            }
+        let hasCopiedFiles = try copyTargetPaths(
+            targetPaths,
+            workingDirectory: workingDirectory,
+            workspaceRoot: workspaceRoot,
+            workingTemp: workingTemp,
+            workspaceTemp: workspaceTemp
+        )
 
-            return try await runGitDiff(workingRoot: workingTemp, workspaceRoot: workspaceTemp)
+        guard hasCopiedFiles else {
+            return .none
         }
+
+        return try await runGitDiff(workingRoot: workingTemp, workspaceRoot: workspaceTemp)
     }
 
     /// Copies target paths from working directory and staging to temporary directories for comparison.
@@ -78,38 +78,38 @@ struct GitDiffRunner {
     ///
     /// - Returns: `true` if any files were copied, `false` otherwise.
     private func copyTargetPaths(
-        _ targetPaths: Set<RelativePath>,
-        workingDirectory: AbsolutePath,
-        workspaceRoot: AbsolutePath,
-        workingTemp: AbsolutePath,
-        workspaceTemp: AbsolutePath
-    ) async throws -> Bool {
-        try await fileSystem.makeDirectory(at: workingTemp)
-        try await fileSystem.makeDirectory(at: workspaceTemp)
+        _ targetPaths: Set<String>,
+        workingDirectory: URL,
+        workspaceRoot: URL,
+        workingTemp: URL,
+        workspaceTemp: URL
+    ) throws -> Bool {
+        try fileManager.createDirectory(at: workingTemp, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: workspaceTemp, withIntermediateDirectories: true)
 
         var copiedAny = false
 
         for relativePath in targetPaths {
-            let workingPath = workingDirectory.appending(relativePath)
-            let workspacePath = workspaceRoot.appending(relativePath)
+            let workingPath = workingDirectory.appending(path: relativePath)
+            let workspacePath = workspaceRoot.appending(path: relativePath)
 
             // Skip directories - only process files
             // FSEvents reports file changes individually, so directory-level events
             // don't need to trigger recursive copies which could include unchanged files
-            let isWorkingDirectory = try await fileSystem.exists(workingPath, isDirectory: true)
-            let isWorkspaceDirectory = try await fileSystem.exists(workspacePath, isDirectory: true)
+            let isWorkingDirectory = fileManager.isDirectory(at: workingPath)
+            let isWorkspaceDirectory = fileManager.isDirectory(at: workspacePath)
 
             if isWorkingDirectory || isWorkspaceDirectory {
                 continue
             }
 
-            let copiedWorking = try await fileSystem.copyIfExists(
+            let copiedWorking = try fileManager.copyIfExists(
                 from: workingPath,
-                to: workingTemp.appending(relativePath)
+                to: workingTemp.appending(path: relativePath)
             )
-            let copiedWorkspace = try await fileSystem.copyIfExists(
+            let copiedWorkspace = try fileManager.copyIfExists(
                 from: workspacePath,
-                to: workspaceTemp.appending(relativePath)
+                to: workspaceTemp.appending(path: relativePath)
             )
 
             if copiedWorking || copiedWorkspace {
@@ -121,16 +121,16 @@ struct GitDiffRunner {
     }
 
     private func runGitDiff(
-        workingRoot: AbsolutePath,
-        workspaceRoot: AbsolutePath
+        workingRoot: URL,
+        workspaceRoot: URL
     ) async throws -> ChangeSummary {
         let arguments = [
             "diff",
             "--no-index",
             "--name-status",
             "-z",
-            workingRoot.pathString,
-            workspaceRoot.pathString,
+            workingRoot.path,
+            workspaceRoot.path,
         ]
 
         let result = try await processRunner.run(
@@ -168,8 +168,8 @@ struct GitDiffRunner {
 
     private func parseNameStatusOutput(
         _ output: String,
-        workingRoot: AbsolutePath,
-        workspaceRoot: AbsolutePath
+        workingRoot: URL,
+        workspaceRoot: URL
     ) -> ChangeSummary {
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,

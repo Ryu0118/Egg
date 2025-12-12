@@ -1,26 +1,25 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 
 package struct CreateRunner {
     private let mode: CreateRunnerMode
     private let templateLocation: TemplateLocation
     private let templateCreator: TemplateCreator
     private let templatesFinder: TemplatesFinder
-    private let projectDirectory: AbsolutePath
-    private let workingDirectory: AbsolutePath
+    private let projectDirectory: URL
+    private let workingDirectory: URL
     private let noora: any Noorable
 
     package init(
         mode: CreateRunnerMode,
         skipConfig: Bool,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming,
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora()
-    ) async {
+    ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory
         )
@@ -32,10 +31,10 @@ package struct CreateRunner {
         templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
-            fileSystem: fileSystem
+            fileManager: fileManager
         )
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -56,7 +55,7 @@ package struct CreateRunner {
                 ]
             )
 
-            guard try !(await templatesFinder.exists(templateName)) else {
+            guard !templatesFinder.exists(templateName) else {
                 throw Error.templateAlreadyExists
             }
 
@@ -105,8 +104,8 @@ package struct CreateRunner {
         }
     }
 
-    private func successLog(name: String, templateDir: AbsolutePath) {
-        noora.success("Successfully created template '\(name)' at \(templateDir.pathString)")
+    private func successLog(name: String, templateDir: URL) {
+        noora.success("Successfully created template '\(name)' at \(templateDir.path)")
     }
 
     enum Error: LocalizedError {

@@ -1,5 +1,4 @@
 import Foundation
-import Path
 
 package struct TemplateWithLocation: CustomStringConvertible, Equatable {
     let template: Template

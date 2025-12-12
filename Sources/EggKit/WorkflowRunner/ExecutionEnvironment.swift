@@ -1,4 +1,4 @@
-import Path
+import Foundation
 
 /// Defines the execution environment for shell commands.
 ///
@@ -14,5 +14,5 @@ enum ExecutionEnvironment {
     /// - Parameters:
     ///   - root: The staging workspace root directory where write access is allowed
     ///   - originalWorkingDirectory: The original working directory to block writes to
-    case staging(root: AbsolutePath, originalWorkingDirectory: AbsolutePath)
+    case staging(root: URL, originalWorkingDirectory: URL)
 }

@@ -1,11 +1,10 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import Yams
 
 struct TemplateCreator {
-    let fileSystem: any FileSysteming
+    let fileManager: any FileManagerProtocol
     let skipConfig: Bool
     let validator = ConfigValidator()
     let templateLocating: any TemplateLocating
@@ -13,9 +12,9 @@ struct TemplateCreator {
     init(
         skipConfig: Bool,
         templateLocating: some TemplateLocating,
-        fileSystem: some FileSysteming
+        fileManager: some FileManagerProtocol
     ) {
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.skipConfig = skipConfig
         self.templateLocating = templateLocating
     }
@@ -23,14 +22,14 @@ struct TemplateCreator {
     func create(_ name: String, description: String, in locationType: TemplateLocationType) async throws {
         let templateDir = templateLocating.template(name, type: locationType)
 
-        var createdPaths: [AbsolutePath] = []
+        var createdPaths: [URL] = []
         var directoryCreated = false
 
         do {
-            try await fileSystem.makeDirectory(at: templateDir, options: [.createTargetParentDirectories])
+            try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
             directoryCreated = true
 
-            let filePath = try await createDefaultFile(templateDir)
+            let filePath = try createDefaultFile(templateDir)
             createdPaths.append(filePath)
 
             let configPath = try await createDefaultConfig(templateDir, name: name, description: description)
@@ -38,21 +37,21 @@ struct TemplateCreator {
         } catch {
             // Rollback: delete all created files and directory on failure
             for path in createdPaths.reversed() {
-                try? await fileSystem.remove(path)
+                try? fileManager.removeItem(at: path)
             }
             if directoryCreated {
-                try? await fileSystem.remove(templateDir)
+                try? fileManager.removeItem(at: templateDir)
             }
             throw error
         }
     }
 
     private func createDefaultConfig(
-        _ templateDir: AbsolutePath,
+        _ templateDir: URL,
         name: String,
         description: String
-    ) async throws -> AbsolutePath {
-        let defaultConfigPath = templateDir.appending(component: "config.yml")
+    ) async throws -> URL {
+        let defaultConfigPath = templateDir.appendingPathComponent("config.yml")
         let yamlContent = """
         name: \(name)
         description: \(description)
@@ -93,12 +92,12 @@ struct TemplateCreator {
         } catch {
             throw Error.invalidNameOrDescription
         }
-        try await fileSystem.writeText(yamlContent, at: defaultConfigPath)
+        try fileManager.writeText(yamlContent, at: defaultConfigPath)
         return defaultConfigPath
     }
 
-    private func createDefaultFile(_ templateDir: AbsolutePath) async throws -> AbsolutePath {
-        let defaultFilePath = templateDir.appending(component: "___FILE_NAME___View.swift")
+    private func createDefaultFile(_ templateDir: URL) throws -> URL {
+        let defaultFilePath = templateDir.appendingPathComponent("___FILE_NAME___View.swift")
         let defaultFileContent = """
         // Available default macros:
         //   - ___DATE___: Current date in default format
@@ -115,7 +114,7 @@ struct TemplateCreator {
             }
         }
         """
-        try await fileSystem.writeText(defaultFileContent, at: defaultFilePath)
+        try fileManager.writeText(defaultFileContent, at: defaultFilePath)
         return defaultFilePath
     }
 

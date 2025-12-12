@@ -1,7 +1,7 @@
-import Path
+import Foundation
 
 package struct Template: Equatable {
-    let path: AbsolutePath
+    let path: URL
     let config: Config
     let isValid: Bool
 }

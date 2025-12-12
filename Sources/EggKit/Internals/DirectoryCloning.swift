@@ -12,7 +12,7 @@ public protocol DirectoryCloning: Sendable {
     ///   - source: The source URL to clone from
     ///   - destination: The destination URL to clone to
     /// - Throws: An error if the cloning operation fails
-    func clone(from source: URL, to destination: URL) throws
+    func clone(from source: URL, to destination: URL) async throws
 }
 
 /// APFS-based directory cloner using copy-on-write semantics.
@@ -33,7 +33,7 @@ public protocol DirectoryCloning: Sendable {
 public struct APFSDirectoryCloner: DirectoryCloning, Sendable {
     public init() {}
 
-    public func clone(from source: URL, to destination: URL) throws {
+    public func clone(from source: URL, to destination: URL) async throws {
         guard source.isFileURL, destination.isFileURL else {
             throw CloningError.invalidURL
         }

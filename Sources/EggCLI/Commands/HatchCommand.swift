@@ -1,6 +1,6 @@
 import ArgumentParser
 import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 
 package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
@@ -37,7 +37,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Flag(name: .long, help: "Override conflicts and overwrite existing files without prompting.")
     package var override: Bool = false
 
-    package static let fileSystem = FileSystem()
+    package static let fileManager: any FileManagerProtocol = FileManager.default
 
     package init() {}
 
@@ -46,10 +46,10 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
 
         try await HatchRunner(
             mode: mode,
-            workingDirectory: Self.fileSystem.currentWorkingDirectory(),
-            homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-            projectDirectory: resolveProjectDirectory(),
-            fileSystem: Self.fileSystem,
+            workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+            projectDirectory: try await resolveProjectDirectory(),
+            fileManager: Self.fileManager,
             useStaging: !noStaging,
             override: override
         ).run()
@@ -60,10 +60,10 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             return try await HatchArgumentsValidator(
                 templateName: templateName,
                 macros: macros,
-                projectDirectory: resolveProjectDirectory(),
-                workingDirectory: Self.fileSystem.currentWorkingDirectory(),
-                homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                fileSystem: Self.fileSystem
+                projectDirectory: try await resolveProjectDirectory(),
+                workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
+                homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                fileManager: Self.fileManager
             ).validate()
         } catch {
             throw ValidationError(error.localizedDescription)

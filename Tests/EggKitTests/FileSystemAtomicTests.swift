@@ -1,5 +1,5 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Path
 import Testing
@@ -7,18 +7,18 @@ import Testing
 struct FileSystemAtomicTests {
     @Test(arguments: TestCase.allCases)
     func withAtomicCopyAndWrite(_ testCase: TestCase) async throws {
-        let fileSystem = FileSystem()
-        let tempBase = try await fileSystem.makeTemporaryDirectory(prefix: "atomic-test")
+        let fileManager = FileManager.default
+        let tempBase = try await fileManager.makeTemporaryDirectory(prefix: "atomic-test")
 
         defer {
-            Task { try? await fileSystem.remove(tempBase) }
+            Task { try? await fileManager.remove(tempBase) }
         }
 
         let sourceDir = tempBase.appending(component: "source")
         let destDir = tempBase.appending(component: "dest")
 
-        try await setupSource(testCase.sourceSetup, in: sourceDir, using: fileSystem)
-        try await setupDestination(testCase.destSetup, in: destDir, using: fileSystem)
+        try await setupSource(testCase.sourceSetup, in: sourceDir, using: fileManager)
+        try await setupDestination(testCase.destSetup, in: destDir, using: fileManager)
 
         switch testCase.expectation {
         case let .success(verifications):
@@ -26,9 +26,9 @@ struct FileSystemAtomicTests {
                 from: sourceDir,
                 to: destDir,
                 transform: testCase.transform,
-                using: fileSystem
+                using: fileManager
             )
-            try await verify(verifications, in: destDir, using: fileSystem)
+            try await verify(verifications, in: destDir, using: fileManager)
 
         case .failure:
             await expectFailure {
@@ -36,10 +36,10 @@ struct FileSystemAtomicTests {
                     from: sourceDir,
                     to: destDir,
                     transform: testCase.transform,
-                    using: fileSystem
+                    using: fileManager
                 )
             }
-            try await verifyDestinationUnchanged(testCase.destSetup, in: destDir, using: fileSystem)
+            try await verifyDestinationUnchanged(testCase.destSetup, in: destDir, using: fileManager)
         }
     }
 }
@@ -48,50 +48,55 @@ extension FileSystemAtomicTests {
     private func setupSource(
         _ items: [TestCase.Setup],
         in directory: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
-        try await fileSystem.makeDirectory(at: directory)
+        let url = URL(filePath: directory.pathString)
+        try await fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         for item in items {
-            try await createItem(item, in: directory, using: fileSystem)
+            try await createItem(item, in: directory, using: fileManager)
         }
     }
 
     private func setupDestination(
         _ items: [TestCase.Setup],
         in directory: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
         guard !items.isEmpty else { return }
-        try await fileSystem.makeDirectory(at: directory)
+        let url = URL(filePath: directory.pathString)
+        try await fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         for item in items {
-            try await createItem(item, in: directory, using: fileSystem)
+            try await createItem(item, in: directory, using: fileManager)
         }
     }
 
     private func createItem(
         _ item: TestCase.Setup,
         in baseDir: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
         switch item {
         case let .file(path, content):
             let fullPath = baseDir.appending(components: path.split(separator: "/").map(String.init))
-            try await createParentDirectoryIfNeeded(for: fullPath, using: fileSystem)
-            try await fileSystem.writeText(content, at: fullPath)
+            try await createParentDirectoryIfNeeded(for: fullPath, using: fileManager)
+            let url = URL(filePath: fullPath.pathString)
+            try await fileManager.writeText(content, at: url)
 
         case let .directory(path):
             let fullPath = baseDir.appending(components: path.split(separator: "/").map(String.init))
-            try await fileSystem.makeDirectory(at: fullPath, options: [.createTargetParentDirectories])
+            let url = URL(filePath: fullPath.pathString)
+            try await fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         }
     }
 
     private func createParentDirectoryIfNeeded(
         for path: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
         let parent = path.parentDirectory
-        if try !(await fileSystem.exists(parent)) {
-            try await fileSystem.makeDirectory(at: parent, options: [.createTargetParentDirectories])
+        if try !(await fileManager.exists(parent)) {
+            let parentURL = URL(filePath: parent.pathString)
+            try await fileManager.createDirectory(at: parentURL, withIntermediateDirectories: true)
         }
     }
 }
@@ -101,9 +106,9 @@ extension FileSystemAtomicTests {
         from source: AbsolutePath,
         to destination: AbsolutePath,
         transform: @Sendable (AbsolutePath) async throws -> Void,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
-        try await fileSystem.withAtomicCopyAndWrite(
+        try await fileManager.withAtomicCopyAndWrite(
             from: source,
             to: destination,
             perform: transform
@@ -121,38 +126,39 @@ extension FileSystemAtomicTests {
     private func verify(
         _ verifications: [TestCase.Verification],
         in directory: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
         for verification in verifications {
-            try await verifyItem(verification, in: directory, using: fileSystem)
+            try await verifyItem(verification, in: directory, using: fileManager)
         }
     }
 
     private func verifyItem(
         _ verification: TestCase.Verification,
         in baseDir: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
         switch verification {
         case let .fileExists(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try await fileSystem.exists(fullPath)
+            let exists = try await fileManager.exists(fullPath)
             #expect(exists, "Expected file to exist at \(path)")
 
         case let .fileContent(path, expected):
             let fullPath = resolvePath(path, in: baseDir)
-            let data = try await fileSystem.readFile(at: fullPath)
+            let data = try await fileManager.readFile(at: fullPath)
             let actual = String(data: data, encoding: .utf8)
             #expect(actual == expected, "Expected content '\(expected)' at \(path), got '\(actual ?? "nil")'")
 
         case let .fileDoesNotExist(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try await fileSystem.exists(fullPath)
+            let exists = try await fileManager.exists(fullPath)
             #expect(!exists, "Expected file NOT to exist at \(path)")
 
         case let .directoryExists(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try await fileSystem.exists(fullPath, isDirectory: true)
+            let url = URL(filePath: fullPath.pathString)
+            let exists = try await fileManager.exists(url) && await (try? fileManager.isDirectory(at: url)) == true
             #expect(exists, "Expected directory to exist at \(path)")
         }
     }
@@ -160,12 +166,12 @@ extension FileSystemAtomicTests {
     private func verifyDestinationUnchanged(
         _ originalSetup: [TestCase.Setup],
         in directory: AbsolutePath,
-        using fileSystem: FileSystem
+        using fileManager: FileManagerProtocol
     ) async throws {
         for item in originalSetup {
             if case let .file(path, expectedContent) = item {
                 let fullPath = resolvePath(path, in: directory)
-                let data = try await fileSystem.readFile(at: fullPath)
+                let data = try await fileManager.readFile(at: fullPath)
                 let actual = String(data: data, encoding: .utf8)
                 #expect(actual == expectedContent, "Destination should be unchanged after failure")
             }

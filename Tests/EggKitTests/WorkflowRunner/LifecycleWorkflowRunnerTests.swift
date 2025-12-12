@@ -37,7 +37,7 @@ struct LifecycleWorkflowRunnerTests {
         let nooraMock = NooraMock()
         let runner = LifecycleWorkflowRunner(
             processRunner: ProcessRunner(),
-            fileSystem: fileSystem,
+            fileManager: fileSystem,
             workingDirectory: workingDir,
             homeDirectory: homeDir,
             noora: nooraMock

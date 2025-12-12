@@ -1,5 +1,5 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Path
 import Testing
@@ -7,11 +7,13 @@ import Testing
 struct TemplateExpanderTests {
     @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
     func expand(_ testCase: TestCase) async throws {
-        guard let tempDir = FileSystem.temporaryTestDirectory else {
-            throw TestError.temporaryDirectoryNotAvailable
+        let fileSystem = FileManager.default
+        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "template-expander-test")
+
+        defer {
+            Task { try? await fileSystem.remove(tempDir) }
         }
 
-        let fileSystem = FileSystem()
         let templateDir = tempDir.appending(component: "template")
         let outputDir = tempDir.appending(component: "output")
 

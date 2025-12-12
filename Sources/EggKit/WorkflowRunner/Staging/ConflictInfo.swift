@@ -1,9 +1,8 @@
 import Foundation
-import Path
 
 /// Information about a conflict detected during staging apply.
 struct ConflictInfo: Equatable, Sendable {
-    let path: RelativePath
+    let path: String
     let type: ConflictType
 
     /// Type of conflict detected.

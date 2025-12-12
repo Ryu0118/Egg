@@ -1,5 +1,5 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Path
 import ProcessRunning
@@ -8,11 +8,11 @@ import Testing
 /// Integration tests that verify GitDiffRunner correctly computes changes
 /// between working directory and workspace using real file system and git.
 struct GitDiffRunnerIntegrationTests {
-    private let fileSystem = FileSystem()
+    private let fileManager = FileManager.default
 
     @Test(arguments: TestCase.allCases)
     func computeChanges(_ testCase: TestCase) async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "git-diff-runner-test") { tempRoot in
+        try await fileManager.withTemporaryDirectory(prefix: "git-diff-runner-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
             let workspaceDir = tempRoot.appending(component: "staging")
 
@@ -23,7 +23,7 @@ struct GitDiffRunnerIntegrationTests {
 
             let runner = GitDiffRunner(
                 processRunner: ProcessRunner(),
-                fileSystem: fileSystem
+                fileManager: fileManager
             )
 
             let summary = try await runner.computeChanges(
@@ -46,7 +46,8 @@ struct GitDiffRunnerIntegrationTests {
         _ directory: AbsolutePath,
         files: [FileEntry]
     ) async throws {
-        try await fileSystem.makeDirectory(at: directory)
+        let directoryURL = URL(filePath: directory.pathString)
+        try await fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
 
         for file in files {
             let path = directory.appending(
@@ -62,10 +63,12 @@ struct GitDiffRunnerIntegrationTests {
         content: String
     ) async throws {
         let parent = path.parentDirectory
-        if try await !fileSystem.exists(parent) {
-            try await fileSystem.makeDirectory(at: parent)
+        if try await !fileManager.exists(parent) {
+            let parentURL = URL(filePath: parent.pathString)
+            try await fileManager.createDirectory(at: parentURL, withIntermediateDirectories: true)
         }
-        try await fileSystem.writeText(content, at: path)
+        let fileURL = URL(filePath: path.pathString)
+        try await fileManager.writeText(content, at: fileURL)
     }
 
     /// Builds the set of target paths from all files in the test case.
@@ -260,34 +263,46 @@ struct GitDiffRunnerIntegrationTests {
     /// Tests that directory paths in targetPaths are skipped and only file-level changes are detected.
     @Test
     func directoryPathsAreSkipped() async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "git-diff-dir-skip-test") { tempRoot in
+        try await fileManager.withTemporaryDirectory(prefix: "git-diff-dir-skip-test") { tempRoot in
             let workingDir = tempRoot.appending(component: "working")
             let workspaceDir = tempRoot.appending(component: "staging")
 
             // Setup: both directories have identical content in Tests/EggKitTests/
             // but we'll include the directory path "Tests/EggKitTests" in targetPaths
-            try await fileSystem.makeDirectory(at: workingDir)
-            try await fileSystem.makeDirectory(at: workspaceDir)
+            let workingDirURL = URL(filePath: workingDir.pathString)
+            let workspaceDirURL = URL(filePath: workspaceDir.pathString)
+            try await fileManager.createDirectory(at: workingDirURL, withIntermediateDirectories: true)
+            try await fileManager.createDirectory(at: workspaceDirURL, withIntermediateDirectories: true)
 
             // Create identical files in both directories
             let workingTestsDir = workingDir.appending(components: ["Tests", "EggKitTests"])
             let workspaceTestsDir = workspaceDir.appending(components: ["Tests", "EggKitTests"])
-            try await fileSystem.makeDirectory(at: workingTestsDir, options: [.createTargetParentDirectories])
-            try await fileSystem.makeDirectory(at: workspaceTestsDir, options: [.createTargetParentDirectories])
+            let workingTestsDirURL = URL(filePath: workingTestsDir.pathString)
+            let workspaceTestsDirURL = URL(filePath: workspaceTestsDir.pathString)
+            try await fileManager.createDirectory(at: workingTestsDirURL, withIntermediateDirectories: true)
+            try await fileManager.createDirectory(at: workspaceTestsDirURL, withIntermediateDirectories: true)
 
-            try await fileSystem.writeText("test1", at: workingTestsDir.appending(component: "Test1.swift"))
-            try await fileSystem.writeText("test1", at: workspaceTestsDir.appending(component: "Test1.swift"))
-            try await fileSystem.writeText("test2", at: workingTestsDir.appending(component: "Test2.swift"))
-            try await fileSystem.writeText("test2", at: workspaceTestsDir.appending(component: "Test2.swift"))
+            let workingTest1 = URL(filePath: workingTestsDir.appending(component: "Test1.swift").pathString)
+            let workspaceTest1 = URL(filePath: workspaceTestsDir.appending(component: "Test1.swift").pathString)
+            let workingTest2 = URL(filePath: workingTestsDir.appending(component: "Test2.swift").pathString)
+            let workspaceTest2 = URL(filePath: workspaceTestsDir.appending(component: "Test2.swift").pathString)
+            try await fileManager.writeText("test1", at: workingTest1)
+            try await fileManager.writeText("test1", at: workspaceTest1)
+            try await fileManager.writeText("test2", at: workingTest2)
+            try await fileManager.writeText("test2", at: workspaceTest2)
 
             // Create a file that was actually changed in workspace
             let workingSrcDir = workingDir.appending(component: "Sources")
             let workspaceSrcDir = workspaceDir.appending(component: "Sources")
-            try await fileSystem.makeDirectory(at: workingSrcDir)
-            try await fileSystem.makeDirectory(at: workspaceSrcDir)
+            let workingSrcDirURL = URL(filePath: workingSrcDir.pathString)
+            let workspaceSrcDirURL = URL(filePath: workspaceSrcDir.pathString)
+            try await fileManager.createDirectory(at: workingSrcDirURL, withIntermediateDirectories: true)
+            try await fileManager.createDirectory(at: workspaceSrcDirURL, withIntermediateDirectories: true)
 
-            try await fileSystem.writeText("original", at: workingSrcDir.appending(component: "main.swift"))
-            try await fileSystem.writeText("modified", at: workspaceSrcDir.appending(component: "main.swift"))
+            let workingMain = URL(filePath: workingSrcDir.appending(component: "main.swift").pathString)
+            let workspaceMain = URL(filePath: workspaceSrcDir.appending(component: "main.swift").pathString)
+            try await fileManager.writeText("original", at: workingMain)
+            try await fileManager.writeText("modified", at: workspaceMain)
 
             // Include a directory path in targetPaths - this should be skipped
             // In practice, this happens when FSEvents reports directory-level changes
@@ -298,7 +313,7 @@ struct GitDiffRunnerIntegrationTests {
 
             let runner = GitDiffRunner(
                 processRunner: ProcessRunner(),
-                fileSystem: fileSystem
+                fileManager: fileManager
             )
 
             let summary = try await runner.computeChanges(

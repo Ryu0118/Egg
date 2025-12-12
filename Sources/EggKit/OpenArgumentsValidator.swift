@@ -1,29 +1,28 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 
 package struct OpenArgumentsValidator {
     private let templateName: String?
     private let templatesFinder: TemplatesFinder
-    private let homeDirectory: AbsolutePath
-    private let projectDirectory: AbsolutePath
-    private let workingDirectory: AbsolutePath
-    private let fileSystem: any FileSysteming
+    private let homeDirectory: URL
+    private let projectDirectory: URL
+    private let workingDirectory: URL
+    private let fileManager: any FileManagerProtocol
 
     package init(
         templateName: String?,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -46,12 +45,12 @@ package struct OpenArgumentsValidator {
 
     private func findTemplate(
         name: String
-    ) async throws -> (path: AbsolutePath, location: TemplateLocationType) {
+    ) async throws -> (path: URL, location: TemplateLocationType) {
         guard let templatePath = try await templatesFinder.validTemplateDirectory(name) else {
             throw Error.templateNotFound(name: name)
         }
 
-        let templateLocation = try await determineLocation(
+        let templateLocation = try determineLocation(
             templateName: name,
             templatePath: templatePath
         )
@@ -61,14 +60,14 @@ package struct OpenArgumentsValidator {
 
     private func determineLocation(
         templateName: String,
-        templatePath: AbsolutePath
-    ) async throws -> TemplateLocationType {
+        templatePath: URL
+    ) throws -> TemplateLocationType {
         let templateLocationInstance = TemplateLocation(
             homeDirectory: homeDirectory
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
 
-        return if try await fileSystem.exists(globalPath) && templatePath == globalPath {
+        return if try fileManager.exists(globalPath) && templatePath == globalPath {
             TemplateLocationType.global
         } else {
             TemplateLocationType.project(

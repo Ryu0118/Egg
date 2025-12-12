@@ -1,16 +1,15 @@
 import Foundation
-import Path
 
 /// Parses the output of `git diff --name-status -z` into a `ChangeSummary`.
 struct GitNameStatusParser {
-    let workingRoot: AbsolutePath
-    let workspaceRoot: AbsolutePath
+    let workingRoot: URL
+    let workspaceRoot: URL
 
     func parse(components: [Substring]) -> ChangeSummary {
         var index = 0
-        var added: [RelativePath] = []
-        var modified: [RelativePath] = []
-        var deleted: [RelativePath] = []
+        var added: [String] = []
+        var modified: [String] = []
+        var deleted: [String] = []
 
         while index < components.count {
             let statusLine = String(components[index])
@@ -49,29 +48,29 @@ struct GitNameStatusParser {
         }
 
         return ChangeSummary(
-            added: added.sorted { $0.pathString < $1.pathString },
-            modified: modified.sorted { $0.pathString < $1.pathString },
-            deleted: deleted.sorted { $0.pathString < $1.pathString }
+            added: added.sorted { $0 < $1 },
+            modified: modified.sorted { $0 < $1 },
+            deleted: deleted.sorted { $0 < $1 }
         )
     }
 
-    private func nextPath(components: [Substring], index: inout Int) -> RelativePath? {
+    private func nextPath(components: [Substring], index: inout Int) -> String? {
         guard index < components.count else { return nil }
         let rawPath = String(components[index])
         index += 1
         return extractRelativePath(rawPath)
     }
 
-    private func extractRelativePath(_ rawPath: String) -> RelativePath? {
-        if let relative = rawPath.removingPrefix(workingRoot.pathString + "/") {
-            return try? RelativePath(validating: relative)
+    private func extractRelativePath(_ rawPath: String) -> String? {
+        if let relative = rawPath.removingPrefix(workingRoot.path(percentEncoded: false) + "/") {
+            return relative
         }
 
-        if let relative = rawPath.removingPrefix(workspaceRoot.pathString + "/") {
-            return try? RelativePath(validating: relative)
+        if let relative = rawPath.removingPrefix(workspaceRoot.path(percentEncoded: false) + "/") {
+            return relative
         }
 
-        return try? RelativePath(validating: rawPath)
+        return rawPath
     }
 }
 

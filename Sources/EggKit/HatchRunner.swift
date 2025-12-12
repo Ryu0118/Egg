@@ -1,16 +1,15 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 package struct HatchRunner {
     private let mode: HatchRunnerMode
     private let noora: any Noorable
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
-    private let fileSystem: any FileSysteming
-    private let projectDirectory: AbsolutePath
+    private let workingDirectory: URL
+    private let homeDirectory: URL
+    private let fileManager: any FileManagerProtocol
+    private let projectDirectory: URL
     private let templateFinder: TemplatesFinder
     private let processRunner: any ProcessRunning
     private let useStaging: Bool
@@ -18,10 +17,10 @@ package struct HatchRunner {
 
     package init(
         mode: HatchRunnerMode,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        projectDirectory: AbsolutePath,
-        fileSystem: some FileSysteming,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        projectDirectory: URL,
+        fileManager: some FileManagerProtocol,
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
         useStaging: Bool = true,
@@ -31,13 +30,13 @@ package struct HatchRunner {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.processRunner = processRunner
         self.noora = noora
         self.useStaging = useStaging
         self.override = override
         templateFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
@@ -90,7 +89,7 @@ package struct HatchRunner {
         if useStaging {
             return StagingWorkflowRunner(
                 processRunner: processRunner,
-                fileSystem: fileSystem,
+                fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 noora: noora,
@@ -101,7 +100,7 @@ package struct HatchRunner {
             noora.warning("Running in direct mode. filesystem changes are permanent")
             return LifecycleWorkflowRunner(
                 processRunner: processRunner,
-                fileSystem: fileSystem,
+                fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 noora: noora,

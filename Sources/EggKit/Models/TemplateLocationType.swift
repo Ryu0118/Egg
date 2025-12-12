@@ -1,10 +1,9 @@
 import Foundation
 import Noora
-import Path
 
 package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     case global
-    case project(_ projectDirectory: AbsolutePath, workingDirectory: AbsolutePath)
+    case project(_ projectDirectory: URL, workingDirectory: URL)
 
     package var name: String {
         switch self {
@@ -27,17 +26,16 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     package var dir: String {
         switch self {
         case .global:
-            "~/.egg"
+            return "~/.egg"
         case let .project(projectDirectory, workingDirectory):
-            projectDirectory
-                .relative(to: workingDirectory)
-                .appending(component: ".eggs").pathString
+            let relativePath = projectDirectory.relativePath(from: workingDirectory)
+            return relativePath + "/.eggs"
         }
     }
 
     package func updatingProjectDirectory(
-        _ projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath
+        _ projectDirectory: URL,
+        workingDirectory: URL
     ) -> Self? {
         if case .project = self {
             return .project(projectDirectory, workingDirectory: workingDirectory)
@@ -52,8 +50,8 @@ package extension TemplateLocationType {
         case project
 
         package func toConcreteType(
-            _ projectDirectory: AbsolutePath,
-            workingDirectory: AbsolutePath
+            _ projectDirectory: URL,
+            workingDirectory: URL
         ) -> TemplateLocationType {
             return switch self {
             case .global:

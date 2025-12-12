@@ -1,8 +1,7 @@
 import ArgumentParser
 import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 
 package extension EggCommand.TemplateCommand {
     struct ListCommand: AsyncParsableCommand, HasProjectDirectory {
@@ -20,12 +19,13 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Hide the description column in the output.")
         package var hideDescription: Bool = false
 
-        package static let fileSystem = FileSystem()
+        package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
 
         package mutating func run() async throws {
-            let workingDirectory = try await Self.fileSystem.currentWorkingDirectory()
+            let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
+            let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
             try await ListRunner(
                 location: location?.toConcreteType(
                     resolveProjectDirectory(),
@@ -33,8 +33,8 @@ package extension EggCommand.TemplateCommand {
                 ),
                 projectDirectory: resolveProjectDirectory(),
                 workingDirectory: workingDirectory,
-                homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                fileSystem: Self.fileSystem,
+                homeDirectory: homeDirectory,
+                fileManager: Self.fileManager,
                 hideDescription: hideDescription
             ).run()
         }

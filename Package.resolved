@@ -1,13 +1,22 @@
 {
-  "originHash" : "0b8e70f0514be6fa172ce99f85bbeee3e38051b468805f54b6962314ef48ec57",
+  "originHash" : "21f8c327139d19f3f03d6f9864b59cddf68ec5ebf953247b406dd6e55496d7f7",
   "pins" : [
+    {
+      "identity" : "filemanagerprotocol",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Ryu0118/FileManagerProtocol",
+      "state" : {
+        "revision" : "64a9b362f9dcd933f6dad82603c2ab0ff23863fc",
+        "version" : "0.1.0"
+      }
+    },
     {
       "identity" : "filesystem",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tuist/FileSystem",
       "state" : {
-        "revision" : "f08b102c63249a371e009b62e7b0b7463483791d",
-        "version" : "0.13.47"
+        "revision" : "56b84a599e265e6bce299c255c06731b60d2d377",
+        "version" : "0.13.53"
       }
     },
     {
@@ -56,6 +65,15 @@
       }
     },
     {
+      "identity" : "swift-async-operations",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mtj0928/swift-async-operations",
+      "state" : {
+        "revision" : "21bac5f70f74ef4fbe4c8aaa13b27e99e2331436",
+        "version" : "0.4.0"
+      }
+    },
+    {
       "identity" : "swift-atomics",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-atomics.git",
@@ -78,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log",
       "state" : {
-        "revision" : "ca538143e2dc2b5996c34b9322a1ed9def1d7747",
-        "version" : "1.7.0"
+        "revision" : "b1fa4ef41fe21b13120c034854042d12c43f66b2",
+        "version" : "1.7.1"
       }
     },
     {

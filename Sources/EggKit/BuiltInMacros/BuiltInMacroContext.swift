@@ -1,5 +1,4 @@
 import Foundation
-import Path
 
 /// Context for resolving built-in macros.
 ///
@@ -7,13 +6,13 @@ import Path
 /// It is designed to be injectable for testing purposes.
 package struct BuiltInMacroContext: Sendable {
     /// The resolved output directory (available after hatch.output resolution).
-    package let outputDirectory: AbsolutePath?
+    package let outputDirectory: URL?
 
     /// The current working directory.
-    package let workingDirectory: AbsolutePath
+    package let workingDirectory: URL
 
     /// The user's home directory.
-    package let homeDirectory: AbsolutePath
+    package let homeDirectory: URL
 
     /// The current date (injectable for testing).
     package let currentDate: Date
@@ -22,9 +21,9 @@ package struct BuiltInMacroContext: Sendable {
     package let environment: [String: String]
 
     package init(
-        outputDirectory: AbsolutePath? = nil,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
+        outputDirectory: URL? = nil,
+        workingDirectory: URL,
+        homeDirectory: URL,
         currentDate: Date = Date(),
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) {

@@ -1,26 +1,25 @@
 import Foundation
-import Path
 
 struct TemplateLocation: TemplateLocating {
-    let homeDirectory: AbsolutePath
+    let homeDirectory: URL
 }
 
 protocol TemplateLocating {
-    var homeDirectory: AbsolutePath { get }
+    var homeDirectory: URL { get }
 
-    init(homeDirectory: AbsolutePath)
+    init(homeDirectory: URL)
 }
 
 extension TemplateLocating {
-    func projectTemplatesDirectory(_ projectDirectory: AbsolutePath) -> AbsolutePath {
+    func projectTemplatesDirectory(_ projectDirectory: URL) -> URL {
         eggsDir(based: projectDirectory)
     }
 
-    var globalTemplatesDirectory: AbsolutePath {
+    var globalTemplatesDirectory: URL {
         eggsDir(based: homeDirectory)
     }
 
-    func template(_ name: String, type: TemplateLocationType) -> AbsolutePath {
+    func template(_ name: String, type: TemplateLocationType) -> URL {
         switch type {
         case .global:
             globalTemplatesDirectory.appending(component: name)
@@ -29,7 +28,7 @@ extension TemplateLocating {
         }
     }
 
-    func templateDir(for type: TemplateLocationType) -> AbsolutePath {
+    func templateDir(for type: TemplateLocationType) -> URL {
         switch type {
         case .global:
             globalTemplatesDirectory
@@ -38,7 +37,7 @@ extension TemplateLocating {
         }
     }
 
-    func eggsDir(based baseURL: AbsolutePath) -> AbsolutePath {
+    func eggsDir(based baseURL: URL) -> URL {
         baseURL.appending(component: ".eggs")
     }
 }

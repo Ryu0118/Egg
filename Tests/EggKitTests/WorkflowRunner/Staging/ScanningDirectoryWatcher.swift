@@ -1,5 +1,5 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Path
 
@@ -10,10 +10,10 @@ import Path
 actor ScanningDirectoryWatcher: DirectoryWatching {
     private var watchedDirectory: AbsolutePath?
     private var isRunning: Bool = false
-    private let fileSystem: FileSystem
+    private let fileManager: FileManagerProtocol
 
-    init(fileSystem: FileSystem = FileSystem()) {
-        self.fileSystem = fileSystem
+    init(fileManager: FileManagerProtocol = FileManager.default) {
+        self.fileManager = fileManager
     }
 
     func start(watching directory: AbsolutePath) async throws {
@@ -34,28 +34,49 @@ actor ScanningDirectoryWatcher: DirectoryWatching {
             return []
         }
 
-        // Scan all files in directory using glob and return as events
+        // Scan all files in directory recursively and return as events
         var events: Set<RelativePath> = []
 
         do {
-            // Use glob to find all files recursively
-            let sequence = try fileSystem.glob(directory: directory, include: ["**/*"])
-            for try await fullPath in sequence {
-                // Calculate relative path from watched directory
-                let fullPathString = fullPath.pathString
-                let basePath = directory.pathString + "/"
-                if fullPathString.hasPrefix(basePath) {
-                    let relativePart = String(fullPathString.dropFirst(basePath.count))
-                    if let relativePath = try? RelativePath(validating: relativePart) {
-                        events.insert(relativePath)
-                    }
-                }
-            }
+            // Recursively enumerate all files in the directory
+            try await enumerateFiles(in: directory, baseDirectory: directory, events: &events)
         } catch {
             // If we can't scan, return empty set
         }
 
         return events
+    }
+
+    /// Recursively enumerates all files in a directory and collects relative paths.
+    private func enumerateFiles(
+        in directory: AbsolutePath,
+        baseDirectory: AbsolutePath,
+        events: inout Set<RelativePath>
+    ) async throws {
+        let directoryURL = URL(filePath: directory.pathString)
+        let contents = try await fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        )
+
+        for itemURL in contents {
+            let itemPath = itemURL.path
+
+            // Calculate relative path from base directory
+            let basePath = baseDirectory.pathString + "/"
+            if itemPath.hasPrefix(basePath) {
+                let relativePart = String(itemPath.dropFirst(basePath.count))
+                if let relativePath = try? RelativePath(validating: relativePart) {
+                    events.insert(relativePath)
+                }
+            }
+
+            // Recursively enumerate subdirectories
+            if try await fileManager.isDirectory(at: itemURL) {
+                let subdirectoryPath = try AbsolutePath(validating: itemPath)
+                try await enumerateFiles(in: subdirectoryPath, baseDirectory: baseDirectory, events: &events)
+            }
+        }
     }
 
     var running: Bool {

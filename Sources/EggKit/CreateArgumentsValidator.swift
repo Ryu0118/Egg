@@ -1,6 +1,5 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 
 package struct CreateArgumentsValidator {
     private let name: String?
@@ -12,16 +11,16 @@ package struct CreateArgumentsValidator {
         name: String?,
         description: String?,
         location: TemplateLocationType.Kind?,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol
     ) {
         self.name = name
         self.description = description
         self.location = location
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -55,7 +54,7 @@ package struct CreateArgumentsValidator {
             throw Error.missingFields(missing: requiredFields, provided: [])
         }
 
-        guard try !(await templatesFinder.exists(name)) else {
+        guard !templatesFinder.exists(name) else {
             throw Error.templateAlreadyExists
         }
 

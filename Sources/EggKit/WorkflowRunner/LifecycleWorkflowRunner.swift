@@ -1,7 +1,6 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow: pre_hatch → hatch → post_hatch.
@@ -21,9 +20,9 @@ import ProcessRunning
 /// ```swift
 /// let runner = LifecycleWorkflowRunner(
 ///     processRunner: ProcessRunner(),
-///     fileSystem: FileSystem(),
-///     workingDirectory: try AbsolutePath(validating: "/tmp/work"),
-///     homeDirectory: try AbsolutePath(validating: NSHomeDirectory())
+///     fileManager: FileManager.default,
+///     workingDirectory: URL(fileURLWithPath: "/tmp/work"),
+///     homeDirectory: URL(fileURLWithPath: NSHomeDirectory())
 /// )
 ///
 /// try await runner.run(
@@ -33,16 +32,16 @@ import ProcessRunning
 /// )
 /// ```
 struct LifecycleWorkflowRunner: WorkflowRunning {
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
+    private let workingDirectory: URL
+    private let homeDirectory: URL
     private let phaseRunner: PhaseRunner
     private let noora: any Noorable
 
     init(
         processRunner: any ProcessRunning,
-        fileSystem: any FileSysteming,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
+        fileManager: some FileManagerProtocol,
+        workingDirectory: URL,
+        homeDirectory: URL,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
         override: Bool = false
@@ -52,7 +51,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         self.noora = noora
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
@@ -71,8 +70,8 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     func run(
         config: Config,
         macroInputs: MacroInputs,
-        templateDirectory: AbsolutePath
-    ) async throws -> AbsolutePath {
+        templateDirectory: URL
+    ) async throws -> URL {
         // Resolve macros (for non-staging execution, use real working directory)
         let macros = try resolveMacros(macroInputs, config: config)
 
@@ -97,7 +96,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             workingDirectory: workingDirectory
         )
 
-        noora.passthrough("✅ Template hatched successfully at \(outputDirectory.pathString)\n", tab: 1)
+        noora.passthrough("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
         // Phase 3: Execute post_hatch
         if let postHatchSteps = config.postHatch {
             try await phaseRunner.executePostHatch(

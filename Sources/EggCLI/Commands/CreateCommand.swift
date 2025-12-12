@@ -1,9 +1,8 @@
 import ArgumentParser
 import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 
 package extension EggCommand.TemplateCommand {
     struct CreateCommand: AsyncParsableCommand, HasProjectDirectory {
@@ -44,7 +43,7 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Skip the creation of the config.yml file.")
         package var skipConfig: Bool = false
 
-        package static let fileSystem = FileSystem()
+        package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
 
@@ -54,10 +53,10 @@ package extension EggCommand.TemplateCommand {
                 try await CreateRunner(
                     mode: mode,
                     skipConfig: skipConfig,
-                    projectDirectory: resolveProjectDirectory(),
-                    workingDirectory: Self.fileSystem.currentWorkingDirectory(),
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                    fileSystem: Self.fileSystem
+                    projectDirectory: try await resolveProjectDirectory(),
+                    workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    fileManager: Self.fileManager
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -67,15 +66,15 @@ package extension EggCommand.TemplateCommand {
         func validate() async throws -> CreateRunnerMode {
             do {
                 let projectDirectory = try await resolveProjectDirectory()
-                let workingDirectory = try await Self.fileSystem.currentWorkingDirectory()
+                let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
                 return try await CreateArgumentsValidator(
                     name: name,
                     description: description,
                     location: location,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                    fileSystem: Self.fileSystem
+                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    fileManager: Self.fileManager
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

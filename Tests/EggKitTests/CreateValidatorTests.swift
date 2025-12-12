@@ -1,6 +1,5 @@
 @testable import EggKit
-import FileSystem
-import FileSystemTesting
+import FileManagerProtocol
 import Foundation
 import Path
 import Testing
@@ -8,25 +7,32 @@ import Testing
 struct CreateArgumentsValidatorTests {
     @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
     func validate(_ testCase: TestCase) async throws {
-        guard let tempDir = FileSystem.temporaryTestDirectory else {
-            throw TestError.temporaryDirectoryNotAvailable
+        let fileSystem = FileManager.default
+
+        // Create temporary directory for this test
+        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "create-validator-test")
+        defer {
+            try? FileManager.default.removeItem(atPath: tempDir.pathString)
         }
 
-        let fileSystem = FileSystem()
         let projectDirectory = tempDir.appending(component: "project")
         let homeDirectory = tempDir.appending(component: "home")
 
         // Create directories
-        try await fileSystem.makeDirectory(at: projectDirectory, options: [.createTargetParentDirectories])
-        try await fileSystem.makeDirectory(at: homeDirectory, options: [.createTargetParentDirectories])
+        let projectURL = URL(filePath: projectDirectory.pathString)
+        let homeURL = URL(filePath: homeDirectory.pathString)
+        try await fileSystem.createDirectory(at: projectURL, withIntermediateDirectories: true)
+        try await fileSystem.createDirectory(at: homeURL, withIntermediateDirectories: true)
 
         // Create existing templates if needed
         for templateName in testCase.existingTemplates {
             // TemplatesFinder checks both global and project locations, so create in both
             let globalPath = homeDirectory.appending(component: ".eggs").appending(component: templateName)
             let projectPath = projectDirectory.appending(component: ".eggs").appending(component: templateName)
-            try await fileSystem.makeDirectory(at: globalPath, options: [.createTargetParentDirectories])
-            try await fileSystem.makeDirectory(at: projectPath, options: [.createTargetParentDirectories])
+            let globalURL = URL(filePath: globalPath.pathString)
+            let projectURL = URL(filePath: projectPath.pathString)
+            try await fileSystem.createDirectory(at: globalURL, withIntermediateDirectories: true)
+            try await fileSystem.createDirectory(at: projectURL, withIntermediateDirectories: true)
         }
 
         let validator = CreateArgumentsValidator(

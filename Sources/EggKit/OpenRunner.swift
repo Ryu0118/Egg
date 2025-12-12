@@ -1,7 +1,6 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 #if canImport(System)
@@ -14,17 +13,17 @@ package struct OpenRunner {
     private let mode: OpenRunnerMode
     private let processRunner: any ProcessRunning
     private let templatesFinder: TemplatesFinder
-    private let projectDirectory: AbsolutePath
-    private let workingDirectory: AbsolutePath
+    private let projectDirectory: URL
+    private let workingDirectory: URL
     private let noora: any Noorable
 
     package init(
         mode: OpenRunnerMode,
         processRunner: any ProcessRunning,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming,
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora()
     ) {
         self.mode = mode
@@ -33,7 +32,7 @@ package struct OpenRunner {
         self.workingDirectory = workingDirectory
         self.noora = noora
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -76,16 +75,16 @@ package struct OpenRunner {
 
     private func openTemplateDirectory(
         templateName: String,
-        templatePath: AbsolutePath,
+        templatePath: URL,
         location _: TemplateLocationType
     ) async throws {
         do {
             _ = try await processRunner.run(
                 .path("/usr/bin/open"),
-                arguments: [templatePath.pathString]
+                arguments: [templatePath.path]
             )
 
-            noora.success("Opened template '\(templateName)' at \(templatePath.pathString)")
+            noora.success("Opened template '\(templateName)' at \(templatePath.path)")
         } catch {
             throw Error.failedToOpen(
                 templateName: templateName,
@@ -97,14 +96,14 @@ package struct OpenRunner {
 
     enum Error: LocalizedError {
         case noTemplatesFound
-        case failedToOpen(templateName: String, path: AbsolutePath, underlying: Swift.Error)
+        case failedToOpen(templateName: String, path: URL, underlying: Swift.Error)
 
         var errorDescription: String? {
             switch self {
             case .noTemplatesFound:
                 "No templates found to open"
             case let .failedToOpen(templateName, path, underlying):
-                "Failed to open template '\(templateName)' at \(path.pathString): \(underlying.localizedDescription)"
+                "Failed to open template '\(templateName)' at \(path.path): \(underlying.localizedDescription)"
             }
         }
     }
@@ -114,7 +113,7 @@ package enum OpenRunnerMode: Codable {
     case interactive
     case direct(
         templateName: String,
-        templatePath: AbsolutePath,
+        templatePath: URL,
         location: TemplateLocationType
     )
 }

@@ -1,5 +1,4 @@
 import Foundation
-import Path
 import ProcessRunning
 import Subprocess
 
@@ -16,13 +15,13 @@ import Subprocess
 /// to only the staging directory.
 struct ShellScriptRunner {
     private let processRunner: any ProcessRunning
-    private let workingDirectory: AbsolutePath
+    private let workingDirectory: URL
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
 
     init(
         processRunner: any ProcessRunning,
-        workingDirectory: AbsolutePath,
+        workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .normal
     ) {
@@ -41,7 +40,7 @@ struct ShellScriptRunner {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
         // Resolve symlinks in working directory for macOS sandbox-exec compatibility
-        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.pathString)
+        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.path(percentEncoded: false))
 
         let result = try await processRunner.run(
             executable,
@@ -87,7 +86,7 @@ struct ShellScriptRunner {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
         // Resolve symlinks in working directory for macOS sandbox-exec compatibility
-        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.pathString)
+        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.path(percentEncoded: false))
 
         let result = try await processRunner.run(
             executable,
@@ -190,13 +189,13 @@ struct ShellScriptRunner {
     ///
     /// Reference: https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf
     private func generateSandboxProfile(
-        allowingAccessTo sandboxRoot: AbsolutePath,
-        denyingAccessTo originalWorkingDirectory: AbsolutePath
+        allowingAccessTo sandboxRoot: URL,
+        denyingAccessTo originalWorkingDirectory: URL
     ) -> String {
         // Resolve symlinks to get the real path (sandbox-exec uses real paths)
         // e.g., /var/folders/... -> /private/var/folders/...
-        let workspaceRootPath = resolveRealPath(sandboxRoot.pathString)
-        let originalPath = resolveRealPath(originalWorkingDirectory.pathString)
+        let workspaceRootPath = resolveRealPath(sandboxRoot.path(percentEncoded: false))
+        let originalPath = resolveRealPath(originalWorkingDirectory.path(percentEncoded: false))
 
         // Escape quotes in paths for SBPL string literal
         let escapedWorkspaceRootPath = workspaceRootPath.replacingOccurrences(of: "\"", with: "\\\"")

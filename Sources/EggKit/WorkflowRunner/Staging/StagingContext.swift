@@ -1,7 +1,6 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 /// Manages a staging environment for atomic workflow execution.
@@ -10,9 +9,10 @@ import ProcessRunning
 /// All workflow operations execute within this staging area. Only when all operations complete
 /// successfully are the changes applied back to the real working directory.
 ///
-/// The staging area uses APFS copy-on-write cloning for instant creation regardless of
-/// directory size. Changes are detected via filesystem watchers and applied as a
-/// partial diff.
+/// By default, the staging area only clones git-tracked files (using `git ls-files`),
+/// which excludes build caches, node_modules, and other gitignored content.
+/// Each file is cloned using APFS copy-on-write for efficiency.
+/// Changes are detected via filesystem watchers and applied as a partial diff.
 ///
 /// ## Usage
 /// ```swift
@@ -32,20 +32,17 @@ import ProcessRunning
 /// ```
 actor StagingContext {
     /// The staging root directory (clone of workingDirectory) where work is performed.
-    let root: AbsolutePath
+    let root: URL
 
     /// Reference workspace directory (clean clone for comparison).
     /// Used to detect actual file changes vs. mere file access events.
-    let reference: AbsolutePath
+    let reference: URL
 
     /// The original working directory that was cloned.
-    let originalWorkingDirectory: AbsolutePath
+    let originalWorkingDirectory: URL
 
-    /// File system for all operations.
-    /// Note: Using nonisolated(unsafe) because FileSystem is actually Sendable
-    /// and all its methods are thread-safe. This avoids false positive data race
-    /// warnings when calling nonisolated async methods from actor context.
-    private nonisolated(unsafe) let fileSystem: any FileSysteming
+    /// File manager for all operations.
+    private let fileManager: any FileManagerProtocol
 
     /// Watcher for staging directory changes.
     private let workspaceWatcher: any DirectoryWatching
@@ -66,10 +63,10 @@ actor StagingContext {
     private nonisolated(unsafe) let noora: any Noorable
 
     private init(
-        root: AbsolutePath,
-        reference: AbsolutePath,
-        originalWorkingDirectory: AbsolutePath,
-        fileSystem: sending any FileSysteming,
+        root: URL,
+        reference: URL,
+        originalWorkingDirectory: URL,
+        fileManager: any FileManagerProtocol,
         workspaceWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
@@ -79,7 +76,7 @@ actor StagingContext {
         self.root = root
         self.reference = reference
         self.originalWorkingDirectory = originalWorkingDirectory
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.workspaceWatcher = workspaceWatcher
         self.workingDirectoryWatcher = workingDirectoryWatcher
         self.processRunner = processRunner
@@ -100,42 +97,42 @@ actor StagingContext {
     /// - Parameters:
     ///   - workingDirectory: The directory to clone into staging area
     ///   - homeDirectory: User's home directory (for ~/.eggs/workspaces/)
-    ///   - fileSystem: File system for operations
+    ///   - fileManager: File manager for operations
     ///   - workspaceWatcher: Watcher for staging changes
     ///   - workingDirectoryWatcher: Watcher for working directory changes
     ///   - processRunner: Process runner for git operations
-    ///   - directoryCloner: Cloner for creating staging copy (defaults to APFS cloner)
+    ///   - directoryCloner: Cloner for creating staging copy (defaults to git-tracked cloner)
     /// - Returns: A new StagingContext with cloned directories
     /// - Throws: StagingContext.Error.creationFailed on file system errors
     static func create(
-        cloning workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: any FileSysteming,
+        cloning workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol,
         workspaceWatcher: some DirectoryWatching,
         workingDirectoryWatcher: some DirectoryWatching,
         processRunner: some ProcessRunning,
-        directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
+        directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
         noora: some Noorable = Noora()
     ) async throws -> StagingContext {
         // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
-        // FileSystem and Noora are actually thread-safe and all their methods are nonisolated.
-        nonisolated(unsafe) let fs = fileSystem
+        // FileManagerProtocol and Noora are actually thread-safe and all their methods are nonisolated.
+        nonisolated(unsafe) let fm = fileManager
         nonisolated(unsafe) let nra = noora
 
         do {
             // Create staging base directory in ~/.eggs/workspaces/{uuid}/
-            let workspacesDirectory = homeDirectory.appending(components: ".eggs", "workspaces")
-            let workspaceBaseDirectory = workspacesDirectory.appending(component: UUID().uuidString)
-            let workDirectory = workspaceBaseDirectory.appending(component: "work")
-            let referenceDirectory = workspaceBaseDirectory.appending(component: "reference")
+            let workspacesDirectory = homeDirectory.appending(path: ".eggs/workspaces")
+            let workspaceBaseDirectory = workspacesDirectory.appending(path: UUID().uuidString)
+            let workDirectory = workspaceBaseDirectory.appending(path: "work")
+            let referenceDirectory = workspaceBaseDirectory.appending(path: "reference")
 
-            try await fs.makeDirectory(at: workspacesDirectory)
-            try await fs.makeDirectory(at: workspaceBaseDirectory)
+            try fm.createDirectory(at: workspacesDirectory, withIntermediateDirectories: true)
+            try fm.createDirectory(at: workspaceBaseDirectory, withIntermediateDirectories: true)
 
             // Create work workspace (where modifications happen)
-            async let workDirCloning: () = try directoryCloner.clone(from: workingDirectory.asURL, to: workDirectory.asURL)
+            async let workDirCloning: () = try directoryCloner.clone(from: workingDirectory, to: workDirectory)
             // Create reference workspace (clean copy for comparison)
-            async let referenceDirCloning: () = try directoryCloner.clone(from: workingDirectory.asURL, to: referenceDirectory.asURL)
+            async let referenceDirCloning: () = try directoryCloner.clone(from: workingDirectory, to: referenceDirectory)
 
             _ = try await (workDirCloning, referenceDirCloning)
 
@@ -147,7 +144,7 @@ actor StagingContext {
                 root: workDirectory,
                 reference: referenceDirectory,
                 originalWorkingDirectory: workingDirectory,
-                fileSystem: fs,
+                fileManager: fm,
                 workspaceWatcher: workspaceWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
@@ -168,16 +165,16 @@ actor StagingContext {
     ///
     /// - Parameter path: Absolute path to validate
     /// - Throws: StagingContext.Error.escapeAttempt if path escapes staging area
-    func validatePath(_ path: AbsolutePath) throws {
+    func validatePath(_ path: URL) throws {
         guard !isDiscarded else {
             throw StagingContext.Error.alreadyDiscarded
         }
 
-        // Path library automatically normalizes paths during initialization,
-        // resolving .. and . components syntactically.
-        // Use isDescendantOfOrEqual to check if path is within staging area.
-        guard path.isDescendantOfOrEqual(to: root) else {
-            throw StagingContext.Error.escapeAttempt(path: path.pathString)
+        // Check if path is within staging area by comparing standardized paths
+        let standardizedPath = path.standardized.path
+        let standardizedRoot = root.standardized.path
+        guard standardizedPath.hasPrefix(standardizedRoot) else {
+            throw StagingContext.Error.escapeAttempt(path: path.path)
         }
     }
 
@@ -251,13 +248,13 @@ actor StagingContext {
         }
 
         // Stage and apply changes with guaranteed cleanup
-        try await ApplyStagingArea.withStaging(
+        try ApplyStagingArea.withStaging(
             workspaceRoot: root,
             workingDirectory: originalWorkingDirectory,
-            fileSystem: fileSystem
-        ) { staging, fileSystem in
-            let manifest = try await staging.stage(changes: changes, fileSystem: fileSystem)
-            try await staging.apply(manifest: manifest, fileSystem: fileSystem)
+            fileManager: fileManager
+        ) { staging, fileManager in
+            let manifest = try staging.stage(changes: changes, fileManager: fileManager)
+            try staging.apply(manifest: manifest, fileManager: fileManager)
         }
 
         await discard()
@@ -282,15 +279,15 @@ actor StagingContext {
 
         // Remove the parent staging directory (contains both work and reference)
         // root is ~/.eggs/workspaces/{uuid}/work, so parent is ~/.eggs/workspaces/{uuid}
-        let workspaceBaseDirectory = root.parentDirectory
+        let workspaceBaseDirectory = root.deletingLastPathComponent()
 
         // Use trashItem for instant deletion (moves to Trash instead of recursive delete)
         // This is much faster than removeItem, especially for APFS clones
         do {
-            try FileManager.default.trashItem(at: workspaceBaseDirectory.asURL, resultingItemURL: nil)
+            try FileManager.default.removeItem(at: workspaceBaseDirectory)
         } catch {
             // Fallback to regular removal if trash fails (e.g., on systems without Trash)
-            try? await fileSystem.remove(workspaceBaseDirectory)
+            try? fileManager.removeItem(at: workspaceBaseDirectory)
         }
     }
 
@@ -305,16 +302,17 @@ extension StagingContext {
     private static let excludedDirectories: Set<String> = [".git", ".eggs"]
 
     /// Returns true if the path should be excluded from change detection.
-    private static func shouldExclude(_ path: RelativePath) -> Bool {
-        guard let first = path.components.first else { return false }
+    private static func shouldExclude(_ path: String) -> Bool {
+        let components = path.split(separator: "/")
+        guard let first = components.first.map(String.init) else { return false }
         return excludedDirectories.contains(first)
     }
 
     private struct WatcherEvents: Sendable {
-        let workspace: Set<RelativePath>
-        let working: Set<RelativePath>
+        let workspace: Set<String>
+        let working: Set<String>
 
-        var targetPaths: Set<RelativePath> {
+        var targetPaths: Set<String> {
             workspace.union(working)
         }
     }
@@ -361,7 +359,7 @@ extension StagingContext {
         }
 
         // Compare work workspace against reference workspace to detect actual changes
-        let diffRunner = GitDiffRunner(processRunner: processRunner, fileSystem: fileSystem)
+        let diffRunner = GitDiffRunner(processRunner: processRunner, fileManager: fileManager)
         return try await diffRunner.computeChanges(
             workspaceRoot: root,
             workingDirectory: reference,
@@ -396,7 +394,7 @@ extension StagingContext {
         }
 
         // Compare working directory against reference workspace to detect actual changes
-        let diffRunner = GitDiffRunner(processRunner: processRunner, fileSystem: fileSystem)
+        let diffRunner = GitDiffRunner(processRunner: processRunner, fileManager: fileManager)
         return try await diffRunner.computeChanges(
             workspaceRoot: originalWorkingDirectory,
             workingDirectory: reference,
@@ -415,18 +413,18 @@ extension StagingContext {
     ///   - baseDirectory: The base directory to resolve relative paths against
     /// - Returns: Expanded set of relative paths including all files within directories
     private nonisolated func expandDirectories(
-        _ paths: Set<RelativePath>,
-        relativeTo baseDirectory: AbsolutePath
-    ) async throws -> Set<RelativePath> {
-        var expandedPaths = Set<RelativePath>()
+        _ paths: Set<String>,
+        relativeTo baseDirectory: URL
+    ) async throws -> Set<String> {
+        var expandedPaths = Set<String>()
 
         for relativePath in paths {
-            let absolutePath = baseDirectory.appending(relativePath)
+            let absolutePath = baseDirectory.appending(path: relativePath)
 
             // Check if path exists and is a directory
-            let isDirectory = (try? await fileSystem.exists(absolutePath, isDirectory: true)) ?? false
+            let isDir = fileManager.isDirectory(at: absolutePath)
 
-            if isDirectory {
+            if isDir {
                 // Recursively enumerate all files in the directory
                 let contents = try await enumerateDirectoryRecursively(absolutePath, relativeTo: baseDirectory)
                 expandedPaths.formUnion(contents)
@@ -448,33 +446,29 @@ extension StagingContext {
     ///   - baseDirectory: The base directory for computing relative paths
     /// - Returns: Set of relative paths for all items within the directory
     private nonisolated func enumerateDirectoryRecursively(
-        _ directory: AbsolutePath,
-        relativeTo baseDirectory: AbsolutePath
-    ) async throws -> Set<RelativePath> {
-        var result = Set<RelativePath>()
+        _ directory: URL,
+        relativeTo baseDirectory: URL
+    ) async throws -> Set<String> {
+        var result = Set<String>()
 
-        let contents = try await fileSystem.contentsOfDirectory(directory)
+        let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
         for item in contents {
             // Compute relative path from base directory
-            let relativePathString = item.pathString.replacingOccurrences(
-                of: baseDirectory.pathString + "/",
+            let relativePathString = item.path(percentEncoded: false).replacingOccurrences(
+                of: baseDirectory.path(percentEncoded: false) + "/",
                 with: ""
             )
 
-            guard let relativePath = try? RelativePath(validating: relativePathString) else {
-                continue
-            }
-
             // Skip excluded paths
-            guard !Self.shouldExclude(relativePath) else {
+            guard !Self.shouldExclude(relativePathString) else {
                 continue
             }
 
-            result.insert(relativePath)
+            result.insert(relativePathString)
 
             // Recurse into subdirectories
-            let isSubdirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+            let isSubdirectory = fileManager.isDirectory(at: item)
             if isSubdirectory {
                 let subcontents = try await enumerateDirectoryRecursively(item, relativeTo: baseDirectory)
                 result.formUnion(subcontents)
@@ -514,7 +508,7 @@ extension StagingContext {
             return ConflictInfo(path: path, type: type)
         }
 
-        return conflicts.sorted { $0.path.pathString < $1.path.pathString }
+        return conflicts.sorted { $0.path < $1.path }
     }
 
     private func stopWatchers() async {

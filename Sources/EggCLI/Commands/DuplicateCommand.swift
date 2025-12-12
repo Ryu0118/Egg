@@ -1,9 +1,8 @@
 import ArgumentParser
 import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 
 package extension EggCommand.TemplateCommand {
     struct DuplicateCommand: AsyncParsableCommand, HasProjectDirectory {
@@ -37,19 +36,21 @@ package extension EggCommand.TemplateCommand {
         @Option(name: .long, help: "Directory containing the template to duplicate (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
 
-        package static let fileSystem = FileSystem()
+        package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
 
         package mutating func run() async throws {
             let mode = try await validate()
             do {
+                let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
+                let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
                 try await DuplicateRunner(
                     mode: mode,
                     projectDirectory: await resolveProjectDirectory(),
-                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                    fileSystem: Self.fileSystem
+                    workingDirectory: workingDirectory,
+                    homeDirectory: homeDirectory,
+                    fileManager: Self.fileManager
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -58,14 +59,16 @@ package extension EggCommand.TemplateCommand {
 
         func validate() async throws -> DuplicateRunnerMode {
             do {
+                let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
+                let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
                 return try await DuplicateArgumentsValidator(
                     templateName: templateName,
                     newName: name,
                     newDescription: description,
                     projectDirectory: await resolveProjectDirectory(),
-                    workingDirectory: await Self.fileSystem.currentWorkingDirectory(),
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser.absolutePath,
-                    fileSystem: Self.fileSystem
+                    workingDirectory: workingDirectory,
+                    homeDirectory: homeDirectory,
+                    fileManager: Self.fileManager
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

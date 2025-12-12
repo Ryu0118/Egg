@@ -1,11 +1,10 @@
 import Foundation
-import Path
 
 /// Summary of changes to be applied from staging to working directory.
 struct ChangeSummary: Equatable, Sendable {
-    let added: [RelativePath]
-    let modified: [RelativePath]
-    let deleted: [RelativePath]
+    let added: [String]
+    let modified: [String]
+    let deleted: [String]
 
     var isEmpty: Bool {
         added.isEmpty && modified.isEmpty && deleted.isEmpty
@@ -17,7 +16,7 @@ struct ChangeSummary: Equatable, Sendable {
     }
 
     /// All paths that have any kind of change.
-    var allPaths: [RelativePath] {
+    var allPaths: [String] {
         added + modified + deleted
     }
 }

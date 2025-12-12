@@ -1,7 +1,6 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow with atomic all-or-nothing execution.
@@ -18,9 +17,9 @@ import ProcessRunning
 /// ```swift
 /// let runner = StagingWorkflowRunner(
 ///     processRunner: ProcessRunner(),
-///     fileSystem: FileSystem(),
-///     workingDirectory: try AbsolutePath(validating: "/tmp/project"),
-///     homeDirectory: try AbsolutePath(validating: NSHomeDirectory()),
+///     fileManager: FileManager.default,
+///     workingDirectory: URL(fileURLWithPath: "/tmp/project"),
+///     homeDirectory: URL(fileURLWithPath: NSHomeDirectory()),
 ///     noora: Noora(),
 ///     isInteractive: true,
 ///     override: false
@@ -34,9 +33,9 @@ import ProcessRunning
 /// ```
 struct StagingWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
-    private let fileSystem: any FileSysteming
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
+    private let fileManager: any FileManagerProtocol
+    private let workingDirectory: URL
+    private let homeDirectory: URL
     private let noora: any Noorable
     private let isInteractive: Bool
     private let override: Bool
@@ -46,9 +45,9 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
     init(
         processRunner: any ProcessRunning,
-        fileSystem: any FileSysteming,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
+        fileManager: some FileManagerProtocol,
+        workingDirectory: URL,
+        homeDirectory: URL,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
         override: Bool = false,
@@ -56,7 +55,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher()
     ) {
         self.processRunner = processRunner
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.noora = noora
@@ -64,7 +63,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.override = override
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
@@ -85,21 +84,21 @@ struct StagingWorkflowRunner: WorkflowRunning {
     func run(
         config: Config,
         macroInputs: MacroInputs,
-        templateDirectory: AbsolutePath
-    ) async throws -> AbsolutePath {
+        templateDirectory: URL
+    ) async throws -> URL {
         // Step 1: Start staging workspace creation in parallel with macro collection
         noora.passthrough("🔒 Creating staging workspace...\n")
 
-        // Copy fileSystem to a local variable to satisfy sending requirement
-        // FileSystem is thread-safe but not marked Sendable
-        nonisolated(unsafe) let fs = fileSystem
+        // Copy fileManager to a local variable to satisfy sending requirement
+        // FileManager is thread-safe but not marked Sendable
+        nonisolated(unsafe) let fm = fileManager
 
         nonisolated(unsafe) let nra = noora
 
         let workspaceTask = Self.createWorkspaceTask(
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            fileSystem: fs,
+            fileManager: fm,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
@@ -144,7 +143,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     macros: macros,
                     outputs: outputs,
                     workingDirectory: staging.root,
-                    additionalEnvironment: ["EGG_STAGING_ROOT": staging.root.pathString],
+                    additionalEnvironment: ["EGG_STAGING_ROOT": staging.root.path(percentEncoded: false)],
                     executionEnvironment: executionEnvironment
                 )
             }
@@ -185,7 +184,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             if changeSummary.isEmpty {
                 noora.passthrough("ℹ️ No changes to apply.\n")
                 await staging.discard()
-                return workingDirectory.appending(resolvedOutputPath)
+                return workingDirectory.appending(path: resolvedOutputPath)
             }
 
             // Step 7: Display change summary
@@ -204,14 +203,14 @@ struct StagingWorkflowRunner: WorkflowRunning {
             if !overriddenConflicts.isEmpty {
                 noora.passthrough("⚠️ Overwritten conflicting files:\n")
                 for conflict in overriddenConflicts {
-                    noora.passthrough("- \(conflict.path.pathString) (\(conflict.type.description))\n", tab: 1)
+                    noora.passthrough("- \(conflict.path) (\(conflict.type.description))\n", tab: 1)
                 }
             }
 
             noora.passthrough("✅ Changes applied successfully!\n")
 
             // Return path in real working directory
-            return workingDirectory.appending(resolvedOutputPath)
+            return workingDirectory.appending(path: resolvedOutputPath)
 
         } catch {
             // Ensure staging workspace is always discarded on error
@@ -227,24 +226,24 @@ struct StagingWorkflowRunner: WorkflowRunning {
     ///   - workspaceRoot: The staging workspace root path
     /// - Returns: The relative path from workspace root
     private func computeRelativePath(
-        outputDirectory: AbsolutePath,
-        workspaceRoot: AbsolutePath
-    ) throws -> RelativePath {
+        outputDirectory: URL,
+        workspaceRoot: URL
+    ) throws -> String {
         // If output is the workspace root itself (output: "."), return "." as the relative path
         if outputDirectory == workspaceRoot {
-            return try RelativePath(validating: ".")
+            return "."
         }
 
         // Remove the workspace root prefix to get the relative path
-        let pathString = outputDirectory.pathString
-        let rootPrefix = workspaceRoot.pathString + "/"
+        let pathString = outputDirectory.path(percentEncoded: false)
+        let rootPrefix = workspaceRoot.path(percentEncoded: false) + "/"
         guard pathString.hasPrefix(rootPrefix) else {
             throw LifecycleStepError.invalidOutputDirectory(
                 "Output path is not within staging workspace: \(pathString)"
             )
         }
         let relative = String(pathString.dropFirst(rootPrefix.count))
-        return try RelativePath(validating: relative)
+        return relative
     }
 
     /// Handles user confirmation before applying changes.
@@ -273,12 +272,12 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 if hasConflicts {
                     noora.yesOrNoChoicePrompt(
                         title: "Apply Changes and Override Conflicts",
-                        question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.pathString)?"
+                        question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?"
                     )
                 } else {
                     noora.yesOrNoChoicePrompt(
                         title: "Apply Changes (staging workspace → current directory)",
-                        question: "Apply to \(staging.originalWorkingDirectory.pathString)?"
+                        question: "Apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?"
                     )
                 }
             guard confirmed else {
@@ -303,21 +302,21 @@ struct StagingWorkflowRunner: WorkflowRunning {
         if !summary.added.isEmpty {
             noora.passthrough("Added (\(summary.added.count)):\n", tab: 1)
             for path in summary.added {
-                noora.passthrough("+ \(path.pathString)\n", tab: 2)
+                noora.passthrough("+ \(path)\n", tab: 2)
             }
         }
 
         if !summary.modified.isEmpty {
             noora.passthrough("Modified (\(summary.modified.count)):\n", tab: 1)
             for path in summary.modified {
-                noora.passthrough("~ \(path.pathString)\n", tab: 2)
+                noora.passthrough("~ \(path)\n", tab: 2)
             }
         }
 
         if !summary.deleted.isEmpty {
             noora.passthrough("Deleted (\(summary.deleted.count)):\n", tab: 1)
             for path in summary.deleted {
-                noora.passthrough("- \(path.pathString)\n", tab: 2)
+                noora.passthrough("- \(path)\n", tab: 2)
             }
         }
 
@@ -328,36 +327,36 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private func displayConflicts(_ conflicts: [ConflictInfo]) {
         noora.passthrough("⚠️ Conflicts detected:\n")
         for conflict in conflicts {
-            noora.passthrough("- \(conflict.path.pathString): \(conflict.type.description)\n", tab: 1)
+            noora.passthrough("- \(conflict.path): \(conflict.type.description)\n", tab: 1)
         }
         noora.passthrough("\n")
     }
 
     /// Creates a detached task for workspace creation to enable parallel execution.
     ///
-    /// This helper method isolates the non-Sendable FileSysteming type by using
+    /// This helper method isolates the non-Sendable FileManagerProtocol type by using
     /// `sending` parameters and `nonisolated(unsafe)` to safely pass it to the task.
     ///
     /// - Returns: A task that creates the staging workspace
     private nonisolated static func createWorkspaceTask(
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: sending any FileSysteming,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: sending some FileManagerProtocol,
         workspaceWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
         noora: sending any Noorable
     ) -> Task<StagingContext, any Error> {
         // Use nonisolated(unsafe) to safely capture non-Sendable types in the task
-        // FileSystem and Noora are actually thread-safe but not marked Sendable
-        nonisolated(unsafe) let fs = fileSystem
+        // FileManager and Noora are actually thread-safe but not marked Sendable
+        nonisolated(unsafe) let fm = fileManager
         nonisolated(unsafe) let nra = noora
 
         return Task {
             try await StagingContext.create(
                 cloning: workingDirectory,
                 homeDirectory: homeDirectory,
-                fileSystem: fs,
+                fileManager: fm,
                 workspaceWatcher: workspaceWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
@@ -416,7 +415,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private func finalizeMacros(
         _ collected: CollectedMacroValues,
         config: Config,
-        workspaceRoot: AbsolutePath
+        workspaceRoot: URL
     ) throws -> [ResolvedMacro] {
         switch collected {
         case let .parsed(parsedMacros):
@@ -435,9 +434,9 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     return macro
                 }
                 // Compute relative path from original working directory
-                let relativePath = originalPath.relative(to: workingDirectory)
+                let relativePath = originalPath.relativePath(from: workingDirectory)
                 // Re-resolve relative to workspace root
-                let workspacePath = workspaceRoot.appending(relativePath)
+                let workspacePath = workspaceRoot.appending(path: relativePath)
                 return ResolvedMacro(
                     name: macro.name,
                     description: macro.description,

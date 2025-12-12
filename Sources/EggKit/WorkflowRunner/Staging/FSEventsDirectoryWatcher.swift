@@ -1,6 +1,5 @@
 import CoreServices
 import Foundation
-import Path
 
 /// FSEvents-based implementation of DirectoryWatching for macOS.
 ///
@@ -8,14 +7,14 @@ import Path
 /// Events are coalesced and converted to relative paths for change detection.
 actor FSEventsDirectoryWatcher: DirectoryWatching {
     /// The directory being watched.
-    private var watchedDirectory: AbsolutePath?
+    private var watchedDirectory: URL?
 
     /// The FSEvents stream reference.
     private var eventStream: FSEventStreamRef?
     private var streamContext: UnsafeMutablePointer<FSEventStreamContext>?
 
     /// Accumulated set of changed paths (relative to watched directory).
-    private var changedPaths: Set<RelativePath> = []
+    private var changedPaths: Set<String> = []
 
     /// Whether the watcher is currently running.
     private var isRunning: Bool = false
@@ -26,7 +25,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
     /// Thread-safe event buffer for receiving events from the callback.
     private let eventBuffer = EventBuffer()
 
-    func start(watching directory: AbsolutePath) async throws {
+    func start(watching directory: URL) async throws {
         guard !isRunning else {
             throw DirectoryWatcherError.alreadyStarted
         }
@@ -38,7 +37,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         let context = createStreamContext()
         streamContext = context
 
-        let pathsToWatch = [directory.pathString] as CFArray
+        let pathsToWatch = [directory.path(percentEncoded: false)] as CFArray
 
         guard let stream = FSEventStreamCreate(
             nil,
@@ -76,7 +75,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         isRunning = false
     }
 
-    func drainEvents() async -> Set<RelativePath> {
+    func drainEvents() async -> Set<String> {
         // Flush any pending events from FSEvents before draining the buffer.
         // This ensures all events are delivered to the callback before we process them.
         // Use withCheckedContinuation to bridge from DispatchQueue to async context.
@@ -113,13 +112,13 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         return context
     }
 
-    /// Converts an absolute path string to a RelativePath relative to the watched directory.
-    private func makeRelativePath(from absolutePath: String, relativeTo base: AbsolutePath) -> RelativePath? {
+    /// Converts an absolute path string to a relative path string relative to the watched directory.
+    private func makeRelativePath(from absolutePath: String, relativeTo base: URL) -> String? {
         // Use realpath() to get the true canonical path.
         // FSEvents always reports canonical paths (e.g., /private/var/folders/...)
         // NSString.resolvingSymlinksInPath does NOT work correctly - it normalizes /private/var to /var
         // which is the opposite of what we need.
-        let basePath = Self.canonicalPath(base.pathString)
+        let basePath = Self.canonicalPath(base.path(percentEncoded: false))
         let normalizedPath = Self.canonicalPath(absolutePath)
 
         // Ensure the path is within the watched directory
@@ -136,7 +135,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         // Skip empty paths (the watched directory itself)
         guard !relativePart.isEmpty else { return nil }
 
-        return try? RelativePath(validating: relativePart)
+        return relativePart
     }
 
     /// Returns the canonical path using realpath().

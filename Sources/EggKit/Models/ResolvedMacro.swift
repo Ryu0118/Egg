@@ -1,4 +1,4 @@
-import Path
+import Foundation
 
 package struct ResolvedMacro: Equatable {
     package let name: String
@@ -16,6 +16,6 @@ package struct ResolvedMacro: Equatable {
         case boolean(Bool)
         case choice(String)
         case array([String])
-        case path(AbsolutePath)
+        case path(URL)
     }
 }

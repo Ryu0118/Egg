@@ -1,6 +1,5 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 
 package struct HatchArgumentsValidator {
     private let templateName: String?
@@ -11,15 +10,15 @@ package struct HatchArgumentsValidator {
     package init(
         templateName: String?,
         macros: [String],
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
         self.macros = macros
         templateFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory

@@ -1,6 +1,5 @@
 import Foundation
 import Noora
-import Path
 import ProcessRunning
 
 /// Orchestrates the execution of lifecycle steps for pre_hatch and post_hatch phases.
@@ -15,7 +14,7 @@ import ProcessRunning
 /// ```swift
 /// let runner = LifecycleStepRunner(
 ///     processRunner: ProcessRunner(),
-///     workingDirectory: try AbsolutePath(validating: "/tmp/project")
+///     workingDirectory: URL(fileURLWithPath: "/tmp/project")
 /// )
 ///
 /// let outputs = try await runner.execute(
@@ -27,14 +26,14 @@ import ProcessRunning
 /// ```
 struct LifecycleStepRunner {
     private let processRunner: any ProcessRunning
-    private let workingDirectory: AbsolutePath
+    private let workingDirectory: URL
     private let noora: any Noorable
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
 
     init(
         processRunner: any ProcessRunning,
-        workingDirectory: AbsolutePath,
+        workingDirectory: URL,
         noora: some Noorable = Noora(),
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .normal

@@ -1,31 +1,26 @@
 import Foundation
-import Path
 
-package func resolveToAbsolutePath(
+package func resolveToAbsoluteURL(
     _ input: String,
-    workingDirectory: AbsolutePath,
-    homeDirectory: AbsolutePath
-) throws -> AbsolutePath {
+    workingDirectory: URL,
+    homeDirectory: URL
+) throws -> URL {
     // Handle tilde expansion
     let expandedValue = if input.hasPrefix("~/") {
-        homeDirectory.pathString + String(input.dropFirst(1))
+        homeDirectory.path(percentEncoded: false) + String(input.dropFirst(1))
     } else if input == "~" {
-        homeDirectory.pathString
+        homeDirectory.path(percentEncoded: false)
     } else {
         input
     }
 
     // Try to resolve as absolute path first
-    if let absolutePath = try? AbsolutePath(validating: expandedValue) {
-        return absolutePath
+    if expandedValue.hasPrefix("/") {
+        return URL(fileURLWithPath: expandedValue)
     }
 
     // Otherwise, resolve as relative path from working directory
-    if let absolutePath = try? AbsolutePath(validating: expandedValue, relativeTo: workingDirectory) {
-        return absolutePath
-    }
-
-    throw PathResolutionError.cannotResolve(input)
+    return URL(fileURLWithPath: expandedValue, relativeTo: workingDirectory)
 }
 
 enum PathResolutionError: LocalizedError {

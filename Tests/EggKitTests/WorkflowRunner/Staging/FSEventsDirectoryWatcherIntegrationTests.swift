@@ -1,5 +1,5 @@
 @testable import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Path
 import Testing
@@ -7,27 +7,29 @@ import Testing
 /// Integration tests that verify FSEventsDirectoryWatcher correctly detects
 /// file system changes using real FSEvents.
 struct FSEventsDirectoryWatcherIntegrationTests {
-    private let fileSystem = FileSystem()
+    private let fileManager: any FileManagerProtocol = FileManager.default
 
-    /// Context passed to the test closure containing the watcher, watched directory, and file system.
+    /// Context passed to the test closure containing the watcher, watched directory, and file manager.
     struct WatcherContext {
         let watcher: FSEventsDirectoryWatcher
         let directory: AbsolutePath
-        let fileSystem: FileSystem
+        let fileManager: any FileManagerProtocol
 
         /// Writes text to a file.
         func writeText(_ text: String, at path: AbsolutePath) async throws {
-            try await fileSystem.writeText(text, at: path)
+            let url = URL(filePath: path.pathString)
+            try await fileManager.writeText(text, at: url)
         }
 
         /// Creates a directory at the given path.
         func makeDirectory(at path: AbsolutePath) async throws {
-            try await fileSystem.makeDirectory(at: path)
+            let url = URL(filePath: path.pathString)
+            try await fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         }
 
         /// Removes the item at the given path.
         func remove(_ path: AbsolutePath) async throws {
-            try await fileSystem.remove(path)
+            try await fileManager.remove(path)
         }
     }
 
@@ -36,7 +38,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     private func withWatcher(
         _ operation: (WatcherContext) async throws -> Void
     ) async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
+        try await fileManager.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
             let watcher = FSEventsDirectoryWatcher()
             try await watcher.start(watching: tempDir)
             defer { Task { await watcher.stop() } }
@@ -44,7 +46,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             let context = WatcherContext(
                 watcher: watcher,
                 directory: tempDir,
-                fileSystem: fileSystem
+                fileManager: fileManager
             )
             try await operation(context)
         }
@@ -66,16 +68,16 @@ struct FSEventsDirectoryWatcherIntegrationTests {
 
     @Test("detects file modification")
     func detectsFileModification() async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
+        try await fileManager.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
             let filePath = tempDir.appending(component: "existing.txt")
-            try await fileSystem.writeText("original", at: filePath)
+            let fileURL = URL(filePath: filePath.pathString)
+            try await fileManager.writeText("original", at: fileURL)
 
             let watcher = FSEventsDirectoryWatcher()
             try await watcher.start(watching: tempDir)
             defer { Task { await watcher.stop() } }
 
-            // FileSystem.writeText doesn't support overwriting existing files,
-            // so we use Data.write for modification
+            // Use Data.write for modification
             try Data("modified".utf8).write(to: URL(fileURLWithPath: filePath.pathString))
 
             try await Task.sleep(for: .milliseconds(200))
@@ -173,7 +175,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
 
     @Test("stop is idempotent - calling multiple times does not throw")
     func stopIsIdempotent() async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
+        try await fileManager.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
             let watcher = FSEventsDirectoryWatcher()
             try await watcher.start(watching: tempDir)
 

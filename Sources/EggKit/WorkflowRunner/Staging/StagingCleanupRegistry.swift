@@ -73,7 +73,7 @@ public actor StagingCleanupRegistry {
         signal(SIGINT) { _ in
             // Signal handlers must be synchronous and signal-safe.
             // We use a detached task to call async cleanup code.
-            Task {
+            Task.immediate {
                 await StagingCleanupRegistry.shared.executeCleanup()
                 // Exit with the standard signal exit code
                 exit(130) // 128 + SIGINT (2)
@@ -85,7 +85,7 @@ public actor StagingCleanupRegistry {
 
         // Set up SIGTERM handler
         signal(SIGTERM) { _ in
-            Task {
+            Task.immediate {
                 await StagingCleanupRegistry.shared.executeCleanup()
                 exit(143) // 128 + SIGTERM (15)
             }

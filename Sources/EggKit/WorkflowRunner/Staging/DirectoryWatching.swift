@@ -1,5 +1,4 @@
 import Foundation
-import Path
 
 /// Protocol for watching file system changes in a directory.
 ///
@@ -10,7 +9,7 @@ protocol DirectoryWatching: Sendable {
     ///
     /// - Parameter directory: The directory to watch
     /// - Throws: If the watcher fails to start
-    func start(watching directory: AbsolutePath) async throws
+    func start(watching directory: URL) async throws
 
     /// Stops watching and releases resources.
     ///
@@ -23,7 +22,7 @@ protocol DirectoryWatching: Sendable {
     /// The watcher continues running after draining.
     ///
     /// - Returns: Set of relative paths that were touched
-    func drainEvents() async -> Set<RelativePath>
+    func drainEvents() async -> Set<String>
 }
 
 /// Errors that can occur during directory watching.

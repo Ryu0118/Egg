@@ -1,5 +1,4 @@
 import Foundation
-import Path
 
 /// Converts ResolvedMacro values to string representations.
 ///
@@ -14,7 +13,7 @@ enum MacroStringConverter {
     /// - `.boolean(b)` → `"true"` or `"false"`
     /// - `.choice(c)` → `c`
     /// - `.array(a)` → `"item1,item2,item3"` (comma-separated)
-    /// - `.path(p)` → `p.pathString`
+    /// - `.path(p)` → `p.path(percentEncoded: false)`
     static func toShellString(_ value: ResolvedMacro.Value) -> String {
         switch value {
         case let .string(s):
@@ -26,7 +25,7 @@ enum MacroStringConverter {
         case let .array(a):
             return a.joined(separator: ",")
         case let .path(p):
-            return p.pathString
+            return p.path(percentEncoded: false)
         }
     }
 
@@ -51,7 +50,7 @@ enum MacroStringConverter {
             let quotedItems = a.map { escapeAndQuote($0) }
             return "[" + quotedItems.joined(separator: ", ") + "]"
         case let .path(p):
-            return escapeAndQuote(p.pathString)
+            return escapeAndQuote(p.path(percentEncoded: false))
         }
     }
 

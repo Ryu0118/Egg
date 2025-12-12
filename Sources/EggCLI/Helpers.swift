@@ -1,30 +1,20 @@
 import ArgumentParser
 import EggKit
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 
 package protocol HasProjectDirectory {
     var projectDirectory: String? { get }
-    static var fileSystem: FileSystem { get }
+    static var fileManager: any FileManagerProtocol { get }
 }
 
 package extension HasProjectDirectory {
-    func resolveProjectDirectory() async throws -> AbsolutePath {
+    func resolveProjectDirectory() async throws -> URL {
         if let projectDirectory {
-            try await AbsolutePath(validating: projectDirectory, relativeTo: Self.fileSystem.currentWorkingDirectory())
+            URL(filePath: projectDirectory, relativeTo: URL(filePath: Self.fileManager.currentDirectoryPath))
         } else {
-            try await Self.fileSystem.currentWorkingDirectory()
+            URL(filePath: Self.fileManager.currentDirectoryPath)
         }
-    }
-}
-
-package extension AbsolutePath {
-    init?(validating: String?) throws {
-        guard let validating else {
-            return nil
-        }
-        try self.init(validating: validating)
     }
 }
 

@@ -1,6 +1,5 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 
 /// Manages a temporary staging area for applying staging changes atomically.
 ///
@@ -13,23 +12,23 @@ import Path
 ///
 struct ApplyStagingArea {
     /// The root directory of the staging area.
-    let root: AbsolutePath
+    let root: URL
 
     /// The staging root directory (source of changes).
-    let workspaceRoot: AbsolutePath
+    let workspaceRoot: URL
 
     /// The original working directory (destination of changes).
-    let workingDirectory: AbsolutePath
+    let workingDirectory: URL
 
-    private var stagedPayloadRoot: AbsolutePath {
-        root.appending(component: "staged")
+    private var stagedPayloadRoot: URL {
+        root.appending(path: "staged")
     }
 
-    private var backupRoot: AbsolutePath {
-        root.appending(component: "backup")
+    private var backupRoot: URL {
+        root.appending(path: "backup")
     }
 
-    private init(root: AbsolutePath, workspaceRoot: AbsolutePath, workingDirectory: AbsolutePath) {
+    private init(root: URL, workspaceRoot: URL, workingDirectory: URL) {
         self.root = root
         self.workspaceRoot = workspaceRoot
         self.workingDirectory = workingDirectory
@@ -40,15 +39,15 @@ struct ApplyStagingArea {
     /// - Parameters:
     ///   - workspaceRoot: The staging root directory
     ///   - workingDirectory: The original working directory
-    ///   - fileSystem: File system for operations
+    ///   - fileManager: File manager for operations
     /// - Returns: A new ApplyStagingArea
     static func create(
-        workspaceRoot: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        fileSystem: any FileSysteming
-    ) async throws -> ApplyStagingArea {
+        workspaceRoot: URL,
+        workingDirectory: URL,
+        fileManager: some FileManagerProtocol
+    ) throws -> ApplyStagingArea {
         // Create staging directory under system temporary directory with unique prefix
-        let stagingRoot = try await fileSystem.makeTemporaryDirectory(prefix: "egg-apply-staging")
+        let stagingRoot = try fileManager.makeTemporaryDirectory(prefix: "egg-apply-staging")
 
         let area = ApplyStagingArea(
             root: stagingRoot,
@@ -56,7 +55,7 @@ struct ApplyStagingArea {
             workingDirectory: workingDirectory
         )
 
-        try await area.ensureBaseDirectories(fileSystem: fileSystem)
+        try area.ensureBaseDirectories(fileManager: fileManager)
         return area
     }
 
@@ -65,34 +64,34 @@ struct ApplyStagingArea {
     /// This method creates a staging area, executes the provided closure, and ensures
     /// the staging area is cleaned up regardless of success or failure.
     ///
-    /// The closure receives both the staging area and the file system to avoid
+    /// The closure receives both the staging area and the file manager to avoid
     /// capturing actor-isolated state, which would cause Swift 6 concurrency errors.
     ///
     /// - Parameters:
     ///   - workspaceRoot: The staging root directory
     ///   - workingDirectory: The original working directory
-    ///   - fileSystem: File system for operations
-    ///   - body: Closure that receives the staging area and file system
+    ///   - fileManager: File manager for operations
+    ///   - body: Closure that receives the staging area and file manager
     /// - Returns: The result of the closure
     /// - Throws: Any error thrown by the closure or staging area creation
-    static func withStaging<T: Sendable>(
-        workspaceRoot: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        fileSystem: any FileSysteming,
-        body: @Sendable (ApplyStagingArea, any FileSysteming) async throws -> T
-    ) async throws -> T {
-        let staging = try await create(
+    static func withStaging<T: Sendable, FM: FileManagerProtocol>(
+        workspaceRoot: URL,
+        workingDirectory: URL,
+        fileManager: FM,
+        body: @Sendable (ApplyStagingArea, FM) throws -> T
+    ) throws -> T {
+        let staging = try create(
             workspaceRoot: workspaceRoot,
             workingDirectory: workingDirectory,
-            fileSystem: fileSystem
+            fileManager: fileManager
         )
 
         do {
-            let result = try await body(staging, fileSystem)
-            await staging.cleanup(fileSystem: fileSystem)
+            let result = try body(staging, fileManager)
+            staging.cleanup(fileManager: fileManager)
             return result
         } catch {
-            await staging.cleanup(fileSystem: fileSystem)
+            staging.cleanup(fileManager: fileManager)
             throw error
         }
     }
@@ -105,21 +104,21 @@ struct ApplyStagingArea {
     ///
     /// - Parameters:
     ///   - changes: The change summary describing what to apply
-    ///   - fileSystem: File system for operations
+    ///   - fileManager: File manager for operations
     /// - Returns: Manifest describing staged changes
     /// - Throws: If staging fails
     func stage(
         changes: ChangeSummary,
-        fileSystem: any FileSysteming
-    ) async throws -> ChangeManifest {
-        try await ensureBaseDirectories(fileSystem: fileSystem)
+        fileManager: some FileManagerProtocol
+    ) throws -> ChangeManifest {
+        try ensureBaseDirectories(fileManager: fileManager)
 
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(changes.totalCount)
 
-        try entries.append(contentsOf: await stageAddedFiles(changes.added, fileSystem: fileSystem))
-        try entries.append(contentsOf: await stageModifiedFiles(changes.modified, fileSystem: fileSystem))
-        try entries.append(contentsOf: await stageDeletedFiles(changes.deleted, fileSystem: fileSystem))
+        try entries.append(contentsOf: stageAddedFiles(changes.added, fileManager: fileManager))
+        try entries.append(contentsOf: stageModifiedFiles(changes.modified, fileManager: fileManager))
+        try entries.append(contentsOf: stageDeletedFiles(changes.deleted, fileManager: fileManager))
 
         return ChangeManifest(entries: entries)
     }
@@ -129,12 +128,12 @@ struct ApplyStagingArea {
     /// Changes are applied in order: Deletes → Adds → Modifies
     /// This order minimizes conflicts and ensures clean state.
     ///
-    /// - Parameter fileSystem: File system for operations
+    /// - Parameter fileManager: File manager for operations
     /// - Throws: If apply fails
     func apply(
         manifest: ChangeManifest,
-        fileSystem: any FileSysteming
-    ) async throws {
+        fileManager: some FileManagerProtocol
+    ) throws {
         let deleteEntries = manifest.entries.filter { $0.kind == .delete }
         let addEntries = manifest.entries.filter { $0.kind == .add }
         let modifyEntries = manifest.entries.filter { $0.kind == .modify }
@@ -143,22 +142,22 @@ struct ApplyStagingArea {
 
         do {
             for entry in deleteEntries {
-                try await performDelete(entry, fileSystem: fileSystem)
+                try performDelete(entry, fileManager: fileManager)
                 executedEntries.append(entry)
             }
 
             for entry in addEntries {
-                try await performAdd(entry, fileSystem: fileSystem)
+                try performAdd(entry, fileManager: fileManager)
                 executedEntries.append(entry)
             }
 
             for entry in modifyEntries {
-                try await performModify(entry, fileSystem: fileSystem)
+                try performModify(entry, fileManager: fileManager)
                 executedEntries.append(entry)
             }
         } catch {
             do {
-                try await rollback(entries: executedEntries, fileSystem: fileSystem)
+                try rollback(entries: executedEntries, fileManager: fileManager)
             } catch let rollbackError {
                 throw ApplyStagingArea.Error.rollbackFailed(
                     applyError: error,
@@ -169,37 +168,37 @@ struct ApplyStagingArea {
         }
     }
 
-    private func performDelete(_ entry: ChangeEntry, fileSystem: any FileSysteming) async throws {
+    private func performDelete(_ entry: ChangeEntry, fileManager: some FileManagerProtocol) throws {
         let targetPath = targetPath(for: entry.relativePath)
-        try await fileSystem.removeIfExists(targetPath)
+        try fileManager.removeIfExists(targetPath)
     }
 
-    private func performAdd(_ entry: ChangeEntry, fileSystem: any FileSysteming) async throws {
+    private func performAdd(_ entry: ChangeEntry, fileManager: some FileManagerProtocol) throws {
         guard let stagedPath = entry.stagedPath else {
-            throw ApplyStagingArea.Error.missingStagedArtifact(path: entry.relativePath.pathString)
+            throw ApplyStagingArea.Error.missingStagedArtifact(path: entry.relativePath)
         }
 
         let targetPath = targetPath(for: entry.relativePath)
-        try await ensureParentDirectory(for: targetPath, fileSystem: fileSystem)
-        try await fileSystem.copy(stagedPath, to: targetPath)
+        try ensureParentDirectory(for: targetPath, fileManager: fileManager)
+        try fileManager.copyItem(at: stagedPath, to: targetPath)
     }
 
-    private func performModify(_ entry: ChangeEntry, fileSystem: any FileSysteming) async throws {
+    private func performModify(_ entry: ChangeEntry, fileManager: some FileManagerProtocol) throws {
         guard let stagedPath = entry.stagedPath else {
-            throw ApplyStagingArea.Error.missingStagedArtifact(path: entry.relativePath.pathString)
+            throw ApplyStagingArea.Error.missingStagedArtifact(path: entry.relativePath)
         }
 
         let targetPath = targetPath(for: entry.relativePath)
-        try await fileSystem.removeIfExists(targetPath)
+        try fileManager.removeIfExists(targetPath)
 
-        try await ensureParentDirectory(for: targetPath, fileSystem: fileSystem)
-        try await fileSystem.copy(stagedPath, to: targetPath)
+        try ensureParentDirectory(for: targetPath, fileManager: fileManager)
+        try fileManager.copyItem(at: stagedPath, to: targetPath)
     }
 
     private func rollback(
         entries: [ChangeEntry],
-        fileSystem: any FileSysteming
-    ) async throws {
+        fileManager: some FileManagerProtocol
+    ) throws {
         guard !entries.isEmpty else { return }
 
         for entry in entries.reversed() {
@@ -207,63 +206,63 @@ struct ApplyStagingArea {
 
             switch entry.kind {
             case .delete:
-                if let backupPath = entry.backupPath, try await fileSystem.exists(backupPath) {
-                    try await ensureParentDirectory(for: targetPath, fileSystem: fileSystem)
-                    try await fileSystem.copy(backupPath, to: targetPath)
+                if let backupPath = entry.backupPath, try fileManager.exists(backupPath) {
+                    try ensureParentDirectory(for: targetPath, fileManager: fileManager)
+                    try fileManager.copyItem(at: backupPath, to: targetPath)
                 }
 
             case .add:
-                try await fileSystem.removeIfExists(targetPath)
+                try fileManager.removeIfExists(targetPath)
 
             case .modify:
-                try await fileSystem.removeIfExists(targetPath)
+                try fileManager.removeIfExists(targetPath)
 
-                if let backupPath = entry.backupPath, try await fileSystem.exists(backupPath) {
-                    try await ensureParentDirectory(for: targetPath, fileSystem: fileSystem)
-                    try await fileSystem.copy(backupPath, to: targetPath)
+                if let backupPath = entry.backupPath, try fileManager.exists(backupPath) {
+                    try ensureParentDirectory(for: targetPath, fileManager: fileManager)
+                    try fileManager.copyItem(at: backupPath, to: targetPath)
                 }
             }
         }
     }
 
-    private func stagedPath(for relativePath: RelativePath) -> AbsolutePath {
-        stagedPayloadRoot.appending(relativePath)
+    private func stagedPath(for relativePath: String) -> URL {
+        stagedPayloadRoot.appending(path: relativePath)
     }
 
-    private func backupPath(for relativePath: RelativePath) -> AbsolutePath {
-        backupRoot.appending(relativePath)
+    private func backupPath(for relativePath: String) -> URL {
+        backupRoot.appending(path: relativePath)
     }
 
-    private func targetPath(for relativePath: RelativePath) -> AbsolutePath {
-        workingDirectory.appending(relativePath)
+    private func targetPath(for relativePath: String) -> URL {
+        workingDirectory.appending(path: relativePath)
     }
 
     private func ensureParentDirectory(
-        for path: AbsolutePath,
-        fileSystem: any FileSysteming
-    ) async throws {
-        let parent = path.parentDirectory
-        if try await !fileSystem.exists(parent) {
-            try await fileSystem.makeDirectory(at: parent, options: [.createTargetParentDirectories])
+        for path: URL,
+        fileManager: some FileManagerProtocol
+    ) throws {
+        let parent = path.deletingLastPathComponent()
+        if !fileManager.exists(parent) {
+            try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
         }
     }
 
-    private func ensureBaseDirectories(fileSystem: any FileSysteming) async throws {
-        try await fileSystem.makeDirectory(at: stagedPayloadRoot, options: [.createTargetParentDirectories])
-        try await fileSystem.makeDirectory(at: backupRoot, options: [.createTargetParentDirectories])
+    private func ensureBaseDirectories(fileManager: some FileManagerProtocol) throws {
+        try fileManager.createDirectory(at: stagedPayloadRoot, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: backupRoot, withIntermediateDirectories: true)
     }
 
     private func stageAddedFiles(
-        _ paths: [RelativePath],
-        fileSystem: any FileSysteming
-    ) async throws -> [ChangeEntry] {
+        _ paths: [String],
+        fileManager: some FileManagerProtocol
+    ) throws -> [ChangeEntry] {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(paths.count)
 
         for path in paths {
-            let source = workspaceRoot.appending(path)
+            let source = workspaceRoot.appending(path: path)
             let stagedDestination = stagedPath(for: path)
-            try await copyToStaging(source: source, destination: stagedDestination, fileSystem: fileSystem)
+            try copyToStaging(source: source, destination: stagedDestination, fileManager: fileManager)
 
             entries.append(
                 ChangeEntry(
@@ -279,17 +278,17 @@ struct ApplyStagingArea {
     }
 
     private func stageModifiedFiles(
-        _ paths: [RelativePath],
-        fileSystem: any FileSysteming
-    ) async throws -> [ChangeEntry] {
+        _ paths: [String],
+        fileManager: some FileManagerProtocol
+    ) throws -> [ChangeEntry] {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(paths.count)
 
         for path in paths {
-            let source = workspaceRoot.appending(path)
+            let source = workspaceRoot.appending(path: path)
             let stagedDestination = stagedPath(for: path)
-            try await copyToStaging(source: source, destination: stagedDestination, fileSystem: fileSystem)
-            let backup = try await backupOriginalIfNeeded(relativePath: path, fileSystem: fileSystem)
+            try copyToStaging(source: source, destination: stagedDestination, fileManager: fileManager)
+            let backup = try backupOriginalIfNeeded(relativePath: path, fileManager: fileManager)
 
             entries.append(
                 ChangeEntry(
@@ -305,14 +304,14 @@ struct ApplyStagingArea {
     }
 
     private func stageDeletedFiles(
-        _ paths: [RelativePath],
-        fileSystem: any FileSysteming
-    ) async throws -> [ChangeEntry] {
+        _ paths: [String],
+        fileManager: some FileManagerProtocol
+    ) throws -> [ChangeEntry] {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(paths.count)
 
         for path in paths {
-            guard let backup = try await backupOriginalIfNeeded(relativePath: path, fileSystem: fileSystem) else {
+            guard let backup = try backupOriginalIfNeeded(relativePath: path, fileManager: fileManager) else {
                 continue
             }
 
@@ -330,26 +329,26 @@ struct ApplyStagingArea {
     }
 
     private func copyToStaging(
-        source: AbsolutePath,
-        destination: AbsolutePath,
-        fileSystem: any FileSysteming
-    ) async throws {
-        try await ensureParentDirectory(for: destination, fileSystem: fileSystem)
-        try await fileSystem.copy(source, to: destination)
+        source: URL,
+        destination: URL,
+        fileManager: some FileManagerProtocol
+    ) throws {
+        try ensureParentDirectory(for: destination, fileManager: fileManager)
+        try fileManager.copyItem(at: source, to: destination)
     }
 
     private func backupOriginalIfNeeded(
-        relativePath: RelativePath,
-        fileSystem: any FileSysteming
-    ) async throws -> AbsolutePath? {
+        relativePath: String,
+        fileManager: some FileManagerProtocol
+    ) throws -> URL? {
         let original = targetPath(for: relativePath)
-        guard try await fileSystem.exists(original) else {
+        guard try fileManager.exists(original) else {
             return nil
         }
 
         let backupDestination = backupPath(for: relativePath)
-        try await ensureParentDirectory(for: backupDestination, fileSystem: fileSystem)
-        try await fileSystem.copy(original, to: backupDestination)
+        try ensureParentDirectory(for: backupDestination, fileManager: fileManager)
+        try fileManager.copyItem(at: original, to: backupDestination)
         return backupDestination
     }
 
@@ -357,9 +356,9 @@ struct ApplyStagingArea {
     ///
     /// Removes all staging artifacts. Safe to call multiple times.
     ///
-    /// - Parameter fileSystem: File system for operations
-    func cleanup(fileSystem: any FileSysteming) async {
-        try? await fileSystem.remove(root)
+    /// - Parameter fileManager: File manager for operations
+    func cleanup(fileManager: some FileManagerProtocol) {
+        try? fileManager.removeItem(at: root)
     }
 }
 
@@ -375,10 +374,10 @@ struct ChangeManifest: Equatable, Sendable {
 
 /// A single change entry in the manifest.
 struct ChangeEntry: Equatable, Sendable {
-    let relativePath: RelativePath
+    let relativePath: String
     let kind: ChangeKind
-    let stagedPath: AbsolutePath?
-    let backupPath: AbsolutePath?
+    let stagedPath: URL?
+    let backupPath: URL?
 }
 
 /// The type of change to apply.

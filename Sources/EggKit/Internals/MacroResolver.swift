@@ -1,5 +1,5 @@
+import Foundation
 import Noora
-import Path
 
 /// Resolves macro definitions into concrete values.
 ///
@@ -15,14 +15,14 @@ import Path
 /// This ensures path-type macros resolve correctly relative to the execution context.
 package struct MacroResolver {
     private let config: Config
-    private let workingDirectory: AbsolutePath
-    private let homeDirectory: AbsolutePath
+    private let workingDirectory: URL
+    private let homeDirectory: URL
     private let noora: any Noorable
 
     package init(
         config: Config,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
+        workingDirectory: URL,
+        homeDirectory: URL,
         noora: some Noorable
     ) {
         self.config = config
@@ -159,7 +159,7 @@ package struct MacroResolver {
         )
 
         // Resolve path using the standalone function
-        let absolutePath = try! resolveToAbsolutePath(
+        let absolutePath = try! resolveToAbsoluteURL(
             pathString,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory

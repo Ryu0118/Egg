@@ -1,10 +1,9 @@
 import Foundation
-import Path
 
 struct ParsedMacroDefinitionValidator {
     let config: Config
-    let workingDirectory: AbsolutePath
-    let homeDirectory: AbsolutePath
+    let workingDirectory: URL
+    let homeDirectory: URL
 
     func validate(_ parsedMacroDefinitions: [ParsedMacroDefinition]) throws -> [ResolvedMacro] {
         let providedMacroNames = Set(parsedMacroDefinitions.map { $0.macro })
@@ -240,7 +239,7 @@ struct ParsedMacroDefinitionValidator {
         case .path:
             guard let value = resolvedValues.first, !value.isEmpty else { return nil }
 
-            guard let absolutePath = try? resolveToAbsolutePath(
+            guard let absolutePath = try? resolveToAbsoluteURL(
                 value,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory

@@ -1,22 +1,21 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Noora
-import Path
 
 package struct ListRunner {
     let location: TemplateLocationType?
     let finder: TemplatesFinder
-    let projectDirectory: AbsolutePath
-    let workingDirectory: AbsolutePath
+    let projectDirectory: URL
+    let workingDirectory: URL
     let hideDescription: Bool
     let noora: any Noorable
 
     package init(
         location: TemplateLocationType?,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming,
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
         noora: some Noorable = Noora()
     ) {
@@ -26,7 +25,7 @@ package struct ListRunner {
         self.hideDescription = hideDescription
         self.noora = noora
         finder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory

@@ -1,8 +1,7 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
 import Glob
 import Noora
-import Path
 
 /// Expands template files by substituting macros and copying to output directory.
 ///
@@ -13,22 +12,22 @@ import Path
 /// - Apply glob exclusion patterns (conditional and unconditional)
 /// - Write transformed files to output directory
 struct TemplateExpander {
-    private let fileSystem: any FileSysteming
-    private let templateDirectory: AbsolutePath
-    private let outputDirectory: AbsolutePath
+    private let fileManager: any FileManagerProtocol
+    private let templateDirectory: URL
+    private let outputDirectory: URL
     private let noora: any Noorable
     private let isInteractive: Bool
     private let override: Bool
 
     init(
-        fileSystem: any FileSysteming,
-        templateDirectory: AbsolutePath,
-        outputDirectory: AbsolutePath,
+        fileManager: some FileManagerProtocol,
+        templateDirectory: URL,
+        outputDirectory: URL,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
         override: Bool = false
     ) {
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         self.templateDirectory = templateDirectory
         self.outputDirectory = outputDirectory
         self.noora = noora
@@ -64,7 +63,7 @@ struct TemplateExpander {
         )
 
         // Check for existing files in output directory
-        let existingFiles = try await findExistingFiles(filesToGenerate)
+        let existingFiles = try findExistingFiles(filesToGenerate)
 
         if !existingFiles.isEmpty {
             let shouldOverwrite = try await confirmOverwrite(existingFiles)
@@ -73,12 +72,12 @@ struct TemplateExpander {
             }
         }
 
-        try await fileSystem.withAtomicCopyAndWrite(
+        try await fileManager.withAtomicCopyAndWrite(
             from: templateDirectory,
             to: outputDirectory
         ) { workingDirectory in
-            try await removeConfigFile(in: workingDirectory)
-            try await removeExcludedFiles(in: workingDirectory, matching: excludePatterns)
+            try removeConfigFile(in: workingDirectory)
+            try removeExcludedFiles(in: workingDirectory, matching: excludePatterns)
             try await transformFilenames(in: workingDirectory, substituting: macros, with: outputs)
             try await transformFileContents(in: workingDirectory, substituting: macros, with: outputs)
         }
@@ -91,12 +90,12 @@ struct TemplateExpander {
         with outputs: StepOutputsStorage,
         excluding patterns: [Glob.Pattern]
     ) async throws -> [String] {
-        let allPaths = try await collectAllPaths(in: templateDirectory, relativeTo: templateDirectory)
+        let allPaths = try collectAllPaths(in: templateDirectory, relativeTo: templateDirectory)
         var result: [String] = []
 
         for (absolutePath, relativePath) in allPaths {
             // Skip directories - only include files
-            let isDirectory = (try? await fileSystem.exists(absolutePath, isDirectory: true)) ?? false
+            let isDirectory = (try? fileManager.isDirectory(at: absolutePath)) ?? false
             if isDirectory {
                 continue
             }
@@ -121,12 +120,12 @@ struct TemplateExpander {
 
     /// Finds files that already exist in the output directory.
     /// Only returns leaf paths (not parent directories of other generated files).
-    private func findExistingFiles(_ filesToGenerate: [String]) async throws -> [String] {
+    private func findExistingFiles(_ filesToGenerate: [String]) throws -> [String] {
         var existingFiles: [String] = []
 
         for relativePath in filesToGenerate {
-            let fullPath = outputDirectory.appending(components: relativePath.split(separator: "/").map(String.init))
-            if try await fileSystem.exists(fullPath) {
+            let fullPath = outputDirectory.appending(path: relativePath)
+            if fileManager.exists(fullPath) {
                 existingFiles.append(relativePath)
             }
         }
@@ -203,42 +202,42 @@ struct TemplateExpander {
     }
 
     /// Removes the config.yml file from the working directory.
-    private func removeConfigFile(in directory: AbsolutePath) async throws {
+    private func removeConfigFile(in directory: URL) throws {
         let configPath = directory.appending(component: "config.yml")
-        if try await fileSystem.exists(configPath) {
-            try await fileSystem.remove(configPath)
+        if fileManager.exists(configPath) {
+            try fileManager.removeItem(at: configPath)
         }
     }
 
     /// Removes files matching exclusion patterns from the working directory.
     private func removeExcludedFiles(
-        in directory: AbsolutePath,
+        in directory: URL,
         matching patterns: [Glob.Pattern]
-    ) async throws {
+    ) throws {
         guard !patterns.isEmpty else { return }
 
-        let allPaths = try await collectAllPaths(in: directory, relativeTo: directory)
+        let allPaths = try collectAllPaths(in: directory, relativeTo: directory)
 
         // Sort by path length descending so we remove children before parents
         let sortedPaths = allPaths.sorted { $0.relativePath.count > $1.relativePath.count }
 
         for (absolutePath, relativePath) in sortedPaths {
             if isExcluded(relativePath, by: patterns) {
-                try await fileSystem.remove(absolutePath)
+                try fileManager.removeItem(at: absolutePath)
             }
         }
     }
 
     /// Transforms filenames by substituting macros, processing depth-first.
     private func transformFilenames(
-        in directory: AbsolutePath,
+        in directory: URL,
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage
     ) async throws {
-        let contents = try await fileSystem.contentsOfDirectory(directory)
+        let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
         for item in contents {
-            let isDirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+            let isDirectory = fileManager.isDirectory(at: item)
 
             // Process children first (depth-first)
             if isDirectory {
@@ -251,29 +250,29 @@ struct TemplateExpander {
 
     /// Transforms a single file or directory name by substituting macros.
     private func transformFilename(
-        at path: AbsolutePath,
+        at path: URL,
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage
     ) async throws {
-        let originalName = path.basename
+        let originalName = path.lastPathComponent
         let transformedName = try await resolvingMacros(in: originalName, substituting: macros, with: outputs)
 
         if transformedName != originalName {
-            let newPath = path.parentDirectory.appending(component: transformedName)
-            try await fileSystem.move(from: path, to: newPath)
+            let newPath = path.deletingLastPathComponent().appending(component: transformedName)
+            try fileManager.moveItem(at: path, to: newPath)
         }
     }
 
     /// Transforms file contents by substituting macros.
     private func transformFileContents(
-        in directory: AbsolutePath,
+        in directory: URL,
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage
     ) async throws {
-        let contents = try await fileSystem.contentsOfDirectory(directory)
+        let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
         for item in contents {
-            let isDirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+            let isDirectory = fileManager.isDirectory(at: item)
 
             if isDirectory {
                 try await transformFileContents(in: item, substituting: macros, with: outputs)
@@ -285,11 +284,11 @@ struct TemplateExpander {
 
     /// Transforms a single file's contents in place.
     private func transformFile(
-        at path: AbsolutePath,
+        at path: URL,
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage
     ) async throws {
-        let data = try await fileSystem.readFile(at: path)
+        let data = try fileManager.readFile(at: path)
 
         // Skip binary files
         guard let text = String(data: data, encoding: .utf8) else { return }
@@ -299,28 +298,25 @@ struct TemplateExpander {
 
         // Only write if changed
         if transformed != text {
-            try await fileSystem.writeText(transformed, at: path, encoding: .utf8, options: [.overwrite])
+            try fileManager.writeText(transformed, at: path, encoding: .utf8)
         }
     }
 
     /// Collects all paths in a directory recursively.
     private func collectAllPaths(
-        in directory: AbsolutePath,
-        relativeTo root: AbsolutePath
-    ) async throws -> [(absolutePath: AbsolutePath, relativePath: String)] {
-        var result: [(AbsolutePath, String)] = []
-        let contents = try await fileSystem.contentsOfDirectory(directory)
+        in directory: URL,
+        relativeTo root: URL
+    ) throws -> [(absolutePath: URL, relativePath: String)] {
+        var result: [(URL, String)] = []
+        let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
         for item in contents {
-            let relativePath = item.pathString.replacingOccurrences(
-                of: root.pathString + "/",
-                with: ""
-            )
+            let relativePath = item.relativePath(from: root)
             result.append((item, relativePath))
 
-            let isDirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+            let isDirectory = fileManager.isDirectory(at: item)
             if isDirectory {
-                try result.append(contentsOf: await collectAllPaths(in: item, relativeTo: root))
+                try result.append(contentsOf: collectAllPaths(in: item, relativeTo: root))
             }
         }
 

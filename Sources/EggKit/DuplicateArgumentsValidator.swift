@@ -1,6 +1,5 @@
-import FileSystem
+import FileManagerProtocol
 import Foundation
-import Path
 import Yams
 
 package struct DuplicateArgumentsValidator {
@@ -8,20 +7,20 @@ package struct DuplicateArgumentsValidator {
     private let newName: String?
     private let newDescription: String?
     private let templatesFinder: TemplatesFinder
-    private let homeDirectory: AbsolutePath
-    private let projectDirectory: AbsolutePath
-    private let workingDirectory: AbsolutePath
-    private let fileSystem: any FileSysteming
+    private let homeDirectory: URL
+    private let projectDirectory: URL
+    private let workingDirectory: URL
+    private let fileManager: any FileManagerProtocol
     private let decoder = YAMLDecoder()
 
     package init(
         templateName: String?,
         newName: String?,
         newDescription: String?,
-        projectDirectory: AbsolutePath,
-        workingDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath,
-        fileSystem: some FileSysteming
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
         self.newName = newName
@@ -29,9 +28,9 @@ package struct DuplicateArgumentsValidator {
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
-        self.fileSystem = fileSystem
+        self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
@@ -44,7 +43,7 @@ package struct DuplicateArgumentsValidator {
         }
 
         let (sourcePath, sourceLocation) = try await findSourceTemplate(name: templateName)
-        let sourceConfig = try await readSourceConfig(at: sourcePath)
+        let sourceConfig = try readSourceConfig(at: sourcePath)
         let (finalNewName, finalNewDescription) = try await determineNewTemplateInfo(
             sourceConfig: sourceConfig,
             sourceLocation: sourceLocation
@@ -52,19 +51,19 @@ package struct DuplicateArgumentsValidator {
 
         return .direct(
             sourceName: templateName,
-            sourcePath: sourcePath.pathString,
+            sourcePath: sourcePath.path,
             sourceLocation: sourceLocation,
             newName: finalNewName,
             newDescription: finalNewDescription
         )
     }
 
-    private func findSourceTemplate(name: String) async throws -> (path: AbsolutePath, location: TemplateLocationType) {
+    private func findSourceTemplate(name: String) async throws -> (path: URL, location: TemplateLocationType) {
         guard let sourcePath = try await templatesFinder.validTemplateDirectory(name) else {
             throw Error.templateNotFound(name: name)
         }
 
-        let sourceLocation = try await determineSourceLocation(
+        let sourceLocation = determineSourceLocation(
             templateName: name,
             sourcePath: sourcePath
         )
@@ -74,14 +73,14 @@ package struct DuplicateArgumentsValidator {
 
     private func determineSourceLocation(
         templateName: String,
-        sourcePath: AbsolutePath
-    ) async throws -> TemplateLocationType {
+        sourcePath: URL
+    ) -> TemplateLocationType {
         let templateLocationInstance = TemplateLocation(
             homeDirectory: homeDirectory
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
 
-        return if try await fileSystem.exists(globalPath) && sourcePath == globalPath {
+        return if fileManager.fileExists(atPath: globalPath.path) && sourcePath == globalPath {
             TemplateLocationType.global
         } else {
             TemplateLocationType.project(
@@ -91,9 +90,9 @@ package struct DuplicateArgumentsValidator {
         }
     }
 
-    private func readSourceConfig(at sourcePath: AbsolutePath) async throws -> Config {
-        let configPath = sourcePath.appending(component: "config.yml")
-        let configData = try await fileSystem.readFile(at: configPath)
+    private func readSourceConfig(at sourcePath: URL) throws -> Config {
+        let configPath = sourcePath.appendingPathComponent("config.yml")
+        let configData = try fileManager.readFile(at: configPath)
         return try decoder.decode(Config.self, from: configData)
     }
 

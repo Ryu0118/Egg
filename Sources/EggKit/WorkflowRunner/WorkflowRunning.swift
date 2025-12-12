@@ -1,4 +1,4 @@
-import Path
+import Foundation
 
 /// Protocol for workflow runners that execute the hatch lifecycle.
 ///
@@ -32,8 +32,8 @@ protocol WorkflowRunning {
     func run(
         config: Config,
         macroInputs: MacroInputs,
-        templateDirectory: AbsolutePath
-    ) async throws -> AbsolutePath
+        templateDirectory: URL
+    ) async throws -> URL
 }
 
 /// Represents the input for macro resolution.
