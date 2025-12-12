@@ -11,10 +11,16 @@ import Foundation
 struct VariableResolver {
     let macros: [ResolvedMacro]
     let outputs: StepOutputsStorage
+    let builtInMacroContext: BuiltInMacroContext
 
-    init(macros: [ResolvedMacro], outputs: StepOutputsStorage) {
+    init(
+        macros: [ResolvedMacro],
+        outputs: StepOutputsStorage,
+        builtInMacroContext: BuiltInMacroContext
+    ) {
         self.macros = macros
         self.outputs = outputs
+        self.builtInMacroContext = builtInMacroContext
     }
 
     /// Resolves all variables in the given text.
@@ -23,11 +29,18 @@ struct VariableResolver {
     /// - Returns: Text with all variables resolved
     /// - Throws: `LifecycleStepError.undefinedOutputReference` if an output reference cannot be resolved
     func resolve(_ text: String) async throws -> String {
-        var result = resolveMacros(text)
+        var result = resolveBuiltInMacros(text)
+
+        result = resolveMacros(result)
 
         result = try await resolveStepOutputs(result)
 
         return result
+    }
+
+    /// Replaces all built-in macros (e.g., ___DATE___) before user-defined macros.
+    private func resolveBuiltInMacros(_ text: String) -> String {
+        BuiltInMacros.resolve(text, context: builtInMacroContext)
     }
 
     /// Replaces all `___MACRO_NAME___` patterns with their resolved values.

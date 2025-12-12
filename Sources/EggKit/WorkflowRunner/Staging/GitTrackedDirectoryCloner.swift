@@ -1,4 +1,3 @@
-import Darwin
 import FileManagerProtocol
 import Foundation
 import ProcessRunning
@@ -26,16 +25,16 @@ import AsyncOperations
 struct GitTrackedDirectoryCloner: DirectoryCloning {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
-    private let fallbackCloner: any DirectoryCloning
+    private let apfsCloner: any DirectoryCloning
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),
         fileManager: some FileManagerProtocol = FileManager.default,
-        fallbackCloner: some DirectoryCloning = APFSDirectoryCloner()
+        apfsCloner: some DirectoryCloning = APFSDirectoryCloner()
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
-        self.fallbackCloner = fallbackCloner
+        self.apfsCloner = apfsCloner
     }
 
     func clone(from source: URL, to destination: URL) async throws {
@@ -46,7 +45,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         // Check if source is a git repository
         guard await isGitRepository(source) else {
             // Fall back to APFS cloning for non-git directories
-            try await fallbackCloner.clone(from: source, to: destination)
+            try await apfsCloner.clone(from: source, to: destination)
             return
         }
 
@@ -69,26 +68,20 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         )
 
         // Clone each file using APFS clonefile
-        do {
-            try await files.asyncForEach(numberOfConcurrentTasks: 10) { file in
-                let sourceFile = source.appending(path: file)
-                let destFile = destination.appending(path: file)
+        try await files.asyncForEach(numberOfConcurrentTasks: 10) { file in
+            let sourceFile = source.appending(path: file)
+            let destFile = destination.appending(path: file)
 
-                // Create parent directories if needed
-                let destParent = destFile.deletingLastPathComponent()
-                if destParent != destination {
-                    try self.fileManager.createDirectory(
-                        at: destParent,
-                        withIntermediateDirectories: true
-                    )
-                }
-
-                try self.cloneFile(from: sourceFile, to: destFile)
+            // Create parent directories if needed
+            let destParent = destFile.deletingLastPathComponent()
+            if destParent != destination {
+                try self.fileManager.createDirectory(
+                    at: destParent,
+                    withIntermediateDirectories: true
+                )
             }
-        } catch {
-            print(error)
-            print(error.localizedDescription)
-            throw error
+
+            try await self.apfsCloner.clone(from: sourceFile, to: destFile)
         }
     }
 
@@ -163,24 +156,6 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         output
             .split(separator: "\0", omittingEmptySubsequences: true)
             .map { String($0) }
-    }
-
-    /// Clones a single file using APFS copy-on-write.
-    private func cloneFile(from source: URL, to destination: URL) throws {
-        let result = source.withUnsafeFileSystemRepresentation { srcPath in
-            destination.withUnsafeFileSystemRepresentation { dstPath in
-                guard let srcPath, let dstPath else {
-                    return Int32(-1)
-                }
-                return clonefile(srcPath, dstPath, 0)
-            }
-        }
-
-        if result != 0 {
-            let errorCode = errno
-            let errorMessage = String(cString: strerror(errorCode))
-            throw CloningError.systemError(code: errorCode, message: errorMessage)
-        }
     }
 }
 

@@ -149,7 +149,7 @@ struct StagingApplyIntegrationTests {
                 return
             }
 
-            let conflictPaths = conflicts.map { $0.path }.sorted()
+            let conflictPaths = conflicts.map { $0.pathString }.sorted()
             #expect(conflictPaths == expectedConflictPaths.sorted(), "Expected conflicts at \(expectedConflictPaths), got \(conflictPaths)")
 
         case .emptyChangeSummary:

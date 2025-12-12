@@ -170,7 +170,7 @@ package struct DuplicateRunner {
         let targetPath = templateLocation.template(newName, type: sourceLocation)
 
         // Ensure target directory doesn't exist
-        guard !fileManager.fileExists(atPath: targetPath.path) else {
+        guard !fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)) else {
             throw Error.targetAlreadyExists(name: newName)
         }
 
@@ -185,7 +185,7 @@ package struct DuplicateRunner {
             newDescription: newDescription
         )
 
-        noora.success("Successfully duplicated template '\(newName)' at \(targetPath.path)")
+        noora.success("Successfully duplicated template '\(newName)' at \(targetPath.path(percentEncoded: false))")
     }
 
     private func updateConfig(

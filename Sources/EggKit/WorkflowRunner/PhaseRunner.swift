@@ -34,6 +34,8 @@ struct PhaseRunner {
     private let noora: any Noorable
     private let isInteractive: Bool
     private let override: Bool
+    private let processEnvironment: [String: String]
+    private let builtInMacroDate: Date
 
     init(
         processRunner: any ProcessRunning,
@@ -41,7 +43,9 @@ struct PhaseRunner {
         homeDirectory: URL,
         noora: some Noorable,
         isInteractive: Bool,
-        override: Bool
+        override: Bool,
+        processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
+        builtInMacroDate: Date = Date()
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -49,6 +53,8 @@ struct PhaseRunner {
         self.noora = noora
         self.isInteractive = isInteractive
         self.override = override
+        self.processEnvironment = processEnvironment
+        self.builtInMacroDate = builtInMacroDate
     }
 
     /// Executes the pre_hatch lifecycle phase.
@@ -73,12 +79,18 @@ struct PhaseRunner {
     ) async throws {
         noora.passthrough("🥚 Pre-hatch script executing...\n")
 
+        let builtInContext = makeBuiltInMacroContext(
+            workingDirectory: workingDirectory,
+            additionalEnvironment: additionalEnvironment
+        )
+
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
             noora: noora,
             additionalEnvironment: additionalEnvironment,
-            executionEnvironment: executionEnvironment
+            executionEnvironment: executionEnvironment,
+            builtInMacroContext: builtInContext
         )
 
         _ = try await stepRunner.execute(
@@ -113,7 +125,11 @@ struct PhaseRunner {
         noora.passthrough("🐣 Hatching \(config.name)...\n")
 
         // Resolve macros in the output path first
-        let resolver = VariableResolver(macros: macros, outputs: outputs)
+        let resolver = VariableResolver(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: makeBuiltInMacroContext(workingDirectory: workingDirectory)
+        )
         let resolvedOutput = try await resolver.resolve(config.hatch.output)
 
         let outputDirectory = try resolveToAbsoluteURL(
@@ -138,6 +154,10 @@ struct PhaseRunner {
             fileManager: fileManager,
             templateDirectory: templateDirectory,
             outputDirectory: outputDirectory,
+            builtInMacroContext: makeBuiltInMacroContext(
+                workingDirectory: workingDirectory,
+                outputDirectory: outputDirectory
+            ),
             noora: noora,
             isInteractive: isInteractive,
             override: override
@@ -174,12 +194,18 @@ struct PhaseRunner {
     ) async throws {
         noora.passthrough("🐥 Post-hatch script executing...\n")
 
+        let builtInContext = makeBuiltInMacroContext(
+            workingDirectory: workingDirectory,
+            additionalEnvironment: additionalEnvironment
+        )
+
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
             noora: noora,
             additionalEnvironment: additionalEnvironment,
-            executionEnvironment: executionEnvironment
+            executionEnvironment: executionEnvironment,
+            builtInMacroContext: builtInContext
         )
 
         _ = try await stepRunner.execute(
@@ -187,6 +213,26 @@ struct PhaseRunner {
             steps: steps,
             substituting: macros,
             merging: outputs
+        )
+    }
+
+    private func makeBuiltInMacroContext(
+        workingDirectory: URL,
+        outputDirectory: URL? = nil,
+        additionalEnvironment: [String: String] = [:]
+    ) -> BuiltInMacroContext {
+        var environment = processEnvironment
+
+        if !additionalEnvironment.isEmpty {
+            environment.merge(additionalEnvironment) { _, new in new }
+        }
+
+        return BuiltInMacroContext(
+            outputDirectory: outputDirectory,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory,
+            currentDate: builtInMacroDate,
+            environment: environment
         )
     }
 }

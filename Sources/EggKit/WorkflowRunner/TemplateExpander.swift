@@ -15,6 +15,7 @@ struct TemplateExpander {
     private let fileManager: any FileManagerProtocol
     private let templateDirectory: URL
     private let outputDirectory: URL
+    private let builtInMacroContext: BuiltInMacroContext
     private let noora: any Noorable
     private let isInteractive: Bool
     private let override: Bool
@@ -23,6 +24,7 @@ struct TemplateExpander {
         fileManager: some FileManagerProtocol,
         templateDirectory: URL,
         outputDirectory: URL,
+        builtInMacroContext: BuiltInMacroContext,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
         override: Bool = false
@@ -30,6 +32,7 @@ struct TemplateExpander {
         self.fileManager = fileManager
         self.templateDirectory = templateDirectory
         self.outputDirectory = outputDirectory
+        self.builtInMacroContext = builtInMacroContext
         self.noora = noora
         self.isInteractive = isInteractive
         self.override = override
@@ -293,7 +296,11 @@ struct TemplateExpander {
         // Skip binary files
         guard let text = String(data: data, encoding: .utf8) else { return }
 
-        let resolver = VariableResolver(macros: macros, outputs: outputs)
+        let resolver = VariableResolver(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: builtInMacroContext
+        )
         let transformed = try await resolver.resolve(text)
 
         // Only write if changed
@@ -329,7 +336,11 @@ struct TemplateExpander {
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage
     ) async throws -> String {
-        let resolver = VariableResolver(macros: macros, outputs: outputs)
+        let resolver = VariableResolver(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: builtInMacroContext
+        )
         return try await resolver.resolve(text)
     }
 

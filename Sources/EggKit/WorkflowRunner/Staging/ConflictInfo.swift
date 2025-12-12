@@ -2,7 +2,7 @@ import Foundation
 
 /// Information about a conflict detected during staging apply.
 struct ConflictInfo: Equatable, Sendable {
-    let path: String
+    let pathString: String
     let type: ConflictType
 
     /// Type of conflict detected.

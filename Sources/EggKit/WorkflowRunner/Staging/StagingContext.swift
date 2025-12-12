@@ -185,7 +185,7 @@ actor StagingContext {
             zip(rootComponents, pathComponents).allSatisfy { $0 == $1 }
 
         guard isWithinRoot else {
-            throw StagingContext.Error.escapeAttempt(path: path.path)
+            throw StagingContext.Error.escapeAttempt(path: path.path(percentEncoded: false))
         }
     }
 
@@ -291,20 +291,7 @@ actor StagingContext {
         // Remove the parent staging directory (contains both work and reference)
         // root is ~/.eggs/workspaces/{uuid}/work, so parent is ~/.eggs/workspaces/{uuid}
         let workspaceBaseDirectory = root.deletingLastPathComponent()
-
-        // Use trashItem for instant deletion (moves to Trash instead of recursive delete)
-        // This is much faster than removeItem, especially for APFS clones
-        do {
-            try FileManager.default.removeItem(at: workspaceBaseDirectory)
-        } catch {
-            // Fallback to regular removal if trash fails (e.g., on systems without Trash)
-            try? fileManager.removeItem(at: workspaceBaseDirectory)
-        }
-    }
-
-    /// Returns whether the staging area has been discarded.
-    var discarded: Bool {
-        isDiscarded
+        try? fileManager.removeItem(at: workspaceBaseDirectory)
     }
 }
 
@@ -439,12 +426,8 @@ extension StagingContext {
                 // Recursively enumerate all files in the directory
                 let contents = try enumerateDirectoryRecursively(absolutePath, relativeTo: baseDirectory)
                 expandedPaths.formUnion(contents)
-                // Also include the directory itself (for detecting directory additions)
-                expandedPaths.insert(relativePath)
-            } else {
-                // Regular file, include as-is
-                expandedPaths.insert(relativePath)
             }
+            expandedPaths.insert(relativePath)
         }
 
         return expandedPaths
@@ -516,10 +499,10 @@ extension StagingContext {
 
         let conflicts = conflictPaths.map { path -> ConflictInfo in
             let type: ConflictInfo.ConflictType = deletedInWorkspace.contains(path) ? .deletedButModified : .bothModified
-            return ConflictInfo(path: path, type: type)
+            return ConflictInfo(pathString: path, type: type)
         }
 
-        return conflicts.sorted { $0.path < $1.path }
+        return conflicts.sorted { $0.pathString < $1.pathString }
     }
 
     private func stopWatchers() async {

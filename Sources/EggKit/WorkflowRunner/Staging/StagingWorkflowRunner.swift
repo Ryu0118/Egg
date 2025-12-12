@@ -208,7 +208,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             if !overriddenConflicts.isEmpty {
                 noora.passthrough("⚠️ Overwritten conflicting files:\n")
                 for conflict in overriddenConflicts {
-                    noora.passthrough("- \(conflict.path) (\(conflict.type.description))\n", tab: 1)
+                    noora.passthrough("- \(conflict.pathString) (\(conflict.type.description))\n", tab: 1)
                 }
             }
 
@@ -335,7 +335,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private func displayConflicts(_ conflicts: [ConflictInfo]) {
         noora.passthrough("⚠️ Conflicts detected:\n")
         for conflict in conflicts {
-            noora.passthrough("- \(conflict.path): \(conflict.type.description)\n", tab: 1)
+            noora.passthrough("- \(conflict.pathString): \(conflict.type.description)\n", tab: 1)
         }
         noora.passthrough("\n")
     }

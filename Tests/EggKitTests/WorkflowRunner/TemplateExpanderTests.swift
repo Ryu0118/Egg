@@ -4,6 +4,19 @@ import Foundation
 import Testing
 
 struct TemplateExpanderTests {
+    private func makeBuiltInMacroContext(
+        workingDirectory: URL,
+        outputDirectory: URL
+    ) -> BuiltInMacroContext {
+        BuiltInMacroContext(
+            outputDirectory: outputDirectory,
+            workingDirectory: workingDirectory,
+            homeDirectory: workingDirectory,
+            currentDate: Date(timeIntervalSince1970: 0),
+            environment: [:]
+        )
+    }
+
     @Test(arguments: TestCase.allCases)
     func expand(_ testCase: TestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
@@ -31,6 +44,10 @@ struct TemplateExpanderTests {
             fileManager: fileManager,
             templateDirectory: templateDir,
             outputDirectory: outputDir,
+            builtInMacroContext: makeBuiltInMacroContext(
+                workingDirectory: tempDir,
+                outputDirectory: outputDir
+            ),
             isInteractive: testCase.isInteractive,
             override: testCase.override
         )

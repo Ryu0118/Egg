@@ -4,6 +4,19 @@ import ProcessRunning
 import Testing
 
 struct LifecycleStepRunnerTests {
+    private func makeBuiltInMacroContext(
+        workingDirectory: URL,
+        additionalEnvironment: [String: String] = [:]
+    ) -> BuiltInMacroContext {
+        BuiltInMacroContext(
+            outputDirectory: nil,
+            workingDirectory: workingDirectory,
+            homeDirectory: workingDirectory,
+            currentDate: Date(timeIntervalSince1970: 0),
+            environment: additionalEnvironment
+        )
+    }
+
     @Test(arguments: TestCase.allCases)
     func executePhase(_ testCase: TestCase) async throws {
         let processRunner = ProcessRunner()
@@ -11,7 +24,8 @@ struct LifecycleStepRunnerTests {
 
         let runner = LifecycleStepRunner(
             processRunner: processRunner,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
+            builtInMacroContext: makeBuiltInMacroContext(workingDirectory: workingDirectory)
         )
 
         let initialOutputs = StepOutputsStorage()
@@ -392,7 +406,11 @@ struct LifecycleStepRunnerTests {
         let runner = LifecycleStepRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
-            additionalEnvironment: testCase.additionalEnvironment
+            additionalEnvironment: testCase.additionalEnvironment,
+            builtInMacroContext: makeBuiltInMacroContext(
+                workingDirectory: workingDirectory,
+                additionalEnvironment: testCase.additionalEnvironment
+            )
         )
 
         let initialOutputs = StepOutputsStorage()

@@ -37,7 +37,7 @@ extension StagingContext {
             case let .conflictingFiles(conflicts):
                 var message = "Conflicting changes detected:\n"
                 for conflict in conflicts {
-                    message += "  - \(conflict.path): \(conflict.type.description)\n"
+                    message += "  - \(conflict.pathString): \(conflict.type.description)\n"
                 }
                 message += "Please resolve conflicts manually and retry, or use --override to apply staged changes."
                 return message

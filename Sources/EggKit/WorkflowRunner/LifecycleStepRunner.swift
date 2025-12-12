@@ -30,19 +30,22 @@ struct LifecycleStepRunner {
     private let noora: any Noorable
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
+    private let builtInMacroContext: BuiltInMacroContext
 
     init(
         processRunner: any ProcessRunning,
         workingDirectory: URL,
         noora: some Noorable = Noora(),
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .unsandboxed
+        executionEnvironment: ExecutionEnvironment = .unsandboxed,
+        builtInMacroContext: BuiltInMacroContext
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
         self.noora = noora
         self.additionalEnvironment = additionalEnvironment
         self.executionEnvironment = executionEnvironment
+        self.builtInMacroContext = builtInMacroContext
     }
 
     /// Executes all steps in a lifecycle phase.
@@ -145,7 +148,11 @@ struct LifecycleStepRunner {
             return nil
         }
 
-        let resolver = VariableResolver(macros: macros, outputs: outputs)
+        let resolver = VariableResolver(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: builtInMacroContext
+        )
         return try await resolver.resolve(runCommand)
     }
 }

@@ -51,7 +51,7 @@ package struct DuplicateArgumentsValidator {
 
         return .direct(
             sourceName: templateName,
-            sourcePath: sourcePath.path,
+            sourcePath: sourcePath.path(percentEncoded: false),
             sourceLocation: sourceLocation,
             newName: finalNewName,
             newDescription: finalNewDescription
@@ -80,7 +80,7 @@ package struct DuplicateArgumentsValidator {
         )
         let globalPath = templateLocationInstance.template(templateName, type: .global)
 
-        return if fileManager.fileExists(atPath: globalPath.path) && sourcePath == globalPath {
+        return if fileManager.fileExists(atPath: globalPath.path(percentEncoded: false)) && sourcePath == globalPath {
             TemplateLocationType.global
         } else {
             TemplateLocationType.project(
