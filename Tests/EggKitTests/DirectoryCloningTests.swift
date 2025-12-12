@@ -1,36 +1,35 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Path
 import Testing
 
 struct DirectoryCloningTests {
-    @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
+    @Test(arguments: TestCase.allCases)
     func clone(_ testCase: TestCase) async throws {
-        let fileSystem = FileManager.default
-        let tempDirURL = try fileSystem.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
-        let tempDir = try AbsolutePath(validating: tempDirURL.path)
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
 
-        let sourceDir = tempDir.appending(component: "source")
-        let destDir = tempDir.appending(component: "dest")
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
 
-        try await setupSource(testCase.sourceSetup, in: sourceDir, using: fileSystem)
+        try setupSource(testCase.sourceSetup, in: sourceDir, using: fileManager)
 
         let cloner = APFSDirectoryCloner()
 
         switch testCase.expectation {
         case let .success(verifications):
             try await cloner.clone(
-                from: URL(filePath: sourceDir.pathString),
-                to: URL(filePath: destDir.pathString)
+                from: sourceDir,
+                to: destDir
             )
-            try await verify(verifications, in: destDir, using: fileSystem)
+            try verify(verifications, in: destDir, using: fileManager)
 
         case let .failure(expectedError):
             await #expect(throws: expectedError) {
                 try await cloner.clone(
-                    from: URL(filePath: sourceDir.pathString),
-                    to: URL(filePath: destDir.pathString)
+                    from: sourceDir,
+                    to: destDir
                 )
             }
         }
@@ -51,30 +50,27 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test(.inTemporaryDirectory)
+    @Test
     func cloneFailsWhenDestinationExists() async throws {
-        let fileSystem = FileManager.default
-        let tempDirURL = try fileSystem.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
-        let tempDir = try AbsolutePath(validating: tempDirURL.path)
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
 
-        let sourceDir = tempDir.appending(component: "source")
-        let destDir = tempDir.appending(component: "dest")
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
 
-        let sourceDirURL = URL(filePath: sourceDir.pathString)
-        let destDirURL = URL(filePath: destDir.pathString)
+        try fileManager.createDirectory(at: sourceDir, withIntermediateDirectories: true)
+        try fileManager.writeText("source content", at: sourceDir.appending(path: "file.txt"), encoding: .utf8)
 
-        try await fileSystem.createDirectory(at: sourceDirURL, withIntermediateDirectories: true)
-        try await fileSystem.writeText("source content", at: URL(filePath: sourceDir.appending(component: "file.txt").pathString))
-
-        try await fileSystem.createDirectory(at: destDirURL, withIntermediateDirectories: true)
-        try await fileSystem.writeText("dest content", at: URL(filePath: destDir.appending(component: "existing.txt").pathString))
+        try fileManager.createDirectory(at: destDir, withIntermediateDirectories: true)
+        try fileManager.writeText("dest content", at: destDir.appending(path: "existing.txt"), encoding: .utf8)
 
         let cloner = APFSDirectoryCloner()
 
         await #expect(throws: CloningError.self) {
             try await cloner.clone(
-                from: URL(filePath: sourceDir.pathString),
-                to: URL(filePath: destDir.pathString)
+                from: sourceDir,
+                to: destDir
             )
         }
     }
@@ -92,43 +88,45 @@ struct DirectoryCloningTests {
 extension DirectoryCloningTests {
     private func setupSource(
         _ items: [TestCase.Setup],
-        in directory: AbsolutePath,
-        using fileSystem: FileManagerProtocol
-    ) async throws {
-        let directoryURL = URL(filePath: directory.pathString)
-        try await fileSystem.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        in directory: URL,
+        using fileManager: some FileManagerProtocol
+    ) throws {
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         for item in items {
-            try await createItem(item, in: directory, using: fileSystem)
+            try createItem(item, in: directory, using: fileManager)
         }
     }
 
     private func createItem(
         _ item: TestCase.Setup,
-        in baseDir: AbsolutePath,
-        using fileSystem: FileManagerProtocol
-    ) async throws {
+        in baseDir: URL,
+        using fileManager: some FileManagerProtocol
+    ) throws {
         switch item {
         case let .file(path, content):
-            let fullPath = baseDir.appending(components: path.split(separator: "/").map(String.init))
-            try await createParentDirectoryIfNeeded(for: fullPath, using: fileSystem)
-            let fileURL = URL(filePath: fullPath.pathString)
-            try await fileSystem.writeText(content, at: fileURL)
+            var fullPath = baseDir
+            for component in path.split(separator: "/").map(String.init) {
+                fullPath = fullPath.appending(path: component)
+            }
+            try createParentDirectoryIfNeeded(for: fullPath, using: fileManager)
+            try fileManager.writeText(content, at: fullPath, encoding: .utf8)
 
         case let .directory(path):
-            let fullPath = baseDir.appending(components: path.split(separator: "/").map(String.init))
-            let directoryURL = URL(filePath: fullPath.pathString)
-            try await fileSystem.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            var fullPath = baseDir
+            for component in path.split(separator: "/").map(String.init) {
+                fullPath = fullPath.appending(path: component)
+            }
+            try fileManager.createDirectory(at: fullPath, withIntermediateDirectories: true)
         }
     }
 
     private func createParentDirectoryIfNeeded(
-        for path: AbsolutePath,
-        using fileSystem: FileManagerProtocol
-    ) async throws {
-        let parent = path.parentDirectory
-        if try !(await fileSystem.exists(parent)) {
-            let parentURL = URL(filePath: parent.pathString)
-            try await fileSystem.createDirectory(at: parentURL, withIntermediateDirectories: true)
+        for path: URL,
+        using fileManager: some FileManagerProtocol
+    ) throws {
+        let parent = path.deletingLastPathComponent()
+        if !fileManager.exists(parent) {
+            try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
         }
     }
 }
@@ -136,45 +134,48 @@ extension DirectoryCloningTests {
 extension DirectoryCloningTests {
     private func verify(
         _ verifications: [TestCase.Verification],
-        in directory: AbsolutePath,
-        using fileSystem: FileManagerProtocol
-    ) async throws {
+        in directory: URL,
+        using fileManager: some FileManagerProtocol
+    ) throws {
         for verification in verifications {
-            try await verifyItem(verification, in: directory, using: fileSystem)
+            try verifyItem(verification, in: directory, using: fileManager)
         }
     }
 
     private func verifyItem(
         _ verification: TestCase.Verification,
-        in baseDir: AbsolutePath,
-        using fileSystem: FileManagerProtocol
-    ) async throws {
+        in baseDir: URL,
+        using fileManager: some FileManagerProtocol
+    ) throws {
         switch verification {
         case let .fileExists(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let exists = try await fileSystem.exists(fullPath)
+            let exists = fileManager.exists(fullPath)
             #expect(exists, "Expected file to exist at \(path)")
 
         case let .fileContent(path, expected):
             let fullPath = resolvePath(path, in: baseDir)
-            let data = try await fileSystem.readFile(at: fullPath)
+            let data = try fileManager.readFile(at: fullPath)
             let actual = String(data: data, encoding: .utf8)
             #expect(actual == expected, "Expected content '\(expected)' at \(path), got '\(actual ?? "nil")'")
 
         case let .directoryExists(path):
             let fullPath = resolvePath(path, in: baseDir)
-            let fullPathURL = URL(filePath: fullPath.pathString)
-            let exists = try await fileSystem.exists(fullPath)
-            let isDir = exists ? try await fileSystem.isDirectory(at: fullPathURL) : false
+            let exists = fileManager.exists(fullPath)
+            let isDir = exists ? fileManager.isDirectory(at: fullPath) : false
             #expect(exists && isDir, "Expected directory to exist at \(path)")
         }
     }
 
-    private func resolvePath(_ relativePath: String, in baseDir: AbsolutePath) -> AbsolutePath {
+    private func resolvePath(_ relativePath: String, in baseDir: URL) -> URL {
         if relativePath == "." {
             return baseDir
         }
-        return baseDir.appending(components: relativePath.split(separator: "/").map(String.init))
+        var fullPath = baseDir
+        for component in relativePath.split(separator: "/").map(String.init) {
+            fullPath = fullPath.appending(path: component)
+        }
+        return fullPath
     }
 }
 

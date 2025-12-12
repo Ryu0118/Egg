@@ -1,6 +1,5 @@
 @testable import EggKit
 import Foundation
-import Path
 import ProcessRunning
 import Subprocess
 import Testing
@@ -26,7 +25,7 @@ actor StreamCollector {
 struct ShellScriptRunnerTests {
     @Test(arguments: TestCase.allCases)
     func execute(_ testCase: TestCase) async throws {
-        let tempDir = try AbsolutePath(validating: FileManager.default.temporaryDirectory.path(percentEncoded: false))
+        let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
             workingDirectory: tempDir
@@ -66,7 +65,7 @@ struct ShellScriptRunnerTests {
 
     @Test(arguments: StreamingTestCase.allCases)
     func executeStreaming(_ testCase: StreamingTestCase) async throws {
-        let tempDir = try AbsolutePath(validating: NSTemporaryDirectory())
+        let tempDir = URL(filePath: NSTemporaryDirectory())
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
             workingDirectory: tempDir
@@ -234,7 +233,7 @@ struct ShellScriptRunnerTests {
 
     @Test(arguments: EnvironmentTestCase.allCases)
     func executeWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
-        let tempDir = try AbsolutePath(validating: FileManager.default.temporaryDirectory.path(percentEncoded: false))
+        let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
             workingDirectory: tempDir,
@@ -247,7 +246,7 @@ struct ShellScriptRunnerTests {
 
     @Test(arguments: EnvironmentTestCase.allCases)
     func executeStreamingWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
-        let tempDir = try AbsolutePath(validating: FileManager.default.temporaryDirectory.path(percentEncoded: false))
+        let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
             workingDirectory: tempDir,

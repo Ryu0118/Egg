@@ -23,7 +23,7 @@ struct StagingContextTests {
         let staging = try await StagingContext.create(
             cloning: workingDir,
             homeDirectory: tempDir,
-            fileSystem: fileManager,
+            fileManager: fileManager,
             workspaceWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             processRunner: ProcessRunner()
@@ -319,11 +319,11 @@ struct StagingContextTests {
 
             // Verify .git paths are not in the summary
             let allPaths = summary.added + summary.modified + summary.deleted
-            let gitPaths = allPaths.filter { $0.components.first == ".git" }
+            let gitPaths = allPaths.filter { $0.hasPrefix(".git/") || $0 == ".git" }
             #expect(gitPaths.isEmpty, ".git paths should be ignored in change summary, but found: \(gitPaths)")
 
             // Verify README.md is in the summary (as modified)
-            let hasReadme = summary.modified.contains { $0.pathString == "README.md" }
+            let hasReadme = summary.modified.contains { $0 == "README.md" }
             #expect(hasReadme, "README.md should be in modified list")
         }
     }

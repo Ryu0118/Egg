@@ -1,6 +1,5 @@
 @testable import EggKit
 import Foundation
-import Path
 import Testing
 
 struct ConditionEvaluatorTests {
@@ -136,7 +135,7 @@ struct ConditionEvaluatorTests {
                 description: "evaluates path macro comparison",
                 condition: "___OUTPUT_DIR___ === \"/tmp/test\"",
                 macros: [
-                    ResolvedMacro(name: "___OUTPUT_DIR___", description: "Output Directory", value: .path(try! AbsolutePath(validating: "/tmp/test"))),
+                    ResolvedMacro(name: "___OUTPUT_DIR___", description: "Output Directory", value: .path(URL(filePath: "/tmp/test"))),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: true)

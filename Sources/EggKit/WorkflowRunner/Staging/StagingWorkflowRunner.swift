@@ -229,20 +229,23 @@ struct StagingWorkflowRunner: WorkflowRunning {
         outputDirectory: URL,
         workspaceRoot: URL
     ) throws -> String {
+        // Normalize paths by resolving symlinks and standardizing representation
+        let normalizedOutput = outputDirectory.standardizedFileURL.path(percentEncoded: false)
+        let normalizedRoot = workspaceRoot.standardizedFileURL.path(percentEncoded: false)
+
         // If output is the workspace root itself (output: "."), return "." as the relative path
-        if outputDirectory == workspaceRoot {
+        if normalizedOutput == normalizedRoot {
             return "."
         }
 
         // Remove the workspace root prefix to get the relative path
-        let pathString = outputDirectory.path(percentEncoded: false)
-        let rootPrefix = workspaceRoot.path(percentEncoded: false) + "/"
-        guard pathString.hasPrefix(rootPrefix) else {
+        let rootPrefix = normalizedRoot.hasSuffix("/") ? normalizedRoot : normalizedRoot + "/"
+        guard normalizedOutput.hasPrefix(rootPrefix) else {
             throw LifecycleStepError.invalidOutputDirectory(
-                "Output path is not within staging workspace: \(pathString)"
+                "Output path is not within staging workspace: \(normalizedOutput)"
             )
         }
-        let relative = String(pathString.dropFirst(rootPrefix.count))
+        let relative = String(normalizedOutput.dropFirst(rootPrefix.count))
         return relative
     }
 

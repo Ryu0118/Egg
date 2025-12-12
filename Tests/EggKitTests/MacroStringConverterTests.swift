@@ -1,6 +1,6 @@
 @testable import EggKit
-import Path
 import Testing
+import Foundation
 
 struct MacroStringConverterTests {
     @Test(arguments: ShellStringTestCase.allCases)
@@ -88,17 +88,17 @@ struct MacroStringConverterTests {
             // Path values
             ShellStringTestCase(
                 description: "converts absolute path",
-                value: .path(try! AbsolutePath(validating: "/usr/local/bin")),
+                value: .path(URL(filePath: "/usr/local/bin")),
                 expectedResult: "/usr/local/bin"
             ),
             ShellStringTestCase(
                 description: "converts root path",
-                value: .path(try! AbsolutePath(validating: "/")),
+                value: .path(URL(filePath: "/")),
                 expectedResult: "/"
             ),
             ShellStringTestCase(
                 description: "converts path with spaces",
-                value: .path(try! AbsolutePath(validating: "/tmp/My Folder")),
+                value: .path(URL(filePath: "/tmp/My Folder")),
                 expectedResult: "/tmp/My Folder"
             ),
         ]
@@ -209,17 +209,17 @@ struct MacroStringConverterTests {
             // Path values - quoted
             JavaScriptLiteralTestCase(
                 description: "quotes absolute path",
-                value: .path(try! AbsolutePath(validating: "/usr/local/bin")),
+                value: .path(URL(filePath: "/usr/local/bin")),
                 expectedResult: "\"/usr/local/bin\""
             ),
             JavaScriptLiteralTestCase(
                 description: "quotes root path",
-                value: .path(try! AbsolutePath(validating: "/")),
+                value: .path(URL(filePath: "/")),
                 expectedResult: "\"/\""
             ),
             JavaScriptLiteralTestCase(
                 description: "quotes path with spaces",
-                value: .path(try! AbsolutePath(validating: "/tmp/My Folder")),
+                value: .path(URL(filePath: "/tmp/My Folder")),
                 expectedResult: "\"/tmp/My Folder\""
             ),
         ]

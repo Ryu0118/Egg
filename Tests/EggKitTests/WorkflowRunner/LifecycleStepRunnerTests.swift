@@ -1,6 +1,5 @@
 @testable import EggKit
 import Foundation
-import Path
 import ProcessRunning
 import Testing
 
@@ -8,7 +7,7 @@ struct LifecycleStepRunnerTests {
     @Test(arguments: TestCase.allCases)
     func executePhase(_ testCase: TestCase) async throws {
         let processRunner = ProcessRunner()
-        let workingDirectory = try AbsolutePath(validating: NSTemporaryDirectory())
+        let workingDirectory = URL(filePath: NSTemporaryDirectory())
 
         let runner = LifecycleStepRunner(
             processRunner: processRunner,
@@ -388,7 +387,7 @@ struct LifecycleStepRunnerTests {
     @Test(arguments: EnvironmentPropagationTestCase.allCases)
     func executeWithAdditionalEnvironment(_ testCase: EnvironmentPropagationTestCase) async throws {
         let processRunner = ProcessRunner()
-        let workingDirectory = try AbsolutePath(validating: NSTemporaryDirectory())
+        let workingDirectory = URL(filePath: NSTemporaryDirectory())
 
         let runner = LifecycleStepRunner(
             processRunner: processRunner,

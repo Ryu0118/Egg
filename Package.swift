@@ -47,6 +47,7 @@ let package = Package(
                 .product(name: "Yams", package: "Yams"),
                 .product(name: "Noora", package: "Noora"),
                 .product(name: "Glob", package: "FileSystem"),
+                .product(name: "AsyncOperations", package: "swift-async-operations"),
             ]
         ),
         .testTarget(

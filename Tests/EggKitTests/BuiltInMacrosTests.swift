@@ -1,6 +1,5 @@
 @testable import EggKit
 import Foundation
-import Path
 import Testing
 
 struct BuiltInMacrosTests {
@@ -85,8 +84,8 @@ struct BuiltInMacrosTests {
         static let fixedDate = Date(timeIntervalSince1970: 1_733_961_600) // 2024-12-12 00:00:00 UTC
 
         static let defaultContext = BuiltInMacroContext(
-            workingDirectory: try! AbsolutePath(validating: "/tmp"),
-            homeDirectory: try! AbsolutePath(validating: "/Users/testuser"),
+            workingDirectory: URL(filePath: "/tmp"),
+            homeDirectory: URL(filePath: "/Users/testuser"),
             currentDate: fixedDate,
             environment: ["USER": "testuser"]
         )
@@ -178,8 +177,8 @@ struct BuiltInMacrosTests {
     @Test
     func resolveUUID_generatesValidUUID() {
         let context = BuiltInMacroContext(
-            workingDirectory: try! AbsolutePath(validating: "/tmp"),
-            homeDirectory: try! AbsolutePath(validating: "/Users/test"),
+            workingDirectory: URL(filePath: "/tmp"),
+            homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(),
             environment: [:]
         )
@@ -193,8 +192,8 @@ struct BuiltInMacrosTests {
     @Test
     func resolveUUID_generatesUniqueValuesPerOccurrence() {
         let context = BuiltInMacroContext(
-            workingDirectory: try! AbsolutePath(validating: "/tmp"),
-            homeDirectory: try! AbsolutePath(validating: "/Users/test"),
+            workingDirectory: URL(filePath: "/tmp"),
+            homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(),
             environment: [:]
         )
@@ -211,8 +210,8 @@ struct BuiltInMacrosTests {
     @Test
     func resolveSystemUser_fallsBackToNSUserName_whenEnvMissing() {
         let context = BuiltInMacroContext(
-            workingDirectory: try! AbsolutePath(validating: "/tmp"),
-            homeDirectory: try! AbsolutePath(validating: "/Users/test"),
+            workingDirectory: URL(filePath: "/tmp"),
+            homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(),
             environment: [:] // No USER in environment
         )
@@ -250,8 +249,8 @@ struct BuiltInMacroTests {
         // Use BuiltInMacros.DATE which is declared with argument to test extraction
         // We test this indirectly by checking the output format changes based on argument
         let context = BuiltInMacroContext(
-            workingDirectory: try! AbsolutePath(validating: "/tmp"),
-            homeDirectory: try! AbsolutePath(validating: "/Users/test"),
+            workingDirectory: URL(filePath: "/tmp"),
+            homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(timeIntervalSince1970: 1_733_961_600), // 2024-12-12
             environment: [:]
         )

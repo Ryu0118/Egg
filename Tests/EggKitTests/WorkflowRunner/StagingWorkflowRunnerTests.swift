@@ -39,7 +39,7 @@ struct StagingWorkflowRunnerTests {
         let nooraMock = NooraMock()
         let runner = StagingWorkflowRunner(
             processRunner: ProcessRunner(),
-            fileSystem: fileManager,
+            fileManager: fileManager,
             workingDirectory: workingDir,
             homeDirectory: homeDir,
             noora: nooraMock,

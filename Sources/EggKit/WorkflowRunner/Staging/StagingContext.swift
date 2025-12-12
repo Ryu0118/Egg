@@ -116,7 +116,6 @@ actor StagingContext {
     ) async throws -> StagingContext {
         // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
         // FileManagerProtocol and Noora are actually thread-safe and all their methods are nonisolated.
-        nonisolated(unsafe) let fm = fileManager
         nonisolated(unsafe) let nra = noora
 
         do {
@@ -126,8 +125,8 @@ actor StagingContext {
             let workDirectory = workspaceBaseDirectory.appending(path: "work")
             let referenceDirectory = workspaceBaseDirectory.appending(path: "reference")
 
-            try fm.createDirectory(at: workspacesDirectory, withIntermediateDirectories: true)
-            try fm.createDirectory(at: workspaceBaseDirectory, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: workspacesDirectory, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: workspaceBaseDirectory, withIntermediateDirectories: true)
 
             // Create work workspace (where modifications happen)
             async let workDirCloning: () = try directoryCloner.clone(from: workingDirectory, to: workDirectory)
@@ -144,7 +143,7 @@ actor StagingContext {
                 root: workDirectory,
                 reference: referenceDirectory,
                 originalWorkingDirectory: workingDirectory,
-                fileManager: fm,
+                fileManager: fileManager,
                 workspaceWatcher: workspaceWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
@@ -426,7 +425,7 @@ extension StagingContext {
 
             if isDir {
                 // Recursively enumerate all files in the directory
-                let contents = try await enumerateDirectoryRecursively(absolutePath, relativeTo: baseDirectory)
+                let contents = try enumerateDirectoryRecursively(absolutePath, relativeTo: baseDirectory)
                 expandedPaths.formUnion(contents)
                 // Also include the directory itself (for detecting directory additions)
                 expandedPaths.insert(relativePath)
@@ -448,31 +447,31 @@ extension StagingContext {
     private nonisolated func enumerateDirectoryRecursively(
         _ directory: URL,
         relativeTo baseDirectory: URL
-    ) async throws -> Set<String> {
+    ) throws -> Set<String> {
         var result = Set<String>()
 
-        let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
+        guard let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [],
+            errorHandler: nil
+        ) else {
+            return result
+        }
 
-        for item in contents {
-            // Compute relative path from base directory
-            let relativePathString = item.path(percentEncoded: false).replacingOccurrences(
-                of: baseDirectory.path(percentEncoded: false) + "/",
-                with: ""
-            )
+        let basePath = baseDirectory.path(percentEncoded: false) + "/"
 
-            // Skip excluded paths
-            guard !Self.shouldExclude(relativePathString) else {
+        while let item = enumerator.nextObject() as? URL {
+            let relativePathString = item.path(percentEncoded: false)
+                .replacingOccurrences(of: basePath, with: "")
+
+            // Skip excluded paths and their descendants
+            if Self.shouldExclude(relativePathString) {
+                enumerator.skipDescendants()
                 continue
             }
 
             result.insert(relativePathString)
-
-            // Recurse into subdirectories
-            let isSubdirectory = fileManager.isDirectory(at: item)
-            if isSubdirectory {
-                let subcontents = try await enumerateDirectoryRecursively(item, relativeTo: baseDirectory)
-                result.formUnion(subcontents)
-            }
         }
 
         return result

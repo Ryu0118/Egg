@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Path
 import Testing
 
 /// Integration tests that verify FSEventsDirectoryWatcher correctly detects
@@ -12,24 +11,22 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     /// Context passed to the test closure containing the watcher, watched directory, and file manager.
     struct WatcherContext {
         let watcher: FSEventsDirectoryWatcher
-        let directory: AbsolutePath
+        let directory: URL
         let fileManager: any FileManagerProtocol
 
         /// Writes text to a file.
-        func writeText(_ text: String, at path: AbsolutePath) async throws {
-            let url = URL(filePath: path.pathString)
-            try await fileManager.writeText(text, at: url)
+        func writeText(_ text: String, at path: URL) throws {
+            try fileManager.writeText(text, at: path, encoding: .utf8)
         }
 
         /// Creates a directory at the given path.
-        func makeDirectory(at path: AbsolutePath) async throws {
-            let url = URL(filePath: path.pathString)
-            try await fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+        func makeDirectory(at path: URL) throws {
+            try fileManager.createDirectory(at: path, withIntermediateDirectories: true)
         }
 
         /// Removes the item at the given path.
-        func remove(_ path: AbsolutePath) async throws {
-            try await fileManager.remove(path)
+        func remove(_ path: URL) throws {
+            try fileManager.removeItem(at: path)
         }
     }
 
@@ -38,62 +35,63 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     private func withWatcher(
         _ operation: (WatcherContext) async throws -> Void
     ) async throws {
-        try await fileManager.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
-            let watcher = FSEventsDirectoryWatcher()
-            try await watcher.start(watching: tempDir)
-            defer { Task { await watcher.stop() } }
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
 
-            let context = WatcherContext(
-                watcher: watcher,
-                directory: tempDir,
-                fileManager: fileManager
-            )
-            try await operation(context)
-        }
+        let watcher = FSEventsDirectoryWatcher()
+        try await watcher.start(watching: tempDir)
+        defer { Task { await watcher.stop() } }
+
+        let context = WatcherContext(
+            watcher: watcher,
+            directory: tempDir,
+            fileManager: fileManager
+        )
+        try await operation(context)
     }
 
     @Test("detects new file creation")
     func detectsNewFileCreation() async throws {
         try await withWatcher { ctx in
-            let filePath = ctx.directory.appending(component: "new-file.txt")
-            try await ctx.writeText("content", at: filePath)
+            let filePath = ctx.directory.appending(path: "new-file.txt")
+            try ctx.writeText("content", at: filePath)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events = await ctx.watcher.drainEvents()
-            let expectedPath = try RelativePath(validating: "new-file.txt")
+            let expectedPath = "new-file.txt"
             #expect(events.contains(expectedPath), "Should detect new file creation")
         }
     }
 
     @Test("detects file modification")
     func detectsFileModification() async throws {
-        try await fileManager.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
-            let filePath = tempDir.appending(component: "existing.txt")
-            let fileURL = URL(filePath: filePath.pathString)
-            try await fileManager.writeText("original", at: fileURL)
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
 
-            let watcher = FSEventsDirectoryWatcher()
-            try await watcher.start(watching: tempDir)
-            defer { Task { await watcher.stop() } }
+        let filePath = tempDir.appending(path: "existing.txt")
+        try fileManager.writeText("original", at: filePath, encoding: .utf8)
 
-            // Use Data.write for modification
-            try Data("modified".utf8).write(to: URL(filePath: filePath.pathString))
+        let watcher = FSEventsDirectoryWatcher()
+        try await watcher.start(watching: tempDir)
+        defer { Task { await watcher.stop() } }
 
-            try await Task.sleep(for: .milliseconds(200))
+        // Use Data.write for modification
+        try Data("modified".utf8).write(to: filePath)
 
-            let events = await watcher.drainEvents()
-            let expectedPath = try RelativePath(validating: "existing.txt")
-            #expect(events.contains(expectedPath), "Should detect file modification")
-        }
+        try await Task.sleep(for: .milliseconds(200))
+
+        let events = await watcher.drainEvents()
+        let expectedPath = "existing.txt"
+        #expect(events.contains(expectedPath), "Should detect file modification")
     }
 
     @Test("detects file deletion")
     func detectsFileDeletion() async throws {
         try await withWatcher { ctx in
-            let filePath = ctx.directory.appending(component: "to-delete.txt")
+            let filePath = ctx.directory.appending(path: "to-delete.txt")
             // Create file first
-            try await ctx.writeText("content", at: filePath)
+            try ctx.writeText("content", at: filePath)
 
             // Small delay to let creation events settle
             try await Task.sleep(for: .milliseconds(100))
@@ -102,12 +100,12 @@ struct FSEventsDirectoryWatcherIntegrationTests {
             _ = await ctx.watcher.drainEvents()
 
             // Now delete
-            try FileManager.default.removeItem(atPath: filePath.pathString)
+            try FileManager.default.removeItem(at: filePath)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events = await ctx.watcher.drainEvents()
-            let expectedPath = try RelativePath(validating: "to-delete.txt")
+            let expectedPath = "to-delete.txt"
             #expect(events.contains(expectedPath), "Should detect file deletion")
         }
     }
@@ -115,16 +113,16 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     @Test("detects nested file changes")
     func detectsNestedFileChanges() async throws {
         try await withWatcher { ctx in
-            let nestedDir = ctx.directory.appending(component: "subdir")
-            try await ctx.makeDirectory(at: nestedDir)
+            let nestedDir = ctx.directory.appending(path: "subdir")
+            try ctx.makeDirectory(at: nestedDir)
 
-            let nestedFile = nestedDir.appending(component: "nested.txt")
-            try await ctx.writeText("nested content", at: nestedFile)
+            let nestedFile = nestedDir.appending(path: "nested.txt")
+            try ctx.writeText("nested content", at: nestedFile)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events = await ctx.watcher.drainEvents()
-            let expectedPath = try RelativePath(validating: "subdir/nested.txt")
+            let expectedPath = "subdir/nested.txt"
             #expect(events.contains(expectedPath), "Should detect nested file creation")
         }
     }
@@ -132,21 +130,21 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     @Test("detects multiple file changes")
     func detectsMultipleChanges() async throws {
         try await withWatcher { ctx in
-            let file1 = ctx.directory.appending(component: "file1.txt")
-            let file2 = ctx.directory.appending(component: "file2.txt")
-            let file3 = ctx.directory.appending(component: "file3.txt")
+            let file1 = ctx.directory.appending(path: "file1.txt")
+            let file2 = ctx.directory.appending(path: "file2.txt")
+            let file3 = ctx.directory.appending(path: "file3.txt")
 
-            try await ctx.writeText("content1", at: file1)
-            try await ctx.writeText("content2", at: file2)
-            try await ctx.writeText("content3", at: file3)
+            try ctx.writeText("content1", at: file1)
+            try ctx.writeText("content2", at: file2)
+            try ctx.writeText("content3", at: file3)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events = await ctx.watcher.drainEvents()
 
-            let expected1 = try RelativePath(validating: "file1.txt")
-            let expected2 = try RelativePath(validating: "file2.txt")
-            let expected3 = try RelativePath(validating: "file3.txt")
+            let expected1 = "file1.txt"
+            let expected2 = "file2.txt"
+            let expected3 = "file3.txt"
 
             #expect(events.contains(expected1), "Should detect file1.txt")
             #expect(events.contains(expected2), "Should detect file2.txt")
@@ -175,57 +173,59 @@ struct FSEventsDirectoryWatcherIntegrationTests {
 
     @Test("stop is idempotent - calling multiple times does not throw")
     func stopIsIdempotent() async throws {
-        try await fileManager.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
-            let watcher = FSEventsDirectoryWatcher()
-            try await watcher.start(watching: tempDir)
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
 
-            await watcher.stop()
-            await watcher.stop()
-            await watcher.stop()
-        }
+        let watcher = FSEventsDirectoryWatcher()
+        try await watcher.start(watching: tempDir)
+
+        await watcher.stop()
+        await watcher.stop()
+        await watcher.stop()
     }
 
     @Test("can restart after stop")
     func canRestartAfterStop() async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
-            let watcher = FSEventsDirectoryWatcher()
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
 
-            try await watcher.start(watching: tempDir)
-            await watcher.stop()
+        let watcher = FSEventsDirectoryWatcher()
 
-            try await watcher.start(watching: tempDir)
-            defer { Task { await watcher.stop() } }
+        try await watcher.start(watching: tempDir)
+        await watcher.stop()
 
-            let filePath = tempDir.appending(component: "after-restart.txt")
-            try await fileSystem.writeText("content", at: filePath)
+        try await watcher.start(watching: tempDir)
+        defer { Task { await watcher.stop() } }
 
-            try await Task.sleep(for: .milliseconds(200))
+        let filePath = tempDir.appending(path: "after-restart.txt")
+        try fileManager.writeText("content", at: filePath, encoding: .utf8)
 
-            let events = await watcher.drainEvents()
-            let expectedPath = try RelativePath(validating: "after-restart.txt")
-            #expect(events.contains(expectedPath), "Should detect file after restart")
-        }
+        try await Task.sleep(for: .milliseconds(200))
+
+        let events = await watcher.drainEvents()
+        let expectedPath = "after-restart.txt"
+        #expect(events.contains(expectedPath), "Should detect file after restart")
     }
 
     @Test("accumulates events across multiple drains")
     func accumulatesEventsAcrossMultipleDrains() async throws {
         try await withWatcher { ctx in
-            let file1 = ctx.directory.appending(component: "first.txt")
-            try await ctx.writeText("first", at: file1)
+            let file1 = ctx.directory.appending(path: "first.txt")
+            try ctx.writeText("first", at: file1)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events1 = await ctx.watcher.drainEvents()
-            let expected1 = try RelativePath(validating: "first.txt")
+            let expected1 = "first.txt"
             #expect(events1.contains(expected1), "First drain should contain first.txt")
 
-            let file2 = ctx.directory.appending(component: "second.txt")
-            try await ctx.writeText("second", at: file2)
+            let file2 = ctx.directory.appending(path: "second.txt")
+            try ctx.writeText("second", at: file2)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events2 = await ctx.watcher.drainEvents()
-            let expected2 = try RelativePath(validating: "second.txt")
+            let expected2 = "second.txt"
             #expect(events2.contains(expected1), "Second drain should still contain first.txt")
             #expect(events2.contains(expected2), "Second drain should contain second.txt")
         }
@@ -235,51 +235,52 @@ struct FSEventsDirectoryWatcherIntegrationTests {
     func detectsDeeplyNestedChanges() async throws {
         try await withWatcher { ctx in
             let deepPath = ctx.directory
-                .appending(component: "a")
-                .appending(component: "b")
-                .appending(component: "c")
-                .appending(component: "d")
+                .appending(path: "a")
+                .appending(path: "b")
+                .appending(path: "c")
+                .appending(path: "d")
 
-            try await ctx.makeDirectory(at: deepPath)
+            try ctx.makeDirectory(at: deepPath)
 
-            let deepFile = deepPath.appending(component: "deep.txt")
-            try await ctx.writeText("deep content", at: deepFile)
+            let deepFile = deepPath.appending(path: "deep.txt")
+            try ctx.writeText("deep content", at: deepFile)
 
             try await Task.sleep(for: .milliseconds(200))
 
             let events = await ctx.watcher.drainEvents()
-            let expectedPath = try RelativePath(validating: "a/b/c/d/deep.txt")
+            let expectedPath = "a/b/c/d/deep.txt"
             #expect(events.contains(expectedPath), "Should detect deeply nested file")
         }
     }
 
     @Test("ignores changes outside watched directory")
     func ignoresChangesOutsideWatchedDirectory() async throws {
-        try await fileSystem.withTemporaryDirectory(prefix: "fsevents-test") { tempDir in
-            let watchedDir = tempDir.appending(component: "watched")
-            let outsideDir = tempDir.appending(component: "outside")
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
 
-            try await fileSystem.makeDirectory(at: watchedDir)
-            try await fileSystem.makeDirectory(at: outsideDir)
+        let watchedDir = tempDir.appending(path: "watched")
+        let outsideDir = tempDir.appending(path: "outside")
 
-            let watcher = FSEventsDirectoryWatcher()
-            try await watcher.start(watching: watchedDir)
-            defer { Task { await watcher.stop() } }
+        try fileManager.createDirectory(at: watchedDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: outsideDir, withIntermediateDirectories: true)
 
-            let outsideFile = outsideDir.appending(component: "outside.txt")
-            try await fileSystem.writeText("outside content", at: outsideFile)
+        let watcher = FSEventsDirectoryWatcher()
+        try await watcher.start(watching: watchedDir)
+        defer { Task { await watcher.stop() } }
 
-            let insideFile = watchedDir.appending(component: "inside.txt")
-            try await fileSystem.writeText("inside content", at: insideFile)
+        let outsideFile = outsideDir.appending(path: "outside.txt")
+        try fileManager.writeText("outside content", at: outsideFile, encoding: .utf8)
 
-            try await Task.sleep(for: .milliseconds(200))
+        let insideFile = watchedDir.appending(path: "inside.txt")
+        try fileManager.writeText("inside content", at: insideFile, encoding: .utf8)
 
-            let events = await watcher.drainEvents()
+        try await Task.sleep(for: .milliseconds(200))
 
-            let insidePath = try RelativePath(validating: "inside.txt")
-            #expect(events.contains(insidePath), "Should detect file inside watched directory")
-            #expect(events.count == 1, "Should only detect changes inside watched directory")
-        }
+        let events = await watcher.drainEvents()
+
+        let insidePath = "inside.txt"
+        #expect(events.contains(insidePath), "Should detect file inside watched directory")
+        #expect(events.count == 1, "Should only detect changes inside watched directory")
     }
 
 }

@@ -1,13 +1,12 @@
 @testable import EggKit
 import Foundation
-import Path
 import Testing
 
 struct GitNameStatusParserTests {
     @Test(arguments: TestCase.allCases)
     func parse(_ testCase: TestCase) throws {
-        let workingRoot = try AbsolutePath(validating: testCase.workingRoot)
-        let workspaceRoot = try AbsolutePath(validating: testCase.workspaceRoot)
+        let workingRoot = URL(filePath: testCase.workingRoot)
+        let workspaceRoot = URL(filePath: testCase.workspaceRoot)
 
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,
@@ -16,9 +15,9 @@ struct GitNameStatusParserTests {
 
         let result = parser.parse(components: testCase.components.map { Substring($0) })
 
-        let expectedAdded = try testCase.expectedAdded.map { try RelativePath(validating: $0) }
-        let expectedModified = try testCase.expectedModified.map { try RelativePath(validating: $0) }
-        let expectedDeleted = try testCase.expectedDeleted.map { try RelativePath(validating: $0) }
+        let expectedAdded = testCase.expectedAdded
+        let expectedModified = testCase.expectedModified
+        let expectedDeleted = testCase.expectedDeleted
         let expected = ChangeSummary(added: expectedAdded, modified: expectedModified, deleted: expectedDeleted)
 
         #expect(result == expected)

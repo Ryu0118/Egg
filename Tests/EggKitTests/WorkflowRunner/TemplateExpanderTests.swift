@@ -1,35 +1,34 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Path
 import Testing
 
 struct TemplateExpanderTests {
-    @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
+    @Test(arguments: TestCase.allCases)
     func expand(_ testCase: TestCase) async throws {
-        let fileSystem = FileManager.default
-        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "template-expander-test")
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDir = URL(filePath: NSTemporaryDirectory()).appending(path: "template-expander-test-\(UUID().uuidString)")
 
         defer {
-            Task { try? await fileSystem.remove(tempDir) }
+            try? fileManager.removeItem(at: tempDir)
         }
 
-        let templateDir = tempDir.appending(component: "template")
-        let outputDir = tempDir.appending(component: "output")
+        let templateDir = tempDir.appending(path: "template")
+        let outputDir = tempDir.appending(path: "output")
 
-        try await fileSystem.makeDirectory(at: templateDir, options: [.createTargetParentDirectories])
+        try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
 
         // Setup template using helper
-        try await setupTemplate(testCase.templateSetup, in: templateDir, using: fileSystem)
+        try setupTemplate(testCase.templateSetup, in: templateDir, using: fileManager)
 
         // Setup existing files in output directory
-        try await setupExistingFiles(testCase.existingFiles, in: outputDir, using: fileSystem)
+        try setupExistingFiles(testCase.existingFiles, in: outputDir, using: fileManager)
 
         // Setup step outputs using helper
         let outputs = await setupOutputs(testCase.stepOutputs)
 
         let expander = TemplateExpander(
-            fileSystem: fileSystem,
+            fileManager: fileManager,
             templateDirectory: templateDir,
             outputDirectory: outputDir,
             isInteractive: testCase.isInteractive,
@@ -44,7 +43,7 @@ struct TemplateExpanderTests {
                 excluding: testCase.excludeRules
             )
             // Verify expectations using helper
-            try await verifyExpectations(verifications, in: outputDir, using: fileSystem)
+            try verifyExpectations(verifications, in: outputDir, using: fileManager)
 
         case let .failure(expectedError):
             let error = await #expect(throws: TemplateExpander.Error.self) {
@@ -443,51 +442,51 @@ struct TemplateExpanderTests {
 }
 
 extension TemplateExpanderTests {
-    private func setupTemplate(_ setup: [TestCase.TemplateSetup], in templateDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func setupTemplate(_ setup: [TestCase.TemplateSetup], in templateDir: URL, using fileManager: any FileManagerProtocol) throws {
         for item in setup {
             switch item {
             case let .file(path, content):
-                try await createFile(at: path, content: content, in: templateDir, using: fileSystem)
+                try createFile(at: path, content: content, in: templateDir, using: fileManager)
             case let .directory(path):
-                let dirPath = templateDir.appending(components: path.split(separator: "/").map(String.init))
-                try await fileSystem.makeDirectory(at: dirPath, options: [.createTargetParentDirectories])
+                let dirPath = path.split(separator: "/").reduce(templateDir) { $0.appending(path: String($1)) }
+                try fileManager.createDirectory(at: dirPath, withIntermediateDirectories: true)
             case let .binaryFile(path, data):
-                try await createBinaryFile(at: path, data: data, in: templateDir, using: fileSystem)
+                try createBinaryFile(at: path, data: data, in: templateDir, using: fileManager)
             }
         }
     }
 
-    private func createFile(at path: String, content: String, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func createFile(at path: String, content: String, in baseDir: URL, using fileManager: any FileManagerProtocol) throws {
         let components = path.split(separator: "/").map(String.init)
-        let filePath = baseDir.appending(components: components)
+        let filePath = components.reduce(baseDir) { $0.appending(path: String($1)) }
 
         if components.count > 1 {
-            let parentPath = baseDir.appending(components: Array(components.dropLast()))
-            try await fileSystem.makeDirectory(at: parentPath, options: [.createTargetParentDirectories])
+            let parentPath = Array(components.dropLast()).reduce(baseDir) { $0.appending(path: String($1)) }
+            try fileManager.createDirectory(at: parentPath, withIntermediateDirectories: true)
         }
 
-        try await fileSystem.writeText(content, at: filePath)
+        try fileManager.writeText(content, at: filePath, encoding: .utf8)
     }
 
-    private func createBinaryFile(at path: String, data: Data, in baseDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func createBinaryFile(at path: String, data: Data, in baseDir: URL, using fileManager: any FileManagerProtocol) throws {
         let components = path.split(separator: "/").map(String.init)
-        let filePath = baseDir.appending(components: components)
+        let filePath = components.reduce(baseDir) { $0.appending(path: String($1)) }
 
         if components.count > 1 {
-            let parentPath = baseDir.appending(components: Array(components.dropLast()))
-            try await fileSystem.makeDirectory(at: parentPath, options: [.createTargetParentDirectories])
+            let parentPath = Array(components.dropLast()).reduce(baseDir) { $0.appending(path: String($1)) }
+            try fileManager.createDirectory(at: parentPath, withIntermediateDirectories: true)
         }
 
-        try data.write(to: URL(filePath: filePath.pathString))
+        try data.write(to: filePath)
     }
 
-    private func setupExistingFiles(_ existingFiles: [TestCase.ExistingFile], in outputDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func setupExistingFiles(_ existingFiles: [TestCase.ExistingFile], in outputDir: URL, using fileManager: any FileManagerProtocol) throws {
         guard !existingFiles.isEmpty else { return }
 
-        try await fileSystem.makeDirectory(at: outputDir, options: [.createTargetParentDirectories])
+        try fileManager.createDirectory(at: outputDir, withIntermediateDirectories: true)
 
         for existing in existingFiles {
-            try await createFile(at: existing.path, content: existing.content, in: outputDir, using: fileSystem)
+            try createFile(at: existing.path, content: existing.content, in: outputDir, using: fileManager)
         }
     }
 
@@ -499,31 +498,31 @@ extension TemplateExpanderTests {
         return storage
     }
 
-    private func verifyExpectations(_ verifications: [TestCase.Verification], in outputDir: AbsolutePath, using fileSystem: FileSystem) async throws {
+    private func verifyExpectations(_ verifications: [TestCase.Verification], in outputDir: URL, using fileManager: any FileManagerProtocol) throws {
         for verification in verifications {
             switch verification {
             case let .fileExists(path):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                #expect(try await fileSystem.exists(filePath), "Expected file to exist: \(path)")
+                let filePath = path.split(separator: "/").reduce(outputDir) { $0.appending(path: String($1)) }
+                #expect(fileManager.exists(filePath), "Expected file to exist: \(path)")
 
             case let .fileNotExists(path):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                #expect(try await !fileSystem.exists(filePath), "Expected file to not exist: \(path)")
+                let filePath = path.split(separator: "/").reduce(outputDir) { $0.appending(path: String($1)) }
+                #expect(!fileManager.exists(filePath), "Expected file to not exist: \(path)")
 
             case let .fileContent(path, expectedContent):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                let data = try await fileSystem.readFile(at: filePath)
+                let filePath = path.split(separator: "/").reduce(outputDir) { $0.appending(path: String($1)) }
+                let data = try fileManager.readFile(at: filePath)
                 let actualContent = String(data: data, encoding: .utf8) ?? ""
                 #expect(actualContent == expectedContent, "Content mismatch in \(path)")
 
             case let .binaryFileContent(path, expectedData):
-                let filePath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                let actualData = try await fileSystem.readFile(at: filePath)
+                let filePath = path.split(separator: "/").reduce(outputDir) { $0.appending(path: String($1)) }
+                let actualData = try fileManager.readFile(at: filePath)
                 #expect(actualData == expectedData, "Binary data mismatch in \(path)")
 
             case let .directoryExists(path):
-                let dirPath = outputDir.appending(components: path.split(separator: "/").map(String.init))
-                #expect(try await fileSystem.exists(dirPath, isDirectory: true), "Expected directory to exist: \(path)")
+                let dirPath = path.split(separator: "/").reduce(outputDir) { $0.appending(path: String($1)) }
+                #expect(fileManager.exists(dirPath), "Expected directory to exist: \(path)")
             }
         }
     }

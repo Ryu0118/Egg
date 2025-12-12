@@ -36,12 +36,8 @@ actor ScanningDirectoryWatcher: DirectoryWatching {
         // Scan all files in directory recursively and return as events
         var events: Set<String> = []
 
-        do {
-            // Recursively enumerate all files in the directory
-            enumerateFiles(in: directory, baseDirectory: directory, events: &events)
-        } catch {
-            // If we can't scan, return empty set
-        }
+        // Recursively enumerate all files in the directory
+        enumerateFiles(in: directory, baseDirectory: directory, events: &events)
 
         return events
     }

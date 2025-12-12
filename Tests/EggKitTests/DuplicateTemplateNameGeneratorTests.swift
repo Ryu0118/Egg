@@ -1,23 +1,22 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Path
 import Testing
 
 struct DuplicateTemplateNameGeneratorTests {
     @Test(arguments: TestCase.allCases)
     func generateDefaultName(_ testCase: TestCase) async throws {
-        let fileManager = FileManager.default
-        let tempDir = try await fileManager.makeTemporaryDirectory(prefix: "duplicate-name-test")
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "duplicate-name-test")
 
         defer {
-            Task { try? await fileManager.remove(tempDir) }
+            try? fileManager.removeItem(at: tempDir)
         }
 
-        let projectDirectory = tempDir.appending(component: "project")
-        let homeDirectory = tempDir.appending(component: "home")
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
 
-        try await setupDirectories(
+        try setupDirectories(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory
@@ -25,7 +24,7 @@ struct DuplicateTemplateNameGeneratorTests {
 
         let sourceLocation = testCase.sourceLocation(projectDirectory: projectDirectory)
 
-        try await createExistingTemplates(
+        try createExistingTemplates(
             testCase.existingTemplates,
             in: sourceLocation,
             fileManager: fileManager,
@@ -34,7 +33,7 @@ struct DuplicateTemplateNameGeneratorTests {
         )
 
         let templatesFinder = TemplatesFinder(
-            fileSystem: fileManager,
+            fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory
@@ -52,40 +51,36 @@ struct DuplicateTemplateNameGeneratorTests {
 
     private func setupDirectories(
         fileManager: some FileManagerProtocol,
-        projectDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath
-    ) async throws {
-        let projectURL = URL(filePath: projectDirectory.pathString)
-        let homeURL = URL(filePath: homeDirectory.pathString)
-        try await fileManager.createDirectory(at: projectURL, withIntermediateDirectories: true)
-        try await fileManager.createDirectory(at: homeURL, withIntermediateDirectories: true)
+        projectDirectory: URL,
+        homeDirectory: URL
+    ) throws {
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
     }
 
     private func createExistingTemplates(
         _ templateNames: Set<String>,
         in sourceLocation: TemplateLocationType,
         fileManager: some FileManagerProtocol,
-        projectDirectory: AbsolutePath,
-        homeDirectory: AbsolutePath
-    ) async throws {
+        projectDirectory: URL,
+        homeDirectory: URL
+    ) throws {
         let templateDirectory = sourceLocation == .global
-            ? homeDirectory.appending(component: ".eggs")
-            : projectDirectory.appending(component: ".eggs")
+            ? homeDirectory.appending(path: ".eggs")
+            : projectDirectory.appending(path: ".eggs")
 
         for templateName in templateNames {
-            let templatePath = templateDirectory.appending(component: templateName)
-            let templateURL = URL(filePath: templatePath.pathString)
-            try await fileManager.createDirectory(at: templateURL, withIntermediateDirectories: true)
+            let templatePath = templateDirectory.appending(path: templateName)
+            try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
 
-            let configPath = templatePath.appending(component: "config.yml")
-            let configURL = URL(filePath: configPath.pathString)
+            let configPath = templatePath.appending(path: "config.yml")
             let configContent = """
             name: \(templateName)
             description: Test template
             hatch:
               output: .
             """
-            try await fileManager.writeText(configContent, at: configURL)
+            try fileManager.writeText(configContent, at: configPath)
         }
     }
 
@@ -98,7 +93,7 @@ struct DuplicateTemplateNameGeneratorTests {
 
         var testDescription: String { description }
 
-        func sourceLocation(projectDirectory: AbsolutePath) -> TemplateLocationType {
+        func sourceLocation(projectDirectory: URL) -> TemplateLocationType {
             sourceLocationKind.toConcreteType(projectDirectory, workingDirectory: projectDirectory)
         }
 

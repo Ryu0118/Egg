@@ -1,13 +1,12 @@
 @testable import EggKit
 import Foundation
-import Path
 import Testing
 
 struct ParsedMacroDefinitionValidatorTests {
     @Test(arguments: TestCase.allCases)
     func validate(_ testCase: TestCase) throws {
-        let workingDirectory = try! AbsolutePath(validating: "/tmp/test")
-        let homeDirectory = try! AbsolutePath(validating: "/Users/testuser")
+        let workingDirectory = URL(filePath: "/tmp/test")
+        let homeDirectory = URL(filePath: "/Users/testuser")
         let validator = ParsedMacroDefinitionValidator(
             config: testCase.config,
             workingDirectory: workingDirectory,
@@ -153,7 +152,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ParsedMacroDefinition(macro: "___PATH___", values: ["/absolute/path/to/file"]),
                 ],
                 expected: .success([
-                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "/absolute/path/to/file"))),
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(URL(filePath: "/absolute/path/to/file"))),
                 ])
             ),
             TestCase(
@@ -171,7 +170,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ParsedMacroDefinition(macro: "___PATH___", values: ["relative/path"]),
                 ],
                 expected: .success([
-                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "relative/path", relativeTo: try! AbsolutePath(validating: "/tmp/test")))),
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(URL(filePath: "/tmp/test").appending(path: "relative/path"))),
                 ])
             ),
             TestCase(
@@ -429,7 +428,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ParsedMacroDefinition(macro: "___PATH___", values: ["~/path/to/file"]),
                 ],
                 expected: .success([
-                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "/Users/testuser/path/to/file"))),
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(URL(filePath: "/Users/testuser/path/to/file"))),
                 ])
             ),
             TestCase(
@@ -447,7 +446,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ParsedMacroDefinition(macro: "___PATH___", values: ["~"]),
                 ],
                 expected: .success([
-                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(try! AbsolutePath(validating: "/Users/testuser"))),
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(URL(filePath: "/Users/testuser"))),
                 ])
             ),
             TestCase(

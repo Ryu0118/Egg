@@ -1,38 +1,33 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Path
 import Testing
 
 struct CreateArgumentsValidatorTests {
-    @Test(.inTemporaryDirectory, arguments: TestCase.allCases)
+    @Test(arguments: TestCase.allCases)
     func validate(_ testCase: TestCase) async throws {
-        let fileSystem = FileManager.default
+        let fileManager: any FileManagerProtocol = FileManager.default
 
         // Create temporary directory for this test
-        let tempDir = try await fileSystem.makeTemporaryDirectory(prefix: "create-validator-test")
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "create-validator-test")
         defer {
-            try? FileManager.default.removeItem(atPath: tempDir.pathString)
+            try? fileManager.removeItem(at: tempDir)
         }
 
-        let projectDirectory = tempDir.appending(component: "project")
-        let homeDirectory = tempDir.appending(component: "home")
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
 
         // Create directories
-        let projectURL = URL(filePath: projectDirectory.pathString)
-        let homeURL = URL(filePath: homeDirectory.pathString)
-        try await fileSystem.createDirectory(at: projectURL, withIntermediateDirectories: true)
-        try await fileSystem.createDirectory(at: homeURL, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
 
         // Create existing templates if needed
         for templateName in testCase.existingTemplates {
             // TemplatesFinder checks both global and project locations, so create in both
-            let globalPath = homeDirectory.appending(component: ".eggs").appending(component: templateName)
-            let projectPath = projectDirectory.appending(component: ".eggs").appending(component: templateName)
-            let globalURL = URL(filePath: globalPath.pathString)
-            let projectURL = URL(filePath: projectPath.pathString)
-            try await fileSystem.createDirectory(at: globalURL, withIntermediateDirectories: true)
-            try await fileSystem.createDirectory(at: projectURL, withIntermediateDirectories: true)
+            let globalPath = homeDirectory.appending(path: ".eggs").appending(path: templateName)
+            let projectPath = projectDirectory.appending(path: ".eggs").appending(path: templateName)
+            try fileManager.createDirectory(at: globalPath, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: projectPath, withIntermediateDirectories: true)
         }
 
         let validator = CreateArgumentsValidator(
@@ -42,7 +37,7 @@ struct CreateArgumentsValidatorTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            fileSystem: fileSystem
+            fileManager: fileManager
         )
 
         switch testCase.expected {

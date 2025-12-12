@@ -1,6 +1,5 @@
 @testable import EggKit
 import Foundation
-import Path
 import Testing
 
 struct VariableResolverTests {
@@ -104,7 +103,7 @@ struct VariableResolverTests {
                 description: "resolves path macro",
                 input: "Output: ___OUTPUT_DIR___",
                 macros: [
-                    ResolvedMacro(name: "___OUTPUT_DIR___", description: "Output Directory", value: .path(try! AbsolutePath(validating: "/tmp/test"))),
+                    ResolvedMacro(name: "___OUTPUT_DIR___", description: "Output Directory", value: .path(URL(filePath: "/tmp/test"))),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Output: /tmp/test")
