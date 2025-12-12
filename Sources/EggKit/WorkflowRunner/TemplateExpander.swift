@@ -18,7 +18,7 @@ struct TemplateExpander {
     private let outputDirectory: AbsolutePath
     private let noora: any Noorable
     private let isInteractive: Bool
-    private let force: Bool
+    private let override: Bool
 
     init(
         fileSystem: any FileSysteming,
@@ -26,14 +26,14 @@ struct TemplateExpander {
         outputDirectory: AbsolutePath,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        force: Bool = false
+        override: Bool = false
     ) {
         self.fileSystem = fileSystem
         self.templateDirectory = templateDirectory
         self.outputDirectory = outputDirectory
         self.noora = noora
         self.isInteractive = isInteractive
-        self.force = force
+        self.override = override
     }
 
     /// Expands the template by copying and transforming all non-excluded files.
@@ -151,8 +151,8 @@ struct TemplateExpander {
     /// Confirms whether to overwrite existing files.
     /// - Returns: `true` if should overwrite, `false` otherwise
     private func confirmOverwrite(_ existingFiles: [String]) async throws -> Bool {
-        // If force flag is set, always overwrite
-        if force {
+        // If override flag is set, always overwrite
+        if override {
             return true
         }
 
@@ -168,7 +168,7 @@ struct TemplateExpander {
             )
         }
 
-        // Non-interactive without force: error
+        // Non-interactive without override: error
         throw Error.existingFilesWouldBeOverwritten(files: existingFiles)
     }
 
@@ -357,7 +357,7 @@ extension TemplateExpander {
                 for file in files {
                     message += "  - \(file)\n"
                 }
-                message += "Use --force to overwrite existing files."
+                message += "Use --override to overwrite existing files."
                 return message
             }
         }

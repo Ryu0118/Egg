@@ -45,7 +45,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         homeDirectory: AbsolutePath,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        force: Bool = false
+        override: Bool = false
     ) {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
@@ -56,7 +56,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            force: force
+            override: override
         )
     }
 

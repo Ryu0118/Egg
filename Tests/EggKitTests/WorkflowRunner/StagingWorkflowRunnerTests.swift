@@ -47,7 +47,7 @@ struct StagingWorkflowRunnerTests {
             homeDirectory: homeDir,
             noora: nooraMock,
             isInteractive: false,
-            force: testCase.force,
+            override: testCase.override,
             workspaceWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem()),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileSystem: FileSystem())
         )
@@ -84,7 +84,7 @@ struct StagingWorkflowRunnerTests {
         let preHatchSteps: [Config.LifecycleStep]?
         let hatchConfig: Config.HatchConfig
         let postHatchSteps: [Config.LifecycleStep]?
-        let force: Bool
+        let override: Bool
         let expectation: Expectation
 
         var testDescription: String { description }
@@ -98,7 +98,7 @@ struct StagingWorkflowRunnerTests {
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
-            force: Bool = true,
+            override: Bool = true,
             expectation: Expectation
         ) {
             self.description = description
@@ -109,7 +109,7 @@ struct StagingWorkflowRunnerTests {
             self.preHatchSteps = preHatchSteps
             self.hatchConfig = hatchConfig
             self.postHatchSteps = postHatchSteps
-            self.force = force
+            self.override = override
             self.expectation = expectation
         }
 
@@ -122,7 +122,7 @@ struct StagingWorkflowRunnerTests {
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
-            force: Bool = true,
+            override: Bool = true,
             verifications: [Verification]
         ) -> TestCase {
             TestCase(
@@ -134,7 +134,7 @@ struct StagingWorkflowRunnerTests {
                 preHatchSteps: preHatchSteps,
                 hatchConfig: hatchConfig,
                 postHatchSteps: postHatchSteps,
-                force: force,
+                override: override,
                 expectation: .success(verifications: verifications)
             )
         }

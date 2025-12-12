@@ -34,8 +34,8 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Flag(name: [.long, .customLong("direct")], help: "Disable staging. When set, changes are applied directly without preview or rollback capability.")
     package var noStaging: Bool = false
 
-    @Flag(name: .long, help: "Force overwrite existing files without prompting.")
-    package var force: Bool = false
+    @Flag(name: .long, help: "Override conflicts and overwrite existing files without prompting.")
+    package var override: Bool = false
 
     package static let fileSystem = FileSystem()
 
@@ -51,7 +51,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             projectDirectory: resolveProjectDirectory(),
             fileSystem: Self.fileSystem,
             useStaging: !noStaging,
-            force: force
+            override: override
         ).run()
     }
 

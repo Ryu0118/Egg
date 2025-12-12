@@ -25,7 +25,7 @@ import ProcessRunning
 /// // ...
 ///
 /// // Apply changes on success
-/// try await workspace.applyChanges(force: false)
+/// try await workspace.applyChanges(override: false)
 ///
 /// // Or discard on failure
 /// await workspace.discard()
@@ -222,10 +222,10 @@ actor StagingContext {
     ///
     /// - Parameters:
     ///   - changes: The change summary to apply (obtained from `computeChangeSummary()`)
-    ///   - force: If true, override conflicts with warning. If false, throw error on conflicts.
-    /// - Returns: List of conflicts that were overridden (empty if no conflicts or force=false)
-    /// - Throws: StagingContext.Error.conflictingFiles if conflicts detected and force=false
-    func applyChanges(_ changes: ChangeSummary, force: Bool) async throws -> [ConflictInfo] {
+    ///   - override: If true, override conflicts with warning. If false, throw error on conflicts.
+    /// - Returns: List of conflicts that were overridden (empty if no conflicts or override=false)
+    /// - Throws: StagingContext.Error.conflictingFiles if conflicts detected and override=false
+    func applyChanges(_ changes: ChangeSummary, override: Bool) async throws -> [ConflictInfo] {
         guard !isDiscarded else {
             throw StagingContext.Error.alreadyDiscarded
         }
@@ -240,7 +240,7 @@ actor StagingContext {
         let conflicts = detectConflicts(using: events, changeSummary: changes, workingDirectoryChanges: workingChanges)
 
         // Handle conflicts
-        if !conflicts.isEmpty, !force {
+        if !conflicts.isEmpty, !override {
             throw StagingContext.Error.conflictingFiles(conflicts)
         }
 
@@ -327,6 +327,10 @@ extension StagingContext {
     /// For each path detected by FSEvents, we check if the file actually changed by comparing
     /// the work workspace against the reference workspace. This filters out false positives from
     /// FSEvents that trigger on file access (read) rather than actual modifications.
+    ///
+    /// When FSEvents reports a directory (e.g., when a directory is moved into the watched area),
+    /// we recursively expand it to include all files within, since FSEvents only reports the
+    /// top-level directory, not its contents.
     private nonisolated func computeChangeSummary(using events: WatcherEvents) async throws -> ChangeSummary {
         guard await !isDiscarded else {
             throw StagingContext.Error.alreadyDiscarded
@@ -339,12 +343,21 @@ extension StagingContext {
             return .none
         }
 
+        // Expand directories to include their contents recursively
+        // FSEvents only reports directory-level events when directories are moved,
+        // so we need to enumerate contents to detect all file changes
+        let expandedPaths = try await expandDirectories(workspacePaths, relativeTo: root)
+
+        guard !expandedPaths.isEmpty else {
+            return .none
+        }
+
         // Compare work workspace against reference workspace to detect actual changes
         let diffRunner = GitDiffRunner(processRunner: processRunner, fileSystem: fileSystem)
         return try await diffRunner.computeChanges(
             workspaceRoot: root,
             workingDirectory: reference,
-            targetPaths: workspacePaths
+            targetPaths: expandedPaths
         )
     }
 
@@ -353,6 +366,8 @@ extension StagingContext {
     /// For each path detected by FSEvents in the working directory, we check if the file actually
     /// changed by comparing against the reference workspace. This filters out false positives from
     /// FSEvents that trigger on file access (read) rather than actual modifications.
+    ///
+    /// When FSEvents reports a directory, we recursively expand it to include all files within.
     private nonisolated func computeWorkingDirectoryChanges(using events: WatcherEvents) async throws -> ChangeSummary {
         guard await !isDiscarded else {
             throw StagingContext.Error.alreadyDiscarded
@@ -365,13 +380,100 @@ extension StagingContext {
             return .none
         }
 
+        // Expand directories to include their contents recursively
+        let expandedPaths = try await expandDirectories(workingPaths, relativeTo: originalWorkingDirectory)
+
+        guard !expandedPaths.isEmpty else {
+            return .none
+        }
+
         // Compare working directory against reference workspace to detect actual changes
         let diffRunner = GitDiffRunner(processRunner: processRunner, fileSystem: fileSystem)
         return try await diffRunner.computeChanges(
             workspaceRoot: originalWorkingDirectory,
             workingDirectory: reference,
-            targetPaths: workingPaths
+            targetPaths: expandedPaths
         )
+    }
+
+    /// Expands a set of relative paths by recursively enumerating directory contents.
+    ///
+    /// When FSEvents reports a directory (e.g., when it's moved into the watched area),
+    /// it only reports the directory itself, not its contents. This method expands such
+    /// directories to include all files within them.
+    ///
+    /// - Parameters:
+    ///   - paths: Set of relative paths reported by FSEvents
+    ///   - baseDirectory: The base directory to resolve relative paths against
+    /// - Returns: Expanded set of relative paths including all files within directories
+    private nonisolated func expandDirectories(
+        _ paths: Set<RelativePath>,
+        relativeTo baseDirectory: AbsolutePath
+    ) async throws -> Set<RelativePath> {
+        var expandedPaths = Set<RelativePath>()
+
+        for relativePath in paths {
+            let absolutePath = baseDirectory.appending(relativePath)
+
+            // Check if path exists and is a directory
+            let isDirectory = (try? await fileSystem.exists(absolutePath, isDirectory: true)) ?? false
+
+            if isDirectory {
+                // Recursively enumerate all files in the directory
+                let contents = try await enumerateDirectoryRecursively(absolutePath, relativeTo: baseDirectory)
+                expandedPaths.formUnion(contents)
+                // Also include the directory itself (for detecting directory additions)
+                expandedPaths.insert(relativePath)
+            } else {
+                // Regular file, include as-is
+                expandedPaths.insert(relativePath)
+            }
+        }
+
+        return expandedPaths
+    }
+
+    /// Recursively enumerates all files and directories within the given directory.
+    ///
+    /// - Parameters:
+    ///   - directory: The directory to enumerate
+    ///   - baseDirectory: The base directory for computing relative paths
+    /// - Returns: Set of relative paths for all items within the directory
+    private nonisolated func enumerateDirectoryRecursively(
+        _ directory: AbsolutePath,
+        relativeTo baseDirectory: AbsolutePath
+    ) async throws -> Set<RelativePath> {
+        var result = Set<RelativePath>()
+
+        let contents = try await fileSystem.contentsOfDirectory(directory)
+
+        for item in contents {
+            // Compute relative path from base directory
+            let relativePathString = item.pathString.replacingOccurrences(
+                of: baseDirectory.pathString + "/",
+                with: ""
+            )
+
+            guard let relativePath = try? RelativePath(validating: relativePathString) else {
+                continue
+            }
+
+            // Skip excluded paths
+            guard !Self.shouldExclude(relativePath) else {
+                continue
+            }
+
+            result.insert(relativePath)
+
+            // Recurse into subdirectories
+            let isSubdirectory = (try? await fileSystem.exists(item, isDirectory: true)) ?? false
+            if isSubdirectory {
+                let subcontents = try await enumerateDirectoryRecursively(item, relativeTo: baseDirectory)
+                result.formUnion(subcontents)
+            }
+        }
+
+        return result
     }
 
     /// Detects conflicts by comparing both working directory and staging changes against reference.

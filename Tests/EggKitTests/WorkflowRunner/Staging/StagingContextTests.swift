@@ -362,7 +362,7 @@ struct StagingContextTests {
         await staging.discard()
         let error = await #expect(throws: StagingContext.Error.self) {
             let emptyChanges = ChangeSummary(added: [], modified: [], deleted: [])
-            _ = try await staging.applyChanges(emptyChanges, force: false)
+            _ = try await staging.applyChanges(emptyChanges, override: false)
         }
         #expect(error == .alreadyDiscarded, "Expected alreadyDiscarded error")
     }

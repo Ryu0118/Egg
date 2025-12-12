@@ -12,7 +12,7 @@ import ProcessRunning
 /// - **Atomic execution**: Either all changes apply or none do
 /// - **Safety**: Failed runs don't leave partial changes
 /// - **Conflict detection**: Warns about concurrent modifications
-/// - **User confirmation**: Shows change summary before applying (unless `force=true`)
+/// - **User confirmation**: Shows change summary before applying (unless `override=true`)
 ///
 /// Example:
 /// ```swift
@@ -23,7 +23,7 @@ import ProcessRunning
 ///     homeDirectory: try AbsolutePath(validating: NSHomeDirectory()),
 ///     noora: Noora(),
 ///     isInteractive: true,
-///     force: false
+///     override: false
 /// )
 ///
 /// let outputPath = try await runner.run(
@@ -39,7 +39,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let homeDirectory: AbsolutePath
     private let noora: any Noorable
     private let isInteractive: Bool
-    private let force: Bool
+    private let override: Bool
     private let phaseRunner: PhaseRunner
     private let workspaceWatcher: any DirectoryWatching
     private let workingDirectoryWatcher: any DirectoryWatching
@@ -51,7 +51,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         homeDirectory: AbsolutePath,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        force: Bool = false,
+        override: Bool = false,
         workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher()
     ) {
@@ -61,14 +61,14 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.homeDirectory = homeDirectory
         self.noora = noora
         self.isInteractive = isInteractive
-        self.force = force
+        self.override = override
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileSystem: fileSystem,
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            force: force
+            override: override
         )
         self.workspaceWatcher = workspaceWatcher
         self.workingDirectoryWatcher = workingDirectoryWatcher
@@ -192,13 +192,15 @@ struct StagingWorkflowRunner: WorkflowRunning {
             displayChangeSummary(changeSummary)
 
             // Step 8: Handle confirmation based on mode
-            try await confirmChanges(staging: staging)
+            // Returns true if user confirmed to override conflicts in interactive mode
+            let userConfirmedOverride = try await confirmChanges(staging: staging)
 
             // Step 10: Apply changes to working directory
             noora.passthrough("📦 Applying changes...\n")
-            let overriddenConflicts = try await staging.applyChanges(changeSummary, force: force)
+            // Use override if set via CLI flag, OR if user confirmed override in interactive mode
+            let overriddenConflicts = try await staging.applyChanges(changeSummary, override: override || userConfirmedOverride)
 
-            // Display warning for overridden conflicts (when force=true)
+            // Display warning for overridden conflicts (when override=true)
             if !overriddenConflicts.isEmpty {
                 noora.passthrough("⚠️ Overwritten conflicting files:\n")
                 for conflict in overriddenConflicts {
@@ -248,33 +250,50 @@ struct StagingWorkflowRunner: WorkflowRunning {
     /// Handles user confirmation before applying changes.
     ///
     /// Behavior matrix:
-    /// - `force=true`: Skip confirmation, apply immediately
-    /// - `force=false, isInteractive=true`: Prompt user for confirmation
-    /// - `force=false, isInteractive=false, conflicts=empty`: Apply without confirmation
-    /// - `force=false, isInteractive=false, conflicts=exists`: Throw error
-    private func confirmChanges(staging: StagingContext) async throws {
-        guard !force else { return }
+    /// - `override=true`: Skip confirmation, apply immediately (returns false)
+    /// - `override=false, isInteractive=true`: Prompt user for confirmation (returns true if conflicts exist and user confirmed)
+    /// - `override=false, isInteractive=false, conflicts=empty`: Apply without confirmation (returns false)
+    /// - `override=false, isInteractive=false, conflicts=exists`: Throw error
+    ///
+    /// - Returns: True if user confirmed to override conflicts in interactive mode, false otherwise
+    @discardableResult
+    private func confirmChanges(staging: StagingContext) async throws -> Bool {
+        guard !override else { return false }
 
         let conflicts = try await staging.detectConflicts()
+        let hasConflicts = !conflicts.isEmpty
 
-        if !conflicts.isEmpty {
+        if hasConflicts {
             displayConflicts(conflicts)
         }
 
         if isInteractive {
-            let confirmed = noora.yesOrNoChoicePrompt(
-                title: "Apply Changes (staging workspace → current directory)",
-                question: "Apply to \(staging.originalWorkingDirectory.pathString)?"
-            )
+            // Adjust prompt based on whether conflicts exist
+            let confirmed =
+                if hasConflicts {
+                    noora.yesOrNoChoicePrompt(
+                        title: "Apply Changes and Override Conflicts",
+                        question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.pathString)?"
+                    )
+                } else {
+                    noora.yesOrNoChoicePrompt(
+                        title: "Apply Changes (staging workspace → current directory)",
+                        question: "Apply to \(staging.originalWorkingDirectory.pathString)?"
+                    )
+                }
             guard confirmed else {
                 noora.passthrough("❌ Changes discarded by user.\n")
                 await staging.discard()
                 throw StagingContext.Error.userAborted
             }
-        } else if !conflicts.isEmpty {
+            // Return true if user confirmed AND there were conflicts to override
+            return hasConflicts
+        } else if hasConflicts {
             await staging.discard()
             throw StagingContext.Error.conflictingFiles(conflicts)
         }
+
+        return false
     }
 
     /// Displays the change summary to the user.

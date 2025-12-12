@@ -31,7 +31,7 @@ struct TemplateExpanderTests {
             templateDirectory: templateDir,
             outputDirectory: outputDir,
             isInteractive: testCase.isInteractive,
-            force: testCase.force
+            override: testCase.override
         )
 
         switch testCase.expectation {
@@ -64,7 +64,7 @@ struct TemplateExpanderTests {
         let excludeRules: [Config.ExcludeRule]?
         let existingFiles: [ExistingFile]
         let isInteractive: Bool
-        let force: Bool
+        let override: Bool
         let expectation: Expectation
 
         var testDescription: String { description }
@@ -78,7 +78,7 @@ struct TemplateExpanderTests {
             excludeRules: [Config.ExcludeRule]? = nil,
             existingFiles: [ExistingFile] = [],
             isInteractive: Bool = false,
-            force: Bool = false,
+            override: Bool = false,
             expectation: Expectation
         ) {
             self.description = description
@@ -88,7 +88,7 @@ struct TemplateExpanderTests {
             self.excludeRules = excludeRules
             self.existingFiles = existingFiles
             self.isInteractive = isInteractive
-            self.force = force
+            self.override = override
             self.expectation = expectation
         }
 
@@ -101,7 +101,7 @@ struct TemplateExpanderTests {
             excludeRules: [Config.ExcludeRule]? = nil,
             existingFiles: [ExistingFile] = [],
             isInteractive: Bool = false,
-            force: Bool = false,
+            override: Bool = false,
             verifications: [Verification]
         ) -> TestCase {
             TestCase(
@@ -112,7 +112,7 @@ struct TemplateExpanderTests {
                 excludeRules: excludeRules,
                 existingFiles: existingFiles,
                 isInteractive: isInteractive,
-                force: force,
+                override: override,
                 expectation: .success(verifications: verifications)
             )
         }
@@ -126,7 +126,7 @@ struct TemplateExpanderTests {
             excludeRules: [Config.ExcludeRule]? = nil,
             existingFiles: [ExistingFile] = [],
             isInteractive: Bool = false,
-            force: Bool = false,
+            override: Bool = false,
             expectedError: TemplateExpander.Error
         ) -> TestCase {
             TestCase(
@@ -137,7 +137,7 @@ struct TemplateExpanderTests {
                 excludeRules: excludeRules,
                 existingFiles: existingFiles,
                 isInteractive: isInteractive,
-                force: force,
+                override: override,
                 expectation: .failure(expectedError: expectedError)
             )
         }
@@ -355,31 +355,31 @@ struct TemplateExpanderTests {
                 ]
             ),
 
-            // Force overwrites existing files
+            // Override overwrites existing files
             .success(
-                "overwrites existing files with force flag",
+                "overwrites existing files with override flag",
                 templateSetup: [
                     .file(path: "file.txt", content: "new content"),
                 ],
                 existingFiles: [
                     ExistingFile(path: "file.txt", content: "old content"),
                 ],
-                force: true,
+                override: true,
                 verifications: [
                     .fileContent(path: "file.txt", expectedContent: "new content"),
                 ]
             ),
 
-            // Force overwrites nested files
+            // Override overwrites nested files
             .success(
-                "overwrites nested existing files with force flag",
+                "overwrites nested existing files with override flag",
                 templateSetup: [
                     .file(path: "src/main.swift", content: "new main"),
                 ],
                 existingFiles: [
                     ExistingFile(path: "src/main.swift", content: "old main"),
                 ],
-                force: true,
+                override: true,
                 verifications: [
                     .fileContent(path: "src/main.swift", expectedContent: "new main"),
                 ]
@@ -394,23 +394,23 @@ struct TemplateExpanderTests {
                 existingFiles: [
                     ExistingFile(path: "existing-file.txt", content: "existing content"),
                 ],
-                force: false,
+                override: false,
                 verifications: [
                     .fileExists(path: "new-file.txt"),
                     .fileExists(path: "existing-file.txt"),
                 ]
             ),
 
-            // Error without force when files conflict
+            // Error without override when files conflict
             .failure(
-                "throws error without force when files conflict",
+                "throws error without override when files conflict",
                 templateSetup: [
                     .file(path: "file.txt", content: "new content"),
                 ],
                 existingFiles: [
                     ExistingFile(path: "file.txt", content: "old content"),
                 ],
-                force: false,
+                override: false,
                 expectedError: .existingFilesWouldBeOverwritten(files: ["file.txt"])
             ),
 
@@ -423,7 +423,7 @@ struct TemplateExpanderTests {
                 existingFiles: [
                     ExistingFile(path: "Sources/Module/File.swift", content: "old code"),
                 ],
-                force: false,
+                override: false,
                 expectedError: .existingFilesWouldBeOverwritten(files: ["Sources/Module/File.swift"])
             ),
         ]

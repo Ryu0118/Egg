@@ -111,7 +111,7 @@ struct StagingApplyIntegrationTests {
         switch testCase.expectation {
         case let .successfulApply(expectedFiles):
             let changes = try await staging.computeChangeSummary()
-            let conflicts = try await staging.applyChanges(changes, force: testCase.forceApply)
+            let conflicts = try await staging.applyChanges(changes, override: testCase.forceApply)
             #expect(conflicts.isEmpty || testCase.forceApply, "Expected no conflicts when not forcing")
 
             // Verify expected files in working directory
@@ -128,10 +128,10 @@ struct StagingApplyIntegrationTests {
             }
 
         case let .conflictsDetected(expectedConflictPaths):
-            // Without force, should throw conflict error
+            // Without override, should throw conflict error
             let changes = try await staging.computeChangeSummary()
             let error = await #expect(throws: StagingContext.Error.self) {
-                _ = try await staging.applyChanges(changes, force: false)
+                _ = try await staging.applyChanges(changes, override: false)
             }
 
             guard case let .conflictingFiles(conflicts) = error else {
@@ -298,9 +298,9 @@ struct StagingApplyIntegrationTests {
                 expectation: .conflictsDetected(conflictPaths: ["conflict.txt"])
             ),
 
-            // Force apply with conflicts
+            // Override apply with conflicts
             TestCase(
-                description: "force apply overrides conflicts",
+                description: "override apply overrides conflicts",
                 initialFiles: [
                     InitialFile(path: "conflict.txt", content: "original"),
                 ],

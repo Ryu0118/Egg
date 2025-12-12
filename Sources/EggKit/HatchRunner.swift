@@ -14,7 +14,7 @@ package struct HatchRunner {
     private let templateFinder: TemplatesFinder
     private let processRunner: any ProcessRunning
     private let useStaging: Bool
-    private let force: Bool
+    private let override: Bool
 
     package init(
         mode: HatchRunnerMode,
@@ -25,7 +25,7 @@ package struct HatchRunner {
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
         useStaging: Bool = true,
-        force: Bool = false
+        override: Bool = false
     ) {
         self.mode = mode
         self.workingDirectory = workingDirectory
@@ -35,7 +35,7 @@ package struct HatchRunner {
         self.processRunner = processRunner
         self.noora = noora
         self.useStaging = useStaging
-        self.force = force
+        self.override = override
         templateFinder = TemplatesFinder(
             fileSystem: fileSystem,
             projectDirectory: projectDirectory,
@@ -95,7 +95,7 @@ package struct HatchRunner {
                 homeDirectory: homeDirectory,
                 noora: noora,
                 isInteractive: mode.isInteractive,
-                force: force
+                override: override
             )
         } else {
             noora.warning("Running in direct mode. filesystem changes are permanent")
@@ -106,7 +106,7 @@ package struct HatchRunner {
                 homeDirectory: homeDirectory,
                 noora: noora,
                 isInteractive: mode.isInteractive,
-                force: force
+                override: override
             )
         }
     }

@@ -40,7 +40,7 @@ extension StagingContext {
                 for conflict in conflicts {
                     message += "  - \(conflict.path.pathString): \(conflict.type.description)\n"
                 }
-                message += "Please resolve conflicts manually and retry, or use --force to override."
+                message += "Please resolve conflicts manually and retry, or use --override to apply staged changes."
                 return message
             case .userAborted:
                 return "Operation cancelled by user"

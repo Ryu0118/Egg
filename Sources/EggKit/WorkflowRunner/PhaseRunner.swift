@@ -18,7 +18,7 @@ import ProcessRunning
 ///     homeDirectory: homeDir,
 ///     noora: Noora(),
 ///     isInteractive: true,
-///     force: false
+///     override: false
 /// )
 ///
 /// try await phaseRunner.executePreHatch(
@@ -34,7 +34,7 @@ struct PhaseRunner {
     private let homeDirectory: AbsolutePath
     private let noora: any Noorable
     private let isInteractive: Bool
-    private let force: Bool
+    private let override: Bool
 
     init(
         processRunner: any ProcessRunning,
@@ -42,14 +42,14 @@ struct PhaseRunner {
         homeDirectory: AbsolutePath,
         noora: any Noorable,
         isInteractive: Bool,
-        force: Bool
+        override: Bool
     ) {
         self.processRunner = processRunner
         self.fileSystem = fileSystem
         self.homeDirectory = homeDirectory
         self.noora = noora
         self.isInteractive = isInteractive
-        self.force = force
+        self.override = override
     }
 
     /// Executes the pre_hatch lifecycle phase.
@@ -141,7 +141,7 @@ struct PhaseRunner {
             outputDirectory: outputDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            force: force
+            override: override
         )
 
         try await expander.expand(
