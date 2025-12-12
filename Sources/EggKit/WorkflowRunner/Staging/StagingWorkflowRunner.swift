@@ -94,14 +94,12 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
         // Copy fileManager to a local variable to satisfy sending requirement
         // FileManager is thread-safe but not marked Sendable
-        nonisolated(unsafe) let fm = fileManager
-
         nonisolated(unsafe) let nra = noora
 
         let workspaceTask = Self.createWorkspaceTask(
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fm,
+            fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
@@ -342,29 +340,22 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
     /// Creates a detached task for workspace creation to enable parallel execution.
     ///
-    /// This helper method isolates the non-Sendable FileManagerProtocol type by using
-    /// `sending` parameters and `nonisolated(unsafe)` to safely pass it to the task.
-    ///
     /// - Returns: A task that creates the staging workspace
     private nonisolated static func createWorkspaceTask(
         workingDirectory: URL,
         homeDirectory: URL,
-        fileManager: sending some FileManagerProtocol,
+        fileManager: some FileManagerProtocol,
         workspaceWatcher: any DirectoryWatching,
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
         noora: sending any Noorable
     ) -> Task<StagingContext, any Error> {
-        // Use nonisolated(unsafe) to safely capture non-Sendable types in the task
-        // FileManager and Noora are actually thread-safe but not marked Sendable
-        nonisolated(unsafe) let fm = fileManager
-        nonisolated(unsafe) let nra = noora
-
-        return Task {
-            try await StagingContext.create(
+        Task {
+            nonisolated(unsafe) let nra = noora
+            return try await StagingContext.create(
                 cloning: workingDirectory,
                 homeDirectory: homeDirectory,
-                fileManager: fm,
+                fileManager: fileManager,
                 workspaceWatcher: workspaceWatcher,
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,

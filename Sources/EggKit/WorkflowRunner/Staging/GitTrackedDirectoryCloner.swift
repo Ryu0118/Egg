@@ -3,6 +3,7 @@ import Foundation
 import ProcessRunning
 import Subprocess
 import AsyncOperations
+import Noora
 
 #if canImport(System)
     import System
@@ -26,15 +27,18 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
     private let apfsCloner: any DirectoryCloning
+    nonisolated(unsafe) private let noora: any Noorable
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),
         fileManager: some FileManagerProtocol = FileManager.default,
-        apfsCloner: some DirectoryCloning = APFSDirectoryCloner()
+        apfsCloner: some DirectoryCloning = APFSDirectoryCloner(),
+        noora: some Noorable = Noora()
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
         self.apfsCloner = apfsCloner
+        self.noora = noora
     }
 
     func clone(from source: URL, to destination: URL) async throws {
@@ -45,6 +49,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         // Check if source is a git repository
         guard await isGitRepository(source) else {
             // Fall back to APFS cloning for non-git directories
+            noora.warning("Since this directory is not tracked by git, all files will be copied. This may take some time.")
             try await apfsCloner.clone(from: source, to: destination)
             return
         }

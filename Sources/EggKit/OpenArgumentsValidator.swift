@@ -46,7 +46,7 @@ package struct OpenArgumentsValidator {
     private func findTemplate(
         name: String
     ) async throws -> (path: URL, location: TemplateLocationType) {
-        guard let templatePath = try await templatesFinder.validTemplateDirectory(name) else {
+        guard let templatePath = try templatesFinder.validTemplateDirectory(name) else {
             throw Error.templateNotFound(name: name)
         }
 

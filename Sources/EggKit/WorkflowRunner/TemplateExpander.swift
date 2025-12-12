@@ -98,7 +98,7 @@ struct TemplateExpander {
 
         for (absolutePath, relativePath) in allPaths {
             // Skip directories - only include files
-            let isDirectory = (try? fileManager.isDirectory(at: absolutePath)) ?? false
+            let isDirectory = fileManager.isDirectory(at: absolutePath)
             if isDirectory {
                 continue
             }

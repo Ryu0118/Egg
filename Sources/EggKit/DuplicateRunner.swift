@@ -133,7 +133,7 @@ package struct DuplicateRunner {
             newName
         }
 
-        guard try !(await templatesFinder.exists(finalNewName)) else {
+        guard !templatesFinder.exists(finalNewName) else {
             throw Error.targetAlreadyExists(name: finalNewName)
         }
 

@@ -59,7 +59,7 @@ package struct DuplicateArgumentsValidator {
     }
 
     private func findSourceTemplate(name: String) async throws -> (path: URL, location: TemplateLocationType) {
-        guard let sourcePath = try await templatesFinder.validTemplateDirectory(name) else {
+        guard let sourcePath = try templatesFinder.validTemplateDirectory(name) else {
             throw Error.templateNotFound(name: name)
         }
 
@@ -117,7 +117,7 @@ package struct DuplicateArgumentsValidator {
     }
 
     private func validateNewTemplateName(_ name: String) async throws {
-        guard try !(await templatesFinder.exists(name)) else {
+        guard !templatesFinder.exists(name) else {
             throw Error.templateAlreadyExists(name: name)
         }
 
