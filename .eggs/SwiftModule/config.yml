@@ -35,9 +35,33 @@ macros:
     default: "Unknown"
 
 pre_hatch:
-  - run: |
+  - id: change-module-dependencies-format
+    run: |
+      set -e
+      if [[ -z "___MODULE_DEPENDENCIES___" ]]; then
+        js_array='[]'
+      else
+        IFS=',' read -ra items <<< "___MODULE_DEPENDENCIES___"
+        js_array='['
+        for i in "${!items[@]}"; do
+          js_array+="\"${items[i]}\""
+          [[ $i -lt $((${#items[@]} - 1)) ]] && js_array+=', '
+        done
+        js_array+=']'
+      fi
+
+      echo "module-dependencies-array=$js_array"
+  - if: ${{ pre_hatch.change-module-dependencies-format.outputs.module-dependencies-array }}.length == 0
+    run: |
+      set -e
+      xcrun swift package --package-path ___PACKAGE_PATH___ add-target ___MODULE_NAME___ --type ___MODULE_TYPE___
+
+  - if: ${{ pre_hatch.change-module-dependencies-format.outputs.module-dependencies-array }}.length > 0
+    run: |
       set -e
       xcrun swift package --package-path ___PACKAGE_PATH___ add-target ___MODULE_NAME___ --type ___MODULE_TYPE___ --dependencies ___MODULE_DEPENDENCIES___
+
+  - run: |
       rm -f ___PACKAGE_PATH___/Sources/___MODULE_NAME___/___MODULE_NAME___.swift
 
   - if: ___CREATE_TESTS___
