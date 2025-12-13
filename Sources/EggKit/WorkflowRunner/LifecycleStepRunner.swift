@@ -65,8 +65,8 @@ struct LifecycleStepRunner {
     ) async throws -> StepOutputsStorage {
         let outputs = previousOutputs
 
-        for step in steps {
-            try await executeStep(step, in: phase, substituting: macros, storingTo: outputs)
+        for (index, step) in steps.enumerated() {
+            try await executeStep(step, at: index, in: phase, substituting: macros, storingTo: outputs)
         }
 
         return outputs
@@ -84,17 +84,23 @@ struct LifecycleStepRunner {
     ///   - outputs: Storage for step outputs
     private func executeStep(
         _ step: Config.LifecycleStep,
+        at index: Int,
         in phase: LifecyclePhase,
         substituting macros: [ResolvedMacro],
         storingTo outputs: StepOutputsStorage
     ) async throws {
+        let stepLabel = formatStepLabel(phase: phase, index: index, stepId: step.id)
+
         guard try await shouldExecute(step, given: macros, and: outputs) else {
+            noora.passthrough("⏭️ \(stepLabel): Skipped (condition not met)\n", tab: 1)
             return
         }
 
         guard let resolvedCommand = try await resolveCommand(from: step, substituting: macros, referencing: outputs) else {
             return
         }
+
+        noora.passthrough("🦆 \(stepLabel): Running script...\n", tab: 1)
 
         let shellRunner = ShellScriptRunner(
             processRunner: processRunner,
@@ -103,7 +109,7 @@ struct LifecycleStepRunner {
             executionEnvironment: executionEnvironment
         )
         let stdout = try await shellRunner.executeStreaming(resolvedCommand) { output in
-            noora.passthrough("\(output)\n", tab: 1)
+            noora.passthrough("\(output)\n", tab: 2)
         }
 
         if let stepId = step.id {
@@ -158,5 +164,21 @@ struct LifecycleStepRunner {
             builtInMacroContext: builtInMacroContext
         )
         return try await resolver.resolve(runCommand)
+    }
+
+
+    /// Formats a step label for logging purposes.
+    ///
+    /// - Parameters:
+    ///   - phase: The lifecycle phase
+    ///   - index: The step index
+    ///   - stepId: Optional step identifier
+    /// - Returns: Formatted label like "pre_hatch.run[0]" or "pre_hatch.run[0](my_step)"
+    private func formatStepLabel(phase: LifecyclePhase, index: Int, stepId: String?) -> String {
+        if let stepId {
+            "\(phase.rawValue).run[\(index)](\(stepId))"
+        } else {
+            "\(phase.rawValue).run[\(index)]"
+        }
     }
 }

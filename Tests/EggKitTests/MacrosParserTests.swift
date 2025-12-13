@@ -3,10 +3,9 @@ import Foundation
 import Testing
 
 struct MacrosParserTests {
-    let parser = MacrosParser()
-
     @Test(arguments: TestCase.allCases)
     func parseCommandLineArguments(_ testCase: TestCase) throws {
+        let parser = MacrosParser(macroDefinitions: testCase.macroDefinitions)
         switch testCase.expected {
         case let .success(expectedMacros):
             let result = try parser.parseCommandLineArguments(testCase.macros)
@@ -21,9 +20,22 @@ struct MacrosParserTests {
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let macros: [String]
+        let macroDefinitions: [Config.Macro]
         let expected: Result
 
         var testDescription: String { description }
+
+        init(
+            description: String,
+            macros: [String],
+            macroDefinitions: [Config.Macro] = [],
+            expected: Result
+        ) {
+            self.description = description
+            self.macros = macros
+            self.macroDefinitions = macroDefinitions
+            self.expected = expected
+        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -146,6 +158,72 @@ struct MacrosParserTests {
                 description: "throws error on last macro when content is missing",
                 macros: ["--first", "value1", "--second"],
                 expected: .failure(.missingContent(macro: "--second"))
+            ),
+            // Boolean macro tests
+            TestCase(
+                description: "parses boolean macro --flag as true",
+                macros: ["--create-tests"],
+                macroDefinitions: [
+                    Config.Macro(name: "___CREATE_TESTS___", description: "Create tests", type: .boolean),
+                ],
+                expected: .success([ParsedMacroDefinition(macro: "___CREATE_TESTS___", values: ["true"])])
+            ),
+            TestCase(
+                description: "parses boolean macro --no-flag as false",
+                macros: ["--no-create-tests"],
+                macroDefinitions: [
+                    Config.Macro(name: "___CREATE_TESTS___", description: "Create tests", type: .boolean),
+                ],
+                expected: .success([ParsedMacroDefinition(macro: "___CREATE_TESTS___", values: ["false"])])
+            ),
+            TestCase(
+                description: "parses multiple boolean macros",
+                macros: ["--create-tests", "--no-include-docs"],
+                macroDefinitions: [
+                    Config.Macro(name: "___CREATE_TESTS___", description: "Create tests", type: .boolean),
+                    Config.Macro(name: "___INCLUDE_DOCS___", description: "Include docs", type: .boolean),
+                ],
+                expected: .success([
+                    ParsedMacroDefinition(macro: "___CREATE_TESTS___", values: ["true"]),
+                    ParsedMacroDefinition(macro: "___INCLUDE_DOCS___", values: ["false"]),
+                ])
+            ),
+            TestCase(
+                description: "parses mixed boolean and string macros",
+                macros: ["--name", "MyApp", "--create-tests", "--version", "1.0"],
+                macroDefinitions: [
+                    Config.Macro(name: "___CREATE_TESTS___", description: "Create tests", type: .boolean),
+                ],
+                expected: .success([
+                    ParsedMacroDefinition(macro: "___NAME___", values: ["MyApp"]),
+                    ParsedMacroDefinition(macro: "___CREATE_TESTS___", values: ["true"]),
+                    ParsedMacroDefinition(macro: "___VERSION___", values: ["1.0"]),
+                ])
+            ),
+            // Edge case: --no-xxx where ___NO_XXX___ is a non-boolean macro (not negation)
+            TestCase(
+                description: "parses --notify as ___NOTIFY___ string macro (not negation)",
+                macros: ["--notify", "email"],
+                macroDefinitions: [
+                    Config.Macro(name: "___NOTIFY___", description: "Notification method", type: .string),
+                ],
+                expected: .success([ParsedMacroDefinition(macro: "___NOTIFY___", values: ["email"])])
+            ),
+            TestCase(
+                description: "parses --no-cache as ___NO_CACHE___ string macro when defined",
+                macros: ["--no-cache", "true"],
+                macroDefinitions: [
+                    Config.Macro(name: "___NO_CACHE___", description: "Disable cache", type: .string),
+                ],
+                expected: .success([ParsedMacroDefinition(macro: "___NO_CACHE___", values: ["true"])])
+            ),
+            TestCase(
+                description: "parses --no-cache as ___CACHE___ boolean false when CACHE is boolean",
+                macros: ["--no-cache"],
+                macroDefinitions: [
+                    Config.Macro(name: "___CACHE___", description: "Enable cache", type: .boolean),
+                ],
+                expected: .success([ParsedMacroDefinition(macro: "___CACHE___", values: ["false"])])
             ),
         ]
 

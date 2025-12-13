@@ -88,11 +88,9 @@ description: テストと適切なパッケージ構造を持つSwiftモジュ�
 
 **CLI:**
 ```bash
---create-tests true
---create-tests false
-# または
---create-tests
---no-create-tests
+--create-tests      # → true
+--no-create-tests   # → false
+# どちらも指定しない場合: default値（なければ false）
 ```
 
 #### choice

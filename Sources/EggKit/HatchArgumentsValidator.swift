@@ -5,7 +5,6 @@ package struct HatchArgumentsValidator {
     private let templateName: String?
     private let macros: [String]
     private let templateFinder: TemplatesFinder
-    private let parser: MacrosParser
 
     package init(
         templateName: String?,
@@ -23,7 +22,6 @@ package struct HatchArgumentsValidator {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory
         )
-        parser = MacrosParser()
     }
 
     package func validate() async throws -> HatchRunnerMode {
@@ -32,9 +30,12 @@ package struct HatchArgumentsValidator {
             return .interactive
         }
 
-        let parsedMacros = try parser.parseCommandLineArguments(macros)
-
+        // Fetch template first to get macro definitions for type-aware parsing
         let template = try await templateFinder.fetchTemplate(templateName)
+
+        // Parse command line arguments with macro type information
+        let parser = MacrosParser(macroDefinitions: template.config.macros ?? [])
+        let parsedMacros = try parser.parseCommandLineArguments(macros)
 
         // Perform basic validation (without path resolution)
         // Path resolution will be done by the workflow runner after staging area creation
