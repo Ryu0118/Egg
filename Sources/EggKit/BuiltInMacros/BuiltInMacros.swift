@@ -106,8 +106,11 @@ private extension BuiltInMacros {
 
     static func formatDate(_ date: Date, format: String) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = format
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = DateFormatter.dateFormat(
+            fromTemplate: "ydMMM",
+            options: 0,
+            locale: .current
+        )
         return formatter.string(from: date)
     }
 }
