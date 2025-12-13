@@ -56,15 +56,20 @@ package struct HatchRunner {
     package func run() async throws {
         switch mode {
         case .interactive:
-            // Prompt for template name
-            let templateName = noora.textPrompt(
-                title: "Template Name",
-                prompt: "Enter the template name:",
-                collapseOnAnswer: true
-            )
+            // Get all available templates from global and project directories
+            let options = try await templateFinder.listWithLocations()
 
-            // Fetch template using TemplatesFinder
-            let template = try await templateFinder.fetchTemplate(templateName)
+            guard !options.isEmpty else {
+                throw Error.noTemplatesFound
+            }
+
+            // Let user select from available templates
+            let selectedOption = noora.singleChoicePrompt(
+                title: "Select Template",
+                question: "Which template would you like to use?",
+                options: options,
+                description: "Select a template to hatch."
+            )
 
             let workflowRunner = makeWorkflowRunner()
 
@@ -72,9 +77,9 @@ package struct HatchRunner {
             // Macros will be resolved inside the workflow runner at the appropriate time
             // (after staging area creation for staging execution)
             _ = try await workflowRunner.run(
-                config: template.config,
+                config: selectedOption.template.config,
                 macroInputs: .interactive,
-                templateDirectory: template.path
+                templateDirectory: selectedOption.template.path
             )
 
         case let .direct(template, parsedMacros):
@@ -132,6 +137,19 @@ extension HatchRunnerMode {
             true
         case .direct:
             false
+        }
+    }
+}
+
+extension HatchRunner {
+    enum Error: LocalizedError {
+        case noTemplatesFound
+
+        var errorDescription: String? {
+            switch self {
+            case .noTemplatesFound:
+                "No templates found. Create a template first using 'egg create'."
+            }
         }
     }
 }
