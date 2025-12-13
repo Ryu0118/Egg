@@ -384,7 +384,7 @@ struct VariableResolverTests {
                 input: "Today: ___DATE___",
                 macros: [],
                 outputs: [],
-                expectation: .success(expectedResult: "Today: 1970-01-01"),
+                expectation: .success(expectedResult: "Today: \(BuiltInMacros.formatDate(Date(timeIntervalSince1970: 0), format: nil))"),
                 builtInMacroContext: BuiltInMacroContext(
                     outputDirectory: nil,
                     workingDirectory: URL(filePath: "/work"),

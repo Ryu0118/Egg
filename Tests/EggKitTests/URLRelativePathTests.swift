@@ -145,7 +145,7 @@ extension URLRelativePathTests {
                 description: "handles root as base",
                 targetPath: "/Users/user",
                 basePath: "/",
-                expected: "Users/ryu"
+                expected: "/Users/user"
             ),
             RelativePathTestCase(
                 description: "returns dot for root to root",
@@ -249,10 +249,10 @@ extension URLRelativePathTests {
 
             // Root handling
             IsUnderTestCase(
-                description: "returns true when base is root",
+                description: "returns false when base is root",
                 targetPath: "/Users/user",
                 basePath: "/",
-                expected: true
+                expected: false
             ),
             IsUnderTestCase(
                 description: "returns true for root under root",

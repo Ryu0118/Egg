@@ -2,6 +2,31 @@ import Foundation
 import RegexBuilder
 
 enum Regexes {
+    /// Matches macro with optional argument: ___NAME___ or ___NAME(arg)___
+    static func macroWithArgument(name: String) -> Regex<Substring> {
+        Regex {
+            "___"
+            name
+            Optionally {
+                "("
+                OneOrMore(.anyNonNewline.subtracting(.anyOf(")")))
+                ")"
+            }
+            "___"
+        }
+        .matchingSemantics(.graphemeCluster)
+    }
+
+    /// Matches exact macro name: ___NAME___
+    static func exactMacro(name: String) -> Regex<Substring> {
+        Regex {
+            "___"
+            name
+            "___"
+        }
+        .matchingSemantics(.graphemeCluster)
+    }
+
     /// Matches macro references like ___NAME___
     static var macroReference: Regex<(Substring, Substring)> {
         Regex {

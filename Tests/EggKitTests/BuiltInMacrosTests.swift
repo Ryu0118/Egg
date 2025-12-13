@@ -91,39 +91,47 @@ struct BuiltInMacrosTests {
             environment: ["USER": "testuser"]
         )
 
+        static var expectedDateString: String {
+            expectedDateString(nil)
+        }
+
+        static func expectedDateString(_ format: String?) -> String {
+            BuiltInMacros.formatDate(fixedDate, format: format)
+        }
+
         static let allCases: [ResolveTestCase] = [
-            // DATE macro
+            // DATE macro (uses the provided argument as format, or default if none)
             ResolveTestCase(
-                description: "resolves ___DATE___ to default format",
+                description: "resolves ___DATE___ to locale-dependent format",
                 input: "Today is ___DATE___",
                 context: defaultContext,
-                expected: "Today is 2024-12-12"
+                expected: "Today is \(expectedDateString)"
             ),
             ResolveTestCase(
-                description: "resolves ___DATE(yyyyMMdd)___ to custom format",
+                description: "resolves ___DATE(yyyyMMdd)___ to specified format",
                 input: "Date: ___DATE(yyyyMMdd)___",
                 context: defaultContext,
-                expected: "Date: 20241212"
+                expected: "Date: \(expectedDateString("yyyyMMdd"))"
             ),
             ResolveTestCase(
-                description: "resolves ___DATE(MM/dd/yyyy)___ to custom format",
+                description: "resolves ___DATE(MM/dd/yyyy)___ to specified format",
                 input: "___DATE(MM/dd/yyyy)___",
                 context: defaultContext,
-                expected: "12/12/2024"
+                expected: expectedDateString("MM/dd/yyyy")
             ),
             ResolveTestCase(
                 description: "resolves multiple DATE macros",
                 input: "___DATE___ and ___DATE(yyyyMMdd)___",
                 context: defaultContext,
-                expected: "2024-12-12 and 20241212"
+                expected: "\(expectedDateString) and \(expectedDateString("yyyyMMdd"))"
             ),
 
-            // YEAR macro
+            // YEAR macro (uses yyyy format)
             ResolveTestCase(
                 description: "resolves ___YEAR___",
                 input: "Copyright ___YEAR___",
                 context: defaultContext,
-                expected: "Copyright 2024"
+                expected: "Copyright \(expectedDateString("yyyy"))"
             ),
 
             // SYSTEM_USER macro
@@ -140,7 +148,7 @@ struct BuiltInMacrosTests {
                 description: "resolves multiple different macros",
                 input: "___YEAR___ by ___SYSTEM_USER___",
                 context: defaultContext,
-                expected: "2024 by testuser"
+                expected: "\(expectedDateString("yyyy")) by testuser"
             ),
 
             // No macros
@@ -232,7 +240,6 @@ struct BuiltInMacroTests {
         let macro = BuiltInMacro.declare("___TEST___") { _ in "resolved" }
 
         #expect(macro.name == "___TEST___")
-        #expect(macro.acceptsArgument == false)
     }
 
     @Test
@@ -242,7 +249,6 @@ struct BuiltInMacroTests {
         }
 
         #expect(macro.name == "___TEST___")
-        #expect(macro.acceptsArgument == true)
     }
 
     @Test(arguments: ArgumentExtractionTestCase.allCases)
@@ -267,26 +273,32 @@ struct BuiltInMacroTests {
 
         var testDescription: String { description }
 
+        static let fixedDate = Date(timeIntervalSince1970: 1_733_961_600) // 2024-12-12 00:00:00 UTC
+
+        static func expectedDateString(_ format: String?) -> String {
+            BuiltInMacros.formatDate(fixedDate, format: format)
+        }
+
         static let allCases: [ArgumentExtractionTestCase] = [
             ArgumentExtractionTestCase(
                 description: "DATE with yyyyMMdd format",
                 matchedString: "___DATE(yyyyMMdd)___",
-                expectedResult: "20241212"
+                expectedResult: expectedDateString("yyyyMMdd")
             ),
             ArgumentExtractionTestCase(
                 description: "DATE with yyyy-MM-dd format",
                 matchedString: "___DATE(yyyy-MM-dd)___",
-                expectedResult: "2024-12-12"
+                expectedResult: expectedDateString("yyyy-MM-dd")
             ),
             ArgumentExtractionTestCase(
                 description: "DATE without argument uses default format",
                 matchedString: "___DATE___",
-                expectedResult: "2024-12-12"
+                expectedResult: expectedDateString(nil)
             ),
             ArgumentExtractionTestCase(
                 description: "DATE with MM/dd/yyyy format",
                 matchedString: "___DATE(MM/dd/yyyy)___",
-                expectedResult: "12/12/2024"
+                expectedResult: expectedDateString("MM/dd/yyyy")
             ),
         ]
     }

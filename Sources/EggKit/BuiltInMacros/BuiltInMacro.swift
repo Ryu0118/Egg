@@ -4,15 +4,15 @@ import Foundation
 ///
 /// Built-in macros are automatically available without explicit definition in config.yaml.
 /// Each macro has a name pattern and a resolver that computes its value at runtime.
-package struct BuiltInMacro: Sendable {
+struct BuiltInMacro: Sendable {
     /// The macro name (e.g., `___DATE___`).
-    package let name: String
+    let name: String
 
     /// Whether this macro accepts an argument (e.g., `___DATE(yyyyMMdd)___`, `___ENV(PATH)___`).
-    package let acceptsArgument: Bool
+    let acceptsArgument: Bool
 
     /// The resolver that computes the macro value.
-    package let resolve: @Sendable (String, BuiltInMacroContext) -> String
+    let resolve: @Sendable (String, BuiltInMacroContext) -> String
 
     private init(
         name: String,
@@ -53,7 +53,6 @@ extension BuiltInMacro {
 
     private static func extractArgument(from matchedString: String, macroName: String) -> String? {
         // ___DATE(yyyyMMdd)___ -> yyyyMMdd
-        // ___ENV(PATH)___ -> PATH
         // ___DATE___ -> nil
         let prefix = String(macroName.dropLast(3)) + "(" // ___DATE(
         let suffix = ")___"
