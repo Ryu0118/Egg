@@ -18,7 +18,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
 
         Direct Mode:
           Provide the template name and macro values via command-line arguments.
-          Example: egg hatch MyTemplate --NAME value --ENABLED true
+          Example: egg hatch MyTemplate --name value --enabled true
         """
     )
 
