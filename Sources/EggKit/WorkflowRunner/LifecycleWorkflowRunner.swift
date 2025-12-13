@@ -45,9 +45,12 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         homeDirectory: URL,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        override: Bool = false,
-        sandboxDisabled: Bool = true
+        overrideConflicts: Bool = false,
+        sandboxDisabled: Bool = true,
+        applyChanges: Bool = false
     ) {
+        // Note: applyChanges is unused in direct mode as there's no confirmation step
+        _ = applyChanges
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.noora = noora
@@ -58,7 +61,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            override: override
+            override: overrideConflicts
         )
     }
 

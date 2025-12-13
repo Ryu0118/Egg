@@ -31,6 +31,16 @@ import ProcessRunning
 ///     templateDirectory: templateDir
 /// )
 /// ```
+/// Determines how apply-changes confirmation is handled.
+enum ApplyConfirmationMode {
+    /// Always skip confirmation and apply immediately, overriding any conflicts.
+    case alwaysApply
+    /// Skip confirmation prompt but warn about conflicts.
+    case autoConfirm
+    /// Show yes/no prompt before applying changes.
+    case prompt
+}
+
 struct StagingWorkflowRunner: WorkflowRunning {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
@@ -38,8 +48,9 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let homeDirectory: URL
     private let noora: any Noorable
     private let isInteractive: Bool
-    private let override: Bool
+    private let overrideConflicts: Bool
     private let sandboxDisabled: Bool
+    private let confirmationMode: ApplyConfirmationMode
     private let phaseRunner: PhaseRunner
     private let workspaceWatcher: any DirectoryWatching
     private let workingDirectoryWatcher: any DirectoryWatching
@@ -51,8 +62,9 @@ struct StagingWorkflowRunner: WorkflowRunning {
         homeDirectory: URL,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        override: Bool = false,
+        overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,
+        applyChanges: Bool = false,
         workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher()
     ) {
@@ -62,15 +74,23 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.homeDirectory = homeDirectory
         self.noora = noora
         self.isInteractive = isInteractive
-        self.override = override
+        self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
+        // Determine confirmation mode from flags
+        if overrideConflicts {
+            self.confirmationMode = .alwaysApply
+        } else if applyChanges {
+            self.confirmationMode = .autoConfirm
+        } else {
+            self.confirmationMode = .prompt
+        }
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileManager: fileManager,
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            override: override
+            override: overrideConflicts
         )
         self.workspaceWatcher = workspaceWatcher
         self.workingDirectoryWatcher = workingDirectoryWatcher
@@ -197,7 +217,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // Step 10: Apply changes to working directory
             noora.passthrough("📦 Applying changes...\n")
             // Use override if set via CLI flag, OR if user confirmed override in interactive mode
-            let overriddenConflicts = try await staging.applyChanges(changeSummary, override: override || userConfirmedOverride)
+            let overriddenConflicts = try await staging.applyChanges(changeSummary, override: overrideConflicts || userConfirmedOverride)
 
             // Display warning for overridden conflicts (when override=true)
             if !overriddenConflicts.isEmpty {
@@ -221,17 +241,14 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
     /// Handles user confirmation before applying changes.
     ///
-    /// Behavior matrix:
-    /// - `override=true`: Skip confirmation, apply immediately (returns false)
-    /// - `override=false, isInteractive=true`: Prompt user for confirmation (returns true if conflicts exist and user confirmed)
-    /// - `override=false, isInteractive=false, conflicts=empty`: Apply without confirmation (returns false)
-    /// - `override=false, isInteractive=false, conflicts=exists`: Throw error
+    /// Behavior based on `confirmationMode`:
+    /// - `.alwaysApply`: Skip confirmation, apply immediately (--override flag)
+    /// - `.autoConfirm`: Skip prompt, apply with warning if conflicts exist (--yes flag)
+    /// - `.prompt`: Show yes/no prompt before applying (default)
     ///
-    /// - Returns: True if user confirmed to override conflicts in interactive mode, false otherwise
+    /// - Returns: True if there were conflicts that will be overridden, false otherwise
     @discardableResult
     private func confirmChanges(staging: StagingContext) async throws -> Bool {
-        guard !override else { return false }
-
         let conflicts = try await staging.detectConflicts()
         let hasConflicts = !conflicts.isEmpty
 
@@ -239,8 +256,20 @@ struct StagingWorkflowRunner: WorkflowRunning {
             displayConflicts(conflicts)
         }
 
-        if isInteractive {
-            // Adjust prompt based on whether conflicts exist
+        switch confirmationMode {
+        case .alwaysApply:
+            // --override: apply without any confirmation
+            return false
+
+        case .autoConfirm:
+            // --yes: apply without prompt, but warn about conflicts
+            if hasConflicts {
+                noora.warning("Auto-confirming: overriding \(conflicts.count) conflicting file(s)")
+            }
+            return hasConflicts
+
+        case .prompt:
+            // Default: show yes/no prompt
             let confirmed =
                 if hasConflicts {
                     noora.yesOrNoChoicePrompt(
@@ -258,14 +287,8 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 await staging.discard()
                 throw StagingContext.Error.userAborted
             }
-            // Return true if user confirmed AND there were conflicts to override
             return hasConflicts
-        } else if hasConflicts {
-            await staging.discard()
-            throw StagingContext.Error.conflictingFiles(conflicts)
         }
-
-        return false
     }
 
     /// Displays the change summary to the user.

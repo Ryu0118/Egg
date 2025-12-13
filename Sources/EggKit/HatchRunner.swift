@@ -13,8 +13,9 @@ package struct HatchRunner {
     private let templateFinder: TemplatesFinder
     private let processRunner: any ProcessRunning
     private let useStaging: Bool
-    private let override: Bool
+    private let overrideConflicts: Bool
     private let sandboxDisabled: Bool
+    private let applyChanges: Bool
 
     package init(
         mode: HatchRunnerMode,
@@ -25,8 +26,9 @@ package struct HatchRunner {
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
         useStaging: Bool = true,
-        override: Bool = false,
-        sandboxDisabled: Bool = false
+        overrideConflicts: Bool = false,
+        sandboxDisabled: Bool = false,
+        applyChanges: Bool = false
     ) {
         self.mode = mode
         self.workingDirectory = workingDirectory
@@ -36,8 +38,9 @@ package struct HatchRunner {
         self.processRunner = processRunner
         self.noora = noora
         self.useStaging = useStaging
-        self.override = override
+        self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
+        self.applyChanges = applyChanges
         templateFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -97,8 +100,9 @@ package struct HatchRunner {
                 homeDirectory: homeDirectory,
                 noora: noora,
                 isInteractive: mode.isInteractive,
-                override: override,
-                sandboxDisabled: sandboxDisabled
+                overrideConflicts: overrideConflicts,
+                sandboxDisabled: sandboxDisabled,
+                applyChanges: applyChanges
             )
         } else {
             noora.warning("Running in direct mode. filesystem changes are permanent")
@@ -109,8 +113,9 @@ package struct HatchRunner {
                 homeDirectory: homeDirectory,
                 noora: noora,
                 isInteractive: mode.isInteractive,
-                override: override,
-                sandboxDisabled: sandboxDisabled
+                overrideConflicts: overrideConflicts,
+                sandboxDisabled: sandboxDisabled,
+                applyChanges: applyChanges
             )
         }
     }

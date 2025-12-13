@@ -47,7 +47,8 @@ struct StagingWorkflowRunnerTests {
             homeDirectory: homeDir,
             noora: nooraMock,
             isInteractive: false,
-            override: testCase.override,
+            overrideConflicts: testCase.override,
+            applyChanges: true,
             workspaceWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default)
         )
