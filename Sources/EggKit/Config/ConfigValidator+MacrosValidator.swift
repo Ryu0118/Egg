@@ -13,6 +13,7 @@ extension ConfigValidator {
                     + validateMacroName(macro, context: context)
                     + validateMacroType(macro, context: context)
                     + validateMacroValidation(macro, context: context).asErrors
+                    + validateFieldCompatibility(macro, context: context)
             }
 
             return errors + validateMacroNameUniqueness(macros) + validateMacroReferences(config, definedMacros: macros)
@@ -263,6 +264,57 @@ extension ConfigValidator {
             }
 
             return nil
+        }
+
+        private func validateFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
+            var errors: [Error] = []
+
+            errors += validateFormatFieldCompatibility(macro, context: context)
+            errors += validateChoicesFieldCompatibility(macro, context: context)
+            errors += validateValidateFieldCompatibility(macro, context: context)
+
+            return errors
+        }
+
+        private func validateFormatFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
+            guard macro.format != nil else { return [] }
+
+            if macro.type != .array {
+                return [.formatOnlyValidForArrayType(context: context, name: macro.name)]
+            }
+
+            return validateFormatExpression(macro.format!, macro: macro, context: context).asErrors
+        }
+
+        private func validateChoicesFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
+            guard macro.choices != nil else { return [] }
+
+            let validTypes: Set<Config.MacroType> = [.choice, .choices, .array]
+            if !validTypes.contains(macro.type) {
+                return [.choicesOnlyValidForChoiceTypes(context: context, name: macro.name)]
+            }
+
+            return []
+        }
+
+        private func validateValidateFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
+            guard macro.validate != nil else { return [] }
+
+            if macro.type != .string {
+                return [.validateOnlyValidForStringType(context: context, name: macro.name)]
+            }
+
+            return []
+        }
+
+        private func validateFormatExpression(_ format: String, macro: Config.Macro, context: String) -> Error? {
+            let evaluator = ArrayFormatEvaluator()
+            do {
+                _ = try evaluator.evaluate(format: format, values: ["test"])
+                return nil
+            } catch {
+                return .invalidFormatExpression(context: context, name: macro.name, format: format)
+            }
         }
 
         private func validateMacroReferencesInText(_ text: String, definedMacroNames: Set<String>, context: String) -> [Error] {

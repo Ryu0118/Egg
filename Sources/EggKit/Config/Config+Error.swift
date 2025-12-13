@@ -31,6 +31,10 @@ extension ConfigValidator {
         case duplicateStepId(context: String, index: Int, id: String)
         case validatableRulesError(any ValidatableError)
         case invalidConditionExpression(context: String, expression: String)
+        case formatOnlyValidForArrayType(context: String, name: String)
+        case invalidFormatExpression(context: String, name: String, format: String)
+        case choicesOnlyValidForChoiceTypes(context: String, name: String)
+        case validateOnlyValidForStringType(context: String, name: String)
 
         var errorDescription: String? {
             switch self {
@@ -90,6 +94,14 @@ extension ConfigValidator {
                 error.message
             case let .invalidConditionExpression(context, expression):
                 "\(context): Condition expression '\(expression)' must evaluate to a boolean value."
+            case let .formatOnlyValidForArrayType(context, name):
+                "\(context): Macro '\(name)' has 'format' specified but is not of type 'array'. The 'format' field is only valid for array type macros."
+            case let .invalidFormatExpression(context, name, format):
+                "\(context): Macro '\(name)' has invalid format expression '\(format)'. The expression must be valid JavaScript that returns a string."
+            case let .choicesOnlyValidForChoiceTypes(context, name):
+                "\(context): Macro '\(name)' has 'choices' specified but is not of type 'choice', 'choices', or 'array'. The 'choices' field is only valid for these types."
+            case let .validateOnlyValidForStringType(context, name):
+                "\(context): Macro '\(name)' has 'validate' specified but is not of type 'string'. The 'validate' field is only valid for string type macros."
             }
         }
     }

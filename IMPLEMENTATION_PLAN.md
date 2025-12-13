@@ -364,9 +364,9 @@ ResolvedMacro(
 - [x] `VariableResolverArrayFormatTests.swift` 作成・実行
 
 ### Phase 4: バリデーション層の修正
-- [ ] `ConfigValidator.Error`にケース追加
-- [ ] `ConfigValidator+MacrosValidator`に検証追加
-- [ ] `ConfigValidatorArrayFormatTests.swift` 作成・実行
+- [x] `ConfigValidator.Error`にケース追加
+- [x] `ConfigValidator+MacrosValidator`に検証追加
+- [x] `ConfigValidatorArrayFormatTests.swift` 作成・実行
 
 ### Phase 5: 既存テストの修正
 - [x] `MacroStringConverterTests.swift` 修正
