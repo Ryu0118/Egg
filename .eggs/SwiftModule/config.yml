@@ -13,7 +13,7 @@ macros:
 
   - name: ___MODULE_TYPE___
     description: "モジュールタイプ"
-    type: choices 
+    type: choice
     choices:
       - library
       - executable
@@ -36,13 +36,13 @@ macros:
 
 pre_hatch:
   - run: |
-      set -xe
+      set -e
       xcrun swift package --package-path ___PACKAGE_PATH___ add-target ___MODULE_NAME___ --type ___MODULE_TYPE___ --dependencies ___MODULE_DEPENDENCIES___
       rm -f ___PACKAGE_PATH___/Sources/___MODULE_NAME___/___MODULE_NAME___.swift
 
   - if: ___CREATE_TESTS___
     run: |
-      set -xe
+      set -e
       xcrun swift package --package-path ___PACKAGE_PATH___ add-target ___MODULE_NAME___Tests --type test --dependencies ___MODULE_NAME___
       rm -f ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/___MODULE_NAME___Tests.swift
 
@@ -58,21 +58,20 @@ hatch:
       paths:
         - "___MODULE_NAME___Tests.swift"
 
-    - if: ___CREATE_TESTS___ === true
-      paths:
-        - "___MODULE_NAME___.swift"
-
     - if: "___MODULE_TYPE___ !== 'executable'"
       paths:
         - "main.swift"
 
 post_hatch:
   - run: |
-      set -xe
-      mv ___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___/
+      set -e
+      echo $(pwd)
+      echo $(ls)
+      mv ___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___
       echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___/"
   - if: ___CREATE_TESTS___
     run: |
       set -xe
-      mv ___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/
+      echo $(ls)
+      mv ___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests
       echo "✅ テストを作成しました: ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/"

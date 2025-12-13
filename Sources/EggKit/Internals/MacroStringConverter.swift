@@ -36,7 +36,7 @@ enum MacroStringConverter {
         case let .path(p):
             // Resolve path relative to working directory to ensure absolute path
             let absolutePath = resolvePath(p, workingDirectory: workingDirectory, homeDirectory: homeDirectory)
-            return absolutePath.path(percentEncoded: false)
+            return normalizeTrailingSlash(absolutePath.path(percentEncoded: false))
         }
     }
 
@@ -72,7 +72,7 @@ enum MacroStringConverter {
         case let .path(p):
             // Resolve path relative to working directory to ensure absolute path
             let absolutePath = resolvePath(p, workingDirectory: workingDirectory, homeDirectory: homeDirectory)
-            return escapeAndQuote(absolutePath.path(percentEncoded: false))
+            return escapeAndQuote(normalizeTrailingSlash(absolutePath.path(percentEncoded: false)))
         }
     }
 
@@ -92,6 +92,24 @@ enum MacroStringConverter {
             .replacingOccurrences(of: "\r", with: "\\r")
             .replacingOccurrences(of: "\t", with: "\\t")
         return "\"\(escaped)\""
+    }
+
+    /// Normalizes a path by removing trailing slashes.
+    ///
+    /// This prevents issues where paths like `/path/to/dir/` cause double slashes
+    /// when concatenated with other path components (e.g., `/path/to/dir//file`).
+    ///
+    /// - Parameter path: The path string to normalize
+    /// - Returns: The path with trailing slashes removed (except for root "/")
+    private static func normalizeTrailingSlash(_ path: String) -> String {
+        // Don't remove the slash from root path "/"
+        guard path != "/" else { return path }
+
+        var result = path
+        while result.hasSuffix("/") && result.count > 1 {
+            result.removeLast()
+        }
+        return result
     }
 
     /// Resolves a path URL to an absolute path relative to the working directory.

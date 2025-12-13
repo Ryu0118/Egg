@@ -18,12 +18,8 @@ package extension URL {
     /// same.relativePath(from: working) // "."
     /// ```
     func relativePath(from base: URL) -> String {
-        let targetPath = self.standardizedFileURL.path(percentEncoded: false)
-        let basePath = base.standardizedFileURL.path(percentEncoded: false)
-
-        // Normalize paths by removing trailing slashes for comparison
-        let normalizedTarget = targetPath.hasSuffix("/") ? String(targetPath.dropLast()) : targetPath
-        let normalizedBase = basePath.hasSuffix("/") ? String(basePath.dropLast()) : basePath
+        let normalizedTarget = self.normalizedPath
+        let normalizedBase = base.normalizedPath
 
         // Same path
         if normalizedTarget == normalizedBase {
@@ -38,7 +34,7 @@ package extension URL {
         }
 
         // Not under base, return absolute path
-        return targetPath
+        return normalizedTarget
     }
 
     /// Creates a new URL by appending a relative path string.
@@ -60,12 +56,59 @@ package extension URL {
     /// - Parameter base: The base URL to check against.
     /// - Returns: True if this URL's path starts with the base URL's path.
     func isUnder(_ base: URL) -> Bool {
-        let targetPath = self.standardizedFileURL.path(percentEncoded: false)
-        let basePath = base.standardizedFileURL.path(percentEncoded: false)
-
-        let normalizedTarget = targetPath.hasSuffix("/") ? String(targetPath.dropLast()) : targetPath
-        let normalizedBase = basePath.hasSuffix("/") ? String(basePath.dropLast()) : basePath
+        let normalizedTarget = self.normalizedPath
+        let normalizedBase = base.normalizedPath
 
         return normalizedTarget == normalizedBase || normalizedTarget.hasPrefix(normalizedBase + "/")
+    }
+
+    /// Returns a relative path string from the base URL, throwing if not within base.
+    ///
+    /// Unlike `relativePath(from:)`, this method throws an error if this URL
+    /// is not located under the base URL.
+    ///
+    /// - Parameter base: The base URL to compute the relative path from.
+    /// - Returns: The relative path string (without leading slash), or "." if paths are equal.
+    /// - Throws: `RelativePathError.notWithinBase` if this URL is not under the base.
+    ///
+    /// Example:
+    /// ```swift
+    /// let project = URL(filePath: "/Users/user/Projects/MyApp")
+    /// let working = URL(filePath: "/Users/user/Projects")
+    /// try project.relativePathThrowing(from: working) // "MyApp"
+    ///
+    /// let outside = URL(filePath: "/tmp/other")
+    /// try outside.relativePathThrowing(from: working) // throws RelativePathError.notWithinBase
+    /// ```
+    func relativePathThrowing(from base: URL) throws -> String {
+        // Same path
+        if self.isSamePath(to: base) {
+            return "."
+        }
+
+        let normalizedTarget = self.normalizedPath
+        let normalizedBase = base.normalizedPath
+
+        // Check if target is under base
+        let basePrefix = normalizedBase + "/"
+        guard normalizedTarget.hasPrefix(basePrefix) else {
+            throw RelativePathError.notWithinBase(path: normalizedTarget, base: normalizedBase)
+        }
+
+        let relative = String(normalizedTarget.dropFirst(basePrefix.count))
+        return relative.isEmpty ? "." : relative
+    }
+}
+
+/// Errors that can occur during relative path computation.
+enum RelativePathError: LocalizedError {
+    /// The path is not within the specified base directory.
+    case notWithinBase(path: String, base: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .notWithinBase(path, base):
+            "Path '\(path)' is not within base '\(base)'"
+        }
     }
 }

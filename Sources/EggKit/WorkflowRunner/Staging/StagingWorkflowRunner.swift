@@ -165,10 +165,14 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
             noora.passthrough("✅ Template hatched successfully in staging workspace.\n", tab: 1)
             // Calculate relative path for later use
-            let resolvedOutputPath = try computeRelativePath(
-                outputDirectory: workspaceOutputDirectory,
-                workspaceRoot: staging.root
-            )
+            let resolvedOutputPath: String
+            do {
+                resolvedOutputPath = try workspaceOutputDirectory.relativePathThrowing(from: staging.root)
+            } catch is RelativePathError {
+                throw LifecycleStepError.invalidOutputDirectory(
+                    "Output path is not within staging workspace: \(workspaceOutputDirectory.normalizedPath)"
+                )
+            }
 
             // Step 5: Execute post_hatch phase in staging workspace (with OS-level sandboxing)
             if let postHatchSteps = config.postHatch {
@@ -220,36 +224,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
             await staging.discard()
             throw error
         }
-    }
-
-    /// Computes the relative path from workspace root to output directory.
-    ///
-    /// - Parameters:
-    ///   - outputDirectory: The absolute output path within staging workspace
-    ///   - workspaceRoot: The staging workspace root path
-    /// - Returns: The relative path from workspace root
-    private func computeRelativePath(
-        outputDirectory: URL,
-        workspaceRoot: URL
-    ) throws -> String {
-        // Normalize paths by resolving symlinks and standardizing representation
-        let normalizedOutput = outputDirectory.standardizedFileURL.path(percentEncoded: false)
-        let normalizedRoot = workspaceRoot.standardizedFileURL.path(percentEncoded: false)
-
-        // If output is the workspace root itself (output: "."), return "." as the relative path
-        if normalizedOutput == normalizedRoot {
-            return "."
-        }
-
-        // Remove the workspace root prefix to get the relative path
-        let rootPrefix = normalizedRoot.hasSuffix("/") ? normalizedRoot : normalizedRoot + "/"
-        guard normalizedOutput.hasPrefix(rootPrefix) else {
-            throw LifecycleStepError.invalidOutputDirectory(
-                "Output path is not within staging workspace: \(normalizedOutput)"
-            )
-        }
-        let relative = String(normalizedOutput.dropFirst(rootPrefix.count))
-        return relative
     }
 
     /// Handles user confirmation before applying changes.

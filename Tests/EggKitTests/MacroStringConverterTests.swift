@@ -118,6 +118,28 @@ struct MacroStringConverterTests {
                 ),
                 expectedResult: "/tmp/work/Sources/Hoge"
             ),
+
+            // Trailing slash normalization
+            ShellStringTestCase(
+                description: "removes trailing slash from directory path",
+                value: .path(URL(filePath: "/tmp/work/Sources/", directoryHint: .isDirectory)),
+                expectedResult: "/tmp/work/Sources"
+            ),
+            ShellStringTestCase(
+                description: "removes multiple trailing slashes",
+                value: .path(URL(filePath: "/tmp/work/Sources///")),
+                expectedResult: "/tmp/work/Sources"
+            ),
+            ShellStringTestCase(
+                description: "preserves root path slash",
+                value: .path(URL(filePath: "/", directoryHint: .isDirectory)),
+                expectedResult: "/"
+            ),
+            ShellStringTestCase(
+                description: "removes trailing slash from path with spaces",
+                value: .path(URL(filePath: "/tmp/My Folder/", directoryHint: .isDirectory)),
+                expectedResult: "/tmp/My Folder"
+            ),
         ]
     }
 
@@ -252,6 +274,28 @@ struct MacroStringConverterTests {
                         .appending(path: "Hoge")
                 ),
                 expectedResult: "\"/tmp/work/Sources/Hoge\""
+            ),
+
+            // Trailing slash normalization
+            JavaScriptLiteralTestCase(
+                description: "removes trailing slash from directory path",
+                value: .path(URL(filePath: "/tmp/work/Sources/", directoryHint: .isDirectory)),
+                expectedResult: "\"/tmp/work/Sources\""
+            ),
+            JavaScriptLiteralTestCase(
+                description: "removes multiple trailing slashes",
+                value: .path(URL(filePath: "/tmp/work/Sources///")),
+                expectedResult: "\"/tmp/work/Sources\""
+            ),
+            JavaScriptLiteralTestCase(
+                description: "preserves root path slash",
+                value: .path(URL(filePath: "/", directoryHint: .isDirectory)),
+                expectedResult: "\"/\""
+            ),
+            JavaScriptLiteralTestCase(
+                description: "removes trailing slash from path with spaces",
+                value: .path(URL(filePath: "/tmp/My Folder/", directoryHint: .isDirectory)),
+                expectedResult: "\"/tmp/My Folder\""
             ),
         ]
     }

@@ -31,46 +31,6 @@ struct ShellScriptRunner {
         self.executionEnvironment = executionEnvironment
     }
 
-    /// Executes a shell command and captures stdout and stderr.
-    ///
-    /// - Parameter command: The shell command to execute
-    /// - Returns: Tuple of (stdout, stderr)
-    /// - Throws: LifecycleStepError.shellExecutionError if the command exits with non-zero status
-    func execute(_ command: String) async throws -> (stdout: String, stderr: String?) {
-        let (executable, arguments) = makeExecutableAndArguments(for: command)
-
-        // Resolve symlinks in working directory for macOS sandbox-exec compatibility
-        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.path(percentEncoded: false))
-
-        let result = try await processRunner.run(
-            executable,
-            arguments: arguments,
-            environment: mergedEnvironment,
-            workingDirectory: FilePath(resolvedWorkingDirectory),
-            platformOptions: PlatformOptions(),
-            input: .none,
-            output: .string(limit: .max, encoding: UTF8.self),
-            error: .string(limit: .max, encoding: UTF8.self)
-        )
-
-        guard result.terminationStatus.isSuccess else {
-            let exitCode: Int32
-            switch result.terminationStatus {
-            case let .exited(code):
-                exitCode = code
-            case let .unhandledException(code):
-                exitCode = code
-            }
-            throw LifecycleStepError.shellExecutionError(
-                command: command,
-                exitCode: exitCode,
-                stderr: result.standardError ?? ""
-            )
-        }
-
-        return (stdout: result.standardOutput ?? "", stderr: result.standardError)
-    }
-
     /// Executes a shell command and streams stdout in real-time.
     /// Note: stderr is not captured in streaming mode due to API limitations.
     ///

@@ -33,25 +33,17 @@ struct ShellScriptRunnerTests {
         )
 
         switch testCase.expectation {
-        case let .success(expectedStdout, expectedStderr):
-            let (stdout, stderr) = try await runner.execute(testCase.command)
+        case let .success(expectedStdout, _):
+            let stdout = try await runner.executeStreaming(testCase.command) { _ in }
 
             if expectedStdout.isEmpty {
                 #expect(stdout.isEmpty)
             } else {
                 #expect(stdout.contains(expectedStdout))
             }
-
-            if let expectedStderr {
-                if expectedStderr.isEmpty {
-                    #expect(stderr?.isEmpty ?? true)
-                } else {
-                    #expect(stderr?.contains(expectedStderr) ?? false)
-                }
-            }
         case let .failure(expectedExitCode):
             let error = await #expect(throws: LifecycleStepError.self) {
-                try await runner.execute(testCase.command)
+                try await runner.executeStreaming(testCase.command) { _ in }
             }
 
             guard let error, case let .shellExecutionError(_, exitCode, _) = error else {
@@ -241,7 +233,7 @@ struct ShellScriptRunnerTests {
             additionalEnvironment: testCase.additionalEnvironment
         )
 
-        let (stdout, _) = try await runner.execute(testCase.command)
+        let stdout = try await runner.executeStreaming(testCase.command) { _ in }
         #expect(stdout.contains(testCase.expectedOutput), "Expected '\(testCase.expectedOutput)' in stdout, got '\(stdout)'")
     }
 
