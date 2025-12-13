@@ -55,6 +55,8 @@ package struct MacroResolver {
             return promptForBoolean(macro)
         case .choice:
             return promptForChoice(macro)
+        case .choices:
+            return promptForChoices(macro)
         case .array:
             return promptForArray(macro)
         case .path:
@@ -121,9 +123,9 @@ package struct MacroResolver {
         )
     }
 
-    private func promptForArray(_ macro: Config.Macro) -> ResolvedMacro {
+    private func promptForChoices(_ macro: Config.Macro) -> ResolvedMacro {
         guard let choices = macro.choices, !choices.isEmpty else {
-            fatalError("Macro '\(macro.name)' is of type 'array' but no choices are defined.")
+            fatalError("Macro '\(macro.name)' is of type 'choices' but no choices are defined.")
         }
 
         let values = noora.multipleChoicePrompt(
@@ -135,7 +137,23 @@ package struct MacroResolver {
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .array(values)
+            value: .choices(values)
+        )
+    }
+
+    private func promptForArray(_ macro: Config.Macro) -> ResolvedMacro {
+        let input = noora.textPrompt(
+            title: "\(macro.name)",
+            prompt: "\(macro.description) (comma-separated)",
+            collapseOnAnswer: true,
+            validationRules: []
+        )
+        let values = ArrayInputParser().parseFromInteractive(input)
+
+        return ResolvedMacro(
+            name: macro.name,
+            description: macro.description,
+            value: .array(values, format: macro.format)
         )
     }
 

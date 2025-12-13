@@ -15,10 +15,11 @@ description: String
 macros:
   - name: ___MACRO_NAME___
     description: String
-    type: string | boolean | choice | path | array (オプション, デフォルト: string)
+    type: string | boolean | choice | choices | path | array (オプション, デフォルト: string)
     default: Any (オプション, なければ必須入力)
     validate: String (オプション, 正規表現)
-    choices: [String] (choice型で必須)
+    choices: [String] (choice/choices型で必須)
+    format: String (array型のみ, JavaScript式, デフォルト: '$elements.join(", ")')
 
 # pre_hatch ライフサイクル（テンプレート展開前）
 pre_hatch:
@@ -40,10 +41,6 @@ post_hatch:
   - id: String (オプション)
     if: String (オプション, 条件式)
     run: String (シェルコマンド)
-  - if: String (オプション)
-    hatch: String (テンプレート名)
-    args:
-      ___MACRO___: value
 ```
 
 ## メタ情報
@@ -100,6 +97,8 @@ description: テストと適切なパッケージ構造を持つSwiftモジュ�
 
 #### choice
 
+単一選択型は、ユーザーが定義済みの選択肢から1つを選びます。
+
 ```yaml
 - name: ___MODULE_TYPE___
   description: "モジュールタイプ"
@@ -116,24 +115,122 @@ description: テストと適切なパッケージ構造を持つSwiftモジュ�
 --module-type library
 ```
 
-#### array
+#### choices
+
+複数選択型は、ユーザーが定義済みの選択肢から複数を選べます。
 
 ```yaml
 - name: ___PLATFORMS___
   description: "サポートするプラットフォーム"
-  type: array
+  type: choices
   choices:
     - iOS
     - macOS
     - watchOS
     - tvOS
-  default: [iOS, macOS]
+    - visionOS
+  default: ["iOS", "macOS"]
 ```
 
 **CLI:**
 ```bash
---platforms iOS macOS
---platforms iOS,macOS
+# スペース区切り
+--platforms iOS macOS watchOS
+
+# カンマ区切り
+--platforms iOS,macOS,watchOS
+```
+
+**対話モード:**
+チェックボックス形式でUI表示され、複数の選択肢を選べます。
+
+**出力:**
+カンマ区切りで出力されます（例: `iOS, macOS, watchOS`）。
+
+#### array
+
+配列型は、ユーザーが複数の値を自由に入力できます。`choices` による制限はなく、任意の値を入力できます。
+
+```yaml
+- name: ___DEPENDENCIES___
+  description: "依存パッケージ"
+  type: array
+  default: []
+  format: '$elements.map(x => `"${x}"`).join(", ")'  # JavaScript式（オプション）
+```
+
+**CLI:**
+```bash
+# スペース区切り
+--dependencies Alamofire SwiftyJSON Kingfisher
+
+# カンマ区切り
+--dependencies Alamofire,SwiftyJSON,Kingfisher
+```
+
+**対話モード:**
+```
+依存パッケージ: Alamofire,SwiftyJSON,Kingfisher
+```
+カンマ(`,`)区切りで入力。
+
+##### 出力フォーマット（JavaScript式）
+
+`format` で配列の展開形式をJavaScript式で指定できます。`$elements` は入力された配列を参照します。
+JavaScriptCoreで評価されるため、`map`, `join`, `filter`, テンプレートリテラルなど全て使用可能です。
+
+| format | 入力 | 出力 |
+|--------|------|------|
+| `$elements.join(", ")` (デフォルト) | `[A, B, C]` | `A, B, C` |
+| `$elements.map(x => \`.\${x}\`).join(", ")` | `[A, B, C]` | `.A, .B, .C` |
+| `"[" + $elements.map(x => \`"\${x}"\`).join(", ") + "]"` | `[A, B]` | `["A", "B"]` |
+| `$elements.map(x => \`import \${x}\`).join("\\n")` | `[Foundation, UIKit]` | `import Foundation`<br>`import UIKit` |
+| `$elements.map(x => \`.package(name: "\${x}")\`).join(",\\n")` | `[A, B]` | `.package(name: "A"),`<br>`.package(name: "B")` |
+
+##### 実用例
+
+```yaml
+# シンプルなカンマ区切り
+- name: ___TAGS___
+  type: array
+  default: [swift, library]
+  # format省略時: $elements.join(", ") → swift, library
+
+# Swift Platform列挙
+- name: ___PLATFORMS___
+  type: array
+  format: '$elements.map(x => `.${x}`).join(", ")'
+  default: [iOS, macOS]
+  # 出力: .iOS, .macOS
+
+# JSON配列形式
+- name: ___KEYWORDS___
+  type: array
+  format: '"[" + $elements.map(x => `"${x}"`).join(", ") + "]"'
+  default: [swift, template]
+  # 出力: ["swift", "template"]
+
+# 改行区切りのimport文
+- name: ___IMPORTS___
+  type: array
+  format: '$elements.map(x => `import ${x}`).join("\n")'
+  default: [Foundation, UIKit]
+  # 出力:
+  # import Foundation
+  # import UIKit
+
+# SPM依存関係
+- name: ___DEPENDENCIES___
+  type: array
+  format: '$elements.map(x => `.package(url: "https://github.com/xxx/${x}", from: "1.0.0")`).join(",\n        ")'
+  default: []
+
+# 正規表現も使用可能
+- name: ___MODULES___
+  type: array
+  format: '$elements.map(x => x.replace(/([A-Z])/g, "-$1").toLowerCase().slice(1)).join(", ")'
+  default: [MyModule, NetworkClient]
+  # 出力: my-module, network-client
 ```
 
 ### マクロの命名規則
@@ -322,23 +419,6 @@ hatch:
         - "main.swift"
 ```
 
-## ネストされた hatch
-
-post_hatch から他のテンプレートを呼び出すことができます：
-
-```yaml
-post_hatch:
-  - if: ___CREATE_TESTS___
-    hatch: TestTemplate
-    args:
-      ___MODULE_NAME___: ___MODULE_NAME___
-      ___OUTPUT___: ${{ pre_hatch.setup.outputs.test-dir }}
-```
-
-**フィールド:**
-- `hatch`: 呼び出すテンプレート名
-- `args`: ネストされたテンプレートに渡すマクロ値
-
 ## 完全な例
 
 ```yaml
@@ -376,6 +456,18 @@ macros:
     description: "著者名"
     type: string
     default: "Unknown"
+
+  - name: ___PLATFORMS___
+    description: "サポートするプラットフォーム"
+    type: choices
+    choices: [iOS, macOS, watchOS, tvOS, visionOS]
+    default: ["iOS", "macOS"]
+
+  - name: ___DEPENDENCIES___
+    description: "依存パッケージ"
+    type: array
+    format: '$elements.map(x => `"${x}"`).join(", ")'
+    default: []
 
 pre_hatch:
   - run: |

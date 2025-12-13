@@ -139,8 +139,8 @@ struct ParsedMacroDefinitionValidator {
 
     private func validateValueCount(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) -> Error? {
         switch configMacro.type {
-        case .array:
-            // Array type can have one or more values
+        case .array, .choices:
+            // Array/choices type can have one or more values
             if resolvedValues.isEmpty {
                 return .arrayRequiresAtLeastOneValue(macro: macroName)
             }
@@ -158,7 +158,7 @@ struct ParsedMacroDefinitionValidator {
     }
 
     private func validateChoice(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) -> Error? {
-        guard configMacro.type == .choice else {
+        guard configMacro.type == .choice || configMacro.type == .choices else {
             return nil
         }
 
@@ -233,8 +233,11 @@ struct ParsedMacroDefinitionValidator {
             guard let value = resolvedValues.first else { return nil }
             return .choice(value)
 
+        case .choices:
+            return .choices(resolvedValues)
+
         case .array:
-            return .array(resolvedValues)
+            return .array(resolvedValues, format: configMacro.format)
 
         case .path:
             guard let value = resolvedValues.first, !value.isEmpty else { return nil }

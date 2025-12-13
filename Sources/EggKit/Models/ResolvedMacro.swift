@@ -14,8 +14,12 @@ package struct ResolvedMacro: Equatable {
     package enum Value: Equatable {
         case string(String)
         case boolean(Bool)
+        /// Single selection from choices
         case choice(String)
-        case array([String])
+        /// Multiple selection from choices
+        case choices([String])
+        /// Free-form array input with format expression
+        case array([String], format: String?)
         case path(URL)
     }
 }

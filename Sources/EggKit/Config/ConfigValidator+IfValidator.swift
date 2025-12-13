@@ -106,8 +106,8 @@ extension ConfigValidator {
                 }
                 return "\"test\""
 
-            case .array:
-                // Array type: array literal
+            case .choices:
+                // Choices type (multiple selection): array literal
                 if let defaultValue = macro.default, isValidArrayString(defaultValue) {
                     // Already in array format, use as is
                     return defaultValue
@@ -115,6 +115,14 @@ extension ConfigValidator {
                     // Create array from choices
                     let arrayValues = choices.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
                     return "[\(arrayValues)]"
+                }
+                return "[]"
+
+            case .array:
+                // Array type (free-form): array literal
+                if let defaultValue = macro.default, isValidArrayString(defaultValue) {
+                    // Already in array format, use as is
+                    return defaultValue
                 }
                 return "[]"
             }

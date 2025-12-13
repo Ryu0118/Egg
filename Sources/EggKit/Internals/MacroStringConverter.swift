@@ -12,13 +12,16 @@ enum MacroStringConverter {
     /// - `.string(s)` → `s`
     /// - `.boolean(b)` → `"true"` or `"false"`
     /// - `.choice(c)` → `c`
-    /// - `.array(a)` → `"item1,item2,item3"` (comma-separated)
+    /// - `.choices(c)` → Comma-separated string (e.g., `"iOS, macOS"`)
+    /// - `.array(a, format)` → Formatted string via JavaScript expression
     /// - `.path(p)` → Resolved absolute path relative to working directory
+    ///
+    /// - Throws: `ArrayFormatError` when array format evaluation fails
     static func toShellString(
         _ value: ResolvedMacro.Value,
         workingDirectory: URL,
         homeDirectory: URL
-    ) -> String {
+    ) throws -> String {
         switch value {
         case let .string(s):
             return s
@@ -26,8 +29,10 @@ enum MacroStringConverter {
             return b ? "true" : "false"
         case let .choice(c):
             return c
-        case let .array(a):
-            return a.joined(separator: ",")
+        case let .choices(c):
+            return c.joined(separator: ", ")
+        case let .array(elements, format):
+            return try ArrayFormatEvaluator().evaluate(format: format, values: elements)
         case let .path(p):
             // Resolve path relative to working directory to ensure absolute path
             let absolutePath = resolvePath(p, workingDirectory: workingDirectory, homeDirectory: homeDirectory)
@@ -41,6 +46,7 @@ enum MacroStringConverter {
     /// - `.string(s)` → `"s"` (quoted)
     /// - `.boolean(b)` → `true` or `false` (unquoted)
     /// - `.choice(c)` → `"c"` (quoted)
+    /// - `.choices(c)` → `["item1", "item2"]` (JSON array)
     /// - `.array(a)` → `["item1", "item2"]` (JSON array)
     /// - `.path(p)` → `"path"` (quoted, resolved absolute path)
     static func toJavaScriptLiteral(
@@ -55,9 +61,13 @@ enum MacroStringConverter {
             return b ? "true" : "false"
         case let .choice(c):
             return escapeAndQuote(c)
-        case let .array(a):
+        case let .choices(c):
             // Convert to JSON array: ["item1", "item2"]
-            let quotedItems = a.map { escapeAndQuote($0) }
+            let quotedItems = c.map { escapeAndQuote($0) }
+            return "[" + quotedItems.joined(separator: ", ") + "]"
+        case let .array(elements, _):
+            // Convert to JSON array: ["item1", "item2"]
+            let quotedItems = elements.map { escapeAndQuote($0) }
             return "[" + quotedItems.joined(separator: ", ") + "]"
         case let .path(p):
             // Resolve path relative to working directory to ensure absolute path

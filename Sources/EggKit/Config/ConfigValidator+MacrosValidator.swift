@@ -120,6 +120,8 @@ extension ConfigValidator {
             switch macro.type {
             case .choice:
                 return validateChoiceType(macro, context: context)
+            case .choices:
+                return validateChoicesType(macro, context: context)
             case .array:
                 return validateArrayType(macro, context: context)
             case .boolean:
@@ -149,6 +151,32 @@ extension ConfigValidator {
                     defaultValue: defaultValue,
                     choices: choices
                 )]
+            }
+
+            return errors
+        }
+
+        private func validateChoicesType(_ macro: Config.Macro, context: String) -> [Error] {
+            guard let choices = macro.choices else {
+                return [.choiceTypeMissingChoices(context: context, name: macro.name)]
+            }
+
+            var errors: [Error] = []
+
+            if choices.isEmpty {
+                errors += [.choiceTypeEmptyChoices(context: context, name: macro.name)]
+            }
+
+            if let defaultValue = macro.default, isValidArrayString(defaultValue) {
+                let arrayValues = parseArrayString(defaultValue)
+                for value in arrayValues where !choices.contains(value) {
+                    errors += [.arrayDefaultValueNotInChoices(
+                        context: context,
+                        name: macro.name,
+                        value: value,
+                        choices: choices
+                    )]
+                }
             }
 
             return errors

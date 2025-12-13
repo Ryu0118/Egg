@@ -158,7 +158,7 @@ struct ConditionEvaluatorTests {
                 description: "evaluates array includes with matching element",
                 condition: "___PLATFORMS___.includes(\"iOS\")",
                 macros: [
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"], format: nil)),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: true)
@@ -167,7 +167,7 @@ struct ConditionEvaluatorTests {
                 description: "evaluates array includes with non-matching element",
                 condition: "___PLATFORMS___.includes(\"watchOS\")",
                 macros: [
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"], format: nil)),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: false)
@@ -176,7 +176,7 @@ struct ConditionEvaluatorTests {
                 description: "evaluates array includes with empty array",
                 condition: "___PLATFORMS___.includes(\"iOS\")",
                 macros: [
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array([])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array([], format: nil)),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: false)
@@ -217,7 +217,7 @@ struct ConditionEvaluatorTests {
                 condition: "___DEBUG___ && ___PLATFORMS___.includes(\"iOS\")",
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(true)),
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"], format: nil)),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: true)
@@ -227,7 +227,7 @@ struct ConditionEvaluatorTests {
                 condition: "___DEBUG___ && ___PLATFORMS___.includes(\"iOS\")",
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(false)),
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"], format: nil)),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: false)
@@ -261,7 +261,7 @@ struct ConditionEvaluatorTests {
                 condition: "(___DEBUG___ && ___PLATFORMS___.includes(\"iOS\")) || ___SKIP___",
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(true)),
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"], format: nil)),
                     ResolvedMacro(name: "___SKIP___", description: "Skip", value: .boolean(false)),
                 ],
                 outputs: [],
@@ -272,7 +272,7 @@ struct ConditionEvaluatorTests {
                 condition: "(___DEBUG___ && ___PLATFORMS___.includes(\"watchOS\")) || ___SKIP___",
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(true)),
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"], format: nil)),
                     ResolvedMacro(name: "___SKIP___", description: "Skip", value: .boolean(false)),
                 ],
                 outputs: [],

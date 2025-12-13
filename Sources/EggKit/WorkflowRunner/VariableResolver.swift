@@ -27,11 +27,12 @@ struct VariableResolver {
     ///
     /// - Parameter text: Text containing variable references to resolve
     /// - Returns: Text with all variables resolved
-    /// - Throws: `LifecycleStepError.undefinedOutputReference` if an output reference cannot be resolved
+    /// - Throws: `LifecycleStepError.undefinedOutputReference` if an output reference cannot be resolved,
+    ///           `ArrayFormatError` if array format evaluation fails
     func resolve(_ text: String) async throws -> String {
         var result = resolveBuiltInMacros(text)
 
-        result = resolveMacros(result)
+        result = try resolveMacros(result)
 
         result = try await resolveStepOutputs(result)
 
@@ -44,19 +45,17 @@ struct VariableResolver {
     }
 
     /// Replaces all `___MACRO_NAME___` patterns with their resolved values.
-    private func resolveMacros(_ text: String) -> String {
-        var result = text
-
-        for macro in macros {
-            let stringValue = MacroStringConverter.toShellString(
+    ///
+    /// - Throws: `ArrayFormatError` if array format evaluation fails
+    private func resolveMacros(_ text: String) throws -> String {
+        try macros.reduce(text) { result, macro in
+            let stringValue = try MacroStringConverter.toShellString(
                 macro.value,
                 workingDirectory: builtInMacroContext.workingDirectory,
                 homeDirectory: builtInMacroContext.homeDirectory
             )
-            result = result.replacingOccurrences(of: macro.name, with: stringValue)
+            return result.replacingOccurrences(of: macro.name, with: stringValue)
         }
-
-        return result
     }
 
     /// Replaces all `${{ phase.step-id.outputs.key }}` patterns with their values.

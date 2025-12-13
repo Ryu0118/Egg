@@ -134,7 +134,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ParsedMacroDefinition(macro: "___PLATFORMS___", values: ["iOS", "macOS", "watchOS"]),
                 ],
                 expected: .success([
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"])),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"], format: nil)),
                 ])
             ),
             TestCase(

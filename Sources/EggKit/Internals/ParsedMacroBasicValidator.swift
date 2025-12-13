@@ -74,7 +74,8 @@ struct ParsedMacroBasicValidator {
 
     private func validateValueCount(_ values: [String], configMacro: Config.Macro, macroName: String) -> Error? {
         switch configMacro.type {
-        case .array:
+        case .array, .choices:
+            // Array and choices types can have one or more values
             if values.isEmpty {
                 return .arrayRequiresAtLeastOneValue(macro: macroName)
             }
@@ -91,7 +92,7 @@ struct ParsedMacroBasicValidator {
     }
 
     private func validateChoice(_ values: [String], configMacro: Config.Macro, macroName: String) -> Error? {
-        guard configMacro.type == .choice else { return nil }
+        guard configMacro.type == .choice || configMacro.type == .choices else { return nil }
 
         guard let choices = configMacro.choices, !choices.isEmpty else {
             return .choiceTypeRequiresChoices(macro: macroName)

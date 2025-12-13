@@ -68,8 +68,14 @@ package struct Config: Codable, Equatable {
         /// Regular expression for validation (optional)
         package let validate: String?
 
-        /// Choices (used for choice or array type)
+        /// Choices (required for choice/choices type)
         package let choices: [String]?
+
+        /// JavaScript format expression for array type.
+        ///
+        /// References input array via `$elements`. Evaluated by JavaScriptCore.
+        /// Example: `$elements.map(x => \`.${x}\`).join(", ")`
+        package let format: String?
 
         package init(
             name: String,
@@ -77,7 +83,8 @@ package struct Config: Codable, Equatable {
             type: MacroType = .string,
             default: String? = nil,
             validate: String? = nil,
-            choices: [String]? = nil
+            choices: [String]? = nil,
+            format: String? = nil
         ) {
             self.name = name
             self.description = description
@@ -85,6 +92,7 @@ package struct Config: Codable, Equatable {
             self.default = `default`
             self.validate = validate
             self.choices = choices
+            self.format = format
         }
     }
 
@@ -92,7 +100,11 @@ package struct Config: Codable, Equatable {
     package enum MacroType: String, Codable, Equatable {
         case string
         case boolean
+        /// Single selection from choices
         case choice
+        /// Multiple selection from choices
+        case choices
+        /// Free-form array input with format expression
         case array
         case path
     }

@@ -7,8 +7,8 @@ struct MacroStringConverterTests {
     private static let homeDirectory = URL(filePath: "/tmp/home", directoryHint: .isDirectory, relativeTo: nil)
 
     @Test(arguments: ShellStringTestCase.allCases)
-    func toShellString(_ testCase: ShellStringTestCase) {
-        let result = MacroStringConverter.toShellString(
+    func toShellString(_ testCase: ShellStringTestCase) throws {
+        let result = try MacroStringConverter.toShellString(
             testCase.value,
             workingDirectory: Self.workingDirectory,
             homeDirectory: Self.homeDirectory
@@ -70,26 +70,26 @@ struct MacroStringConverterTests {
                 expectedResult: "debug mode"
             ),
 
-            // Array values
+            // Array values (default format: $elements.join(", "))
             ShellStringTestCase(
                 description: "converts array to comma-separated string",
-                value: .array(["iOS", "macOS", "watchOS"]),
-                expectedResult: "iOS,macOS,watchOS"
+                value: .array(["iOS", "macOS", "watchOS"], format: nil),
+                expectedResult: "iOS, macOS, watchOS"
             ),
             ShellStringTestCase(
                 description: "converts single-element array",
-                value: .array(["iOS"]),
+                value: .array(["iOS"], format: nil),
                 expectedResult: "iOS"
             ),
             ShellStringTestCase(
                 description: "converts empty array",
-                value: .array([]),
+                value: .array([], format: nil),
                 expectedResult: ""
             ),
             ShellStringTestCase(
                 description: "converts array with elements containing spaces",
-                value: .array(["Apple Watch", "Apple TV"]),
-                expectedResult: "Apple Watch,Apple TV"
+                value: .array(["Apple Watch", "Apple TV"], format: nil),
+                expectedResult: "Apple Watch, Apple TV"
             ),
 
             // Path values
@@ -203,27 +203,27 @@ struct MacroStringConverterTests {
             // Array values - JSON array with quoted elements
             JavaScriptLiteralTestCase(
                 description: "converts array to JSON array",
-                value: .array(["iOS", "macOS", "watchOS"]),
+                value: .array(["iOS", "macOS", "watchOS"], format: nil),
                 expectedResult: "[\"iOS\", \"macOS\", \"watchOS\"]"
             ),
             JavaScriptLiteralTestCase(
                 description: "converts single-element array to JSON",
-                value: .array(["iOS"]),
+                value: .array(["iOS"], format: nil),
                 expectedResult: "[\"iOS\"]"
             ),
             JavaScriptLiteralTestCase(
                 description: "converts empty array to JSON",
-                value: .array([]),
+                value: .array([], format: nil),
                 expectedResult: "[]"
             ),
             JavaScriptLiteralTestCase(
                 description: "quotes array elements with spaces",
-                value: .array(["Apple Watch", "Apple TV"]),
+                value: .array(["Apple Watch", "Apple TV"], format: nil),
                 expectedResult: "[\"Apple Watch\", \"Apple TV\"]"
             ),
             JavaScriptLiteralTestCase(
                 description: "escapes special characters in array elements",
-                value: .array(["Item \"1\"", "Item \"2\""]),
+                value: .array(["Item \"1\"", "Item \"2\""], format: nil),
                 expectedResult: "[\"Item \\\"1\\\"\", \"Item \\\"2\\\"\"]"
             ),
 
