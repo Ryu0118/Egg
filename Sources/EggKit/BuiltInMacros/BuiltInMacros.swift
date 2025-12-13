@@ -19,7 +19,7 @@ package enum BuiltInMacros {
     /// - `___DATE___` → `2025-12-12`
     /// - `___DATE(yyyyMMdd)___` → `20251212`
     package static let DATE = BuiltInMacro.declareWithArgument("___DATE___") { argument, context in
-        formatDate(context.currentDate, format: argument ?? "yyyy-MM-dd")
+        formatDate(context.currentDate, format: argument ?? "yyyyMMdd")
     }
 
     /// Current year.
