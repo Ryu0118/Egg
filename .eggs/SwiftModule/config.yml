@@ -13,7 +13,7 @@ macros:
 
   - name: ___MODULE_TYPE___
     description: "モジュールタイプ"
-    type: choice
+    type: choices 
     choices:
       - library
       - executable
@@ -31,7 +31,6 @@ macros:
 
 pre_hatch:
   - run: |
-      export SWIFTPM_PACKAGE_WORKSPACE=$EGG_WORKSPACE_ROOT
       xcrun swift package --package-path ___PACKAGE_PATH___ add-target ___MODULE_NAME___ --type ___MODULE_TYPE___
       rm -f ___PACKAGE_PATH___/Sources/___MODULE_NAME___/___MODULE_NAME___.swift
 
@@ -50,12 +49,21 @@ hatch:
 
     - if: ___CREATE_TESTS___ === false
       paths:
-        - "Tests/**"
+        - "___MODULE_NAME___Tests.swift"
+
+    - if: ___CREATE_TESTS___ === true
+      paths:
+        - "___MODULE_NAME___.swift"
 
     - if: "___MODULE_TYPE___ !== 'executable'"
       paths:
-        - "**/main.swift"
+        - "main.swift"
 
 post_hatch:
   - run: |
-      echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___"
+      mv ___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___/
+      echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___/"
+  - if: ___CREATE_TESTS___
+    run: |
+      mv ___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/
+      echo "✅ テストを作成しました: ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/"

@@ -74,7 +74,14 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         )
 
         // Clone each file using APFS clonefile
-        try await files.asyncForEach(numberOfConcurrentTasks: 10) { file in
+        // Filter out files that don't exist in the working directory
+        // (git ls-files -c includes deleted files that are still in the index)
+        let existingFiles = files.filter { file in
+            let sourceFile = source.appending(path: file)
+            return fileManager.fileExists(atPath: sourceFile.path(percentEncoded: false))
+        }
+
+        try await existingFiles.asyncForEach(numberOfConcurrentTasks: 10) { file in
             let sourceFile = source.appending(path: file)
             let destFile = destination.appending(path: file)
 
