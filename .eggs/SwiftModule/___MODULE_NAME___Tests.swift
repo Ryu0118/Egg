@@ -1,5 +1,5 @@
 // ___MODULE_NAME___Tests.swift
-// Created by ___AUTHOR_NAME___ on ___DATE___
+// Created by ___SYSTEM_USER___ on ___DATE___
 
 import Testing
 @testable import ___MODULE_NAME___

@@ -3,7 +3,7 @@ description: Swift Packageに新しいモジュールを追加するテンプレ
 
 macros:
   - name: ___MODULE_NAME___
-    description: "モジュール名 (例: NetworkClient)"
+    description: "モジュール名"
     type: string
     validate: "^[A-Z][a-zA-Z0-9]*$"
 
@@ -28,11 +28,6 @@ macros:
     description: "テストファイルを作成しますか？"
     type: boolean
     default: true
-
-  - name: ___AUTHOR_NAME___
-    description: "著者名"
-    type: string
-    default: "Unknown"
 
 pre_hatch:
   - id: change-module-dependencies-format
@@ -89,13 +84,10 @@ hatch:
 post_hatch:
   - run: |
       set -e
-      echo $(pwd)
-      echo $(ls)
       mv ___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___
       echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___/"
   - if: ___CREATE_TESTS___
     run: |
-      set -xe
-      echo $(ls)
+      set -e
       mv ___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests
       echo "✅ テストを作成しました: ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/"
