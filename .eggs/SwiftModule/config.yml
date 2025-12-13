@@ -1,18 +1,18 @@
 name: SwiftModule
-description: Swift Packageに新しいモジュールを追加するテンプレート
+description: Template for adding a new module to a Swift Package
 
 macros:
   - name: ___MODULE_NAME___
-    description: "モジュール名"
+    description: "Module name"
     type: string
     validate: "^[A-Z][a-zA-Z0-9]*$"
 
   - name: ___PACKAGE_PATH___
-    description: "Swift Packageのパス"
+    description: "Path to the Swift Package"
     type: path
 
   - name: ___MODULE_TYPE___
-    description: "モジュールタイプ"
+    description: "Module type"
     type: choice
     choices:
       - library
@@ -20,12 +20,12 @@ macros:
     default: library
 
   - name: ___MODULE_DEPENDENCIES___
-    description: "モジュールの依存関係 (カンマ区切りで指定)"
-    type: array 
+    description: "Module dependencies (comma-separated)"
+    type: array
     format: $elements.join(" ")
 
   - name: ___CREATE_TESTS___
-    description: "テストファイルを作成しますか？"
+    description: "Create test files?"
     type: boolean
     default: true
 
@@ -85,9 +85,9 @@ post_hatch:
   - run: |
       set -e
       mv ___PACKAGE_PATH___/___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___
-      echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___/"
+      echo "✅ Created module: ___PACKAGE_PATH___/Sources/___MODULE_NAME___/"
   - if: ___CREATE_TESTS___
     run: |
       set -e
       mv ___PACKAGE_PATH___/___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests
-      echo "✅ テストを作成しました: ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/"
+      echo "✅ Created tests: ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/"
