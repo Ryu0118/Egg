@@ -89,25 +89,18 @@ struct StagingWorkflowRunner: WorkflowRunning {
         macroInputs: MacroInputs,
         templateDirectory: URL
     ) async throws -> URL {
-        // Step 1: Start staging workspace creation in parallel with macro collection
+        // Step 1: Create staging workspace
         noora.passthrough("🔒 Creating staging workspace...\n")
 
-        // Copy fileManager to a local variable to satisfy sending requirement
-        // FileManager is thread-safe but not marked Sendable
-        nonisolated(unsafe) let nra = noora
-
-        let workspaceTask = Self.createWorkspaceTask(
-            workingDirectory: workingDirectory,
+        let staging = try await StagingContext.create(
+            cloning: workingDirectory,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
-            noora: nra
+            noora: noora
         )
-
-        // Wait for workspace creation to complete
-        let staging = try await workspaceTask.value
 
         // Step 2: Collect macro values (runs in parallel with workspace creation)
         let collectedMacroValues = collectMacroValues(macroInputs, config: config)
@@ -310,32 +303,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
             noora.passthrough("- \(conflict.pathString): \(conflict.type.description)\n", tab: 1)
         }
         noora.passthrough("\n")
-    }
-
-    /// Creates a detached task for workspace creation to enable parallel execution.
-    ///
-    /// - Returns: A task that creates the staging workspace
-    private nonisolated static func createWorkspaceTask(
-        workingDirectory: URL,
-        homeDirectory: URL,
-        fileManager: some FileManagerProtocol,
-        workspaceWatcher: any DirectoryWatching,
-        workingDirectoryWatcher: any DirectoryWatching,
-        processRunner: any ProcessRunning,
-        noora: sending any Noorable
-    ) -> Task<StagingContext, any Error> {
-        Task {
-            nonisolated(unsafe) let nra = noora
-            return try await StagingContext.create(
-                cloning: workingDirectory,
-                homeDirectory: homeDirectory,
-                fileManager: fileManager,
-                workspaceWatcher: workspaceWatcher,
-                workingDirectoryWatcher: workingDirectoryWatcher,
-                processRunner: processRunner,
-                noora: nra
-            )
-        }
     }
 
     /// Intermediate representation for collected macro values before workspace-relative path resolution.
