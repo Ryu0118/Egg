@@ -54,6 +54,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let phaseRunner: PhaseRunner
     private let workspaceWatcher: any DirectoryWatching
     private let workingDirectoryWatcher: any DirectoryWatching
+    private let stagingRoot: URL?
 
     init(
         processRunner: any ProcessRunning,
@@ -66,7 +67,8 @@ struct StagingWorkflowRunner: WorkflowRunning {
         sandboxDisabled: Bool = false,
         applyChanges: Bool = false,
         workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
-        workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher()
+        workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
+        stagingRoot: URL? = nil
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -76,6 +78,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.isInteractive = isInteractive
         self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
+        self.stagingRoot = stagingRoot
         // Determine confirmation mode from flags
         if overrideConflicts {
             self.confirmationMode = .alwaysApply
@@ -110,10 +113,12 @@ struct StagingWorkflowRunner: WorkflowRunning {
         templateDirectory: URL
     ) async throws -> URL {
         // Step 1: Create staging workspace
+        // Use stagingRoot if specified, otherwise fall back to workingDirectory
+        let directoryToClone = stagingRoot ?? workingDirectory
         noora.passthrough("🔒 Creating staging workspace...\n")
 
         let staging = try await StagingContext.create(
-            cloning: workingDirectory,
+            cloning: directoryToClone,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
@@ -380,32 +385,56 @@ struct StagingWorkflowRunner: WorkflowRunning {
         config: Config,
         workspaceRoot: URL
     ) throws -> [ResolvedMacro] {
+        // The directory that was cloned into the staging workspace
+        let clonedDirectory = stagingRoot ?? workingDirectory
+
         switch collected {
         case let .parsed(parsedMacros):
-            // Validate and resolve parsed macros with workspace root
+            // Validate and resolve parsed macros with the original cloned directory first,
+            // then remap path macros to the staging workspace
             let validator = ParsedMacroDefinitionValidator(
                 config: config,
-                workingDirectory: workspaceRoot,
+                workingDirectory: clonedDirectory,
                 homeDirectory: homeDirectory
             )
-            return try validator.validate(parsedMacros)
+            let resolvedMacros = try validator.validate(parsedMacros)
+            // Remap path macros to staging workspace
+            return remapPathMacros(resolvedMacros, from: clonedDirectory, to: workspaceRoot)
         case let .interactive(resolvedMacros):
             // Re-resolve path macros relative to workspace root
             // Since workspace is an APFS clone, paths resolve to equivalent locations
-            return resolvedMacros.map { macro in
-                guard case let .path(originalPath) = macro.value else {
-                    return macro
-                }
-                // Compute relative path from original working directory
-                let relativePath = originalPath.relativePath(from: workingDirectory)
-                // Re-resolve relative to workspace root
-                let workspacePath = workspaceRoot.appending(path: relativePath)
-                return ResolvedMacro(
-                    name: macro.name,
-                    description: macro.description,
-                    value: .path(workspacePath)
-                )
+            return remapPathMacros(resolvedMacros, from: clonedDirectory, to: workspaceRoot)
+        }
+    }
+
+    /// Remaps path-type macros from the original directory to the staging workspace.
+    ///
+    /// For each path macro, computes the relative path from the original directory,
+    /// then resolves it relative to the workspace root.
+    ///
+    /// - Parameters:
+    ///   - macros: The resolved macros to remap
+    ///   - originalDirectory: The original directory (before staging)
+    ///   - workspaceRoot: The staging workspace root
+    /// - Returns: Macros with path values remapped to workspace
+    private func remapPathMacros(
+        _ macros: [ResolvedMacro],
+        from originalDirectory: URL,
+        to workspaceRoot: URL
+    ) -> [ResolvedMacro] {
+        macros.map { macro in
+            guard case let .path(originalPath) = macro.value else {
+                return macro
             }
+            // Compute relative path from original directory
+            let relativePath = originalPath.relativePath(from: originalDirectory)
+            // Re-resolve relative to workspace root
+            let workspacePath = workspaceRoot.appending(path: relativePath)
+            return ResolvedMacro(
+                name: macro.name,
+                description: macro.description,
+                value: .path(workspacePath)
+            )
         }
     }
 }

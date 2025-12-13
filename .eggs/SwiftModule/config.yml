@@ -84,10 +84,10 @@ hatch:
 post_hatch:
   - run: |
       set -e
-      mv ___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___
+      mv ___PACKAGE_PATH___/___MODULE_NAME___.swift ___PACKAGE_PATH___/Sources/___MODULE_NAME___
       echo "✅ モジュールを作成しました: ___PACKAGE_PATH___/Sources/___MODULE_NAME___/"
   - if: ___CREATE_TESTS___
     run: |
       set -e
-      mv ___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests
+      mv ___PACKAGE_PATH___/___MODULE_NAME___Tests.swift ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests
       echo "✅ テストを作成しました: ___PACKAGE_PATH___/Tests/___MODULE_NAME___Tests/"

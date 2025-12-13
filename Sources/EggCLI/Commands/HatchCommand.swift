@@ -31,7 +31,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
     package var macros: [String] = []
 
-    @Flag(name: [.long, .customLong("direct")], help: "Disable staging. When set, changes are applied directly without preview or rollback capability.")
+    @Flag(name: [.long], help: "Disable staging. When set, changes are applied directly without preview or rollback capability.")
     package var noStaging: Bool = false
 
     @Flag(name: .long, help: "Override conflicts and overwrite existing files without prompting.")
@@ -42,6 +42,9 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
 
     @Flag(name: .long, help: "Automatically apply changes without prompting for confirmation.")
     package var applyChanges: Bool = false
+
+    @Option(name: .long, help: "Directory to use as staging root (defaults to current directory). Use this when template outputs target a different directory.", completion: .directory)
+    package var stagingRoot: String?
 
     package static let fileManager: any FileManagerProtocol = FileManager.default
 
@@ -59,8 +62,15 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             useStaging: !noStaging,
             overrideConflicts: overrideConflicts,
             sandboxDisabled: noSandbox,
-            applyChanges: applyChanges
+            applyChanges: applyChanges,
+            stagingRoot: resolveStagingRoot()
         ).run()
+    }
+
+    private func resolveStagingRoot() -> URL? {
+        guard let stagingRoot else { return nil }
+        let url = URL(filePath: stagingRoot, relativeTo: URL(filePath: Self.fileManager.currentDirectoryPath))
+        return url.standardizedFileURL
     }
 
     private func validate() async throws -> HatchRunnerMode {

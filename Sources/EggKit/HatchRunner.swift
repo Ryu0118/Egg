@@ -16,6 +16,7 @@ package struct HatchRunner {
     private let overrideConflicts: Bool
     private let sandboxDisabled: Bool
     private let applyChanges: Bool
+    private let stagingRoot: URL?
 
     package init(
         mode: HatchRunnerMode,
@@ -28,7 +29,8 @@ package struct HatchRunner {
         useStaging: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,
-        applyChanges: Bool = false
+        applyChanges: Bool = false,
+        stagingRoot: URL? = nil
     ) {
         self.mode = mode
         self.workingDirectory = workingDirectory
@@ -41,6 +43,7 @@ package struct HatchRunner {
         self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
         self.applyChanges = applyChanges
+        self.stagingRoot = stagingRoot
         templateFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -102,7 +105,8 @@ package struct HatchRunner {
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,
-                applyChanges: applyChanges
+                applyChanges: applyChanges,
+                stagingRoot: stagingRoot
             )
         } else {
             noora.warning("Running in direct mode. filesystem changes are permanent")
