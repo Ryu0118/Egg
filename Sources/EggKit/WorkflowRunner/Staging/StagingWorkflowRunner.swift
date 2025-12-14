@@ -158,13 +158,17 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     .sandboxed(.staging(root: staging.root, originalWorkingDirectory: workingDirectory))
                 }
 
+            // Common environment variables for all phases
+            // In staging mode, EGG_WORKING_DIR points to the staging workspace
+            let commonEnvironment = ["EGG_WORKING_DIR": staging.root.path(percentEncoded: false)]
+
             if let preHatchSteps = config.preHatch {
                 try await phaseRunner.executePreHatch(
                     steps: preHatchSteps,
                     macros: macros,
                     outputs: outputs,
                     workingDirectory: staging.root,
-                    additionalEnvironment: ["EGG_STAGING_ROOT": staging.root.path(percentEncoded: false)],
+                    additionalEnvironment: commonEnvironment,
                     executionEnvironment: executionEnvironment
                 )
             }
@@ -199,6 +203,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     macros: macros,
                     outputs: outputs,
                     workingDirectory: staging.root,
+                    additionalEnvironment: commonEnvironment,
                     executionEnvironment: executionEnvironment
                 )
             }

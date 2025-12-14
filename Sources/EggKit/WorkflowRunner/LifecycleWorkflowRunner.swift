@@ -87,12 +87,16 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         let executionEnvironment: ExecutionEnvironment =
             sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory))
 
+        // Common environment variables for all phases
+        let commonEnvironment = ["EGG_WORKING_DIR": workingDirectory.path(percentEncoded: false)]
+
         if let preHatchSteps = config.preHatch {
             try await phaseRunner.executePreHatch(
                 steps: preHatchSteps,
                 macros: macros,
                 outputs: outputs,
                 workingDirectory: workingDirectory,
+                additionalEnvironment: commonEnvironment,
                 executionEnvironment: executionEnvironment
             )
         }
@@ -114,6 +118,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 macros: macros,
                 outputs: outputs,
                 workingDirectory: workingDirectory,
+                additionalEnvironment: commonEnvironment,
                 executionEnvironment: executionEnvironment
             )
         }
