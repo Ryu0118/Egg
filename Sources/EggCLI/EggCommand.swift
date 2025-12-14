@@ -24,6 +24,7 @@ package extension EggCommand {
                 ListCommand.self,
                 DeleteCommand.self,
                 DuplicateCommand.self,
+                MoveCommand.self,
                 OpenCommand.self,
                 ValidateCommand.self,
             ]

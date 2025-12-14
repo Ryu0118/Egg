@@ -96,7 +96,6 @@ actor StagingContext {
     ///
     /// - Parameters:
     ///   - workingDirectory: The directory to clone into staging area
-    ///   - homeDirectory: User's home directory (for ~/.eggs/workspaces/)
     ///   - fileManager: File manager for operations
     ///   - workspaceWatcher: Watcher for staging changes
     ///   - workingDirectoryWatcher: Watcher for working directory changes
@@ -106,7 +105,6 @@ actor StagingContext {
     /// - Throws: StagingContext.Error.creationFailed on file system errors
     static func create(
         cloning workingDirectory: URL,
-        homeDirectory: URL,
         fileManager: some FileManagerProtocol,
         workspaceWatcher: some DirectoryWatching,
         workingDirectoryWatcher: some DirectoryWatching,
@@ -120,14 +118,10 @@ actor StagingContext {
         nonisolated(unsafe) let nra = noora
 
         do {
-            // Create staging base directory in ~/.eggs/workspaces/{uuid}/
-            let workspacesDirectory = homeDirectory.appending(path: ".eggs/workspaces")
-            let workspaceBaseDirectory = workspacesDirectory.appending(path: UUID().uuidString)
+            // Create staging base directory in a temporary location
+            let workspaceBaseDirectory = try fileManager.makeTemporaryDirectory(prefix: "egg-staging")
             let workDirectory = workspaceBaseDirectory.appending(path: "work")
             let referenceDirectory = workspaceBaseDirectory.appending(path: "reference")
-
-            try fileManager.createDirectory(at: workspacesDirectory, withIntermediateDirectories: true)
-            try fileManager.createDirectory(at: workspaceBaseDirectory, withIntermediateDirectories: true)
 
             let readyToCopyToStaging: Bool =
                 if !requireGitRepository {
@@ -295,7 +289,7 @@ actor StagingContext {
 
     /// Discards the staging area without applying changes.
     ///
-    /// Moves staging contents to Trash for fast deletion (similar to Finder).
+    /// Removes the temporary staging directory.
     /// Safe to call multiple times (idempotent).
     func discard() async {
         guard !isDiscarded else { return }
@@ -309,7 +303,7 @@ actor StagingContext {
         isDiscarded = true
 
         // Remove the parent staging directory (contains both work and reference)
-        // root is ~/.eggs/workspaces/{uuid}/work, so parent is ~/.eggs/workspaces/{uuid}
+        // root is /tmp/egg-staging-{uuid}/work, so parent is /tmp/egg-staging-{uuid}
         let workspaceBaseDirectory = root.deletingLastPathComponent()
         try? fileManager.removeItem(at: workspaceBaseDirectory)
     }

@@ -119,7 +119,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
         let staging = try await StagingContext.create(
             cloning: directoryToClone,
-            homeDirectory: homeDirectory,
             fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
@@ -127,10 +126,8 @@ struct StagingWorkflowRunner: WorkflowRunning {
             noora: noora
         )
 
-        // Step 2: Collect macro values (runs in parallel with workspace creation)
-        let collectedMacroValues = collectMacroValues(macroInputs, config: config)
-
-        // Register cleanup handler for SIGINT/SIGTERM (Control+C)
+        // Register cleanup handler for SIGINT/SIGTERM (Control+C) IMMEDIATELY after staging creation
+        // This must happen BEFORE collectMacroValues() which may block on user input
         let cleanupHandlerId = await StagingCleanupRegistry.shared.register {
             await staging.discard()
         }
@@ -141,6 +138,9 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 await StagingCleanupRegistry.shared.unregister(cleanupHandlerId)
             }
         }
+
+        // Step 2: Collect macro values (may block on interactive user input)
+        let collectedMacroValues = collectMacroValues(macroInputs, config: config)
 
         // Ensure staging workspace is discarded on any failure
         do {

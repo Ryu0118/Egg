@@ -23,7 +23,6 @@ struct StagingContextTests {
 
         let staging = try await StagingContext.create(
             cloning: workingDir,
-            homeDirectory: tempDir,
             fileManager: fileManager,
             workspaceWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),

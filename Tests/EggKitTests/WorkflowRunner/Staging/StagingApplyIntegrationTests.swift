@@ -46,7 +46,6 @@ struct StagingApplyIntegrationTests {
 
         let staging = try await StagingContext.create(
             cloning: workingDir,
-            homeDirectory: tempDir,
             fileManager: fileManager,
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirWatcher,
