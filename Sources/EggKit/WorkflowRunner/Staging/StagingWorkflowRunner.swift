@@ -159,8 +159,8 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 }
 
             // Common environment variables for all phases
-            // In staging mode, EGG_WORKING_DIR points to the staging workspace
-            let commonEnvironment = ["EGG_WORKING_DIR": staging.root.path(percentEncoded: false)]
+            // In staging mode, EGG_WORKING_DIRECTORY points to the staging workspace
+            let commonEnvironment = ["EGG_WORKING_DIRECTORY": staging.root.path(percentEncoded: false)]
 
             if let preHatchSteps = config.preHatch {
                 try await phaseRunner.executePreHatch(
@@ -417,6 +417,9 @@ struct StagingWorkflowRunner: WorkflowRunning {
     /// For each path macro, computes the relative path from the original directory,
     /// then resolves it relative to the workspace root.
     ///
+    /// Paths that are outside the original directory (absolute paths pointing elsewhere)
+    /// are preserved as-is without remapping.
+    ///
     /// - Parameters:
     ///   - macros: The resolved macros to remap
     ///   - originalDirectory: The original directory (before staging)
@@ -431,6 +434,14 @@ struct StagingWorkflowRunner: WorkflowRunning {
             guard case let .path(originalPath) = macro.value else {
                 return macro
             }
+
+            // Check if the path is within the original directory
+            guard originalPath.isUnder(originalDirectory) else {
+                // Path is outside the original directory (e.g., /usr/local/bin)
+                // Keep it as-is without remapping
+                return macro
+            }
+
             // Compute relative path from original directory
             let relativePath = originalPath.relativePath(from: originalDirectory)
             // Re-resolve relative to workspace root

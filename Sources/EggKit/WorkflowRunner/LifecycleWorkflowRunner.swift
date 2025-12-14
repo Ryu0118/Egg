@@ -88,7 +88,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory))
 
         // Common environment variables for all phases
-        let commonEnvironment = ["EGG_WORKING_DIR": workingDirectory.path(percentEncoded: false)]
+        let commonEnvironment = ["EGG_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false)]
 
         if let preHatchSteps = config.preHatch {
             try await phaseRunner.executePreHatch(
