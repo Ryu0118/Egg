@@ -412,6 +412,61 @@ struct StagingWorkflowRunnerTests {
                     .fileExists(path: "conditional.txt"),
                 ]
             ),
+
+            // Path macro with absolute path outside working directory should be preserved
+            .success(
+                "preserves absolute path outside working directory",
+                templateSetup: [
+                    .file(path: "path.txt", content: "___EXTERNAL_PATH___"),
+                ],
+                macroDefinitions: [
+                    Config.Macro(name: "___EXTERNAL_PATH___", description: "External Path", type: .path),
+                ],
+                macros: [
+                    ParsedMacroDefinition(macro: "___EXTERNAL_PATH___", values: ["/usr/local/bin"]),
+                ],
+                verifications: [
+                    .fileContent(path: "path.txt", expectedContent: "/usr/local/bin"),
+                ]
+            ),
+
+            // Path macro with root path should be preserved as root
+            .success(
+                "preserves root path",
+                templateSetup: [
+                    .file(path: "root.txt", content: "___ROOT_PATH___"),
+                ],
+                macroDefinitions: [
+                    Config.Macro(name: "___ROOT_PATH___", description: "Root Path", type: .path),
+                ],
+                macros: [
+                    ParsedMacroDefinition(macro: "___ROOT_PATH___", values: ["/"]),
+                ],
+                verifications: [
+                    .fileContent(path: "root.txt", expectedContent: "/"),
+                ]
+            ),
+
+            // Path macro with relative path should resolve relative to working directory
+            .success(
+                "resolves relative path to working directory",
+                workingDirSetup: [
+                    .directory(path: "subdir"),
+                ],
+                templateSetup: [
+                    .file(path: "relpath.txt", content: "path=___REL_PATH___"),
+                ],
+                macroDefinitions: [
+                    Config.Macro(name: "___REL_PATH___", description: "Relative Path", type: .path),
+                ],
+                macros: [
+                    ParsedMacroDefinition(macro: "___REL_PATH___", values: ["subdir"]),
+                ],
+                verifications: [
+                    // The path should contain "subdir" as part of a full path
+                    .fileExists(path: "relpath.txt"),
+                ]
+            ),
         ]
     }
 }

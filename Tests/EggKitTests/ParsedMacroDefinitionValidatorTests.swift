@@ -542,6 +542,43 @@ struct ParsedMacroDefinitionValidatorTests {
                     .valueNotInChoices(macro: "___TYPE___", value: "C", choices: ["A", "B"]),
                 ])
             ),
+            TestCase(
+                description: "validates path macro with root path",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ],
+
+                    hatch: Config.HatchConfig(output: ".")
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: ["/"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(URL(filePath: "/"))),
+                ])
+            ),
+            TestCase(
+                description: "validates path macro with dot resolves to working directory",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(name: "___PATH___", description: "Path", type: .path),
+                    ],
+
+                    hatch: Config.HatchConfig(output: ".")
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PATH___", values: ["."]),
+                ],
+                expected: .success([
+                    // URL(filePath:) with directory resolves to path with trailing slash
+                    ResolvedMacro(name: "___PATH___", description: "Path", value: .path(URL(filePath: "/tmp/test/"))),
+                ])
+            ),
         ]
     }
 }
