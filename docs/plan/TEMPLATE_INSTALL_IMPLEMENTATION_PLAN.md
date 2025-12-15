@@ -44,12 +44,12 @@ package enum GitRef: Equatable, Sendable, Codable {
 > デフォルトブランチは `GitRef?` を `nil` にすることで表現し、Git が自動的に既定ブランチを選択する。
 
 **Checklist:**
-- [ ] enum 定義
-- [ ] `Equatable`, `Sendable`, `Codable` conformance
+- [x] enum 定義
+- [x] `Equatable`, `Sendable`, `Codable` conformance
 
 **Test File:** `Tests/EggKitTests/Models/GitRefTests.swift`
-- [ ] Codable round-trip test
-- [ ] Equatable test
+- [x] Codable round-trip test
+- [x] Equatable test
 
 ---
 
@@ -65,8 +65,8 @@ package struct GitURL: Equatable, Sendable {
 ```
 
 **Checklist:**
-- [ ] struct 定義
-- [ ] `Equatable`, `Sendable` conformance
+- [x] struct 定義
+- [x] `Equatable`, `Sendable` conformance
 
 ---
 
@@ -85,14 +85,14 @@ package enum TemplateFilter: Equatable, Sendable {
 ```
 
 **Checklist:**
-- [ ] enum 定義
-- [ ] `shouldInclude(_:)` メソッド実装
-- [ ] `Equatable`, `Sendable` conformance
+- [x] enum 定義
+- [x] `shouldInclude(_:)` メソッド実装
+- [x] `Equatable`, `Sendable` conformance
 
 **Test File:** `Tests/EggKitTests/Models/TemplateFilterTests.swift`
-- [ ] `none` は全てのテンプレートを含む
-- [ ] `include` は指定されたテンプレートのみを含む
-- [ ] `exclude` は指定されたテンプレートを除外
+- [x] `none` は全てのテンプレートを含む
+- [x] `include` は指定されたテンプレートのみを含む
+- [x] `exclude` は指定されたテンプレートを除外
 
 ---
 
@@ -127,18 +127,18 @@ package struct GitURLParser: GitURLParsing {
 - HTTPS は `.git` サフィックスがなくても許容
 
 **Checklist:**
-- [ ] Protocol 定義
-- [ ] 実装
-- [ ] 各 URL 形式のパース
+- [x] Protocol 定義
+- [x] 実装
+- [x] 各 URL 形式のパース
 
 **Test File:** `Tests/EggKitTests/Internals/GitURLParserTests.swift`
-- [ ] HTTPS URL with .git suffix
-- [ ] HTTPS URL without .git suffix
-- [ ] SSH URL
-- [ ] Git protocol URL
-- [ ] Invalid URL returns nil
-- [ ] Empty string returns nil
-- [ ] URL with special characters
+- [x] HTTPS URL with .git suffix
+- [x] HTTPS URL without .git suffix
+- [x] SSH URL
+- [x] Git protocol URL
+- [x] Invalid URL returns nil
+- [x] Empty string returns nil
+- [x] URL with special characters
 
 ---
 
@@ -840,13 +840,13 @@ package struct SomeRunner {
 ## Checklist Summary
 
 ### Phase 1: Foundation
-- [ ] `GitRef` enum
-- [ ] `GitURL` struct
-- [ ] `TemplateFilter` enum
-- [ ] `GitURLParser` + Tests
+- [x] `GitRef` enum
+- [x] `GitURL` struct
+- [x] `TemplateFilter` enum
+- [x] `GitURLParser` + Tests
 
 ### Phase 2: Git Operations
-- [ ] `GitCloner` + Tests
+- [x] `GitCloner` + Tests
 
 ### Phase 3: Template Discovery
 - [ ] `DiscoveredTemplate` struct
