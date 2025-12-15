@@ -3,6 +3,8 @@ import EggKit
 import FileManagerProtocol
 import Foundation
 
+extension TemplatePickerStyle: ExpressibleByArgument {}
+
 package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     package static let configuration = CommandConfiguration(
         commandName: "hatch",
@@ -46,6 +48,9 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Option(name: .long, help: "Directory to use as staging root (defaults to current directory). Use this when template outputs target a different directory.", completion: .directory)
     package var stagingRoot: String?
 
+    @Option(name: .long, help: "Template picker style: 'list' for interactive selection, 'text' for text input.")
+    package var picker: TemplatePickerStyle = .list
+
     package static let fileManager: any FileManagerProtocol = FileManager.default
 
     package init() {}
@@ -63,7 +68,8 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             overrideConflicts: overrideConflicts,
             sandboxDisabled: noSandbox,
             applyChanges: applyChanges,
-            stagingRoot: resolveStagingRoot()
+            stagingRoot: resolveStagingRoot(),
+            pickerStyle: picker
         ).run()
     }
 

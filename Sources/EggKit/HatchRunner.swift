@@ -17,6 +17,7 @@ package struct HatchRunner {
     private let sandboxDisabled: Bool
     private let applyChanges: Bool
     private let stagingRoot: URL?
+    private let pickerStyle: TemplatePickerStyle
 
     package init(
         mode: HatchRunnerMode,
@@ -30,7 +31,8 @@ package struct HatchRunner {
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,
         applyChanges: Bool = false,
-        stagingRoot: URL? = nil
+        stagingRoot: URL? = nil,
+        pickerStyle: TemplatePickerStyle = .list
     ) {
         self.mode = mode
         self.workingDirectory = workingDirectory
@@ -44,6 +46,7 @@ package struct HatchRunner {
         self.sandboxDisabled = sandboxDisabled
         self.applyChanges = applyChanges
         self.stagingRoot = stagingRoot
+        self.pickerStyle = pickerStyle
         templateFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -63,13 +66,8 @@ package struct HatchRunner {
                 throw Error.noTemplatesFound
             }
 
-            // Let user select from available templates
-            let selectedOption = noora.singleChoicePrompt(
-                title: "Select Template",
-                question: "Which template would you like to use?",
-                options: options,
-                description: "Select a template to hatch."
-            )
+            // Select template based on picker style
+            let selectedOption = try selectTemplate(from: options)
 
             let workflowRunner = makeWorkflowRunner()
 
@@ -93,6 +91,34 @@ package struct HatchRunner {
                 macroInputs: .parsed(parsedMacros),
                 templateDirectory: template.path
             )
+        }
+    }
+
+    /// Selects a template based on the configured picker style.
+    ///
+    /// - Parameter options: Available templates with their locations
+    /// - Returns: The selected template with location
+    /// - Throws: ``Error/templateNotFound(_:)`` if text input doesn't match any template
+    private func selectTemplate(from options: [TemplateWithLocation]) throws -> TemplateWithLocation {
+        switch pickerStyle {
+        case .list:
+            return noora.singleChoicePrompt(
+                title: "Select Template",
+                question: "Which template would you like to use?",
+                options: options,
+                description: "Select a template to hatch."
+            )
+        case .text:
+            let availableNames = options.map(\.template.config.name).joined(separator: ", ")
+            let templateName = noora.textPrompt(
+                title: "Template Name (\(availableNames))",
+                prompt: "Enter the template name:",
+                collapseOnAnswer: true
+            )
+            guard let selected = options.first(where: { $0.template.config.name == templateName }) else {
+                throw Error.templateNotFound(templateName)
+            }
+            return selected
         }
     }
 
@@ -144,11 +170,14 @@ extension HatchRunnerMode {
 extension HatchRunner {
     enum Error: LocalizedError {
         case noTemplatesFound
+        case templateNotFound(String)
 
         var errorDescription: String? {
             switch self {
             case .noTemplatesFound:
                 "No templates found. Create a template first using 'egg create'."
+            case let .templateNotFound(name):
+                "Template '\(name)' not found."
             }
         }
     }

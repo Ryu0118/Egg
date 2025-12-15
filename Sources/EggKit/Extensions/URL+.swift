@@ -15,7 +15,9 @@ package extension URL {
     /// URL(filePath: "/").normalizedPath            // "/"
     /// ```
     var normalizedPath: String {
-        let path = self.standardizedFileURL.path(percentEncoded: false)
+        // Use resolvingSymlinksInPath() to get the canonical path.
+        // This resolves symlinks AND normalizes case on case-insensitive filesystems (macOS APFS).
+        let path = self.resolvingSymlinksInPath().path(percentEncoded: false)
         guard path != "/" else { return path }
 
         var result = path
