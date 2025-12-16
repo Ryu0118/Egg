@@ -15,30 +15,63 @@
 
 ### Directory Structure
 
+E2Eテストは別パッケージとして分離されている。これは、`swift test`実行中に`swift build`を実行するとbuild dbがロックされ無限ループが発生するためである。
+
 ```
-Tests/
-├── EggKitTests/           # 既存のユニットテスト
-└── CLITests/              # 新規E2Eテスト
-    ├── Support/
-    │   ├── BinaryBuildTrait.swift
-    │   └── CLIRunner.swift
-    └── Commands/
-        ├── HatchCommandTests.swift
-        ├── TemplateCreateCommandTests.swift
-        ├── TemplateListCommandTests.swift
-        └── ...
+egg/
+├── Tests/
+│   └── EggKitTests/           # 既存のユニットテスト
+└── E2ETestsPackage/           # 別パッケージとして分離されたE2Eテスト
+    ├── Package.swift
+    └── Tests/
+        └── E2ETests/
+            ├── Support/
+            │   ├── BinaryBuildTrait.swift
+            │   ├── BinaryBuildState.swift
+            │   ├── BinaryBuildError.swift
+            │   ├── CLIRunner.swift
+            │   └── CLIResult.swift
+            └── Commands/
+                ├── EggCommandTests.swift
+                ├── HatchCommandTests.swift
+                ├── TemplateCreateCommandTests.swift
+                ├── TemplateListCommandTests.swift
+                └── ...
 ```
 
-### Package.swift
+### E2ETestsPackage/Package.swift
 
 ```swift
-.testTarget(
-    name: "CLITests",
+// swift-tools-version: 6.2
+
+import PackageDescription
+
+let package = Package(
+    name: "E2ETestsPackage",
+    platforms: [
+        .macOS(.v26),
+    ],
     dependencies: [
-        .product(name: "ProcessRunning", package: "ProcessRunning"),
-        .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
+        .package(url: "https://github.com/Ryu0118/ProcessRunning", from: "0.2.1"),
+        .package(url: "https://github.com/Ryu0118/FileManagerProtocol", from: "0.1.0"),
+    ],
+    targets: [
+        .testTarget(
+            name: "E2ETests",
+            dependencies: [
+                .product(name: "ProcessRunning", package: "ProcessRunning"),
+                .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
+            ]
+        ),
     ]
 )
+```
+
+### E2Eテストの実行方法
+
+```bash
+cd E2ETestsPackage
+swift test
 ```
 
 ## Interfaces

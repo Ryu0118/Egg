@@ -32,8 +32,10 @@ struct TemplateCreator {
             let filePath = try createDefaultFile(templateDir)
             createdPaths.append(filePath)
 
-            let configPath = try await createDefaultConfig(templateDir, name: name, description: description)
-            createdPaths.append(configPath)
+            if !skipConfig {
+                let configPath = try await createDefaultConfig(templateDir, name: name, description: description)
+                createdPaths.append(configPath)
+            }
         } catch {
             // Rollback: delete all created files and directory on failure
             for path in createdPaths.reversed() {

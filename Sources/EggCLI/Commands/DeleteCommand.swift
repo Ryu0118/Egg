@@ -29,7 +29,7 @@ package extension EggCommand.TemplateCommand {
         @Option(name: .long, help: "Directory containing the template to delete (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
 
-        @Option(name: .long, help: "Delete the template without confirmation.")
+        @Flag(name: .long, help: "Delete the template without confirmation.")
         package var force: Bool = false
 
         package static let fileManager: any FileManagerProtocol = FileManager.default
@@ -44,7 +44,7 @@ package extension EggCommand.TemplateCommand {
                     force: force,
                     projectDirectory: try await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager
                 ).run()
             } catch {
@@ -60,7 +60,7 @@ package extension EggCommand.TemplateCommand {
                     templateName: templateName,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager
                 ).validate()
             } catch {

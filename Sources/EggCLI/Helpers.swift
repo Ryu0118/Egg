@@ -19,3 +19,12 @@ package extension HasProjectDirectory {
 }
 
 extension TemplateLocationType.Kind: ExpressibleByArgument {}
+
+/// Returns the home directory, respecting the HOME environment variable.
+/// This is important for testing purposes where HOME can be set to a temporary directory.
+package func resolveHomeDirectory() -> URL {
+    if let homePath = ProcessInfo.processInfo.environment["HOME"] {
+        return URL(filePath: homePath)
+    }
+    return FileManager.default.homeDirectoryForCurrentUser
+}

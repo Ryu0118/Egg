@@ -64,7 +64,7 @@ package extension EggCommand.TemplateCommand {
                     force: force,
                     projectDirectory: try await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager
                 ).run()
 
@@ -98,7 +98,7 @@ package extension EggCommand.TemplateCommand {
                     global: global,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser
+                    homeDirectory: resolveHomeDirectory()
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

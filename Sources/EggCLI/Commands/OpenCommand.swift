@@ -37,7 +37,7 @@ package extension EggCommand.TemplateCommand {
             let mode = try await validate()
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+                let homeDirectory = resolveHomeDirectory()
                 try await OpenRunner(
                     mode: mode,
                     processRunner: ProcessRunner(),
@@ -54,7 +54,7 @@ package extension EggCommand.TemplateCommand {
         func validate() async throws -> OpenRunnerMode {
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+                let homeDirectory = resolveHomeDirectory()
                 return try await OpenArgumentsValidator(
                     templateName: templateName,
                     projectDirectory: await resolveProjectDirectory(),

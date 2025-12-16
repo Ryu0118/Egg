@@ -55,7 +55,7 @@ package extension EggCommand.TemplateCommand {
                     skipConfig: skipConfig,
                     projectDirectory: try await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager
                 ).run()
             } catch {
@@ -73,7 +73,7 @@ package extension EggCommand.TemplateCommand {
                     location: location,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                    homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager
                 ).validate()
             } catch {

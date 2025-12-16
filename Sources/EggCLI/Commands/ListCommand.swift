@@ -25,7 +25,7 @@ package extension EggCommand.TemplateCommand {
 
         package mutating func run() async throws {
             let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-            let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+            let homeDirectory = resolveHomeDirectory()
             try await ListRunner(
                 location: location?.toConcreteType(
                     resolveProjectDirectory(),

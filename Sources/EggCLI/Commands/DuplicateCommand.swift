@@ -44,7 +44,7 @@ package extension EggCommand.TemplateCommand {
             let mode = try await validate()
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+                let homeDirectory = resolveHomeDirectory()
                 try await DuplicateRunner(
                     mode: mode,
                     projectDirectory: await resolveProjectDirectory(),
@@ -60,7 +60,7 @@ package extension EggCommand.TemplateCommand {
         func validate() async throws -> DuplicateRunnerMode {
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+                let homeDirectory = resolveHomeDirectory()
                 return try await DuplicateArgumentsValidator(
                     templateName: templateName,
                     newName: name,

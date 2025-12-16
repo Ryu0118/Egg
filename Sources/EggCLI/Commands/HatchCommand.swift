@@ -61,7 +61,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
         try await HatchRunner(
             mode: mode,
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-            homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+            homeDirectory: resolveHomeDirectory(),
             projectDirectory: try await resolveProjectDirectory(),
             fileManager: Self.fileManager,
             useStaging: !noStaging,
@@ -86,7 +86,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
                 macros: macros,
                 projectDirectory: try await resolveProjectDirectory(),
                 workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+                homeDirectory: resolveHomeDirectory(),
                 fileManager: Self.fileManager
             ).validate()
         } catch {
