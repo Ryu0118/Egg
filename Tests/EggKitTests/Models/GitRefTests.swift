@@ -3,8 +3,6 @@ import Foundation
 import Testing
 
 struct GitRefTests {
-    // MARK: - Equatable Tests
-
     @Test
     func equatable_sameBranch_areEqual() {
         let ref1 = GitRef.branch("main")
@@ -58,8 +56,6 @@ struct GitRefTests {
         #expect(tag != revision)
     }
 
-    // MARK: - Codable Tests
-
     @Test
     func codable_branch_roundTrip() throws {
         let original = GitRef.branch("main")
@@ -83,8 +79,6 @@ struct GitRefTests {
         let decoded = try JSONDecoder().decode(GitRef.self, from: encoded)
         #expect(original == decoded)
     }
-
-    // MARK: - Value Property Tests
 
     @Test
     func value_branch_returnsName() {

@@ -160,7 +160,7 @@ package struct MoveRunner {
         // Check if target exists
         let targetExists = fileManager.fileExists(atPath: targetPath.path(percentEncoded: false))
 
-        if targetExists && !force {
+        if targetExists, !force {
             throw Error.targetAlreadyExists(name: name, location: targetLocation.name)
         }
 

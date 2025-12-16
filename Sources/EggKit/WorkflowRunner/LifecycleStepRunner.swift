@@ -166,7 +166,6 @@ struct LifecycleStepRunner {
         return try await resolver.resolve(runCommand)
     }
 
-
     /// Formats a step label for logging purposes.
     ///
     /// - Parameters:

@@ -67,8 +67,6 @@ struct InstallRunnerTests {
         }
     }
 
-    // MARK: - Setup Helpers
-
     private func setupClonedRepoTemplates(
         templates: [RepoTemplate],
         repoDirectory: URL
@@ -104,8 +102,6 @@ struct InstallRunnerTests {
         }
     }
 
-    // MARK: - Verification Helpers
-
     private func verifyResult(_ result: InstallResult, expectedResult: ExpectedResult) {
         #expect(Set(result.installed) == Set(expectedResult.installed))
         #expect(result.skipped.count == expectedResult.skippedCount)
@@ -119,7 +115,7 @@ struct InstallRunnerTests {
 
     private func verifyInstalledTemplates(
         testCase: TestCase,
-        location: TemplateLocationType,
+        location _: TemplateLocationType,
         projectDirectory: URL,
         homeDirectory: URL
     ) throws {
@@ -136,8 +132,6 @@ struct InstallRunnerTests {
             #expect(fileManager.fileExists(atPath: markerPath.path(percentEncoded: false)))
         }
     }
-
-    // MARK: - Test Types
 
     struct TestCase: CustomTestStringConvertible {
         let description: String
@@ -456,13 +450,11 @@ struct InstallRunnerTests {
     }
 }
 
-// MARK: - Mock Git Cloner
-
 private struct MockGitCloner: GitCloning {
     let clonedDirectory: URL
     let fileManager: any FileManagerProtocol
 
-    func clone(url: GitURL, to destination: URL, ref: GitRef?) async throws {
+    func clone(url _: GitURL, to destination: URL, ref _: GitRef?) async throws {
         // Copy the cloned repo directory to destination
         let contents = try fileManager.contentsOfDirectory(
             at: clonedDirectory,
@@ -476,8 +468,6 @@ private struct MockGitCloner: GitCloning {
         }
     }
 }
-
-// MARK: - Helper Extensions
 
 private extension TemplateLocationType.Kind {
     func toPath(
@@ -493,8 +483,6 @@ private extension TemplateLocationType.Kind {
         }
     }
 }
-
-// MARK: - Config Helper
 
 private func validConfig(_ name: String) -> String {
     """

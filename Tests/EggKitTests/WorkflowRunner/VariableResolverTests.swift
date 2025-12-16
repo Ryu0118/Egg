@@ -50,17 +50,17 @@ struct VariableResolverTests {
         let macros: [ResolvedMacro]
         let outputs: [TestOutput]
         let expectation: Expectation
-            let builtInMacroContext: BuiltInMacroContext?
+        let builtInMacroContext: BuiltInMacroContext?
 
         var testDescription: String { description }
 
-            static let defaultBuiltInMacroContext = BuiltInMacroContext(
-                outputDirectory: nil,
-                workingDirectory: URL(filePath: "/tmp/work"),
-                homeDirectory: URL(filePath: "/tmp/home"),
-                currentDate: Date(timeIntervalSince1970: 0),
-                environment: [:]
-            )
+        static let defaultBuiltInMacroContext = BuiltInMacroContext(
+            outputDirectory: nil,
+            workingDirectory: URL(filePath: "/tmp/work"),
+            homeDirectory: URL(filePath: "/tmp/home"),
+            currentDate: Date(timeIntervalSince1970: 0),
+            environment: [:]
+        )
 
         enum Expectation {
             case success(expectedResult: String)

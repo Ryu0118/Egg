@@ -3,9 +3,9 @@ import ProcessRunning
 import Subprocess
 
 #if canImport(System)
-import System
+    import System
 #else
-import SystemPackage
+    import SystemPackage
 #endif
 
 /// A protocol for cloning Git repositories.
@@ -43,8 +43,6 @@ package struct GitCloner: GitCloning, Sendable {
             try await cloneDefault(url: url, to: destination)
         }
     }
-
-    // MARK: - Private Methods
 
     /// Clones with the default branch (no --branch flag)
     private func cloneDefault(url: GitURL, to destination: URL) async throws {
@@ -145,11 +143,9 @@ package struct GitCloner: GitCloning, Sendable {
     }
 }
 
-// MARK: - Error
-
-extension GitCloner {
+package extension GitCloner {
     /// Errors that can occur during Git cloning operations.
-    package enum Error: LocalizedError, Equatable {
+    enum Error: LocalizedError, Equatable {
         /// The clone operation failed
         case cloneFailed(url: String, exitCode: Int32, stderr: String)
         /// The checkout operation failed after cloning
@@ -179,8 +175,6 @@ extension GitCloner {
         }
     }
 }
-
-// MARK: - GitRef Extension
 
 private extension GitRef {
     var typeDescription: String {

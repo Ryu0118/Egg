@@ -211,8 +211,6 @@ struct ConfigValidatorArrayFormatTests {
                 ])
             ),
 
-            // MARK: - choices field compatibility tests
-
             TestCase(
                 description: "fails with choices on string type",
                 config: makeConfig(
@@ -310,8 +308,6 @@ struct ConfigValidatorArrayFormatTests {
                 ])
             ),
 
-            // MARK: - validate field compatibility tests
-
             TestCase(
                 description: "fails with validate on boolean type",
                 config: makeConfig(
@@ -395,8 +391,6 @@ struct ConfigValidatorArrayFormatTests {
                 ),
                 expected: .success
             ),
-
-            // MARK: - Multiple field incompatibility errors
 
             TestCase(
                 description: "aggregates multiple field compatibility errors",

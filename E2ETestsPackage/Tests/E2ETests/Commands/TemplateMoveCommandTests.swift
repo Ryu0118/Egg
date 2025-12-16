@@ -6,8 +6,6 @@ import Testing
 struct TemplateMoveCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows move command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -21,8 +19,6 @@ struct TemplateMoveCommandTests {
         #expect(result.stdout.contains("--force"))
         #expect(result.stdout.contains("--project-directory"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func moveTemplate(_ testCase: TestCase) async throws {
@@ -139,8 +135,6 @@ struct TemplateMoveCommandTests {
                 "template directory should exist at target")
     }
 
-    // MARK: - Test Case Definition
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templates: [TemplateSetup]
@@ -156,7 +150,7 @@ struct TemplateMoveCommandTests {
             var args = [
                 "template", "move", templateToMove,
                 "--to", targetLocation.rawValue,
-                "--project-directory", projectDir.path(percentEncoded: false)
+                "--project-directory", projectDir.path(percentEncoded: false),
             ]
             if force {
                 args.append("--force")
@@ -191,7 +185,7 @@ struct TemplateMoveCommandTests {
             TestCase(
                 description: "moves template from global to project",
                 templates: [
-                    TemplateSetup(name: "GlobalTemplate", description: "A global template", location: .global)
+                    TemplateSetup(name: "GlobalTemplate", description: "A global template", location: .global),
                 ],
                 templateToMove: "GlobalTemplate",
                 targetLocation: .project,
@@ -206,7 +200,7 @@ struct TemplateMoveCommandTests {
             TestCase(
                 description: "moves template from project to global",
                 templates: [
-                    TemplateSetup(name: "ProjectTemplate", description: "A project template", location: .project)
+                    TemplateSetup(name: "ProjectTemplate", description: "A project template", location: .project),
                 ],
                 templateToMove: "ProjectTemplate",
                 targetLocation: .global,
@@ -222,7 +216,7 @@ struct TemplateMoveCommandTests {
                 description: "overwrites target when --force is used",
                 templates: [
                     TemplateSetup(name: "MyTemplate", description: "Source template", location: .global),
-                    TemplateSetup(name: "MyTemplate", description: "Target template", location: .project)
+                    TemplateSetup(name: "MyTemplate", description: "Target template", location: .project),
                 ],
                 templateToMove: "MyTemplate",
                 targetLocation: .project,
@@ -249,7 +243,7 @@ struct TemplateMoveCommandTests {
                 description: "fails when target already exists without --force",
                 templates: [
                     TemplateSetup(name: "MyTemplate", description: "Source template", location: .global),
-                    TemplateSetup(name: "MyTemplate", description: "Target template", location: .project)
+                    TemplateSetup(name: "MyTemplate", description: "Target template", location: .project),
                 ],
                 templateToMove: "MyTemplate",
                 targetLocation: .project,

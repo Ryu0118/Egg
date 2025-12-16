@@ -76,7 +76,6 @@ struct MoveArgumentsValidatorTests {
         }
     }
 
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templateName: String?
@@ -252,7 +251,7 @@ extension MoveArgumentsValidator.Error: Equatable {
 }
 
 // Shared helper extension to convert Kind to actual path
-fileprivate extension TemplateLocationType.Kind {
+private extension TemplateLocationType.Kind {
     func toPath(
         templateName: String,
         projectDirectory: URL,

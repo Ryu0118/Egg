@@ -3,8 +3,6 @@ import Foundation
 import Testing
 
 struct URLRelativePathTests {
-    // MARK: - relativePath(from:)
-
     @Test(arguments: RelativePathTestCase.allCases)
     func relativePath(_ testCase: RelativePathTestCase) {
         let target = URL(filePath: testCase.targetPath)
@@ -15,8 +13,6 @@ struct URLRelativePathTests {
         #expect(result == testCase.expected)
     }
 
-    // MARK: - isUnder(_:)
-
     @Test(arguments: IsUnderTestCase.allCases)
     func isUnder(_ testCase: IsUnderTestCase) {
         let target = URL(filePath: testCase.targetPath)
@@ -26,8 +22,6 @@ struct URLRelativePathTests {
 
         #expect(result == testCase.expected)
     }
-
-    // MARK: - appendingRelativePath(_:)
 
     @Test
     func appendingRelativePath() {
@@ -53,8 +47,6 @@ struct URLRelativePathTests {
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects")
     }
 }
-
-// MARK: - Test Cases
 
 extension URLRelativePathTests {
     struct RelativePathTestCase: CustomTestStringConvertible, Sendable {

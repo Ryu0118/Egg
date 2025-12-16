@@ -6,8 +6,6 @@ import Testing
 struct TemplateListCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows list command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -20,8 +18,6 @@ struct TemplateListCommandTests {
         #expect(result.stdout.contains("--project-directory"))
         #expect(result.stdout.contains("--hide-description"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func listTemplates(_ testCase: TestCase) async throws {
@@ -92,8 +88,6 @@ struct TemplateListCommandTests {
         }
     }
 
-    // MARK: - Test Case Definition
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templates: [TemplateSetup]
@@ -143,7 +137,7 @@ struct TemplateListCommandTests {
             TestCase(
                 description: "lists existing global template",
                 templates: [
-                    TemplateSetup(name: "TestTemplate", description: "A test template", location: .global)
+                    TemplateSetup(name: "TestTemplate", description: "A test template", location: .global),
                 ],
                 locationFilter: nil,
                 hideDescription: false,
@@ -153,7 +147,7 @@ struct TemplateListCommandTests {
             TestCase(
                 description: "lists existing project template",
                 templates: [
-                    TemplateSetup(name: "ProjectTemplate", description: "A project template", location: .project)
+                    TemplateSetup(name: "ProjectTemplate", description: "A project template", location: .project),
                 ],
                 locationFilter: nil,
                 hideDescription: false,
@@ -164,7 +158,7 @@ struct TemplateListCommandTests {
                 description: "lists multiple templates from both locations",
                 templates: [
                     TemplateSetup(name: "GlobalTemplate", description: "Global template", location: .global),
-                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project)
+                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project),
                 ],
                 locationFilter: nil,
                 hideDescription: false,
@@ -177,7 +171,7 @@ struct TemplateListCommandTests {
                 description: "filters by global location",
                 templates: [
                     TemplateSetup(name: "GlobalTemplate", description: "Global template", location: .global),
-                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project)
+                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project),
                 ],
                 locationFilter: .global,
                 hideDescription: false,
@@ -188,7 +182,7 @@ struct TemplateListCommandTests {
                 description: "filters by project location",
                 templates: [
                     TemplateSetup(name: "GlobalTemplate", description: "Global template", location: .global),
-                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project)
+                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project),
                 ],
                 locationFilter: .project,
                 hideDescription: false,
@@ -200,7 +194,7 @@ struct TemplateListCommandTests {
             TestCase(
                 description: "hides description column when --hide-description is used",
                 templates: [
-                    TemplateSetup(name: "TestTemplate", description: "UniqueDescriptionText", location: .global)
+                    TemplateSetup(name: "TestTemplate", description: "UniqueDescriptionText", location: .global),
                 ],
                 locationFilter: nil,
                 hideDescription: true,

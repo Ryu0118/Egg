@@ -59,8 +59,8 @@ package struct InstallRunner {
         self.noora = noora
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
-        self.templateDiscoverer = TemplateDiscoverer(fileManager: fileManager)
-        self.templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+        templateDiscoverer = TemplateDiscoverer(fileManager: fileManager)
+        templateLocation = TemplateLocation(homeDirectory: homeDirectory)
     }
 
     /// Internal initializer for testing with custom template discoverer.
@@ -86,7 +86,7 @@ package struct InstallRunner {
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
         self.templateDiscoverer = templateDiscoverer
-        self.templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+        templateLocation = TemplateLocation(homeDirectory: homeDirectory)
     }
 
     /// Runs the installation workflow.
@@ -102,8 +102,6 @@ package struct InstallRunner {
             return try await runDirectMode(url: url, ref: ref, location: location, filter: filter)
         }
     }
-
-    // MARK: - Interactive Mode
 
     private func runInteractiveMode() async throws -> InstallResult {
         // Prompt for repository URL
@@ -212,8 +210,6 @@ package struct InstallRunner {
         return templates.filter { selectedNames.contains($0.name) }
     }
 
-    // MARK: - Direct Mode
-
     private func runDirectMode(
         url: GitURL,
         ref: GitRef?,
@@ -258,8 +254,6 @@ package struct InstallRunner {
 
         return result
     }
-
-    // MARK: - Template Installation
 
     private func installTemplates(
         _ templates: [DiscoveredTemplate],
@@ -312,8 +306,6 @@ package struct InstallRunner {
         return InstallResult(installed: installed, skipped: skipped, failed: failed)
     }
 }
-
-// MARK: - Error
 
 extension InstallRunner {
     /// Errors that can occur during template installation.

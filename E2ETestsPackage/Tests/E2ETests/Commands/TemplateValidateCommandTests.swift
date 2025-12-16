@@ -6,8 +6,6 @@ import Testing
 struct TemplateValidateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows validate command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -18,8 +16,6 @@ struct TemplateValidateCommandTests {
         #expect(result.stdout.contains("USAGE: egg template validate"))
         #expect(result.stdout.contains("<template-path>"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func validateTemplate(_ testCase: TestCase) async throws {
@@ -49,8 +45,6 @@ struct TemplateValidateCommandTests {
             #expect(output.contains(errorContains), "Expected error containing '\(errorContains)' but got: \(output)")
         }
     }
-
-    // MARK: - Test Case Definition
 
     struct TestCase: CustomTestStringConvertible {
         let description: String

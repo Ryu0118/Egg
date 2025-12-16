@@ -18,8 +18,6 @@ struct PathResolverTests {
     }
 }
 
-// MARK: - Test Cases
-
 extension PathResolverTests {
     struct PathResolverTestCase: CustomTestStringConvertible, Sendable {
         let description: String

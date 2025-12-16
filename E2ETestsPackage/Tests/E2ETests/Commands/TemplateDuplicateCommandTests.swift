@@ -6,8 +6,6 @@ import Testing
 struct TemplateDuplicateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows duplicate command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -21,8 +19,6 @@ struct TemplateDuplicateCommandTests {
         #expect(result.stdout.contains("--description"))
         #expect(result.stdout.contains("--project-directory"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func duplicateTemplate(_ testCase: TestCase) async throws {
@@ -139,8 +135,6 @@ struct TemplateDuplicateCommandTests {
                 "template directory should exist in duplicate")
     }
 
-    // MARK: - Test Case Definition
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templates: [TemplateSetup]
@@ -157,7 +151,7 @@ struct TemplateDuplicateCommandTests {
                 "template", "duplicate", sourceTemplate,
                 "--name", newName,
                 "--description", newDescription,
-                "--project-directory", projectDir.path(percentEncoded: false)
+                "--project-directory", projectDir.path(percentEncoded: false),
             ]
             return args
         }
@@ -190,7 +184,7 @@ struct TemplateDuplicateCommandTests {
             TestCase(
                 description: "duplicates global template",
                 templates: [
-                    TemplateSetup(name: "OriginalTemplate", description: "Original template", location: .global)
+                    TemplateSetup(name: "OriginalTemplate", description: "Original template", location: .global),
                 ],
                 sourceTemplate: "OriginalTemplate",
                 newName: "DuplicatedTemplate",
@@ -206,7 +200,7 @@ struct TemplateDuplicateCommandTests {
             TestCase(
                 description: "duplicates project template",
                 templates: [
-                    TemplateSetup(name: "ProjectOriginal", description: "Project original", location: .project)
+                    TemplateSetup(name: "ProjectOriginal", description: "Project original", location: .project),
                 ],
                 sourceTemplate: "ProjectOriginal",
                 newName: "ProjectDuplicate",
@@ -234,7 +228,7 @@ struct TemplateDuplicateCommandTests {
                 description: "fails when target name already exists",
                 templates: [
                     TemplateSetup(name: "OriginalTemplate", description: "Original", location: .global),
-                    TemplateSetup(name: "ExistingTemplate", description: "Existing", location: .global)
+                    TemplateSetup(name: "ExistingTemplate", description: "Existing", location: .global),
                 ],
                 sourceTemplate: "OriginalTemplate",
                 newName: "ExistingTemplate",

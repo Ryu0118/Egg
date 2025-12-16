@@ -91,8 +91,6 @@ struct TemplateDiscoverer: TemplateDiscovering {
         return templates
     }
 
-    // MARK: - Private Methods
-
     private func isDirectory(_ url: URL) -> Bool {
         var isDir: ObjCBool = false
         return fileManager.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue

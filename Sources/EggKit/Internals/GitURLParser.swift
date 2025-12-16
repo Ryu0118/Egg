@@ -38,8 +38,6 @@ package struct GitURLParser: GitURLParsing {
         return nil
     }
 
-    // MARK: - Private Methods
-
     /// Checks if the URL is in SSH format (git@host:path)
     private func isSSHURL(_ urlString: String) -> Bool {
         // Pattern: git@<host>:<path>.git or git@<host>:<path>

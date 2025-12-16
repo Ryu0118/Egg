@@ -131,7 +131,7 @@ enum MacroStringConverter {
         // If relative, resolve against working directory
         // Convert URL to string first to handle relative paths properly
         let pathString = path.path(percentEncoded: false)
-        
+
         // Use resolveToAbsoluteURL to handle tilde expansion and relative path resolution
         do {
             return try resolveToAbsoluteURL(pathString, workingDirectory: workingDirectory, homeDirectory: homeDirectory)

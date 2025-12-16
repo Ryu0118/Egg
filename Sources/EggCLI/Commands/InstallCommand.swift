@@ -62,7 +62,7 @@ package extension EggCommand.TemplateCommand {
                 let result = try await InstallRunner(
                     mode: mode,
                     force: force,
-                    projectDirectory: try await resolveProjectDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager

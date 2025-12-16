@@ -62,7 +62,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             mode: mode,
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
             homeDirectory: resolveHomeDirectory(),
-            projectDirectory: try await resolveProjectDirectory(),
+            projectDirectory: await resolveProjectDirectory(),
             fileManager: Self.fileManager,
             useStaging: !noStaging,
             overrideConflicts: overrideConflicts,
@@ -84,7 +84,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             return try await HatchArgumentsValidator(
                 templateName: templateName,
                 macros: macros,
-                projectDirectory: try await resolveProjectDirectory(),
+                projectDirectory: await resolveProjectDirectory(),
                 workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                 homeDirectory: resolveHomeDirectory(),
                 fileManager: Self.fileManager

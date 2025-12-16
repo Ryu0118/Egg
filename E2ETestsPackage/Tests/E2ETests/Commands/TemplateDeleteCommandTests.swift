@@ -6,8 +6,6 @@ import Testing
 struct TemplateDeleteCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows delete command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -20,8 +18,6 @@ struct TemplateDeleteCommandTests {
         #expect(result.stdout.contains("--force"))
         #expect(result.stdout.contains("--project-directory"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func deleteTemplate(_ testCase: TestCase) async throws {
@@ -108,8 +104,6 @@ struct TemplateDeleteCommandTests {
                 "Template directory should have been deleted at \(templateDir.path)")
     }
 
-    // MARK: - Test Case Definition
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templates: [TemplateSetup]
@@ -155,7 +149,7 @@ struct TemplateDeleteCommandTests {
             TestCase(
                 description: "deletes global template with --force flag",
                 templates: [
-                    TemplateSetup(name: "TestTemplate", description: "A test template", location: .global)
+                    TemplateSetup(name: "TestTemplate", description: "A test template", location: .global),
                 ],
                 templateToDelete: "TestTemplate",
                 force: true,
@@ -165,7 +159,7 @@ struct TemplateDeleteCommandTests {
             TestCase(
                 description: "deletes project template with --force flag",
                 templates: [
-                    TemplateSetup(name: "ProjectTemplate", description: "A project template", location: .project)
+                    TemplateSetup(name: "ProjectTemplate", description: "A project template", location: .project),
                 ],
                 templateToDelete: "ProjectTemplate",
                 force: true,

@@ -4,8 +4,8 @@ import Testing
 /// Suite trait that ensures the binary is built before tests run
 struct BinaryBuildTrait: SuiteTrait, TestScoping {
     func provideScope(
-        for test: Test,
-        testCase: Test.Case?,
+        for _: Test,
+        testCase _: Test.Case?,
         performing function: @Sendable () async throws -> Void
     ) async throws {
         // Ensure binary is built before running tests

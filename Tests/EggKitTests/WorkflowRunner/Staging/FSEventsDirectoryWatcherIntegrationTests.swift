@@ -282,5 +282,4 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         #expect(events.contains(insidePath), "Should detect file inside watched directory")
         #expect(events.count == 1, "Should only detect changes inside watched directory")
     }
-
 }

@@ -8,8 +8,6 @@ struct EggCommandTests {
         runner = try await CLIRunner()
     }
 
-    // MARK: - Help Tests
-
     @Test("--help flag shows help information")
     func helpFlag() async throws {
         let result = try await runner.run("--help")
@@ -40,8 +38,6 @@ struct EggCommandTests {
         #expect(result.stdout.contains("USAGE: egg <subcommand>"))
     }
 
-    // MARK: - Invalid Subcommand Tests
-
     @Test("Invalid subcommand shows error")
     func invalidSubcommand() async throws {
         let result = try await runner.run("invalidcommand")
@@ -50,8 +46,6 @@ struct EggCommandTests {
         #expect(result.stderr.contains("Unexpected argument 'invalidcommand'"))
         #expect(result.stderr.contains("See 'egg --help' for more information"))
     }
-
-    // MARK: - Subcommand Help Tests
 
     @Test("template --help shows template subcommand help")
     func templateHelp() async throws {

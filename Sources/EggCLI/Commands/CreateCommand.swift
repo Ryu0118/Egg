@@ -53,7 +53,7 @@ package extension EggCommand.TemplateCommand {
                 try await CreateRunner(
                     mode: mode,
                     skipConfig: skipConfig,
-                    projectDirectory: try await resolveProjectDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager

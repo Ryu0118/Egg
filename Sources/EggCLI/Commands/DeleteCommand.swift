@@ -42,7 +42,7 @@ package extension EggCommand.TemplateCommand {
                 try await DeleteRunner(
                     mode: mode,
                     force: force,
-                    projectDirectory: try await resolveProjectDirectory(),
+                    projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
                     fileManager: Self.fileManager

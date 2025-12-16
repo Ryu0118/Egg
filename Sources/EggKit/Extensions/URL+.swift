@@ -17,7 +17,7 @@ package extension URL {
     var normalizedPath: String {
         // Use resolvingSymlinksInPath() to get the canonical path.
         // This resolves symlinks AND normalizes case on case-insensitive filesystems (macOS APFS).
-        let path = self.resolvingSymlinksInPath().path(percentEncoded: false)
+        let path = resolvingSymlinksInPath().path(percentEncoded: false)
         guard path != "/" else { return path }
 
         var result = path
@@ -45,6 +45,6 @@ package extension URL {
     /// a.isSamePath(to: c) // true
     /// ```
     func isSamePath(to other: URL) -> Bool {
-        self.normalizedPath == other.normalizedPath
+        normalizedPath == other.normalizedPath
     }
 }

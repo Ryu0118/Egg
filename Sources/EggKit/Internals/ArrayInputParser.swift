@@ -18,8 +18,6 @@ struct ArrayInputParser {
     }
 }
 
-// MARK: - Private Helpers
-
 private extension ArrayInputParser {
     func splitByComma(_ string: String) -> [String] {
         string.split(separator: ",", omittingEmptySubsequences: false)

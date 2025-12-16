@@ -345,7 +345,7 @@ extension MoveRunner.Error: Equatable {
 }
 
 // Shared helper extension to convert Kind to actual path
-fileprivate extension TemplateLocationType.Kind {
+private extension TemplateLocationType.Kind {
     func toPath(
         templateName: String,
         projectDirectory: URL,

@@ -1,6 +1,6 @@
 @testable import EggKit
-import Testing
 import Foundation
+import Testing
 
 struct MacroStringConverterTests {
     private static let workingDirectory = URL(filePath: "/tmp/work", directoryHint: .isDirectory, relativeTo: nil)

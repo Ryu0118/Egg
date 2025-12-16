@@ -18,7 +18,7 @@ actor BinaryBuildState {
     var buildTask: Task<URL, any Error>?
 
     private init() {
-        self.processRunner = ProcessRunner()
+        processRunner = ProcessRunner()
     }
 
     /// Get the path to the built binary, building it if necessary
@@ -43,7 +43,7 @@ actor BinaryBuildState {
             }
             self.buildTask = buildTask
             let path = try await buildTask.value
-            self.cachedBinaryPath = path
+            cachedBinaryPath = path
             return path
         } catch {
             buildError = error
@@ -62,7 +62,7 @@ actor BinaryBuildState {
                 "--package-path",
                 packageRoot.path(percentEncoded: false),
                 "--product",
-                "egg"
+                "egg",
             ],
             workingDirectory: FilePath(packageRoot.path(percentEncoded: false))
         ) { _, stream in

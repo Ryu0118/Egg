@@ -18,7 +18,7 @@ package extension URL {
     /// same.relativePath(from: working) // "."
     /// ```
     func relativePath(from base: URL) -> String {
-        let normalizedTarget = self.normalizedPath
+        let normalizedTarget = normalizedPath
         let normalizedBase = base.normalizedPath
 
         // Same path
@@ -56,7 +56,7 @@ package extension URL {
     /// - Parameter base: The base URL to check against.
     /// - Returns: True if this URL's path starts with the base URL's path.
     func isUnder(_ base: URL) -> Bool {
-        let normalizedTarget = self.normalizedPath
+        let normalizedTarget = normalizedPath
         let normalizedBase = base.normalizedPath
 
         return normalizedTarget == normalizedBase || normalizedTarget.hasPrefix(normalizedBase + "/")
@@ -82,11 +82,11 @@ package extension URL {
     /// ```
     func relativePathThrowing(from base: URL) throws -> String {
         // Same path
-        if self.isSamePath(to: base) {
+        if isSamePath(to: base) {
             return "."
         }
 
-        let normalizedTarget = self.normalizedPath
+        let normalizedTarget = normalizedPath
         let normalizedBase = base.normalizedPath
 
         // Check if target is under base

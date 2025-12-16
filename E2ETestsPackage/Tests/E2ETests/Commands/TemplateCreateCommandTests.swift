@@ -6,8 +6,6 @@ import Testing
 struct TemplateCreateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows create command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -21,8 +19,6 @@ struct TemplateCreateCommandTests {
         #expect(result.stdout.contains("--location"))
         #expect(result.stdout.contains("--skip-config"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func createTemplate(_ testCase: TestCase) async throws {
@@ -103,8 +99,6 @@ struct TemplateCreateCommandTests {
         }
     }
 
-    // MARK: - Test Case Definition
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let name: String
@@ -122,7 +116,7 @@ struct TemplateCreateCommandTests {
                 "template", "create",
                 "--name", name,
                 "--description", templateDescription,
-                "--location", location.rawValue
+                "--location", location.rawValue,
             ]
             if location == .project {
                 args += ["--project-directory", projectDir.path(percentEncoded: false)]

@@ -2,8 +2,6 @@ import FileManagerProtocol
 import Foundation
 import Yams
 
-// MARK: - Convenience Methods
-
 extension FileManagerProtocol {
     /// Checks if a file or directory exists at the specified URL.
     func exists(_ url: URL) -> Bool {
@@ -153,8 +151,6 @@ extension FileManagerProtocol {
         }
     }
 }
-
-// MARK: - YAML Support
 
 extension FileManagerProtocol {
     func writeAsYAML(

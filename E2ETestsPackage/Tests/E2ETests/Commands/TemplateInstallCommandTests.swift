@@ -6,14 +6,12 @@ import Testing
 struct TemplateInstallCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // Test repository URL
-    static let testRepoURL = "https://github.com/Ryu0118/swift-egg-templates"
+    // Test repository URL (SSH to avoid authentication issues in subprocesses)
+    static let testRepoURL = "git@github.com:Ryu0118/swift-egg-templates.git"
     // Known templates in the test repository
     static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
     // Known commit SHA for revision tests
     static let knownCommitSHA = "8f65013501f58d2989eca79a20474c299b640e27"
-
-    // MARK: - Help Tests
 
     @Test("--help shows install command help")
     func helpFlag() async throws {
@@ -31,8 +29,6 @@ struct TemplateInstallCommandTests {
         #expect(result.stdout.contains("--global"))
         #expect(result.stdout.contains("--force"))
     }
-
-    // MARK: - Validation Error Tests (No Network Required)
 
     @Test(arguments: ValidationErrorTestCase.allCases)
     func validationErrors(_ testCase: ValidationErrorTestCase) async throws {
@@ -60,8 +56,6 @@ struct TemplateInstallCommandTests {
             "Expected error containing '\(testCase.expectedErrorContains)' but got: \(output)"
         )
     }
-
-    // MARK: - Network Tests (Requires Git Access)
 
     @Test(arguments: NetworkTestCase.allCases)
     func networkOperations(_ testCase: NetworkTestCase) async throws {
@@ -149,8 +143,6 @@ struct TemplateInstallCommandTests {
             )
         }
     }
-
-    // MARK: - Test Case Definitions
 
     struct ValidationErrorTestCase: CustomTestStringConvertible {
         let description: String

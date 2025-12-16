@@ -4,8 +4,6 @@ import Testing
 
 @Suite(.serialized)
 struct BuiltInMacrosTests {
-    // MARK: - isReserved Tests
-
     @Test(arguments: IsReservedTestCase.allCases)
     func isReserved(_ testCase: IsReservedTestCase) {
         let result = BuiltInMacros.isReserved(testCase.name)
@@ -65,8 +63,6 @@ struct BuiltInMacrosTests {
             ),
         ]
     }
-
-    // MARK: - resolve Tests
 
     @Test(arguments: ResolveTestCase.allCases)
     func resolve(_ testCase: ResolveTestCase) {
@@ -181,8 +177,6 @@ struct BuiltInMacrosTests {
         ]
     }
 
-    // MARK: - UUID Tests (special case - unique per occurrence)
-
     @Test
     func resolveUUID_generatesValidUUID() {
         let context = BuiltInMacroContext(
@@ -214,8 +208,6 @@ struct BuiltInMacrosTests {
         #expect(uuids[0] != uuids[1])
     }
 
-    // MARK: - SYSTEM_USER fallback Tests
-
     @Test
     func resolveSystemUser_fallsBackToNSUserName_whenEnvMissing() {
         let context = BuiltInMacroContext(
@@ -231,8 +223,6 @@ struct BuiltInMacrosTests {
         #expect(result == NSUserName())
     }
 }
-
-// MARK: - BuiltInMacro Tests
 
 struct BuiltInMacroTests {
     @Test

@@ -81,11 +81,11 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.stagingRoot = stagingRoot
         // Determine confirmation mode from flags
         if overrideConflicts {
-            self.confirmationMode = .alwaysApply
+            confirmationMode = .alwaysApply
         } else if applyChanges {
-            self.confirmationMode = .autoConfirm
+            confirmationMode = .autoConfirm
         } else {
-            self.confirmationMode = .prompt
+            confirmationMode = .prompt
         }
         phaseRunner = PhaseRunner(
             processRunner: processRunner,

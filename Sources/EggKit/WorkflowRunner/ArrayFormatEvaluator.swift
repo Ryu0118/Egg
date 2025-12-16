@@ -25,8 +25,6 @@ struct ArrayFormatEvaluator: ArrayFormatEvaluating {
     }
 }
 
-// MARK: - Private Helpers
-
 private extension ArrayFormatEvaluator {
     func buildJSONArray(from values: [String]) -> String {
         let escaped = values.map { escapeForJSON($0) }

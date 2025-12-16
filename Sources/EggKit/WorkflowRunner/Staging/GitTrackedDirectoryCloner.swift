@@ -1,9 +1,9 @@
+import AsyncOperations
 import FileManagerProtocol
 import Foundation
+import Noora
 import ProcessRunning
 import Subprocess
-import AsyncOperations
-import Noora
 
 #if canImport(System)
     import System
@@ -28,7 +28,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private let fileManager: any FileManagerProtocol
     private let apfsCloner: any DirectoryCloning
     private let gitRepositoryChecker: GitRepositoryChecker
-    nonisolated(unsafe) private let noora: any Noorable
+    private nonisolated(unsafe) let noora: any Noorable
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),
@@ -39,7 +39,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         self.processRunner = processRunner
         self.fileManager = fileManager
         self.apfsCloner = apfsCloner
-        self.gitRepositoryChecker = GitRepositoryChecker(processRunner: processRunner)
+        gitRepositoryChecker = GitRepositoryChecker(processRunner: processRunner)
         self.noora = noora
     }
 
@@ -107,10 +107,10 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private func listGitTrackedFiles(in directory: URL) async throws -> [String] {
         let arguments = [
             "ls-files",
-            "-c",           // Cached (tracked) files
-            "-o",           // Other (untracked) files
-            "--exclude-standard",  // Respect .gitignore
-            "-z",           // NUL-separated output
+            "-c", // Cached (tracked) files
+            "-o", // Other (untracked) files
+            "--exclude-standard", // Respect .gitignore
+            "-z", // NUL-separated output
         ]
 
         let result = try await processRunner.run(
@@ -120,7 +120,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
             workingDirectory: FilePath(directory.path),
             platformOptions: PlatformOptions(),
             input: .none,
-            output: .bytes(limit: 50 * 1024 * 1024),  // 50MB limit for large repos
+            output: .bytes(limit: 50 * 1024 * 1024), // 50MB limit for large repos
             error: .bytes(limit: 1024)
         )
 

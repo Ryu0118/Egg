@@ -45,13 +45,9 @@ struct InstallArgumentsValidatorTests {
 
         var testDescription: String { description }
 
-        // MARK: - Default Values
-
         private static let defaultProjectDirectory = URL(filePath: "/project")
         private static let defaultWorkingDirectory = URL(filePath: "/project")
         private static let defaultHomeDirectory = URL(filePath: "/home")
-
-        // MARK: - Factory Methods
 
         static func makeTestCase(
             description: String,
@@ -79,8 +75,6 @@ struct InstallArgumentsValidatorTests {
                 expected: expected
             )
         }
-
-        // MARK: - Test Cases
 
         static let allCases: [TestCase] = [
             // Interactive mode
@@ -290,8 +284,6 @@ struct InstallArgumentsValidatorTests {
         }
     }
 }
-
-// MARK: - Equatable Conformance for Testing
 
 extension InstallRunnerMode: Equatable {
     public static func == (lhs: InstallRunnerMode, rhs: InstallRunnerMode) -> Bool {

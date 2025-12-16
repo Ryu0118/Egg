@@ -15,8 +15,8 @@ struct CLIRunner: Sendable {
 
     /// Initialize the CLI runner by getting the binary path from BinaryBuildState
     init() async throws {
-        self.binaryPath = try await BinaryBuildState.shared.getBinaryPath()
-        self.processRunner = ProcessRunner()
+        binaryPath = try await BinaryBuildState.shared.getBinaryPath()
+        processRunner = ProcessRunner()
     }
 
     /// Run a CLI command with variadic arguments
