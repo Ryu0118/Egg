@@ -21,6 +21,7 @@ package extension EggCommand {
             abstract: "Manage templates.",
             subcommands: [
                 CreateCommand.self,
+                InstallCommand.self,
                 ListCommand.self,
                 DeleteCommand.self,
                 DuplicateCommand.self,

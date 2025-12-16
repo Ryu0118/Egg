@@ -264,7 +264,7 @@ package struct DiscoveredTemplate: Sendable {
 ```
 
 **Checklist:**
-- [ ] struct 定義
+- [x] struct 定義
 
 ---
 
@@ -316,21 +316,21 @@ package struct TemplateDiscoverer: TemplateDiscovering {
    - 全て無効な場合でも空のリストを返す（エラーは投げない）
 
 **Checklist:**
-- [ ] Protocol 定義
-- [ ] 実装
-- [ ] サブディレクトリの列挙
-- [ ] config.yml の存在チェック
-- [ ] YAML デコード
-- [ ] バリデーション
-- [ ] 隠しディレクトリの除外
+- [x] Protocol 定義
+- [x] 実装
+- [x] サブディレクトリの列挙
+- [x] config.yml の存在チェック
+- [x] YAML デコード
+- [x] バリデーション
+- [x] 隠しディレクトリの除外
 
 **Test File:** `Tests/EggKitTests/Internals/TemplateDiscovererTests.swift`
-- [ ] 有効なテンプレートを発見
-- [ ] 複数のテンプレートを発見
-- [ ] config.yml がないディレクトリはスキップ
-- [ ] 無効な config.yml はスキップ
-- [ ] 隠しディレクトリはスキップ
-- [ ] 空のリポジトリは空のリストを返す
+- [x] 有効なテンプレートを発見
+- [x] 複数のテンプレートを発見
+- [x] config.yml がないディレクトリはスキップ
+- [x] 無効な config.yml はスキップ
+- [x] 隠しディレクトリはスキップ
+- [x] 空のリポジトリは空のリストを返す
 
 ---
 
@@ -350,7 +350,7 @@ package enum InstallRunnerMode: Sendable {
 ```
 
 **Checklist:**
-- [ ] enum 定義
+- [x] enum 定義
 
 ---
 
@@ -416,29 +416,29 @@ package struct InstallArgumentsValidator {
    - `--template` と `--exclude` の同時指定
 
 **Checklist:**
-- [ ] struct 定義
-- [ ] `validate()` メソッド実装
-- [ ] Interactive mode 判定
-- [ ] URL パース
-- [ ] Ref 相互排他チェック
-- [ ] Filter 相互排他チェック
-- [ ] Error enum 定義
+- [x] struct 定義
+- [x] `validate()` メソッド実装
+- [x] Interactive mode 判定
+- [x] URL パース
+- [x] Ref 相互排他チェック
+- [x] Filter 相互排他チェック
+- [x] Error enum 定義
 
 **Test File:** `Tests/EggKitTests/InstallArgumentsValidatorTests.swift`
 
 **Pattern:** `CreateValidatorTests` に従う（`TestCase` struct + `@Test(arguments:)` パターン）
 
-- [ ] URL が nil → interactive mode
-- [ ] URL のみ指定 → direct mode (default branch, no filter)
-- [ ] URL + branch → direct mode with branch
-- [ ] URL + tag → direct mode with tag
-- [ ] URL + revision → direct mode with revision
-- [ ] URL + branch + tag → error (mutually exclusive)
-- [ ] URL + template → direct mode with include filter
-- [ ] URL + exclude → direct mode with exclude filter
-- [ ] URL + template + exclude → error (mutually exclusive)
-- [ ] Invalid URL → error
-- [ ] URL + global → direct mode with global location
+- [x] URL が nil → interactive mode
+- [x] URL のみ指定 → direct mode (default branch, no filter)
+- [x] URL + branch → direct mode with branch
+- [x] URL + tag → direct mode with tag
+- [x] URL + revision → direct mode with revision
+- [x] URL + branch + tag → error (mutually exclusive)
+- [x] URL + template → direct mode with include filter
+- [x] URL + exclude → direct mode with exclude filter
+- [x] URL + template + exclude → error (mutually exclusive)
+- [x] Invalid URL → error
+- [x] URL + global → direct mode with global location
 
 ---
 
@@ -474,7 +474,7 @@ package struct FailedTemplate: Sendable {
 ```
 
 **Checklist:**
-- [ ] struct 定義
+- [x] struct 定義
 
 ---
 
@@ -569,28 +569,28 @@ package struct InstallRunner {
    - エラー: `noora.error`
 
 **Checklist:**
-- [ ] struct 定義
-- [ ] Direct mode 実装
-- [ ] Interactive mode 実装
-- [ ] 一時ディレクトリ管理
-- [ ] フィルタリングロジック
-- [ ] 既存テンプレートチェック
-- [ ] テンプレートコピー
-- [ ] 結果表示
-- [ ] Error enum 定義
+- [x] struct 定義
+- [x] Direct mode 実装
+- [x] Interactive mode 実装
+- [x] 一時ディレクトリ管理
+- [x] フィルタリングロジック
+- [x] 既存テンプレートチェック
+- [x] テンプレートコピー
+- [x] 結果表示
+- [x] Error enum 定義
 
 **Test File:** `Tests/EggKitTests/InstallRunnerTests.swift`
 
 **Unit Tests (Mock dependencies):**
-- [ ] Direct mode: 全テンプレートインストール成功
-- [ ] Direct mode: 一部スキップ（既存）
-- [ ] Direct mode: include filter
-- [ ] Direct mode: exclude filter
-- [ ] Direct mode: 存在しないテンプレート指定でエラー
-- [ ] Direct mode: 有効なテンプレートなしでエラー
-- [ ] Direct mode: すべてスキップ or 失敗で `InstallError.allTemplatesSkippedOrFailed`
-- [ ] Interactive mode: 全プロンプト正常
-- [ ] エラー時のクリーンアップ
+- [x] Direct mode: 全テンプレートインストール成功
+- [x] Direct mode: 一部スキップ（既存）
+- [x] Direct mode: include filter
+- [x] Direct mode: exclude filter
+- [x] Direct mode: 存在しないテンプレート指定でエラー
+- [x] Direct mode: 有効なテンプレートなしでエラー
+- [x] Direct mode: すべてスキップ or 失敗で `InstallError.allTemplatesSkippedOrFailed`
+- [x] Interactive mode: 全プロンプト正常
+- [x] エラー時のクリーンアップ
 
 ---
 
@@ -673,11 +673,11 @@ package extension EggCommand.TemplateCommand {
    - `parsing: .upToNextOption` で複数指定を許可
 
 **Checklist:**
-- [ ] Command 定義
-- [ ] ArgumentParser decorators
-- [ ] `run()` メソッド
-- [ ] `validate()` メソッド
-- [ ] TemplateCommand への登録
+- [x] Command 定義
+- [x] ArgumentParser decorators
+- [x] `run()` メソッド
+- [x] `validate()` メソッド
+- [x] TemplateCommand への登録
 
 ---
 
@@ -849,20 +849,20 @@ package struct SomeRunner {
 - [x] `GitCloner` + Tests
 
 ### Phase 3: Template Discovery
-- [ ] `DiscoveredTemplate` struct
-- [ ] `TemplateDiscoverer` + Tests
+- [x] `DiscoveredTemplate` struct
+- [x] `TemplateDiscoverer` + Tests
 
 ### Phase 4: Arguments Validator
-- [ ] `InstallRunnerMode` enum
-- [ ] `InstallArgumentsValidator` + Tests
+- [x] `InstallRunnerMode` enum
+- [x] `InstallArgumentsValidator` + Tests
 
 ### Phase 5: Install Runner
-- [ ] `InstallResult` structs
-- [ ] `InstallRunner` + Tests
+- [x] `InstallResult` structs
+- [x] `InstallRunner` + Tests
 
 ### Phase 6: CLI Command
-- [ ] `InstallCommand`
-- [ ] TemplateCommand への登録
+- [x] `InstallCommand`
+- [x] TemplateCommand への登録
 
 ### Phase 7: Integration
 - [ ] Integration Tests
