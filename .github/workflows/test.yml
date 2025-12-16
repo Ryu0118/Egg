@@ -27,29 +27,24 @@ concurrency:
 jobs:
   unit-tests:
     name: Unit Tests
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Select Xcode 26.1.1
-        run: sudo xcode-select -s /Applications/Xcode_26.1.1.app/Contents/Developer
 
       - name: Show Swift version
         run: swift --version
 
       - name: Run EggKitTests
-        run: swift test 
+        run: swift test
 
   e2e-tests:
     name: E2E Tests
-    runs-on: macos-latest
+    needs: unit-tests
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Select Xcode 26.1.1
-        run: sudo xcode-select -s /Applications/Xcode_26.1.1.app/Contents/Developer
 
       - name: Show Swift version
         run: swift --version
