@@ -87,7 +87,7 @@ struct ConfigValidatorTests {
                     name: "TestTemplate",
                     description: "Test",
                     macros: [
-                        Config.Macro(name: "___PLATFORMS___", description: "Platforms", type: .array, default: "[\"iOS\", \"macOS\"]", choices: ["iOS", "macOS", "watchOS"]),
+                        Config.Macro(name: "___PLATFORMS___", description: "Platforms", type: .array, default: "[\"iOS\", \"macOS\"]"),
                     ],
                     preHatch: [
                         Config.LifecycleStep(if: "___PLATFORMS___.indexOf(\"iOS\") !== -1", run: "echo iOS"),
@@ -377,12 +377,21 @@ struct ConfigValidatorTests {
                 ])
             ),
             TestCase(
-                description: "detects array default value not in choices",
+                description: "detects choices specified for array macro",
                 config: makeValidConfig(macros: [
-                    Config.Macro(name: "___ARRAY___", description: "desc", type: .array, default: "[c]", choices: ["a", "b"]),
+                    Config.Macro(name: "___ARRAY___", description: "desc", type: .array, default: "[\"a\"]", choices: ["a", "b"]),
                 ]),
                 expected: .failure([
-                    .arrayDefaultValueNotInChoices(context: "macros[0]", name: "___ARRAY___", value: "c", choices: ["a", "b"]),
+                    .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___ARRAY___"),
+                ])
+            ),
+            TestCase(
+                description: "detects choices default values outside options for choices macro",
+                config: makeValidConfig(macros: [
+                    Config.Macro(name: "___CHOICES___", description: "desc", type: .choices, default: #"["c"]"#, choices: ["a", "b"]),
+                ]),
+                expected: .failure([
+                    .arrayDefaultValueNotInChoices(context: "macros[0]", name: "___CHOICES___", value: "c", choices: ["a", "b"]),
                 ])
             ),
             TestCase(

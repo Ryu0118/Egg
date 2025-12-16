@@ -293,7 +293,7 @@ struct ConfigValidatorArrayFormatTests {
                 expected: .success
             ),
             TestCase(
-                description: "passes with choices on array type",
+                description: "fails with choices on array type",
                 config: makeConfig(
                     macros: [
                         Config.Macro(
@@ -305,7 +305,9 @@ struct ConfigValidatorArrayFormatTests {
                         ),
                     ]
                 ),
-                expected: .success
+                expected: .failure([
+                    .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___PLATFORMS___"),
+                ])
             ),
 
             // MARK: - validate field compatibility tests

@@ -17,8 +17,8 @@ macros:
     description: String
     type: string | boolean | choice | choices | path | array (オプション, デフォルト: string)
     default: Any (オプション, なければ必須入力)
-    validate: String (オプション, 正規表現)
-    choices: [String] (choice/choices型で必須)
+    validate: String (string型のみ, 正規表現)
+    choices: [String] (choice/choices型では必須, その他の型では使用不可)
     format: String (array型のみ, JavaScript式, デフォルト: '$elements.join(", ")')
 
 # pre_hatch ライフサイクル（テンプレート展開前）
@@ -147,7 +147,7 @@ description: テストと適切なパッケージ構造を持つSwiftモジュ�
 
 #### array
 
-配列型は、ユーザーが複数の値を自由に入力できます。`choices` による制限はなく、任意の値を入力できます。
+配列型は、ユーザーが複数の値を自由に入力できます。`choices` フィールドは使用できず、入力値のホワイトリスト制約は設けられません。
 
 ```yaml
 - name: ___DEPENDENCIES___
@@ -230,6 +230,21 @@ JavaScriptCoreで評価されるため、`map`, `join`, `filter`, テンプレ�
   default: [MyModule, NetworkClient]
   # 出力: my-module, network-client
 ```
+
+### マクロフィールドの互換性とバリデーション
+
+`ConfigValidator` はフィールドの組み合わせを厳密にチェックします。以下の制約は `Tests/EggKitTests/Config/ConfigValidatorArrayFormatTests.swift` による仕様テストで保証されています。
+
+| フィールド | 使用可能な型 | 備考 |
+|-----------|--------------|------|
+| `validate` | `string` | 正規表現。Boolean/choice/choices/path/array では使用不可。 |
+| `choices` | `choice`, `choices` | `choice`/`choices` では必須。それ以外の型（array を含む）では使用不可。 |
+| `format` | `array` | JavaScript式。その他の型で指定するとエラー。 |
+
+`format` フィールドに関する追加仕様:
+- JavaScriptCore で評価される式は**必ず文字列を返す必要**があります。`undefined` や数値など非文字列を返す式は `invalidFormatExpression` エラーになります。
+- 構文エラーを含む式も同様に `invalidFormatExpression` 扱いとなり、テンプレートは読み込まれません。
+- `format`, `choices`, `validate` の違反はまとめて報告されるため、1つのマクロに複数の誤りがあってもすべてのエラーが表示されます。
 
 ### マクロの命名規則
 

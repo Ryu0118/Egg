@@ -188,28 +188,14 @@ extension ConfigValidator {
                 return []
             }
 
-            var errors: [Error] = []
-
             if !isValidArrayString(defaultValue) {
-                errors += [.arrayDefaultValueInvalidFormat(
+                return [.arrayDefaultValueInvalidFormat(
                     context: context,
                     name: macro.name
                 )]
-            } else if let choices = macro.choices {
-                let arrayValues = parseArrayString(defaultValue)
-                for value in arrayValues {
-                    if !choices.contains(value) {
-                        errors += [.arrayDefaultValueNotInChoices(
-                            context: context,
-                            name: macro.name,
-                            value: value,
-                            choices: choices
-                        )]
-                    }
-                }
             }
 
-            return errors
+            return []
         }
 
         private func validateBooleanType(_ macro: Config.Macro, context: String) -> Error? {
@@ -289,7 +275,7 @@ extension ConfigValidator {
         private func validateChoicesFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
             guard macro.choices != nil else { return [] }
 
-            let validTypes: Set<Config.MacroType> = [.choice, .choices, .array]
+            let validTypes: Set<Config.MacroType> = [.choice, .choices]
             if !validTypes.contains(macro.type) {
                 return [.choicesOnlyValidForChoiceTypes(context: context, name: macro.name)]
             }
