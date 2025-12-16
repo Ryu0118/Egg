@@ -30,9 +30,6 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
     package var projectDirectory: String?
 
-    @Argument(parsing: .captureForPassthrough, help: "User-defined macro values format (e.g., --user-defined value).")
-    package var macros: [String] = []
-
     @Flag(name: [.long], help: "Disable staging. When set, changes are applied directly without preview or rollback capability.")
     package var noStaging: Bool = false
 
@@ -50,6 +47,11 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
 
     @Option(name: .long, help: "Template picker style: 'list' for interactive selection, 'text' for text input.")
     package var picker: TemplatePickerStyle = .list
+
+    // Use .allUnrecognized to capture only unrecognized options/flags as macros
+    // This allows recognized flags like --no-staging to be parsed correctly
+    @Argument(parsing: .allUnrecognized, help: "User-defined macro values format (e.g., --user-defined value).")
+    package var macros: [String] = []
 
     package static let fileManager: any FileManagerProtocol = FileManager.default
 

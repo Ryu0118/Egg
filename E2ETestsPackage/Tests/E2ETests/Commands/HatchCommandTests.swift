@@ -1,0 +1,454 @@
+import FileManagerProtocol
+import Foundation
+import Testing
+
+@Suite(.buildBinary, .serialized)
+struct HatchCommandTests {
+    let fileManager: any FileManagerProtocol = FileManager.default
+
+    // MARK: - Help Tests
+
+    @Test("--help shows hatch command help")
+    func helpFlag() async throws {
+        let runner = try await CLIRunner()
+        let result = try await runner.run("hatch", "--help")
+
+        #expect(result.succeeded)
+        #expect(result.stdout.contains("OVERVIEW:"))
+        #expect(result.stdout.contains("USAGE: egg hatch"))
+        #expect(result.stdout.contains("--no-staging"))
+        #expect(result.stdout.contains("--override-conflicts"))
+        #expect(result.stdout.contains("--no-sandbox"))
+        #expect(result.stdout.contains("--apply-changes"))
+        #expect(result.stdout.contains("--project-directory"))
+    }
+
+    // MARK: - Parameterized Tests
+
+    @Test(arguments: TestCase.allCases)
+    func hatchTemplate(_ testCase: TestCase) async throws {
+        let runner = try await CLIRunner()
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-hatch")
+        defer { try? fileManager.removeItem(at: tempDir) }
+
+        let homeDir = tempDir.appending(path: "home")
+        let projectDir = tempDir.appending(path: "project")
+        let outputDir = tempDir.appending(path: "output")
+        try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: outputDir, withIntermediateDirectories: true)
+
+        // Setup template
+        if let template = testCase.template {
+            try setupTemplate(
+                template,
+                homeDir: homeDir,
+                projectDir: projectDir
+            )
+        }
+
+        // Setup existing files for conflict tests
+        for existingFile in testCase.existingFiles {
+            let filePath = outputDir.appending(path: existingFile.path)
+            let parentDir = filePath.deletingLastPathComponent()
+            try fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true)
+            try existingFile.content.write(to: filePath, atomically: true, encoding: .utf8)
+        }
+
+        let arguments = testCase.buildArguments(projectDir: projectDir, outputDir: outputDir)
+        let environment = ["HOME": homeDir.path(percentEncoded: false)]
+
+        let result = try await runner.run(
+            arguments: arguments,
+            workingDirectory: outputDir,
+            environment: environment
+        )
+
+        switch testCase.expected {
+        case .success:
+            #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
+            try verifyHatch(testCase: testCase, outputDir: outputDir)
+        case let .failure(errorContains):
+            #expect(!result.succeeded, "Expected failure but command succeeded")
+            let output = result.stderr + result.stdout
+            #expect(
+                output.contains(errorContains),
+                "Expected error containing '\(errorContains)' but got: \(output)"
+            )
+        }
+    }
+
+    // MARK: - Template Setup
+
+    private func setupTemplate(
+        _ template: TestCase.TemplateSetup,
+        homeDir: URL,
+        projectDir: URL
+    ) throws {
+        let templateDir: URL
+        switch template.location {
+        case .global:
+            templateDir = homeDir.appending(path: ".eggs/\(template.name)")
+        case .project:
+            templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+        }
+
+        try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+
+        // Write config.yml
+        try template.configYaml.write(
+            to: templateDir.appending(path: "config.yml"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        // Write template files
+        for file in template.files {
+            let filePath = templateDir.appending(path: file.path)
+            let parentDir = filePath.deletingLastPathComponent()
+            try fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true)
+            try file.content.write(to: filePath, atomically: true, encoding: .utf8)
+        }
+
+        // Write lifecycle scripts if any
+        if let preHatchScript = template.preHatchScript {
+            let scriptPath = templateDir.appending(path: "pre_hatch.sh")
+            try preHatchScript.write(to: scriptPath, atomically: true, encoding: .utf8)
+        }
+
+        if let postHatchScript = template.postHatchScript {
+            let scriptPath = templateDir.appending(path: "post_hatch.sh")
+            try postHatchScript.write(to: scriptPath, atomically: true, encoding: .utf8)
+        }
+    }
+
+    private func verifyHatch(testCase: TestCase, outputDir: URL) throws {
+        guard let verification = testCase.verification else { return }
+
+        for expectedFile in verification.expectedFiles {
+            let filePath = outputDir.appending(path: expectedFile.path)
+            #expect(
+                fileManager.fileExists(atPath: filePath.path(percentEncoded: false)),
+                "Expected file '\(expectedFile.path)' should exist"
+            )
+
+            if let expectedContent = expectedFile.contentContains {
+                let content = try String(contentsOf: filePath, encoding: .utf8)
+                #expect(
+                    content.contains(expectedContent),
+                    "File '\(expectedFile.path)' should contain '\(expectedContent)' but got: \(content)"
+                )
+            }
+        }
+
+        for unexpectedFile in verification.unexpectedFiles {
+            let filePath = outputDir.appending(path: unexpectedFile)
+            #expect(
+                !fileManager.fileExists(atPath: filePath.path(percentEncoded: false)),
+                "Unexpected file '\(unexpectedFile)' should NOT exist"
+            )
+        }
+    }
+
+    // MARK: - Test Case Definition
+
+    struct TestCase: CustomTestStringConvertible {
+        let description: String
+        let template: TemplateSetup?
+        let templateName: String
+        let macros: [String: String]
+        let flags: Flags
+        let existingFiles: [FileSetup]
+        let expected: Expected
+        let verification: Verification?
+
+        var testDescription: String { description }
+
+        func buildArguments(projectDir: URL, outputDir: URL) -> [String] {
+            // Order: hatch <template-name> [options] [flags] [macros...]
+            // Flags must come BEFORE macros (captureForPassthrough captures everything after)
+            var args = ["hatch", templateName]
+
+            // Options first
+            args += ["--project-directory", projectDir.path(percentEncoded: false)]
+            args += ["--picker", "text"]
+
+            // Then flags
+            if flags.noStaging {
+                args.append("--no-staging")
+            }
+            if flags.overrideConflicts {
+                args.append("--override-conflicts")
+            }
+            if flags.noSandbox {
+                args.append("--no-sandbox")
+            }
+            if flags.applyChanges {
+                args.append("--apply-changes")
+            }
+
+            // Macros LAST (captureForPassthrough)
+            for (key, value) in macros.sorted(by: { $0.key < $1.key }) {
+                args += ["--\(key)", value]
+            }
+
+            return args
+        }
+
+        enum Location: String {
+            case global
+            case project
+        }
+
+        enum Expected {
+            case success
+            case failure(errorContains: String)
+        }
+
+        struct Flags {
+            var noStaging: Bool = false
+            var overrideConflicts: Bool = false
+            var noSandbox: Bool = false
+            var applyChanges: Bool = false
+
+            static let none = Flags()
+            static let directApply = Flags(noStaging: true, applyChanges: true)
+            static let withOverride = Flags(noStaging: true, overrideConflicts: true, applyChanges: true)
+            static let withNoSandbox = Flags(noStaging: true, noSandbox: true, applyChanges: true)
+        }
+
+        struct TemplateSetup {
+            let name: String
+            let location: Location
+            let configYaml: String
+            let files: [FileSetup]
+            let preHatchScript: String?
+            let postHatchScript: String?
+
+            init(
+                name: String,
+                location: Location,
+                configYaml: String,
+                files: [FileSetup] = [],
+                preHatchScript: String? = nil,
+                postHatchScript: String? = nil
+            ) {
+                self.name = name
+                self.location = location
+                self.configYaml = configYaml
+                self.files = files
+                self.preHatchScript = preHatchScript
+                self.postHatchScript = postHatchScript
+            }
+        }
+
+        struct FileSetup {
+            let path: String
+            let content: String
+        }
+
+        struct Verification {
+            let expectedFiles: [ExpectedFile]
+            let unexpectedFiles: [String]
+
+            init(expectedFiles: [ExpectedFile] = [], unexpectedFiles: [String] = []) {
+                self.expectedFiles = expectedFiles
+                self.unexpectedFiles = unexpectedFiles
+            }
+        }
+
+        struct ExpectedFile {
+            let path: String
+            let contentContains: String?
+
+            init(_ path: String, contentContains: String? = nil) {
+                self.path = path
+                self.contentContains = contentContains
+            }
+        }
+
+        // MARK: - Test Cases
+
+        static let allCases: [TestCase] = [
+            // Basic template execution
+            basicTemplateExecution,
+            macroSubstitution,
+            templateNotFound,
+            overrideConflicts,
+            preHatchLifecycle,
+            postHatchLifecycle,
+        ]
+
+        // Basic template execution without macros
+        static let basicTemplateExecution = TestCase(
+            description: "executes basic template without macros",
+            template: TemplateSetup(
+                name: "BasicTemplate",
+                location: .global,
+                configYaml: """
+                name: BasicTemplate
+                description: A basic test template
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(path: "README.md", content: "# Hello World\n")
+                ]
+            ),
+            templateName: "BasicTemplate",
+            macros: [:],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("README.md", contentContains: "Hello World")
+                ]
+            )
+        )
+
+        // Macro substitution test
+        static let macroSubstitution = TestCase(
+            description: "performs macro substitution in file names and content",
+            template: TemplateSetup(
+                name: "MacroTemplate",
+                location: .global,
+                configYaml: """
+                name: MacroTemplate
+                description: Template with macros
+                macros:
+                  - name: ___MODULE_NAME___
+                    description: The module name
+                    type: string
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(
+                        path: "___MODULE_NAME___.swift",
+                        content: """
+                        // ___MODULE_NAME___.swift
+                        struct ___MODULE_NAME___ {
+                            let name = "___MODULE_NAME___"
+                        }
+                        """
+                    )
+                ]
+            ),
+            templateName: "MacroTemplate",
+            macros: ["MODULE-NAME": "MyModule"],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("MyModule.swift", contentContains: "struct MyModule")
+                ]
+            )
+        )
+
+        // Template not found error
+        static let templateNotFound = TestCase(
+            description: "fails when template does not exist",
+            template: nil,
+            templateName: "NonExistentTemplate",
+            macros: [:],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .failure(errorContains: "not found"),
+            verification: nil
+        )
+
+        // Override conflicts test
+        static let overrideConflicts = TestCase(
+            description: "overwrites existing files with --override-conflicts",
+            template: TemplateSetup(
+                name: "OverrideTemplate",
+                location: .global,
+                configYaml: """
+                name: OverrideTemplate
+                description: Template for override test
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(path: "existing.txt", content: "new content from template")
+                ]
+            ),
+            templateName: "OverrideTemplate",
+            macros: [:],
+            flags: .withOverride,
+            existingFiles: [
+                FileSetup(path: "existing.txt", content: "original content")
+            ],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("existing.txt", contentContains: "new content from template")
+                ]
+            )
+        )
+
+        // Pre-hatch lifecycle test
+        static let preHatchLifecycle = TestCase(
+            description: "executes pre_hatch lifecycle scripts",
+            template: TemplateSetup(
+                name: "PreHatchTemplate",
+                location: .global,
+                configYaml: """
+                name: PreHatchTemplate
+                description: Template with pre_hatch
+                pre_hatch:
+                  - run: echo "pre-hatch executed" > pre_hatch_marker.txt
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(path: "main.txt", content: "main content")
+                ]
+            ),
+            templateName: "PreHatchTemplate",
+            macros: [:],
+            flags: .withNoSandbox,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("main.txt", contentContains: "main content"),
+                    ExpectedFile("pre_hatch_marker.txt", contentContains: "pre-hatch executed")
+                ]
+            )
+        )
+
+        // Post-hatch lifecycle test
+        static let postHatchLifecycle = TestCase(
+            description: "executes post_hatch lifecycle scripts",
+            template: TemplateSetup(
+                name: "PostHatchTemplate",
+                location: .global,
+                configYaml: """
+                name: PostHatchTemplate
+                description: Template with post_hatch
+                hatch:
+                  output: .
+                post_hatch:
+                  - run: echo "post-hatch executed" > post_hatch_marker.txt
+                """,
+                files: [
+                    FileSetup(path: "main.txt", content: "main content")
+                ]
+            ),
+            templateName: "PostHatchTemplate",
+            macros: [:],
+            flags: .withNoSandbox,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("main.txt", contentContains: "main content"),
+                    ExpectedFile("post_hatch_marker.txt", contentContains: "post-hatch executed")
+                ]
+            )
+        )
+    }
+}
