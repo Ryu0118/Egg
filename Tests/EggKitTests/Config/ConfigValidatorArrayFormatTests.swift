@@ -322,7 +322,7 @@ struct ConfigValidatorArrayFormatTests {
                     ]
                 ),
                 expected: .failure([
-                    .validateOnlyValidForStringType(context: "macros[0]", name: "___ENABLED___"),
+                    .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___ENABLED___"),
                 ])
             ),
             TestCase(
@@ -340,11 +340,11 @@ struct ConfigValidatorArrayFormatTests {
                     ]
                 ),
                 expected: .failure([
-                    .validateOnlyValidForStringType(context: "macros[0]", name: "___TYPE___"),
+                    .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___TYPE___"),
                 ])
             ),
             TestCase(
-                description: "fails with validate on array type",
+                description: "passes with validate on array type",
                 config: makeConfig(
                     macros: [
                         Config.Macro(
@@ -356,9 +356,7 @@ struct ConfigValidatorArrayFormatTests {
                         ),
                     ]
                 ),
-                expected: .failure([
-                    .validateOnlyValidForStringType(context: "macros[0]", name: "___PLATFORMS___"),
-                ])
+                expected: .success
             ),
             TestCase(
                 description: "fails with validate on path type",
@@ -373,7 +371,7 @@ struct ConfigValidatorArrayFormatTests {
                     ]
                 ),
                 expected: .failure([
-                    .validateOnlyValidForStringType(context: "macros[0]", name: "___PATH___"),
+                    .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___PATH___"),
                 ])
             ),
             TestCase(
@@ -386,6 +384,35 @@ struct ConfigValidatorArrayFormatTests {
                             type: .string,
                             default: "test",
                             validate: "^[a-z]+$"
+                        ),
+                    ]
+                ),
+                expected: .success
+            ),
+            TestCase(
+                description: "passes with validate on array type without default",
+                config: makeConfig(
+                    macros: [
+                        Config.Macro(
+                            name: "___MODULES___",
+                            description: "Modules",
+                            type: .array,
+                            validate: "^[A-Z][a-zA-Z0-9]*$"
+                        ),
+                    ]
+                ),
+                expected: .success
+            ),
+            TestCase(
+                description: "passes with validate on array type with format",
+                config: makeConfig(
+                    macros: [
+                        Config.Macro(
+                            name: "___PACKAGES___",
+                            description: "Packages",
+                            type: .array,
+                            validate: "^[a-z][a-z0-9-]*$",
+                            format: #"$elements.map(x => `.package(name: "${x}")`).join(", ")"#
                         ),
                     ]
                 ),
@@ -410,7 +437,7 @@ struct ConfigValidatorArrayFormatTests {
                 expected: .failure([
                     .formatOnlyValidForArrayType(context: "macros[0]", name: "___BAD___"),
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___BAD___"),
-                    .validateOnlyValidForStringType(context: "macros[0]", name: "___BAD___"),
+                    .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___BAD___"),
                 ])
             ),
         ]

@@ -147,13 +147,12 @@ struct TemplateDuplicateCommandTests {
         var testDescription: String { description }
 
         func buildArguments(projectDir: URL) -> [String] {
-            var args = [
+            [
                 "template", "duplicate", sourceTemplate,
                 "--name", newName,
                 "--description", newDescription,
                 "--project-directory", projectDir.path(percentEncoded: false),
             ]
-            return args
         }
 
         enum Location: String {

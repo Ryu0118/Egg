@@ -286,8 +286,9 @@ extension ConfigValidator {
         private func validateValidateFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
             guard macro.validate != nil else { return [] }
 
-            if macro.type != .string {
-                return [.validateOnlyValidForStringType(context: context, name: macro.name)]
+            let validTypes: Set<Config.MacroType> = [.string, .array]
+            if !validTypes.contains(macro.type) {
+                return [.validateOnlyValidForStringAndArrayTypes(context: context, name: macro.name)]
             }
 
             return []

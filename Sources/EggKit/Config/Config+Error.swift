@@ -34,7 +34,7 @@ extension ConfigValidator {
         case formatOnlyValidForArrayType(context: String, name: String)
         case invalidFormatExpression(context: String, name: String, format: String)
         case choicesOnlyValidForChoiceTypes(context: String, name: String)
-        case validateOnlyValidForStringType(context: String, name: String)
+        case validateOnlyValidForStringAndArrayTypes(context: String, name: String)
 
         var errorDescription: String? {
             switch self {
@@ -100,8 +100,8 @@ extension ConfigValidator {
                 "\(context): Macro '\(name)' has invalid format expression '\(format)'. The expression must be valid JavaScript that returns a string."
             case let .choicesOnlyValidForChoiceTypes(context, name):
                 "\(context): Macro '\(name)' has 'choices' specified but is not of type 'choice', 'choices', or 'array'. The 'choices' field is only valid for these types."
-            case let .validateOnlyValidForStringType(context, name):
-                "\(context): Macro '\(name)' has 'validate' specified but is not of type 'string'. The 'validate' field is only valid for string type macros."
+            case let .validateOnlyValidForStringAndArrayTypes(context, name):
+                "\(context): Macro '\(name)' has 'validate' specified but is not of type 'string' or 'array'. The 'validate' field is only valid for string and array type macros."
             }
         }
     }

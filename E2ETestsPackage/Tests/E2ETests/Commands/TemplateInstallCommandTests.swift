@@ -6,8 +6,8 @@ import Testing
 struct TemplateInstallCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // Test repository URL (SSH to avoid authentication issues in subprocesses)
-    static let testRepoURL = "git@github.com:Ryu0118/swift-egg-templates.git"
+    // Test repository URL (HTTPS for CI compatibility with GITHUB_TOKEN)
+    static let testRepoURL = "https://github.com/Ryu0118/swift-egg-templates.git"
     // Known templates in the test repository
     static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
     // Known commit SHA for revision tests

@@ -17,7 +17,7 @@ macros:
     description: String
     type: string | boolean | choice | choices | path | array (オプション, デフォルト: string)
     default: Any (オプション, なければ必須入力)
-    validate: String (string型のみ, 正規表現)
+    validate: String (string/array型, 正規表現。arrayの場合は各要素に適用)
     choices: [String] (choice/choices型では必須, その他の型では使用不可)
     format: String (array型のみ, JavaScript式, デフォルト: '$elements.join(", ")')
 
@@ -229,6 +229,26 @@ JavaScriptCoreで評価されるため、`map`, `join`, `filter`, テンプレ�
   format: '$elements.map(x => x.replace(/([A-Z])/g, "-$1").toLowerCase().slice(1)).join(", ")'
   default: [MyModule, NetworkClient]
   # 出力: my-module, network-client
+
+# 配列要素のバリデーション（正規表現）
+- name: ___MODULE_NAMES___
+  type: array
+  description: "モジュール名（PascalCaseのみ許可）"
+  validate: "^[A-Z][a-zA-Z0-9]*$"
+  default: ["NetworkClient", "DataManager"]
+  format: '$elements.map(x => `"${x}"`).join(", ")'
+  # 入力例: NetworkClient, DataManager, APIClient
+  # バリデーション: 各要素が ^[A-Z][a-zA-Z0-9]*$ にマッチすること
+  # 出力: "NetworkClient", "DataManager", "APIClient"
+
+# パッケージ名のバリデーション
+- name: ___PACKAGES___
+  type: array
+  description: "パッケージ名（小文字とハイフンのみ）"
+  validate: "^[a-z][a-z0-9-]*$"
+  format: '$elements.map(x => `.package(name: "${x}")`).join(",\\n        ")'
+  # 無効な入力例: Package_Name, PACKAGE, 123package
+  # 有効な入力例: package-name, mypackage, swift-tools
 ```
 
 ### マクロフィールドの互換性とバリデーション
@@ -237,7 +257,7 @@ JavaScriptCoreで評価されるため、`map`, `join`, `filter`, テンプレ�
 
 | フィールド | 使用可能な型 | 備考 |
 |-----------|--------------|------|
-| `validate` | `string` | 正規表現。Boolean/choice/choices/path/array では使用不可。 |
+| `validate` | `string`, `array` | 正規表現。arrayの場合は各要素に対してバリデーション。Boolean/choice/choices/path では使用不可。 |
 | `choices` | `choice`, `choices` | `choice`/`choices` では必須。それ以外の型（array を含む）では使用不可。 |
 | `format` | `array` | JavaScript式。その他の型で指定するとエラー。 |
 
@@ -245,6 +265,58 @@ JavaScriptCoreで評価されるため、`map`, `join`, `filter`, テンプレ�
 - JavaScriptCore で評価される式は**必ず文字列を返す必要**があります。`undefined` や数値など非文字列を返す式は `invalidFormatExpression` エラーになります。
 - 構文エラーを含む式も同様に `invalidFormatExpression` 扱いとなり、テンプレートは読み込まれません。
 - `format`, `choices`, `validate` の違反はまとめて報告されるため、1つのマクロに複数の誤りがあってもすべてのエラーが表示されます。
+
+#### array型の`validate`フィールドの動作
+
+array型で`validate`フィールドを指定すると、**各配列要素に対して個別に**正規表現バリデーションが適用されます。
+
+**バリデーションのタイミング:**
+1. **Config読み込み時**: `validate`フィールドの正規表現構文が有効かチェック
+2. **Interactive入力時**: ユーザーがカンマ区切りで入力した各要素をリアルタイムでバリデーション
+3. **CLI引数解析時**: コマンドライン引数として渡された各要素をバリデーション
+4. **テンプレート展開前**: 最終的な値の各要素を再度バリデーション
+
+**エラーハンドリング:**
+- 1つでも要素がパターンにマッチしない場合、エラーメッセージと共に処理が中断されます
+- エラーメッセージには、マッチしなかった具体的な値と期待されるパターンが表示されます
+- Interactive入力時は、正しい値を入力するまで再入力を求められます
+
+**使用例:**
+
+```yaml
+# Swift モジュール名（PascalCase）
+- name: ___MODULES___
+  type: array
+  description: "モジュール名"
+  validate: "^[A-Z][a-zA-Z0-9]*$"
+  format: '$elements.join(", ")'
+
+  # ✅ 有効: NetworkClient, DataManager, APIClient
+  # ❌ 無効: network-client, data_manager, 123Module
+
+# パッケージ名（小文字、ハイフン、数字）
+- name: ___PACKAGES___
+  type: array
+  description: "パッケージ名"
+  validate: "^[a-z][a-z0-9-]*$"
+
+  # ✅ 有効: swift-tools, package-1, mylib
+  # ❌ 無効: Swift-Tools, Package_1, 123-start
+
+# メールアドレス
+- name: ___EMAILS___
+  type: array
+  description: "通知先メールアドレス"
+  validate: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+
+  # ✅ 有効: user@example.com, test.user@domain.co.jp
+  # ❌ 無効: invalid-email, @example.com, user@
+```
+
+**空配列の扱い:**
+- 空配列（要素数0）はバリデーションを**パス**します
+- バリデーションは存在する要素に対してのみ適用されます
+- 空配列を禁止したい場合は、別途defaultを設定するか、CLIレベルで制御してください
 
 ### マクロの命名規則
 

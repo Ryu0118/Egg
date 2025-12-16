@@ -52,3 +52,5 @@ jobs:
       - name: Run E2E Tests
         working-directory: E2ETestsPackage
         run: swift test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

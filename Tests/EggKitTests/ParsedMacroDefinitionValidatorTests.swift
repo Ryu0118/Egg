@@ -376,6 +376,113 @@ struct ParsedMacroDefinitionValidatorTests {
                 ])
             ),
 
+            // Array validation tests
+            TestCase(
+                description: "validates array elements with regex pattern",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(
+                            name: "___MODULES___",
+                            description: "Modules",
+                            type: .array,
+                            validate: "^[A-Z][a-zA-Z0-9]*$"
+                        ),
+                    ],
+                    hatch: Config.HatchConfig(output: ".")
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___MODULES___", values: ["ModuleA", "ModuleB", "ModuleC"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(
+                        name: "___MODULES___",
+                        description: "Modules",
+                        value: .array(["ModuleA", "ModuleB", "ModuleC"], format: nil)
+                    ),
+                ])
+            ),
+            TestCase(
+                description: "fails when one array element does not match regex pattern",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(
+                            name: "___MODULES___",
+                            description: "Modules",
+                            type: .array,
+                            validate: "^[A-Z][a-zA-Z0-9]*$"
+                        ),
+                    ],
+                    hatch: Config.HatchConfig(output: ".")
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___MODULES___", values: ["ModuleA", "invalid-module", "ModuleC"]),
+                ],
+                expected: .failure([
+                    .valueDoesNotMatchRegex(
+                        macro: "___MODULES___",
+                        value: "invalid-module",
+                        pattern: "^[A-Z][a-zA-Z0-9]*$"
+                    ),
+                ])
+            ),
+            TestCase(
+                description: "validates single element array",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(
+                            name: "___MODULES___",
+                            description: "Modules",
+                            type: .array,
+                            validate: "^[A-Z][a-zA-Z0-9]*$"
+                        ),
+                    ],
+                    hatch: Config.HatchConfig(output: ".")
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___MODULES___", values: ["SingleModule"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(
+                        name: "___MODULES___",
+                        description: "Modules",
+                        value: .array(["SingleModule"], format: nil)
+                    ),
+                ])
+            ),
+            TestCase(
+                description: "validates array with format and regex",
+                config: Config(
+                    name: "Test",
+                    description: "Test",
+                    macros: [
+                        Config.Macro(
+                            name: "___PACKAGES___",
+                            description: "Packages",
+                            type: .array,
+                            validate: "^[a-z][a-z0-9-]*$",
+                            format: #"$elements.map(x => `.package(name: "${x}")`).join(", ")"#
+                        ),
+                    ],
+                    hatch: Config.HatchConfig(output: ".")
+                ),
+                parsedMacros: [
+                    ParsedMacroDefinition(macro: "___PACKAGES___", values: ["package-a", "package-b"]),
+                ],
+                expected: .success([
+                    ResolvedMacro(
+                        name: "___PACKAGES___",
+                        description: "Packages",
+                        value: .array(["package-a", "package-b"], format: #"$elements.map(x => `.package(name: "${x}")`).join(", ")"#)
+                    ),
+                ])
+            ),
+
             // Error cases - conversion
             TestCase(
                 description: "fails when boolean value is invalid",
