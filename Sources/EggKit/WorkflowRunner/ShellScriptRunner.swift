@@ -172,6 +172,9 @@ struct ShellScriptRunner {
         (allow file-read* (subpath "/private/tmp"))
         (allow file-write* (subpath "/private/var/folders"))
         (allow file-write* (subpath "/private/tmp"))
+        ; Allow read/write to /dev/null (used by many commands for discarding output)
+        (allow file-read* (literal "/dev/null"))
+        (allow file-write* (literal "/dev/null"))
         ; Allow file I/O control operations
         (allow file-ioctl)
         ; Allow network (some scripts may need it)

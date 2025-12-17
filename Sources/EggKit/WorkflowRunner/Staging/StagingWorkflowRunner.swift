@@ -306,23 +306,23 @@ struct StagingWorkflowRunner: WorkflowRunning {
         noora.passthrough("\n📋 Change Summary:\n")
 
         if !summary.added.isEmpty {
-            noora.passthrough("Added (\(summary.added.count)):\n", tab: 1)
+            noora.passthrough("\(.success("Added")) (\(summary.added.count)):\n", tab: 1)
             for path in summary.added {
-                noora.passthrough("+ \(path)\n", tab: 2)
+                noora.passthrough("\(.success("+")) \(path)\n", tab: 2)
             }
         }
 
         if !summary.modified.isEmpty {
-            noora.passthrough("Modified (\(summary.modified.count)):\n", tab: 1)
+            noora.passthrough("\(.accent("Modified")) (\(summary.modified.count)):\n", tab: 1)
             for path in summary.modified {
-                noora.passthrough("~ \(path)\n", tab: 2)
+                noora.passthrough("\(.accent("~")) \(path)\n", tab: 2)
             }
         }
 
         if !summary.deleted.isEmpty {
-            noora.passthrough("Deleted (\(summary.deleted.count)):\n", tab: 1)
+            noora.passthrough("\(.danger("Deleted")) (\(summary.deleted.count)):\n", tab: 1)
             for path in summary.deleted {
-                noora.passthrough("- \(path)\n", tab: 2)
+                noora.passthrough("\(.danger("-")) \(path)\n", tab: 2)
             }
         }
 
