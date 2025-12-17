@@ -50,12 +50,13 @@ package struct GitURLParser: GitURLParsing {
 
     /// Checks if the URL is in HTTPS format
     private func isHTTPSURL(_ urlString: String) -> Bool {
-        // Pattern: https://<host>/<path>.git or https://<host>/<path>
+        // Pattern: https://[user:pass@]<host>/<path>.git or https://[user:pass@]<host>/<path>
         // Examples:
         //   https://github.com/user/repo.git
         //   https://github.com/user/repo
         //   https://gitlab.com/group/subgroup/repo.git
-        let httpsPattern = #"^https?://[\w.\-]+/[\w.\-/]+(?:\.git)?$"#
+        //   https://x-access-token:TOKEN@github.com/user/repo.git (GitHub Actions)
+        let httpsPattern = #"^https?://(?:[^@]+@)?[\w.\-]+/[\w.\-/]+(?:\.git)?$"#
         return urlString.range(of: httpsPattern, options: .regularExpression) != nil
     }
 

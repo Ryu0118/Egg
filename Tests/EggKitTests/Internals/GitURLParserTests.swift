@@ -82,6 +82,23 @@ struct GitURLParserTests {
                 expectedNormalized: "git://github.com/user/repo"
             ),
 
+            // HTTPS URLs with authentication
+            ValidURLTestCase(
+                description: "HTTPS URL with access token (GitHub Actions)",
+                input: "https://x-access-token:ghp_xxxxxxxxxxxx@github.com/user/repo.git",
+                expectedNormalized: "https://x-access-token:ghp_xxxxxxxxxxxx@github.com/user/repo.git"
+            ),
+            ValidURLTestCase(
+                description: "HTTPS URL with username and password",
+                input: "https://username:password@github.com/user/repo.git",
+                expectedNormalized: "https://username:password@github.com/user/repo.git"
+            ),
+            ValidURLTestCase(
+                description: "HTTPS URL with token containing special chars",
+                input: "https://x-access-token:ghs_ABC123xyz@github.com/user/repo.git",
+                expectedNormalized: "https://x-access-token:ghs_ABC123xyz@github.com/user/repo.git"
+            ),
+
             // URLs with special characters in path
             ValidURLTestCase(
                 description: "URL with hyphen in repo name",
