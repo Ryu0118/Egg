@@ -7,7 +7,13 @@ struct TemplateInstallCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
     // Test repository URL (HTTPS for CI compatibility with GITHUB_TOKEN)
-    static let testRepoURL = "https://github.com/Ryu0118/swift-egg-templates.git"
+    static var testRepoURL: String {
+        let baseURL = "github.com/Ryu0118/swift-egg-templates.git"
+        if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
+            return "https://x-access-token:\(token)@\(baseURL)"
+        }
+        return "https://\(baseURL)"
+    }
     // Known templates in the test repository
     static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
     // Known commit SHA for revision tests

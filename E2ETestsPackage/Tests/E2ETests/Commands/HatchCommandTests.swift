@@ -6,8 +6,6 @@ import Testing
 struct HatchCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // MARK: - Help Tests
-
     @Test("--help shows hatch command help")
     func helpFlag() async throws {
         let runner = try await CLIRunner()
@@ -22,8 +20,6 @@ struct HatchCommandTests {
         #expect(result.stdout.contains("--apply-changes"))
         #expect(result.stdout.contains("--project-directory"))
     }
-
-    // MARK: - Parameterized Tests
 
     @Test(arguments: TestCase.allCases)
     func hatchTemplate(_ testCase: TestCase) async throws {
@@ -77,8 +73,6 @@ struct HatchCommandTests {
             )
         }
     }
-
-    // MARK: - Template Setup
 
     private func setupTemplate(
         _ template: TestCase.TemplateSetup,
@@ -150,8 +144,6 @@ struct HatchCommandTests {
         }
     }
 
-    // MARK: - Test Case Definition
-
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let template: TemplateSetup?
@@ -164,7 +156,7 @@ struct HatchCommandTests {
 
         var testDescription: String { description }
 
-        func buildArguments(projectDir: URL, outputDir: URL) -> [String] {
+        func buildArguments(projectDir: URL, outputDir _: URL) -> [String] {
             // Order: hatch <template-name> [options] [flags] [macros...]
             // Flags must come BEFORE macros (captureForPassthrough captures everything after)
             var args = ["hatch", templateName]
@@ -267,8 +259,6 @@ struct HatchCommandTests {
             }
         }
 
-        // MARK: - Test Cases
-
         static let allCases: [TestCase] = [
             // Basic template execution
             basicTemplateExecution,
@@ -292,7 +282,7 @@ struct HatchCommandTests {
                   output: .
                 """,
                 files: [
-                    FileSetup(path: "README.md", content: "# Hello World\n")
+                    FileSetup(path: "README.md", content: "# Hello World\n"),
                 ]
             ),
             templateName: "BasicTemplate",
@@ -302,7 +292,7 @@ struct HatchCommandTests {
             expected: .success,
             verification: Verification(
                 expectedFiles: [
-                    ExpectedFile("README.md", contentContains: "Hello World")
+                    ExpectedFile("README.md", contentContains: "Hello World"),
                 ]
             )
         )
@@ -332,7 +322,7 @@ struct HatchCommandTests {
                             let name = "___MODULE_NAME___"
                         }
                         """
-                    )
+                    ),
                 ]
             ),
             templateName: "MacroTemplate",
@@ -342,7 +332,7 @@ struct HatchCommandTests {
             expected: .success,
             verification: Verification(
                 expectedFiles: [
-                    ExpectedFile("MyModule.swift", contentContains: "struct MyModule")
+                    ExpectedFile("MyModule.swift", contentContains: "struct MyModule"),
                 ]
             )
         )
@@ -372,19 +362,19 @@ struct HatchCommandTests {
                   output: .
                 """,
                 files: [
-                    FileSetup(path: "existing.txt", content: "new content from template")
+                    FileSetup(path: "existing.txt", content: "new content from template"),
                 ]
             ),
             templateName: "OverrideTemplate",
             macros: [:],
             flags: .withOverride,
             existingFiles: [
-                FileSetup(path: "existing.txt", content: "original content")
+                FileSetup(path: "existing.txt", content: "original content"),
             ],
             expected: .success,
             verification: Verification(
                 expectedFiles: [
-                    ExpectedFile("existing.txt", contentContains: "new content from template")
+                    ExpectedFile("existing.txt", contentContains: "new content from template"),
                 ]
             )
         )
@@ -404,7 +394,7 @@ struct HatchCommandTests {
                   output: .
                 """,
                 files: [
-                    FileSetup(path: "main.txt", content: "main content")
+                    FileSetup(path: "main.txt", content: "main content"),
                 ]
             ),
             templateName: "PreHatchTemplate",
@@ -415,7 +405,7 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("main.txt", contentContains: "main content"),
-                    ExpectedFile("pre_hatch_marker.txt", contentContains: "pre-hatch executed")
+                    ExpectedFile("pre_hatch_marker.txt", contentContains: "pre-hatch executed"),
                 ]
             )
         )
@@ -435,7 +425,7 @@ struct HatchCommandTests {
                   - run: echo "post-hatch executed" > post_hatch_marker.txt
                 """,
                 files: [
-                    FileSetup(path: "main.txt", content: "main content")
+                    FileSetup(path: "main.txt", content: "main content"),
                 ]
             ),
             templateName: "PostHatchTemplate",
@@ -446,7 +436,7 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("main.txt", contentContains: "main content"),
-                    ExpectedFile("post_hatch_marker.txt", contentContains: "post-hatch executed")
+                    ExpectedFile("post_hatch_marker.txt", contentContains: "post-hatch executed"),
                 ]
             )
         )
