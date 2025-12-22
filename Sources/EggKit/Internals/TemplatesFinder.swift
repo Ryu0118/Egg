@@ -34,11 +34,31 @@ struct TemplatesFinder {
     }
 
     func fetchTemplate(_ name: String) async throws -> Template {
+        // First, try to find by config.yml name
+        if let template = try await findTemplateByConfigName(name) {
+            return template
+        }
+
+        // Fallback to directory name for backwards compatibility
         guard let templateDir = try validTemplateDirectory(name) else {
             throw Error.noTemplatesFound(name: name)
         }
 
         return try await fetchTemplate(templateDir: templateDir)
+    }
+
+    /// Finds a template by its config.yml name
+    private func findTemplateByConfigName(_ name: String) async throws -> Template? {
+        let templates = try await listAll(emitValidationErrorLog: false)
+        let allTemplates = templates.global + templates.project
+
+        // Find template where config.name matches
+        guard let template = allTemplates.first(where: { $0.config.name == name }) else {
+            return nil
+        }
+
+        // Re-fetch with validation
+        return try await fetchTemplate(templateDir: template.path)
     }
 
     func listAll(emitValidationErrorLog: Bool = true) async throws -> Templates {

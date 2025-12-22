@@ -207,6 +207,25 @@ struct TemplateDetailFormatterTests {
                 expected: "egg hatch MyTemplate"
             ),
             GenerateExampleCommandTestCase(
+                description: "template name with spaces is quoted",
+                templateName: "My Template Name",
+                macros: nil,
+                expected: "egg hatch \"My Template Name\""
+            ),
+            GenerateExampleCommandTestCase(
+                description: "template name with spaces and macros",
+                templateName: "iOS App Template",
+                macros: [
+                    Config.Macro(
+                        name: "___NAME___",
+                        description: "App name",
+                        type: .string,
+                        default: "MyApp"
+                    ),
+                ],
+                expected: "egg hatch \"iOS App Template\" --name \"MyApp\""
+            ),
+            GenerateExampleCommandTestCase(
                 description: "single string macro with default",
                 templateName: "iOSTemplate",
                 macros: [

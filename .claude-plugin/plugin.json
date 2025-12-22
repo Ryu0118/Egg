@@ -4,5 +4,11 @@
   "description": "Tools for creating and managing egg templates",
   "author": {
     "name": "ryu"
-  }
+  },
+  "commands": [
+    ".claude/commands/create-template.md"
+  ],
+  "skills": [
+    ".claude/skills/egg-config-spec"
+  ]
 }

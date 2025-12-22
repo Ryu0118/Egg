@@ -9,4 +9,4 @@ DerivedData/
 .eggs
 .claude/settings.json
 .claude/settings.local.json
-
+.serena

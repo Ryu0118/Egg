@@ -77,7 +77,8 @@ struct TemplateDetailFormatter {
         templateName: String,
         macros: [Config.Macro]?
     ) -> String {
-        var commandParts = ["egg", "hatch", templateName]
+        let quotedTemplateName = templateName.contains(" ") ? "\"\(templateName)\"" : templateName
+        var commandParts = ["egg", "hatch", quotedTemplateName]
 
         guard let macros, !macros.isEmpty else {
             return commandParts.joined(separator: " ")
