@@ -83,13 +83,13 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
 
         let outputs = StepOutputsStorage()
 
-        // Phase 1: Execute pre_hatch
         let executionEnvironment: ExecutionEnvironment =
             sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory))
 
         // Common environment variables for all phases
         let commonEnvironment = ["EGG_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false)]
 
+        // Execute pre_hatch
         if let preHatchSteps = config.preHatch {
             try await phaseRunner.executePreHatch(
                 steps: preHatchSteps,
@@ -101,7 +101,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             )
         }
 
-        // Phase 2: Execute hatch (template expansion)
+        // Execute hatch (template expansion)
         let outputDirectory = try await phaseRunner.executeHatch(
             config: config,
             macros: macros,
@@ -110,8 +110,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             workingDirectory: workingDirectory
         )
 
-        noora.passthrough("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
-        // Phase 3: Execute post_hatch
+        // Execute post_hatch
         if let postHatchSteps = config.postHatch {
             try await phaseRunner.executePostHatch(
                 steps: postHatchSteps,

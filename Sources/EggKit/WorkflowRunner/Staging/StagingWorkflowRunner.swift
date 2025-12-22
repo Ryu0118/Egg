@@ -185,7 +185,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 }
             )
 
-            noora.passthrough("✅ Template hatched successfully in staging workspace.\n", tab: 1)
             // Calculate relative path for later use
             let resolvedOutputPath: String
             do {

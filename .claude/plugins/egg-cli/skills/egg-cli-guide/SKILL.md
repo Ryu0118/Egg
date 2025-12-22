@@ -37,6 +37,8 @@ Use this output to construct the correct `egg hatch` command.
 | `egg template install` | Install from Git | Adding templates from remote repositories |
 | `egg template validate` | Validate config.yml | Checking template configuration errors |
 | `egg template open` | Open template in Finder | Editing template files directly |
+| `egg template duplicate` | Duplicate a template | Creating a copy with new name/description |
+| `egg template delete` | Delete a template | Removing templates (use `--force` to skip confirmation) |
 
 ## Critical: Argument Ordering in `egg hatch`
 
@@ -75,9 +77,9 @@ Different macro types require different CLI input formats:
 | `string` | Plain value | `--app-name MyApp` |
 | `boolean` | `true` / `false` | `--init-git true` |
 | `choice` | One of allowed values | `--platform iOS` |
-| `choices` | JSON array | `--platforms '["iOS", "macOS"]'` |
-| `array` | JSON array | `--features '["auth", "analytics"]'` |
-| `path` | Relative path | `--output-path ./generated` |
+| `choices` | Space-separated values | `--platforms iOS macOS` |
+| `array` | Space-separated values | `--features auth analytics` |
+| `path` | Relative or absolute path | `--output-path ./generated` |
 
 ## Interactive vs Direct Mode
 
@@ -86,6 +88,36 @@ Different macro types require different CLI input formats:
 | Interactive | `egg hatch` (no args) | Exploring templates, first-time use |
 | Partial | `egg hatch TemplateName` | Know template, want prompts for macros |
 | Direct | `egg hatch TemplateName --macro value` | Automation, scripts, CI/CD |
+
+## Staging Workflow
+
+By default, `egg hatch` expands templates to a temporary staging directory. User reviews changes before applying.
+
+| Option | Behavior |
+|--------|----------|
+| (default) | Expand to staging → prompt for approval → apply |
+| `--apply-changes` | Expand to staging → auto-apply without prompt |
+| `--no-staging` | Apply directly without staging preview |
+
+```bash
+egg hatch MyTemplate --feature-name Foo              # Staging + prompt
+egg hatch MyTemplate --apply-changes --feature-name Foo  # Staging + auto-apply
+egg hatch MyTemplate --no-staging --feature-name Foo     # Direct apply
+```
+
+## Sandbox Execution
+
+Lifecycle scripts (`pre_hatch`, `post_hatch`) run in a sandboxed environment by default using macOS `sandbox-exec`. The sandbox:
+
+- Allows read access to all files
+- Restricts write access to only the staging directory
+- Allows network access
+
+Use `--no-sandbox` to disable sandboxing when scripts need to write outside staging:
+
+```bash
+egg hatch MyTemplate --no-sandbox --feature-name Foo
+```
 
 ## Template Location Priority
 
@@ -118,12 +150,12 @@ egg hatch MyTemplate --app_name Test
 egg hatch MyTemplate --app-name Test
 ```
 
-### 3. Forgetting quotes on array values
+### 3. Array values syntax
 ```bash
-# Wrong - shell splits the array
-egg hatch MyTemplate --platforms ["iOS", "macOS"]
+# Correct - space-separated values
+egg hatch MyTemplate --platforms iOS macOS
 
-# Correct
+# Wrong - JSON array format
 egg hatch MyTemplate --platforms '["iOS", "macOS"]'
 ```
 

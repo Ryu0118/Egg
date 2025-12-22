@@ -169,6 +169,8 @@ struct PhaseRunner {
             excluding: config.hatch.exclude
         )
 
+        noora.passthrough("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
+
         return outputDirectory
     }
 

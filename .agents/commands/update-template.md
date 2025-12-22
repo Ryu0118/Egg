@@ -1,0 +1,1 @@
+../../.claude/plugins/egg-template-creator/commands/update-template.md
