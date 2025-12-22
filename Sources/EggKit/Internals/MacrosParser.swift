@@ -44,7 +44,7 @@ struct MacrosParser {
             }
 
             // Convert macro name to normalized format
-            let normalizedMacro = normalize(macroName: macroName)
+            let normalizedMacro = MacroNameConverter.flagToMacro(macroName)
 
             // Check if this is a boolean macro (direct match)
             let isBooleanMacro = macroDefinitions.contains {
@@ -63,7 +63,7 @@ struct MacrosParser {
             // Only if --no-xxx doesn't match a macro named ___NO_XXX___
             if macroName.hasPrefix("no-") {
                 let negatedName = String(macroName.dropFirst(3))
-                let negatedNormalizedMacro = normalize(macroName: negatedName)
+                let negatedNormalizedMacro = MacroNameConverter.flagToMacro(negatedName)
 
                 let isNegatedBooleanMacro = macroDefinitions.contains {
                     $0.name == negatedNormalizedMacro && $0.type == .boolean
@@ -112,13 +112,6 @@ struct MacrosParser {
         }
 
         return result
-    }
-
-    private func normalize(macroName: String) -> String {
-        let normalized = macroName
-            .replacingOccurrences(of: "-", with: "_")
-            .uppercased()
-        return "___\(normalized)___"
     }
 }
 

@@ -168,8 +168,8 @@ extension ConfigValidator {
                 errors += [.choiceTypeEmptyChoices(context: context, name: macro.name)]
             }
 
-            if let defaultValue = macro.default, isValidArrayString(defaultValue) {
-                let arrayValues = parseArrayString(defaultValue)
+            if let defaultValue = macro.default, ArrayStringParser.isValidArrayString(defaultValue) {
+                let arrayValues = ArrayStringParser.parse(defaultValue)
                 for value in arrayValues where !choices.contains(value) {
                     errors += [.arrayDefaultValueNotInChoices(
                         context: context,
@@ -188,7 +188,7 @@ extension ConfigValidator {
                 return []
             }
 
-            if !isValidArrayString(defaultValue) {
+            if !ArrayStringParser.isValidArrayString(defaultValue) {
                 return [.arrayDefaultValueInvalidFormat(
                     context: context,
                     name: macro.name
@@ -339,23 +339,6 @@ extension ConfigValidator {
             }
 
             return macros
-        }
-
-        private func isValidArrayString(_ value: String) -> Bool {
-            let trimmed = value.trimmingCharacters(in: .whitespaces)
-            return trimmed.hasPrefix("[") && trimmed.hasSuffix("]")
-        }
-
-        private func parseArrayString(_ value: String) -> [String] {
-            let trimmed = value.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("["), trimmed.hasSuffix("]") else {
-                return []
-            }
-
-            let inner = String(trimmed.dropFirst().dropLast())
-            return inner.split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\"'")) }
         }
     }
 }

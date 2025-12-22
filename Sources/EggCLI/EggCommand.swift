@@ -23,6 +23,7 @@ package extension EggCommand {
                 CreateCommand.self,
                 InstallCommand.self,
                 ListCommand.self,
+                DetailCommand.self,
                 DeleteCommand.self,
                 DuplicateCommand.self,
                 MoveCommand.self,
