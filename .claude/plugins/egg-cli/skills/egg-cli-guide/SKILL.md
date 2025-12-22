@@ -4,7 +4,7 @@ description: Guide for using the egg CLI scaffolding tool. Use when executing eg
 
 # egg CLI Usage Guide
 
-**IMPORTANT**: Before using any egg command, always run `<command> -h` first to see available options.
+Before using any egg command, run `<command> -h` first to see available options.
 
 ```bash
 egg -h                    # Main commands
@@ -13,7 +13,7 @@ egg template -h           # Template subcommands
 egg template install -h   # Install options
 ```
 
-**IMPORTANT**: Before running `egg hatch`, always run `egg template detail <name>` first.
+Before running `egg hatch`, run `egg template detail <name>` first.
 
 ```bash
 egg template detail MyTemplate

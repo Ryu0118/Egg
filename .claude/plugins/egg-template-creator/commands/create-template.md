@@ -11,15 +11,19 @@ Guide the user through creating a new egg template. This command supports two mo
 ## Initial Setup
 
 1. Read the user's description of what template they want to create (provided as argument)
-2. Based on the description, suggest an appropriate template name and confirm with user
-3. Ask the user to choose the creation mode:
+2. Based on the description, suggest an appropriate template name
+3. Ask the user **all three questions at once** using AskUserQuestion:
 
-**Location Selection Question:**
+**Question 1: Template Name**
+- Suggest a name based on the description (e.g., "TCAFeature" for TCA feature template)
+- User can accept the suggestion or provide a different name
+
+**Question 2: Location**
 - **Project** (`./.eggs/`): Template for this project only
 - **Global** (`~/.eggs/`): Template shared across all projects
 - **Repository**: Create a distributable template repository for `egg template install`
 
-**Mode Selection Question:**
+**Question 3: Mode**
 - **config.yml only**: Create just the config.yml file with macro definitions and lifecycle hooks
 - **Full template scaffolding**: Create config.yml plus directory structure and sample template files
 
@@ -160,23 +164,12 @@ User: /egg-template-creator:create-template iOS app with SwiftUI, Core Data, and
 
 Claude: I'll help you create a template for an iOS app with SwiftUI, Core Data, and unit tests.
 
-Based on your description, I suggest the template name: "SwiftUIAppTemplate"
-Does this work, or would you prefer a different name?
+[Uses AskUserQuestion with 3 questions:]
+1. Template name: "SwiftUIAppTemplate" (Recommended) / Other
+2. Location: Project / Global / Repository
+3. Mode: config.yml only / Full scaffolding
 
-[User confirms or suggests alternative]
-
-Where should this template be created?
-1. Project (./.eggs/) - For this project only
-2. Global (~/.eggs/) - Shared across all projects
-3. Repository - Create a distributable template repository
-
-[User selects location]
-
-Which mode would you like?
-1. config.yml only - Just create the configuration file
-2. Full scaffolding - Create config.yml plus template directory structure
-
-[User selects mode]
+[User answers all three]
 
 Great! Based on your requirements, I'll suggest these macros:
 - ___APP_NAME___ (string): The app display name
@@ -197,8 +190,21 @@ Great! Based on your requirements, I'll suggest these macros:
 
 ## Next Steps
 
-After template creation, inform the user:
+After template creation, inform the user with these exact commands:
 
-1. **Edit template files**: `egg template open {template-name}` to open in Finder
-2. **Validate after changes**: `egg template validate ./.eggs/{template-name}`
-3. **Test the template**: `egg hatch {template-name}` to generate from the template
+```bash
+egg template open {template-name}      # Edit template files in Finder
+egg template validate {template-name}  # Validate after changes
+egg hatch {template-name}              # Test the template (interactive)
+```
+
+Use `egg template` commands, not direct paths like `open ~/.eggs/...`.
+
+## egg hatch Usage
+
+Macro arguments use kebab-case: `___FEATURE_NAME___` → `--feature-name`
+
+```bash
+egg hatch TCAFeature                       # Interactive
+egg hatch TCAFeature --feature-name Counter  # Direct
+```
