@@ -196,8 +196,8 @@ package struct GitCloner: GitCloning {
        workingDirectory: nil,
        platformOptions: PlatformOptions(),
        input: .none,
-       output: .bytes(limit: 1024 * 1024),  // 1MB
-       error: .bytes(limit: 1024 * 1024)
+       output: .bytes(limit: .max),  // 1MB
+       error: .bytes(limit: .max)
    )
    ```
    ref が `nil` の場合は `--branch` オプションを付与せず、Git のデフォルト挙動に任せる。単純なテンプレートクローン用途のため `--depth` などの最適化フラグは付けない。

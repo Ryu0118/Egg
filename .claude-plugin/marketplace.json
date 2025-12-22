@@ -1,7 +1,7 @@
 {
   "name": "egg",
   "owner": {
-    "name": "ryu"
+    "name": "Ryu0118"
   },
   "metadata": {
     "description": "Official egg template tools for Claude Code",
@@ -9,8 +9,13 @@
   },
   "plugins": [
     {
-      "name": "egg-template-tools",
-      "source": "./.claude/plugins/egg-template-tools",
+      "name": "egg-template-creator",
+      "source": "./.claude/plugins/egg-template-creator",
+      "category": "productivity"
+    },
+    {
+      "name": "egg-cli",
+      "source": "./.claude/plugins/egg-cli",
       "category": "productivity"
     }
   ]

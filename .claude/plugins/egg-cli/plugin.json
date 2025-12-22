@@ -1,0 +1,8 @@
+{
+  "name": "egg-cli",
+  "version": "0.1.0",
+  "description": "CLI usage guide for egg scaffolding tool",
+  "author": {
+    "name": "Ryu0118"
+  }
+}

@@ -29,8 +29,16 @@ A CLI tool for generating projects from templates. Define macros in `config.yml`
 
 Each template contains `config.yml` and template files with `___MACRO_NAME___` placeholders.
 
+## Available Skills
+
+When working on egg templates or CLI usage, read these skills for detailed reference:
+
+| Skill | When to use |
+|-------|-------------|
+| `egg-config-spec` | Creating/editing `config.yml` (macro types, lifecycle hooks) |
+| `egg-cli-guide` | CLI commands, argument ordering, interactive vs direct mode |
+
 ## Notes
 
 - Swift 6.2 / macOS 26+
 - Use `package` access modifier for cross-module types
-- config.yml spec: `.claude/plugins/egg-template-tools/skills/egg-config-spec/SKILL.md`

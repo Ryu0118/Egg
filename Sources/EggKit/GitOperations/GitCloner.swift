@@ -59,8 +59,8 @@ package struct GitCloner: GitCloning, Sendable {
             workingDirectory: nil,
             platformOptions: PlatformOptions(),
             input: .none,
-            output: .bytes(limit: 1024 * 1024),
-            error: .bytes(limit: 1024 * 1024)
+            output: .bytes(limit: .max),
+            error: .bytes(limit: .max)
         )
 
         switch result.terminationStatus {
@@ -90,8 +90,8 @@ package struct GitCloner: GitCloning, Sendable {
             workingDirectory: nil,
             platformOptions: PlatformOptions(),
             input: .none,
-            output: .bytes(limit: 1024 * 1024),
-            error: .bytes(limit: 1024 * 1024)
+            output: .bytes(limit: .max),
+            error: .bytes(limit: .max)
         )
 
         switch result.terminationStatus {
@@ -123,8 +123,8 @@ package struct GitCloner: GitCloning, Sendable {
             workingDirectory: FilePath(destination.path),
             platformOptions: PlatformOptions(),
             input: .none,
-            output: .bytes(limit: 1024 * 1024),
-            error: .bytes(limit: 1024 * 1024)
+            output: .bytes(limit: .max),
+            error: .bytes(limit: .max)
         )
 
         switch checkoutResult.terminationStatus {
