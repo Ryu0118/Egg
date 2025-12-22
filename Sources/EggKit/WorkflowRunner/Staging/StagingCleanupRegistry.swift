@@ -78,9 +78,6 @@ public actor StagingCleanupRegistry {
                 // Exit with the standard signal exit code
                 exit(130) // 128 + SIGINT (2)
             }
-            // Give the task a moment to start, then prevent default handling
-            // by blocking here (the exit() above will terminate the process)
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 5))
         }
 
         // Set up SIGTERM handler
@@ -89,7 +86,6 @@ public actor StagingCleanupRegistry {
                 await StagingCleanupRegistry.shared.executeCleanup()
                 exit(143) // 128 + SIGTERM (15)
             }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 5))
         }
     }
 }

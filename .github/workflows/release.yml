@@ -1,98 +1,33 @@
-name: Release
+name: Upload Artifact Bundle to Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., 1.0.0)'
-        required: true
-        type: string
-
-concurrency:
-  group: release
-  cancel-in-progress: false
-
-env:
-  PRODUCT_NAME: egg
+  release:
+    types: [published]
 
 jobs:
   release:
-    name: Build and Release
     runs-on: macos-26
     permissions:
       contents: write
-    env:
-      VERSION: ${{ inputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Validate version format
-        run: |
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "Error: Invalid version format. Expected semver (e.g., 1.0.0, 1.0.0-beta.1)"
-            exit 1
-          fi
+      - name: Build Universal Binary
+        run: swift build -c release --arch arm64 --arch x86_64
 
-      - name: Check if tag exists
-        run: |
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "Error: Tag $VERSION already exists"
-            exit 1
-          fi
-
-      - name: Show Swift version
-        run: swift --version
-
-      - name: Build for x86_64
-        run: swift build -c release --triple x86_64-apple-macosx
-
-      - name: Build for arm64
-        run: swift build -c release --triple arm64-apple-macosx
-
-      - name: Create universal binary
-        run: |
-          lipo -create -output .build/$PRODUCT_NAME \
-            .build/{arm64,x86_64}-apple-macosx/release/$PRODUCT_NAME
-
-      - name: Verify universal binary
-        run: lipo -info .build/$PRODUCT_NAME
-
-      - name: Create ZIP archive
-        run: /usr/bin/ditto -c -k .build/$PRODUCT_NAME .build/${PRODUCT_NAME}-${VERSION}-macos.zip
-
-      - name: Calculate SHA256
-        id: sha256
-        run: |
-          SHA256=$(shasum -a 256 .build/${PRODUCT_NAME}-${VERSION}-macos.zip | awk '{print $1}')
-          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256: $SHA256"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - uses: giginet/github-action-artifactbundle@v2
+        id: artifactbundle
         with:
-          tag_name: ${{ inputs.version }}
-          name: ${{ inputs.version }}
-          body: |
-            ## Installation
+          artifact_name: egg
 
-            ### Using mise with UBI (recommended)
-
-            ```bash
-            mise use -g ubi:${{ github.repository }}@${{ inputs.version }}
-            ```
-
-            ### Manual installation
-
-            1. Download the ZIP file from the assets below
-            2. Extract and move the binary to your PATH:
-               ```bash
-               unzip ${{ env.PRODUCT_NAME }}-${{ inputs.version }}-macos.zip
-               sudo mv ${{ env.PRODUCT_NAME }} /usr/local/bin/
-               ```
-
-            ## Checksums
-
-            - **SHA256**: `${{ steps.sha256.outputs.sha256 }}`
-          files: .build/${{ env.PRODUCT_NAME }}-${{ inputs.version }}-macos.zip
-          fail_on_unmatched_files: true
+      - name: Upload Artifact Bundle to Release
+        run: |
+          BODY="${{ github.event.release.body }}"
+          BUNDLE_PATH="${{ steps.artifactbundle.outputs.bundle_path }}"
+          SHA256="${{ steps.artifactbundle.outputs.bundle_sha256 }}"
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          gh release upload "${TAG_NAME}" "${BUNDLE_PATH}"
+          NEW_BODY="$(printf "%s\n\n**SHA256:** %s" "$BODY" "$SHA256")"
+          gh release edit "${TAG_NAME}" --notes "${NEW_BODY}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
