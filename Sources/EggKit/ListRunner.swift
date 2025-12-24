@@ -7,6 +7,7 @@ package struct ListRunner {
     let finder: TemplatesFinder
     let projectDirectory: URL
     let workingDirectory: URL
+    let additionalSearchPaths: [URL]
     let hideDescription: Bool
     let noora: any Noorable
 
@@ -15,6 +16,7 @@ package struct ListRunner {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
         noora: some Noorable = Noora()
@@ -22,13 +24,15 @@ package struct ListRunner {
         self.location = location
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.hideDescription = hideDescription
         self.noora = noora
         finder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
@@ -39,9 +43,19 @@ package struct ListRunner {
             table(for: list, in: location)
         } else {
             let list = try await finder.listAll()
-            guard !(list.global.isEmpty && list.project.isEmpty) else {
+            guard !(list.custom.isEmpty && list.global.isEmpty && list.project.isEmpty) else {
                 noora.info("No templates found.")
                 return
+            }
+
+            // Display custom path templates first
+            for customPath in additionalSearchPaths {
+                let customTemplates = list.custom.filter { template in
+                    template.path.path(percentEncoded: false).hasPrefix(customPath.path(percentEncoded: false))
+                }
+                if !customTemplates.isEmpty {
+                    table(for: customTemplates, in: .custom(customPath))
+                }
             }
 
             table(for: list.global, in: .global)

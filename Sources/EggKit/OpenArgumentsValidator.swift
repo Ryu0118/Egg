@@ -7,6 +7,7 @@ package struct OpenArgumentsValidator {
     private let homeDirectory: URL
     private let projectDirectory: URL
     private let workingDirectory: URL
+    private let additionalSearchPaths: [URL]
     private let fileManager: any FileManagerProtocol
 
     package init(
@@ -14,18 +15,21 @@ package struct OpenArgumentsValidator {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
@@ -34,47 +38,24 @@ package struct OpenArgumentsValidator {
             return .interactive
         }
 
-        let (templatePath, templateLocation) = try await findTemplate(name: templateName)
+        guard let templatePath = try templatesFinder.validTemplateDirectory(templateName) else {
+            throw Error.templateNotFound(name: templateName)
+        }
+
+        let templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+            .determineLocation(
+                templateName: templateName,
+                templatePath: templatePath,
+                additionalSearchPaths: additionalSearchPaths,
+                projectDirectory: projectDirectory,
+                workingDirectory: workingDirectory
+            )
 
         return .direct(
             templateName: templateName,
             templatePath: templatePath,
             location: templateLocation
         )
-    }
-
-    private func findTemplate(
-        name: String
-    ) async throws -> (path: URL, location: TemplateLocationType) {
-        guard let templatePath = try templatesFinder.validTemplateDirectory(name) else {
-            throw Error.templateNotFound(name: name)
-        }
-
-        let templateLocation = try determineLocation(
-            templateName: name,
-            templatePath: templatePath
-        )
-
-        return (templatePath, templateLocation)
-    }
-
-    private func determineLocation(
-        templateName: String,
-        templatePath: URL
-    ) throws -> TemplateLocationType {
-        let templateLocationInstance = TemplateLocation(
-            homeDirectory: homeDirectory
-        )
-        let globalPath = templateLocationInstance.template(templateName, type: .global)
-
-        return if fileManager.exists(globalPath) && templatePath == globalPath {
-            TemplateLocationType.global
-        } else {
-            TemplateLocationType.project(
-                projectDirectory,
-                workingDirectory: workingDirectory
-            )
-        }
     }
 
     enum Error: LocalizedError {

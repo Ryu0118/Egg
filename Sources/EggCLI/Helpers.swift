@@ -18,6 +18,19 @@ package extension HasProjectDirectory {
     }
 }
 
+package protocol HasTemplateSearchPaths {
+    var templateSearchPaths: [String] { get }
+    static var fileManager: any FileManagerProtocol { get }
+}
+
+package extension HasTemplateSearchPaths {
+    func resolveTemplateSearchPaths() -> [URL] {
+        templateSearchPaths.map { path in
+            URL(filePath: path, relativeTo: URL(filePath: Self.fileManager.currentDirectoryPath))
+        }
+    }
+}
+
 extension TemplateLocationType.Kind: ExpressibleByArgument {}
 
 /// Returns the home directory, respecting the HOME environment variable.

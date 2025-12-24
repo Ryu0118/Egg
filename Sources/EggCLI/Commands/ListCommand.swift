@@ -4,7 +4,7 @@ import FileManagerProtocol
 import Foundation
 
 package extension EggCommand.TemplateCommand {
-    struct ListCommand: AsyncParsableCommand, HasProjectDirectory {
+    struct ListCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
         package static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all available templates."
@@ -18,6 +18,9 @@ package extension EggCommand.TemplateCommand {
 
         @Flag(name: .long, help: "Hide the description column in the output.")
         package var hideDescription: Bool = false
+
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
 
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
@@ -34,6 +37,7 @@ package extension EggCommand.TemplateCommand {
                 projectDirectory: resolveProjectDirectory(),
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
+                additionalSearchPaths: resolveTemplateSearchPaths(),
                 fileManager: Self.fileManager,
                 hideDescription: hideDescription
             ).run()

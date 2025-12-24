@@ -359,3 +359,324 @@ private extension TemplateLocationType.Kind {
         }
     }
 }
+
+// MARK: - MoveRunner with Custom Search Paths Tests
+
+struct MoveRunnerWithCustomPathsTests {
+    @Test(arguments: TestCase.allCases)
+    func run(_ testCase: TestCase) async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "move-runner-custom-test")
+
+        defer {
+            try? fileManager.removeItem(at: tempDir)
+        }
+
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let customPath = tempDir.appending(path: "custom")
+
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: customPath, withIntermediateDirectories: true)
+
+        // Setup initial templates
+        try setupTemplates(
+            templates: testCase.initialTemplates,
+            projectDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            customPath: customPath,
+            fileManager: fileManager
+        )
+
+        let mode = testCase.mode(projectDirectory: projectDirectory, customPath: customPath)
+        let runner = MoveRunner(
+            mode: mode,
+            force: testCase.force,
+            projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: [customPath],
+            fileManager: fileManager,
+            noora: NooraMock()
+        )
+
+        if let expectedError = testCase.expectedError {
+            await #expect(throws: expectedError) {
+                try await runner.run()
+            }
+        } else {
+            try await runner.run()
+
+            // Verify the move occurred correctly
+            try verifyMoveResult(
+                testCase: testCase,
+                projectDirectory: projectDirectory,
+                homeDirectory: homeDirectory,
+                customPath: customPath,
+                fileManager: fileManager
+            )
+        }
+    }
+
+    private func setupTemplates(
+        templates: [(name: String, location: LocationKind, content: String)],
+        projectDirectory: URL,
+        homeDirectory: URL,
+        customPath: URL,
+        fileManager: some FileManagerProtocol
+    ) throws {
+        for (name, location, content) in templates {
+            let templatePath = location.toPath(
+                templateName: name,
+                projectDirectory: projectDirectory,
+                homeDirectory: homeDirectory,
+                customPath: customPath
+            )
+            try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
+
+            let configPath = templatePath.appending(path: "config.yml")
+            try fileManager.writeText(content, at: configPath)
+
+            // Add additional test file
+            let testFilePath = templatePath.appending(path: "test.txt")
+            try fileManager.writeText("Test content for \(name)", at: testFilePath)
+        }
+    }
+
+    private func verifyMoveResult(
+        testCase: TestCase,
+        projectDirectory: URL,
+        homeDirectory: URL,
+        customPath: URL,
+        fileManager: some FileManagerProtocol
+    ) throws {
+        guard let verification = testCase.verification else {
+            return
+        }
+
+        // Verify source no longer exists
+        let sourcePath = verification.sourceLocation.toPath(
+            templateName: verification.templateName,
+            projectDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            customPath: customPath
+        )
+        #expect(!fileManager.fileExists(atPath: sourcePath.path(percentEncoded: false)))
+
+        // Verify target exists
+        let targetPath = verification.targetLocation.toPath(
+            templateName: verification.templateName,
+            projectDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            customPath: customPath
+        )
+        #expect(fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)))
+
+        // Verify content was preserved
+        let configPath = targetPath.appending(path: "config.yml")
+        #expect(fileManager.fileExists(atPath: configPath.path(percentEncoded: false)))
+
+        let testFilePath = targetPath.appending(path: "test.txt")
+        #expect(fileManager.fileExists(atPath: testFilePath.path(percentEncoded: false)))
+
+        let testFileData = try fileManager.readFile(at: testFilePath)
+        let testFileContent = String(data: testFileData, encoding: .utf8) ?? ""
+        #expect(testFileContent == "Test content for \(verification.templateName)")
+    }
+
+    enum LocationKind {
+        case global
+        case project
+        case custom
+
+        func toPath(
+            templateName: String,
+            projectDirectory: URL,
+            homeDirectory: URL,
+            customPath: URL
+        ) -> URL {
+            switch self {
+            case .global:
+                return homeDirectory.appending(path: ".eggs").appending(path: templateName)
+            case .project:
+                return projectDirectory.appending(path: ".eggs").appending(path: templateName)
+            case .custom:
+                return customPath.appending(path: templateName)
+            }
+        }
+
+        func toTemplateLocationType(projectDirectory: URL, workingDirectory: URL, customPath: URL) -> TemplateLocationType {
+            switch self {
+            case .global:
+                return .global
+            case .project:
+                return .project(projectDirectory, workingDirectory: workingDirectory)
+            case .custom:
+                return .custom(customPath)
+            }
+        }
+    }
+
+    struct TestCase: CustomTestStringConvertible {
+        let description: String
+        let initialTemplates: [(name: String, location: LocationKind, content: String)]
+        let modeConfig: ModeConfig
+        let force: Bool
+        let verification: Verification?
+        let expectedError: MoveRunner.Error?
+
+        var testDescription: String { description }
+
+        func mode(projectDirectory: URL, customPath: URL) -> MoveRunnerMode {
+            modeConfig.toMode(projectDirectory: projectDirectory, customPath: customPath)
+        }
+
+        static let allCases: [TestCase] = [
+            // Success cases - moving from custom path
+            TestCase(
+                description: "successfully moves template from custom path to project",
+                initialTemplates: [
+                    ("CustomTemplate", .custom, """
+                    name: CustomTemplate
+                    description: Custom template
+                    hatch:
+                      output: .
+                    """),
+                ],
+                modeConfig: .direct(
+                    name: "CustomTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .project
+                ),
+                force: false,
+                verification: Verification(
+                    templateName: "CustomTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .project
+                ),
+                expectedError: nil
+            ),
+            TestCase(
+                description: "successfully moves template from custom path to global",
+                initialTemplates: [
+                    ("CustomTemplate", .custom, """
+                    name: CustomTemplate
+                    description: Custom template
+                    hatch:
+                      output: .
+                    """),
+                ],
+                modeConfig: .direct(
+                    name: "CustomTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .global
+                ),
+                force: false,
+                verification: Verification(
+                    templateName: "CustomTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .global
+                ),
+                expectedError: nil
+            ),
+            TestCase(
+                description: "successfully overwrites project target when moving from custom with force",
+                initialTemplates: [
+                    ("MyTemplate", .custom, """
+                    name: MyTemplate
+                    description: Custom source template
+                    hatch:
+                      output: .
+                    """),
+                    ("MyTemplate", .project, """
+                    name: MyTemplate
+                    description: Old project template
+                    hatch:
+                      output: .
+                    """),
+                ],
+                modeConfig: .direct(
+                    name: "MyTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .project
+                ),
+                force: true,
+                verification: Verification(
+                    templateName: "MyTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .project
+                ),
+                expectedError: nil
+            ),
+
+            // Error cases
+            TestCase(
+                description: "throws targetAlreadyExists when moving from custom to project without force",
+                initialTemplates: [
+                    ("MyTemplate", .custom, """
+                    name: MyTemplate
+                    description: Custom template
+                    hatch:
+                      output: .
+                    """),
+                    ("MyTemplate", .project, """
+                    name: MyTemplate
+                    description: Project template
+                    hatch:
+                      output: .
+                    """),
+                ],
+                modeConfig: .direct(
+                    name: "MyTemplate",
+                    sourceLocation: .custom,
+                    targetLocation: .project
+                ),
+                force: false,
+                verification: nil,
+                expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project")
+            ),
+        ]
+
+        enum ModeConfig {
+            case direct(
+                name: String,
+                sourceLocation: LocationKind,
+                targetLocation: LocationKind
+            )
+
+            func toMode(projectDirectory: URL, customPath: URL) -> MoveRunnerMode {
+                switch self {
+                case let .direct(name, sourceLocation, targetLocation):
+                    let homeDirectory = projectDirectory.deletingLastPathComponent().appending(path: "home")
+                    let sourcePath = sourceLocation.toPath(
+                        templateName: name,
+                        projectDirectory: projectDirectory,
+                        homeDirectory: homeDirectory,
+                        customPath: customPath
+                    )
+                    return .direct(
+                        name: name,
+                        path: sourcePath.path(percentEncoded: false),
+                        sourceLocation: sourceLocation.toTemplateLocationType(
+                            projectDirectory: projectDirectory,
+                            workingDirectory: projectDirectory,
+                            customPath: customPath
+                        ),
+                        targetLocation: targetLocation.toTemplateLocationType(
+                            projectDirectory: projectDirectory,
+                            workingDirectory: projectDirectory,
+                            customPath: customPath
+                        )
+                    )
+                }
+            }
+        }
+
+        struct Verification {
+            let templateName: String
+            let sourceLocation: LocationKind
+            let targetLocation: LocationKind
+        }
+    }
+}

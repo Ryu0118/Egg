@@ -9,6 +9,7 @@ package struct MoveArgumentsValidator {
     private let homeDirectory: URL
     private let projectDirectory: URL
     private let workingDirectory: URL
+    private let additionalSearchPaths: [URL]
     private let fileManager: any FileManagerProtocol
 
     package init(
@@ -18,6 +19,7 @@ package struct MoveArgumentsValidator {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
@@ -26,12 +28,14 @@ package struct MoveArgumentsValidator {
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
@@ -47,7 +51,14 @@ package struct MoveArgumentsValidator {
         }
 
         // Determine source location
-        let sourceLocation = determineLocation(templateName: templateName, path: sourcePath)
+        let sourceLocation = TemplateLocation(homeDirectory: homeDirectory)
+            .determineLocation(
+                templateName: templateName,
+                templatePath: sourcePath,
+                additionalSearchPaths: additionalSearchPaths,
+                projectDirectory: projectDirectory,
+                workingDirectory: workingDirectory
+            )
 
         // No target -> select target only
         guard let to else {
@@ -74,25 +85,6 @@ package struct MoveArgumentsValidator {
             sourceLocation: sourceLocation,
             targetLocation: targetLocation
         )
-    }
-
-    private func determineLocation(
-        templateName: String,
-        path: URL
-    ) -> TemplateLocationType {
-        let templateLocationInstance = TemplateLocation(
-            homeDirectory: homeDirectory
-        )
-        let globalPath = templateLocationInstance.template(templateName, type: .global)
-
-        return if fileManager.fileExists(atPath: globalPath.path(percentEncoded: false)) && path == globalPath {
-            TemplateLocationType.global
-        } else {
-            TemplateLocationType.project(
-                projectDirectory,
-                workingDirectory: workingDirectory
-            )
-        }
     }
 
     private func validateMove(

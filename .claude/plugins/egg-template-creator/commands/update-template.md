@@ -50,7 +50,9 @@ Based on the user's description, identify which type(s) of changes are needed:
 | Change Type | Description |
 |-------------|-------------|
 | Add file | Add a new template file with macro placeholders |
+| Add Stencil file | Add a `.stencil` file for conditional/loop logic |
 | Modify file | Update content or placeholders in existing file |
+| Convert to Stencil | Convert a Native file to Stencil for advanced logic |
 | Remove file | Delete a template file |
 | Rename file | Change filename (may include macro placeholders) |
 | Add directory | Create new directory structure |
@@ -154,8 +156,22 @@ Before making changes, verify:
 #### Adding Template Files
 
 1. Determine file location within template directory
-2. Create file with appropriate macro placeholders
-3. Consider adding to exclude list if conditional
+2. Decide on template engine:
+   - **Native** (`.swift`, `.txt`, etc.): Simple `___MACRO___` substitution
+   - **Stencil** (`.stencil` extension): For conditionals (`{% if %}`), loops (`{% for %}`)
+3. Create file with appropriate syntax:
+   - Native: `___MACRO_NAME___` placeholders
+   - Stencil: `{{ ___MACRO_NAME___ }}` for output, `{% if %}` for conditions
+4. Consider adding to exclude list if conditional
+
+#### Converting to Stencil
+
+When user needs to add conditional logic or loops to an existing file:
+
+1. Rename the file to add `.stencil` extension (e.g., `App.swift` → `App.swift.stencil`)
+2. Convert `___MACRO___` placeholders to `{{ ___MACRO___ }}`
+3. Add conditional or loop syntax as needed
+4. The `.stencil` extension is automatically removed after rendering
 
 #### Modifying Lifecycle Hooks
 
@@ -311,6 +327,40 @@ I'll create:
 [Validates template]
 ```
 
+### Example 6: Add Stencil file with conditionals
+
+```
+User: /update-template SwiftPackage Add conditional async support
+
+Claude: I'll add conditional async support using Stencil.
+
+[Reads current template structure]
+[Checks for existing ___USE_ASYNC___ macro or suggests adding it]
+
+I'll create a Stencil file with async conditionals:
+- main.swift.stencil (with {% if ___USE_ASYNC___ %} blocks)
+
+[Creates Stencil template file]
+[Validates template]
+```
+
+### Example 7: Convert Native to Stencil
+
+```
+User: /update-template iOSApp I need to add loop for importing multiple modules
+
+Claude: I'll convert the file to Stencil to support loops.
+
+[Reads current App.swift]
+
+Converting App.swift → App.swift.stencil:
+- Change ___MODULE___ to {{ ___MODULE___ }}
+- Add {% for module in ___MODULES___ %}...{% endfor %} for imports
+
+[Renames and updates file]
+[Validates template]
+```
+
 ## Tips
 
 - Always validate after changes
@@ -318,6 +368,8 @@ I'll create:
 - For complex changes, break into smaller steps
 - Consider backwards compatibility if template is shared
 - Use `egg template detail` to verify changes from user perspective
+- Use Stencil (`.stencil` files) for conditionals and loops instead of duplicating files
+- When converting to Stencil, remember to change `___MACRO___` to `{{ ___MACRO___ }}`
 
 ## Error Handling
 

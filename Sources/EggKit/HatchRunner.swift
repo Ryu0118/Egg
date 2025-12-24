@@ -24,6 +24,7 @@ package struct HatchRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         projectDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
@@ -52,6 +53,7 @@ package struct HatchRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths,
             noora: noora
         )
     }

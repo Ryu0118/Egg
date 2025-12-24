@@ -4,6 +4,7 @@ import Noora
 package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     case global
     case project(_ projectDirectory: URL, workingDirectory: URL)
+    case custom(_ path: URL)
 
     package var name: String {
         switch self {
@@ -11,6 +12,8 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
             "global"
         case .project:
             "project"
+        case .custom:
+            "custom"
         }
     }
 
@@ -20,6 +23,8 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
             "Create globally (\(dir))"
         case .project:
             "Create in project (\(dir))"
+        case .custom:
+            "Custom (\(dir))"
         }
     }
 
@@ -30,6 +35,8 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
         case let .project(projectDirectory, workingDirectory):
             let relativePath = projectDirectory.relativePath(from: workingDirectory)
             return relativePath + "/.eggs"
+        case let .custom(path):
+            return path.path(percentEncoded: false)
         }
     }
 
@@ -41,6 +48,14 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
             return .project(projectDirectory, workingDirectory: workingDirectory)
         }
         return nil
+    }
+
+    /// Returns true if this location type represents a custom search path
+    package var isCustom: Bool {
+        if case .custom = self {
+            return true
+        }
+        return false
     }
 }
 

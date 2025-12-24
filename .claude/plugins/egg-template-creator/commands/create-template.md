@@ -47,7 +47,7 @@ For each macro, collect:
   - `boolean`: optional default (true/false)
   - `choice`: required choices list, optional default
   - `choices`: required choices list, optional default (array format)
-  - `array`: optional default, optional validate, optional format expression
+  - `array`: optional default, optional validate
   - `path`: optional default
 
 Ask if user wants to add more macros. Repeat until done.
@@ -84,13 +84,24 @@ If user selected full scaffolding:
    - What directories should be created?
    - What files should be included?
    - Which files should contain macro placeholders?
+   - Which files need conditional logic or loops? (These should use `.stencil` extension)
 
 2. Create the directory structure with placeholder files
 
-3. Add macro placeholders (`___MACRO_NAME___`) to:
-   - Filenames that should be renamed
-   - Directory names that should be renamed
-   - File contents where values should be substituted
+3. For **Native template files** (simple variable substitution):
+   - Add macro placeholders (`___MACRO_NAME___`) to filenames, directory names, and file contents
+
+4. For **Stencil template files** (conditional logic, loops):
+   - Use `.stencil` extension (e.g., `App.swift.stencil`)
+   - Use `{{ ___MACRO_NAME___ }}` for variable output
+   - Use `{% if ___CONDITION___ %}...{% endif %}` for conditionals
+   - Use `{% for item in ___ARRAY___ %}...{% endfor %}` for loops
+   - The `.stencil` extension is removed after rendering
+
+**When to recommend Stencil:**
+- Conditional code blocks (e.g., async vs sync implementation)
+- Generating repeated code from arrays (e.g., import statements)
+- Complex template logic with multiple conditions
 
 ### Step 7: Validation
 
@@ -129,8 +140,9 @@ my-egg-templates/           # Git repository root
 ├── README.md               # Document available templates
 ├── TemplateA/              # Each template is a top-level directory
 │   ├── config.yml          # Required: template configuration
-│   ├── ___MACRO_NAME___.swift
-│   └── ...                 # Template files with ___MACRO___ placeholders
+│   ├── ___MACRO_NAME___.swift           # Native template
+│   ├── App.swift.stencil                # Stencil template (for conditionals/loops)
+│   └── ...
 ├── TemplateB/
 │   ├── config.yml
 │   └── ...
@@ -144,6 +156,7 @@ my-egg-templates/           # Git repository root
 - Directory name = template name (used by `--template` filter)
 - Each template directory MUST contain `config.yml`
 - Template files use `___MACRO_NAME___` placeholders in filenames and content
+- Files with `.stencil` extension use Stencil syntax for conditionals and loops
 
 **Installation examples:**
 ```bash

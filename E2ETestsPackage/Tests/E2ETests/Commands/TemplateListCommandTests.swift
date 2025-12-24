@@ -17,6 +17,7 @@ struct TemplateListCommandTests {
         #expect(result.stdout.contains("--location"))
         #expect(result.stdout.contains("--project-directory"))
         #expect(result.stdout.contains("--hide-description"))
+        #expect(result.stdout.contains("--template-search-paths"))
     }
 
     @Test(arguments: TestCase.allCases)
@@ -27,17 +28,21 @@ struct TemplateListCommandTests {
 
         let homeDir = tempDir.appending(path: "home")
         let projectDir = tempDir.appending(path: "project")
+        let customDir = tempDir.appending(path: "custom")
         try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: customDir, withIntermediateDirectories: true)
 
         // Setup templates
         try setupTemplates(
             testCase.templates,
             homeDir: homeDir,
-            projectDir: projectDir
+            projectDir: projectDir,
+            customDir: customDir
         )
 
-        let arguments = testCase.buildArguments(projectDir: projectDir)
+        let customDirForArgs = testCase.useCustomSearchPath ? customDir : nil
+        let arguments = testCase.buildArguments(projectDir: projectDir, customDir: customDirForArgs)
         let environment = ["HOME": homeDir.path(percentEncoded: false)]
 
         let result = try await runner.run(
@@ -63,7 +68,8 @@ struct TemplateListCommandTests {
     private func setupTemplates(
         _ templates: [TestCase.TemplateSetup],
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
+        customDir: URL
     ) throws {
         for template in templates {
             let templateDir: URL
@@ -72,6 +78,8 @@ struct TemplateListCommandTests {
                 templateDir = homeDir.appending(path: ".eggs/\(template.name)")
             case .project:
                 templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+            case .custom:
+                templateDir = customDir.appending(path: template.name)
             }
 
             try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -95,10 +103,29 @@ struct TemplateListCommandTests {
         let hideDescription: Bool
         let expectedOutputContains: [String]
         let expectedOutputNotContains: [String]
+        let useCustomSearchPath: Bool
 
         var testDescription: String { description }
 
-        func buildArguments(projectDir: URL) -> [String] {
+        init(
+            description: String,
+            templates: [TemplateSetup],
+            locationFilter: Location?,
+            hideDescription: Bool,
+            expectedOutputContains: [String],
+            expectedOutputNotContains: [String],
+            useCustomSearchPath: Bool = false
+        ) {
+            self.description = description
+            self.templates = templates
+            self.locationFilter = locationFilter
+            self.hideDescription = hideDescription
+            self.expectedOutputContains = expectedOutputContains
+            self.expectedOutputNotContains = expectedOutputNotContains
+            self.useCustomSearchPath = useCustomSearchPath
+        }
+
+        func buildArguments(projectDir: URL, customDir: URL? = nil) -> [String] {
             var args = ["template", "list"]
             args += ["--project-directory", projectDir.path(percentEncoded: false)]
 
@@ -107,6 +134,9 @@ struct TemplateListCommandTests {
             }
             if hideDescription {
                 args.append("--hide-description")
+            }
+            if let customDir {
+                args += ["--template-search-paths", customDir.path(percentEncoded: false)]
             }
             return args
         }
@@ -119,7 +149,13 @@ struct TemplateListCommandTests {
         struct TemplateSetup {
             let name: String
             let description: String
-            let location: Location
+            let location: LocationKind
+
+            enum LocationKind {
+                case global
+                case project
+                case custom
+            }
         }
 
         static let allCases: [TestCase] = [
@@ -200,6 +236,44 @@ struct TemplateListCommandTests {
                 hideDescription: true,
                 expectedOutputContains: ["TestTemplate"],
                 expectedOutputNotContains: ["UniqueDescriptionText"]
+            ),
+
+            // Custom search paths tests
+            TestCase(
+                description: "lists template from custom search path",
+                templates: [
+                    TemplateSetup(name: "CustomTemplate", description: "A custom path template", location: .custom),
+                ],
+                locationFilter: nil,
+                hideDescription: false,
+                expectedOutputContains: ["CustomTemplate"],
+                expectedOutputNotContains: [],
+                useCustomSearchPath: true
+            ),
+            TestCase(
+                description: "lists templates from all locations including custom",
+                templates: [
+                    TemplateSetup(name: "GlobalTemplate", description: "Global template", location: .global),
+                    TemplateSetup(name: "ProjectTemplate", description: "Project template", location: .project),
+                    TemplateSetup(name: "CustomTemplate", description: "Custom template", location: .custom),
+                ],
+                locationFilter: nil,
+                hideDescription: false,
+                expectedOutputContains: ["GlobalTemplate", "ProjectTemplate", "CustomTemplate"],
+                expectedOutputNotContains: [],
+                useCustomSearchPath: true
+            ),
+            TestCase(
+                description: "does not list custom template when search path not provided",
+                templates: [
+                    TemplateSetup(name: "GlobalTemplate", description: "Global template", location: .global),
+                    TemplateSetup(name: "CustomOnlyTemplate", description: "Custom template", location: .custom),
+                ],
+                locationFilter: nil,
+                hideDescription: false,
+                expectedOutputContains: ["GlobalTemplate"],
+                expectedOutputNotContains: ["CustomOnlyTemplate"],
+                useCustomSearchPath: false
             ),
         ]
     }

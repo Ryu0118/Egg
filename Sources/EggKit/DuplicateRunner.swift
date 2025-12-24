@@ -21,6 +21,7 @@ package struct DuplicateRunner {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora()
     ) {
@@ -37,7 +38,8 @@ package struct DuplicateRunner {
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 

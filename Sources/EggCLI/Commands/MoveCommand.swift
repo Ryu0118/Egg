@@ -5,7 +5,7 @@ import Foundation
 import Noora
 
 package extension EggCommand.TemplateCommand {
-    struct MoveCommand: AsyncParsableCommand, HasProjectDirectory {
+    struct MoveCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
         package static let configuration = CommandConfiguration(
             commandName: "move",
             abstract: "Move a template between project and global locations.",
@@ -41,6 +41,9 @@ package extension EggCommand.TemplateCommand {
         @Option(name: .long, help: "Directory containing the template to move (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
 
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
+
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -54,6 +57,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager
                 ).run()
             } catch {
@@ -72,6 +76,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
                     homeDirectory: resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager
                 ).validate()
             } catch {

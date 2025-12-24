@@ -19,6 +19,7 @@ struct HatchCommandTests {
         #expect(result.stdout.contains("--no-sandbox"))
         #expect(result.stdout.contains("--apply-changes"))
         #expect(result.stdout.contains("--project-directory"))
+        #expect(result.stdout.contains("--template-search-paths"))
     }
 
     @Test(arguments: TestCase.allCases)
@@ -30,16 +31,19 @@ struct HatchCommandTests {
         let homeDir = tempDir.appending(path: "home")
         let projectDir = tempDir.appending(path: "project")
         let outputDir = tempDir.appending(path: "output")
+        let customDir = tempDir.appending(path: "custom")
         try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: outputDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: customDir, withIntermediateDirectories: true)
 
         // Setup template
         if let template = testCase.template {
             try setupTemplate(
                 template,
                 homeDir: homeDir,
-                projectDir: projectDir
+                projectDir: projectDir,
+                customDir: customDir
             )
         }
 
@@ -51,7 +55,8 @@ struct HatchCommandTests {
             try existingFile.content.write(to: filePath, atomically: true, encoding: .utf8)
         }
 
-        let arguments = testCase.buildArguments(projectDir: projectDir, outputDir: outputDir)
+        let customDirForArgs = testCase.useCustomSearchPath ? customDir : nil
+        let arguments = testCase.buildArguments(projectDir: projectDir, outputDir: outputDir, customDir: customDirForArgs)
         let environment = ["HOME": homeDir.path(percentEncoded: false)]
 
         let result = try await runner.run(
@@ -77,7 +82,8 @@ struct HatchCommandTests {
     private func setupTemplate(
         _ template: TestCase.TemplateSetup,
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
+        customDir: URL
     ) throws {
         let templateDir: URL
         switch template.location {
@@ -85,6 +91,8 @@ struct HatchCommandTests {
             templateDir = homeDir.appending(path: ".eggs/\(template.name)")
         case .project:
             templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+        case .custom:
+            templateDir = customDir.appending(path: template.name)
         }
 
         try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -153,10 +161,33 @@ struct HatchCommandTests {
         let existingFiles: [FileSetup]
         let expected: Expected
         let verification: Verification?
+        let useCustomSearchPath: Bool
 
         var testDescription: String { description }
 
-        func buildArguments(projectDir: URL, outputDir _: URL) -> [String] {
+        init(
+            description: String,
+            template: TemplateSetup?,
+            templateName: String,
+            macros: [String: [String]],
+            flags: Flags,
+            existingFiles: [FileSetup],
+            expected: Expected,
+            verification: Verification?,
+            useCustomSearchPath: Bool = false
+        ) {
+            self.description = description
+            self.template = template
+            self.templateName = templateName
+            self.macros = macros
+            self.flags = flags
+            self.existingFiles = existingFiles
+            self.expected = expected
+            self.verification = verification
+            self.useCustomSearchPath = useCustomSearchPath
+        }
+
+        func buildArguments(projectDir: URL, outputDir _: URL, customDir: URL? = nil) -> [String] {
             // Order: hatch <template-name> [options] [flags] [macros...]
             // Flags must come BEFORE macros (captureForPassthrough captures everything after)
             var args = ["hatch", templateName]
@@ -164,6 +195,11 @@ struct HatchCommandTests {
             // Options first
             args += ["--project-directory", projectDir.path(percentEncoded: false)]
             args += ["--picker", "text"]
+
+            // Add custom search paths if provided
+            if let customDir {
+                args += ["--template-search-paths", customDir.path(percentEncoded: false)]
+            }
 
             // Then flags
             if flags.noStaging {
@@ -189,9 +225,10 @@ struct HatchCommandTests {
             return args
         }
 
-        enum Location: String {
+        enum Location {
             case global
             case project
+            case custom
         }
 
         enum Expected {
@@ -273,6 +310,9 @@ struct HatchCommandTests {
             stencilBasicRendering,
             stencilConditionalRendering,
             stencilLoopRendering,
+            // Custom search paths tests
+            customSearchPathTemplate,
+            customSearchPathTemplateNotFoundWithoutFlag,
         ]
 
         // Basic template execution without macros
@@ -585,6 +625,66 @@ struct HatchCommandTests {
                 ],
                 unexpectedFiles: ["Platforms.swift.stencil"]
             )
+        )
+
+        // MARK: - Custom Search Paths Tests
+
+        // Template in custom search path
+        static let customSearchPathTemplate = TestCase(
+            description: "executes template from custom search path",
+            template: TemplateSetup(
+                name: "CustomPathTemplate",
+                location: .custom,
+                configYaml: """
+                name: CustomPathTemplate
+                description: A template in custom search path
+                macros:
+                  - name: ___APP_NAME___
+                    description: App name
+                    type: string
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(path: "___APP_NAME___.swift", content: "// ___APP_NAME___ from custom path\n"),
+                ]
+            ),
+            templateName: "CustomPathTemplate",
+            macros: ["APP-NAME": ["MyCustomApp"]],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("MyCustomApp.swift", contentContains: "MyCustomApp from custom path"),
+                ]
+            ),
+            useCustomSearchPath: true
+        )
+
+        // Template not found when custom path not provided
+        static let customSearchPathTemplateNotFoundWithoutFlag = TestCase(
+            description: "fails when template only in custom path but flag not provided",
+            template: TemplateSetup(
+                name: "CustomOnlyTemplate",
+                location: .custom,
+                configYaml: """
+                name: CustomOnlyTemplate
+                description: A template only in custom path
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(path: "file.txt", content: "content"),
+                ]
+            ),
+            templateName: "CustomOnlyTemplate",
+            macros: [:],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .failure(errorContains: "not found"),
+            verification: nil,
+            useCustomSearchPath: false
         )
     }
 }

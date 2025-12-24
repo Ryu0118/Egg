@@ -17,6 +17,7 @@ struct TemplateDeleteCommandTests {
         #expect(result.stdout.contains("<template-name>"))
         #expect(result.stdout.contains("--force"))
         #expect(result.stdout.contains("--project-directory"))
+        #expect(result.stdout.contains("--template-search-paths"))
     }
 
     @Test(arguments: TestCase.allCases)

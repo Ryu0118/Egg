@@ -18,6 +18,7 @@ package struct DeleteRunner {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora()
     ) {
@@ -35,14 +36,17 @@ package struct DeleteRunner {
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
     package func run() async throws {
         switch mode {
         case .interactive:
-            let options = try await templatesFinder.listWithLocations()
+            let allOptions = try await templatesFinder.listWithLocations()
+            // Filter out templates from custom paths (they are read-only)
+            let options = allOptions.filter { !$0.location.isCustom }
 
             guard !options.isEmpty else {
                 throw Error.noTemplatesFound

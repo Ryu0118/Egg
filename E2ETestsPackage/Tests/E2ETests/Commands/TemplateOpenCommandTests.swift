@@ -13,5 +13,6 @@ struct TemplateOpenCommandTests {
         #expect(result.stdout.contains("USAGE: egg template open"))
         #expect(result.stdout.contains("<template-name>"))
         #expect(result.stdout.contains("--project-directory"))
+        #expect(result.stdout.contains("--template-search-paths"))
     }
 }

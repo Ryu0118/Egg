@@ -7,6 +7,7 @@ package struct DeleteArgumentsValidator {
     private let homeDirectory: URL
     private let projectDirectory: URL
     private let workingDirectory: URL
+    private let additionalSearchPaths: [URL]
     private let fileManager: any FileManagerProtocol
 
     package init(
@@ -14,18 +15,21 @@ package struct DeleteArgumentsValidator {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
@@ -35,23 +39,24 @@ package struct DeleteArgumentsValidator {
             return .interactive
         }
 
-        // Check in both locations
+        // Check in all locations (custom, global, project)
         guard let path = try await templatesFinder.validTemplateDirectory(templateName) else {
             throw Error.templateNotFound(name: templateName)
         }
 
         // Determine which location it's in
-        let templateLocationInstance = TemplateLocation(
-            homeDirectory: homeDirectory
-        )
-        let globalPath = templateLocationInstance.template(templateName, type: .global)
-        let templateLocation = if fileManager.fileExists(atPath: globalPath.path) && path == globalPath {
-            TemplateLocationType.global
-        } else {
-            TemplateLocationType.project(
-                projectDirectory,
+        let templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+            .determineLocation(
+                templateName: templateName,
+                templatePath: path,
+                additionalSearchPaths: additionalSearchPaths,
+                projectDirectory: projectDirectory,
                 workingDirectory: workingDirectory
             )
+
+        // Block deletion from custom paths
+        if templateLocation.isCustom {
+            throw Error.cannotDeleteFromCustomPath(name: templateName)
         }
 
         return .direct(name: templateName, path: path.path, location: templateLocation)
@@ -59,11 +64,14 @@ package struct DeleteArgumentsValidator {
 
     enum Error: LocalizedError {
         case templateNotFound(name: String)
+        case cannotDeleteFromCustomPath(name: String)
 
         var errorDescription: String? {
             switch self {
             case let .templateNotFound(name):
                 return "Template '\(name)' not found"
+            case let .cannotDeleteFromCustomPath(name):
+                return "Cannot delete template '\(name)' from custom search path. Templates in custom paths are read-only."
             }
         }
     }

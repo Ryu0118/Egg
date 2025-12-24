@@ -20,7 +20,6 @@ macros:                           # User input variables (optional)
     default: string (optional)
     validate: regex (optional)    # Only for string/array types
     choices: [string] (optional)  # Required for choice/choices types
-    format: js-expression (opt)   # Only for array type
 
 pre_hatch:                        # Steps before template expansion (optional)
   - id: step-id (optional)        # Alphanumeric, hyphens, underscores
@@ -48,7 +47,7 @@ post_hatch:                       # Steps after template expansion (optional)
 | `boolean` | true/false selection | name, description | default ("true"/"false") |
 | `choice` | Single selection from list | name, description, choices | default (must be in choices) |
 | `choices` | Multiple selection from list | name, description, choices | default (array format) |
-| `array` | Free-form array input | name, description | default, validate, format |
+| `array` | Free-form array input | name, description | default, validate |
 | `path` | File/directory path | name, description | default |
 
 ### Macro Name Format
@@ -63,20 +62,92 @@ These are built-in and cannot be redefined:
 - `___TEMPLATE_DIR___` - Template source directory
 - `___OUTPUT_DIR___` - Expansion output directory
 
-### Array Format Expression
+## Template Engines
 
-For `array` type macros, the `format` field transforms array values using JavaScript:
+egg supports two template engines, selected by file extension:
 
-```yaml
-- name: ___PLATFORMS___
-  type: array
-  default: '["iOS18", "macOS15"]'
-  format: '$elements.map(e => `.${e}`).join(", ")'
+| File Extension | Engine | Variable Syntax |
+|----------------|--------|-----------------|
+| `*.swift`, `*.txt`, etc. | Native | `___MACRO___`, `${{ outputs }}` |
+| `*.stencil` | Stencil | `{{ ___MACRO___ }}`, `{% if %}`, `{% for %}` |
+
+### Native Engine
+
+The default engine for files without `.stencil` extension:
+- `___MACRO___` - Replaced with macro value
+- `${{ pre_hatch.step.outputs.key }}` - Replaced with step output value
+
+```swift
+// main.swift (Native)
+// Project: ___PROJECT_NAME___
+import Foundation
+print("Hello from ___PROJECT_NAME___!")
 ```
 
-- Access input array via `$elements`
-- Must return a string
-- Evaluated by JavaScriptCore
+### Stencil Engine
+
+For files with `.stencil` extension (removed after rendering):
+
+```swift
+// App.swift.stencil → App.swift (after rendering)
+// Project: {{ ___PROJECT_NAME___ }}
+// Version: {{ pre_hatch.setup.outputs.version }}
+{% for module in ___MODULES___ %}
+import {{ module }}
+{% endfor %}
+
+{% if ___USE_ASYNC___ %}
+@main
+struct {{ ___PROJECT_NAME___ }}App {
+    static func main() async {
+        print("Hello (async)")
+    }
+}
+{% else %}
+@main
+struct {{ ___PROJECT_NAME___ }}App {
+    static func main() {
+        print("Hello")
+    }
+}
+{% endif %}
+```
+
+**Stencil Syntax:**
+- `{{ variable }}` - Output variable value
+- `{% if condition %}...{% endif %}` - Conditional
+- `{% for item in array %}...{% endfor %}` - Loop
+- Operators: `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+
+**Variable Access in Stencil:**
+- Macros: `{{ ___MACRO_NAME___ }}`
+- Step outputs: `{{ pre_hatch.step_id.outputs.key }}` (no `$` prefix, unlike Native)
+- In conditions (no braces): `{% if ___USE_ASYNC___ %}`
+
+**Step Outputs Format Comparison:**
+
+| Engine | Syntax | Example |
+|--------|--------|---------|
+| Native (incl. config.yml) | `${{ phase.step.outputs.key }}` | `${{ pre_hatch.setup.outputs.version }}` |
+| Stencil | `{{ phase.step.outputs.key }}` | `{{ pre_hatch.setup.outputs.version }}` |
+
+**When to Use Stencil:**
+- Conditional code blocks (`{% if %}`)
+- Repeated code from arrays (`{% for %}`)
+- Complex template logic
+
+### Array Formatting with Stencil
+
+To format arrays (e.g., generate import statements), use Stencil instead of inline formatting:
+
+```swift
+// imports.swift.stencil
+{% for module in ___MODULES___ %}
+import {{ module }}
+{% endfor %}
+```
+
+This replaces the deprecated `format` field approach.
 
 ## Lifecycle Hooks
 
@@ -159,7 +230,6 @@ In template files (including filenames and directory names):
 | Macro referenced but not defined | Using undefined macro | Define macro in `macros` section |
 | Condition must evaluate to boolean | `if` expression returns non-boolean | Ensure expression returns true/false |
 | 'choices' required for choice type | Missing choices list | Add `choices: [...]` field |
-| 'format' only valid for array type | format on non-array macro | Remove format or change type to array |
 
 ## Example: iOS App Template
 

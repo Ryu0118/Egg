@@ -8,6 +8,7 @@ package struct DetailArgumentsValidator {
     private let homeDirectory: URL
     private let projectDirectory: URL
     private let workingDirectory: URL
+    private let additionalSearchPaths: [URL]
     private let fileManager: any FileManagerProtocol
 
     package init(
@@ -16,6 +17,7 @@ package struct DetailArgumentsValidator {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
@@ -23,12 +25,14 @@ package struct DetailArgumentsValidator {
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
@@ -38,34 +42,19 @@ package struct DetailArgumentsValidator {
         }
 
         let template = try await templatesFinder.fetchTemplate(templateName)
-        let templateLocation = try determineLocation(
-            templateName: templateName,
-            templatePath: template.path
-        )
+        let templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+            .determineLocation(
+                templateName: templateName,
+                templatePath: template.path,
+                additionalSearchPaths: additionalSearchPaths,
+                projectDirectory: projectDirectory,
+                workingDirectory: workingDirectory
+            )
 
         return .direct(
             template: template,
             location: templateLocation
         )
-    }
-
-    private func determineLocation(
-        templateName: String,
-        templatePath: URL
-    ) throws -> TemplateLocationType {
-        let templateLocationInstance = TemplateLocation(
-            homeDirectory: homeDirectory
-        )
-        let globalPath = templateLocationInstance.template(templateName, type: .global)
-
-        return if fileManager.exists(globalPath) && templatePath == globalPath {
-            TemplateLocationType.global
-        } else {
-            TemplateLocationType.project(
-                projectDirectory,
-                workingDirectory: workingDirectory
-            )
-        }
     }
 
     enum Error: LocalizedError {

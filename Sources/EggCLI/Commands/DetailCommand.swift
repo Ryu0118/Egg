@@ -5,7 +5,7 @@ import Foundation
 import Noora
 
 package extension EggCommand.TemplateCommand {
-    struct DetailCommand: AsyncParsableCommand, HasProjectDirectory {
+    struct DetailCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
         package static let configuration = CommandConfiguration(
             commandName: "detail",
             abstract: "Show detailed information about a template.",
@@ -34,6 +34,9 @@ package extension EggCommand.TemplateCommand {
         @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
 
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
+
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -48,6 +51,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager
                 ).run()
             } catch {
@@ -69,6 +73,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager
                 ).validate()
             } catch {

@@ -10,6 +10,7 @@ package struct DuplicateArgumentsValidator {
     private let homeDirectory: URL
     private let projectDirectory: URL
     private let workingDirectory: URL
+    private let additionalSearchPaths: [URL]
     private let fileManager: any FileManagerProtocol
     private let decoder = YAMLDecoder()
 
@@ -20,6 +21,7 @@ package struct DuplicateArgumentsValidator {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol
     ) {
         self.templateName = templateName
@@ -28,12 +30,14 @@ package struct DuplicateArgumentsValidator {
         self.homeDirectory = homeDirectory
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.fileManager = fileManager
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
         )
     }
 
@@ -63,31 +67,16 @@ package struct DuplicateArgumentsValidator {
             throw Error.templateNotFound(name: name)
         }
 
-        let sourceLocation = determineSourceLocation(
-            templateName: name,
-            sourcePath: sourcePath
-        )
-
-        return (sourcePath, sourceLocation)
-    }
-
-    private func determineSourceLocation(
-        templateName: String,
-        sourcePath: URL
-    ) -> TemplateLocationType {
-        let templateLocationInstance = TemplateLocation(
-            homeDirectory: homeDirectory
-        )
-        let globalPath = templateLocationInstance.template(templateName, type: .global)
-
-        return if fileManager.fileExists(atPath: globalPath.path(percentEncoded: false)) && sourcePath == globalPath {
-            TemplateLocationType.global
-        } else {
-            TemplateLocationType.project(
-                projectDirectory,
+        let sourceLocation = TemplateLocation(homeDirectory: homeDirectory)
+            .determineLocation(
+                templateName: name,
+                templatePath: sourcePath,
+                additionalSearchPaths: additionalSearchPaths,
+                projectDirectory: projectDirectory,
                 workingDirectory: workingDirectory
             )
-        }
+
+        return (sourcePath, sourceLocation)
     }
 
     private func readSourceConfig(at sourcePath: URL) throws -> Config {

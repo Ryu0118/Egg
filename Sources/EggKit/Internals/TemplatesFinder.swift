@@ -9,6 +9,7 @@ struct TemplatesFinder {
     private let projectDirectory: URL
     private let workingDirectory: URL
     private let noora: any Noorable
+    private let additionalSearchPaths: [URL]
 
     private let validator = ConfigValidator()
     private let decoder = YAMLDecoder()
@@ -18,11 +19,13 @@ struct TemplatesFinder {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
         noora: some Noorable = Noora()
     ) {
         self.fileManager = fileManager
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
         self.noora = noora
         location = TemplateLocation(
             homeDirectory: homeDirectory
@@ -50,10 +53,9 @@ struct TemplatesFinder {
     /// Finds a template by its config.yml name
     private func findTemplateByConfigName(_ name: String) async throws -> Template? {
         let templates = try await listAll(emitValidationErrorLog: false)
-        let allTemplates = templates.global + templates.project
 
-        // Find template where config.name matches
-        guard let template = allTemplates.first(where: { $0.config.name == name }) else {
+        // Find template where config.name matches (custom paths have priority)
+        guard let template = templates.all.first(where: { $0.config.name == name }) else {
             return nil
         }
 
@@ -62,6 +64,16 @@ struct TemplatesFinder {
     }
 
     func listAll(emitValidationErrorLog: Bool = true) async throws -> Templates {
+        // Collect templates from custom search paths (in order)
+        var customTemplates: [Template] = []
+        for path in additionalSearchPaths {
+            let templates = try await list(
+                for: .custom(path),
+                emitValidationErrorLog: emitValidationErrorLog
+            )
+            customTemplates.append(contentsOf: templates)
+        }
+
         let global = try await list(
             for: .global,
             emitValidationErrorLog: emitValidationErrorLog
@@ -73,7 +85,7 @@ struct TemplatesFinder {
             ),
             emitValidationErrorLog: emitValidationErrorLog
         )
-        return Templates(global: global, project: project)
+        return Templates(custom: customTemplates, global: global, project: project)
     }
 
     func list(
@@ -113,6 +125,15 @@ struct TemplatesFinder {
     }
 
     func validTemplateDirectory(_ name: String) throws -> URL? {
+        // Check additional search paths first (in order, highest priority)
+        for path in additionalSearchPaths {
+            let templateInCustom = location.template(name, type: .custom(path))
+            if fileManager.exists(templateInCustom) {
+                return templateInCustom
+            }
+        }
+
+        // Then check global and project locations
         let templateInGlobal = location.template(name, type: .global)
         let templateInProject = location.template(
             name,
@@ -135,6 +156,14 @@ struct TemplatesFinder {
     }
 
     func listWithLocations(emitValidationErrorLog: Bool = true) async throws -> [TemplateWithLocation] {
+        // Collect templates from custom search paths first (highest priority)
+        var customOptions: [TemplateWithLocation] = []
+        for path in additionalSearchPaths {
+            let templates = try await list(for: .custom(path), emitValidationErrorLog: emitValidationErrorLog)
+            let options = templates.map { TemplateWithLocation(template: $0, location: .custom(path)) }
+            customOptions.append(contentsOf: options)
+        }
+
         let globalTemplates = try await list(for: .global, emitValidationErrorLog: emitValidationErrorLog)
         let projectTemplates = try await list(
             for: .project(
@@ -155,7 +184,7 @@ struct TemplatesFinder {
             )
         }
 
-        return globalOptions + projectOptions
+        return customOptions + globalOptions + projectOptions
     }
 
     private func fetchTemplate(
@@ -212,7 +241,7 @@ struct TemplatesFinder {
         var errorDescription: String? {
             switch self {
             case let .noTemplatesFound(name):
-                "Template '\(name)' was not found in global or project templates."
+                "Template '\(name)' was not found in any search paths (custom, global, or project)."
             }
         }
     }

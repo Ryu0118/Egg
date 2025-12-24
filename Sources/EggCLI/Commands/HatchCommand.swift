@@ -5,7 +5,7 @@ import Foundation
 
 extension TemplatePickerStyle: ExpressibleByArgument {}
 
-package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
+package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
     package static let configuration = CommandConfiguration(
         commandName: "hatch",
         abstract: "Use a template to generate files with macro substitution.",
@@ -48,6 +48,9 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
     @Option(name: .long, help: "Template picker style: 'list' for interactive selection, 'text' for text input.")
     package var picker: TemplatePickerStyle = .list
 
+    @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+    package var templateSearchPaths: [String] = []
+
     // Use .allUnrecognized to capture only unrecognized options/flags as macros
     // This allows recognized flags like --no-staging to be parsed correctly
     @Argument(parsing: .allUnrecognized, help: "User-defined macro values format (e.g., --user-defined value).")
@@ -65,6 +68,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
             homeDirectory: resolveHomeDirectory(),
             projectDirectory: await resolveProjectDirectory(),
+            additionalSearchPaths: resolveTemplateSearchPaths(),
             fileManager: Self.fileManager,
             useStaging: !noStaging,
             overrideConflicts: overrideConflicts,
@@ -89,6 +93,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory {
                 projectDirectory: await resolveProjectDirectory(),
                 workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                 homeDirectory: resolveHomeDirectory(),
+                additionalSearchPaths: resolveTemplateSearchPaths(),
                 fileManager: Self.fileManager
             ).validate()
         } catch {

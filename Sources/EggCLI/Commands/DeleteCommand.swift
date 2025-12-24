@@ -5,7 +5,7 @@ import Foundation
 import Noora
 
 package extension EggCommand.TemplateCommand {
-    struct DeleteCommand: AsyncParsableCommand, HasProjectDirectory {
+    struct DeleteCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
         package static let configuration = CommandConfiguration(
             commandName: "delete",
             abstract: "Delete a template.",
@@ -32,6 +32,9 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Delete the template without confirmation.")
         package var force: Bool = false
 
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
+
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -45,6 +48,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: await resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager
                 ).run()
             } catch {
@@ -61,6 +65,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
                     homeDirectory: resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager
                 ).validate()
             } catch {

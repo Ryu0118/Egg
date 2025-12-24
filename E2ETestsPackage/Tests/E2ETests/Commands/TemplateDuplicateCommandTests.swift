@@ -18,6 +18,7 @@ struct TemplateDuplicateCommandTests {
         #expect(result.stdout.contains("--name"))
         #expect(result.stdout.contains("--description"))
         #expect(result.stdout.contains("--project-directory"))
+        #expect(result.stdout.contains("--template-search-paths"))
     }
 
     @Test(arguments: TestCase.allCases)
