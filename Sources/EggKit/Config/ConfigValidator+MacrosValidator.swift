@@ -255,21 +255,10 @@ extension ConfigValidator {
         private func validateFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
             var errors: [Error] = []
 
-            errors += validateFormatFieldCompatibility(macro, context: context)
             errors += validateChoicesFieldCompatibility(macro, context: context)
             errors += validateValidateFieldCompatibility(macro, context: context)
 
             return errors
-        }
-
-        private func validateFormatFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
-            guard macro.format != nil else { return [] }
-
-            if macro.type != .array {
-                return [.formatOnlyValidForArrayType(context: context, name: macro.name)]
-            }
-
-            return validateFormatExpression(macro.format!, macro: macro, context: context).asErrors
         }
 
         private func validateChoicesFieldCompatibility(_ macro: Config.Macro, context: String) -> [Error] {
@@ -292,16 +281,6 @@ extension ConfigValidator {
             }
 
             return []
-        }
-
-        private func validateFormatExpression(_ format: String, macro: Config.Macro, context: String) -> Error? {
-            let evaluator = ArrayFormatEvaluator()
-            do {
-                _ = try evaluator.evaluate(format: format, values: ["test"])
-                return nil
-            } catch {
-                return .invalidFormatExpression(context: context, name: macro.name, format: format)
-            }
         }
 
         private func validateMacroReferencesInText(_ text: String, definedMacroNames: Set<String>, context: String) -> [Error] {

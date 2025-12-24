@@ -20,6 +20,7 @@ let package = Package(
         .package(url: "https://github.com/jpsim/Yams", from: "6.2.0"),
         .package(url: "https://github.com/mtj0928/swift-async-operations", from: "0.4.0"),
         .package(url: "https://github.com/tuist/FileSystem", from: "0.13.47"),
+        .package(url: "https://github.com/stencilproject/Stencil", from: "0.15.1"),
     ],
     targets: [
         .executableTarget(
@@ -48,6 +49,7 @@ let package = Package(
                 .product(name: "Noora", package: "Noora"),
                 .product(name: "Glob", package: "FileSystem"),
                 .product(name: "AsyncOperations", package: "swift-async-operations"),
+                .product(name: "Stencil", package: "Stencil"),
             ]
         ),
         .testTarget(

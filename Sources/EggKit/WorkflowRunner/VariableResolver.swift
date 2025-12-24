@@ -27,12 +27,11 @@ struct VariableResolver {
     ///
     /// - Parameter text: Text containing variable references to resolve
     /// - Returns: Text with all variables resolved
-    /// - Throws: `LifecycleStepError.undefinedOutputReference` if an output reference cannot be resolved,
-    ///           `ArrayFormatError` if array format evaluation fails
+    /// - Throws: `LifecycleStepError.undefinedOutputReference` if an output reference cannot be resolved
     func resolve(_ text: String) async throws -> String {
         var result = resolveBuiltInMacros(text)
 
-        result = try resolveMacros(result)
+        result = resolveMacros(result)
 
         result = try await resolveStepOutputs(result)
 
@@ -45,11 +44,9 @@ struct VariableResolver {
     }
 
     /// Replaces all `___MACRO_NAME___` patterns with their resolved values.
-    ///
-    /// - Throws: `ArrayFormatError` if array format evaluation fails
-    private func resolveMacros(_ text: String) throws -> String {
-        try macros.reduce(text) { result, macro in
-            let stringValue = try MacroStringConverter.toShellString(
+    private func resolveMacros(_ text: String) -> String {
+        macros.reduce(text) { result, macro in
+            let stringValue = MacroStringConverter.toShellString(
                 macro.value,
                 workingDirectory: builtInMacroContext.workingDirectory,
                 homeDirectory: builtInMacroContext.homeDirectory

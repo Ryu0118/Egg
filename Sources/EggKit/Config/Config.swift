@@ -71,20 +71,13 @@ package struct Config: Codable, Equatable {
         /// Choices (required for choice/choices type)
         package let choices: [String]?
 
-        /// JavaScript format expression for array type.
-        ///
-        /// References input array via `$elements`. Evaluated by JavaScriptCore.
-        /// Example: `$elements.map(x => \`.${x}\`).join(", ")`
-        package let format: String?
-
         package init(
             name: String,
             description: String,
             type: MacroType = .string,
             default: String? = nil,
             validate: String? = nil,
-            choices: [String]? = nil,
-            format: String? = nil
+            choices: [String]? = nil
         ) {
             self.name = name
             self.description = description
@@ -92,7 +85,6 @@ package struct Config: Codable, Equatable {
             self.default = `default`
             self.validate = validate
             self.choices = choices
-            self.format = format
         }
     }
 

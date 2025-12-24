@@ -212,7 +212,7 @@ package struct MacroResolver {
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .array(values, format: macro.format)
+            value: .array(values)
         )
     }
 

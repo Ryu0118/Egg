@@ -112,7 +112,7 @@ struct VariableResolverTests {
                 description: "resolves array macro with comma-separated values",
                 input: "Platforms: ___PLATFORMS___",
                 macros: [
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"], format: nil)),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"])),
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Platforms: iOS, macOS, watchOS"),

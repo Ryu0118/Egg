@@ -237,7 +237,7 @@ struct ParsedMacroDefinitionValidator {
             return .choices(resolvedValues)
 
         case .array:
-            return .array(resolvedValues, format: configMacro.format)
+            return .array(resolvedValues)
 
         case .path:
             guard let value = resolvedValues.first, !value.isEmpty else { return nil }

@@ -444,6 +444,72 @@ struct TemplateExpanderTests {
                 override: false,
                 expectedError: .existingFilesWouldBeOverwritten(files: ["Sources/Module/File.swift"])
             ),
+
+            // MARK: - Stencil template processing
+            .success(
+                "processes .stencil file with Stencil engine",
+                templateSetup: [
+                    .file(path: "App.swift.stencil", content: "struct {{ ___NAME___ }}App {}"),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___NAME___", description: "", value: .string("My")),
+                ],
+                verifications: [
+                    .fileExists(path: "App.swift"),
+                    .fileNotExists(path: "App.swift.stencil"),
+                    .fileContent(path: "App.swift", expectedContent: "struct MyApp {}"),
+                ]
+            ),
+            .success(
+                "processes .stencil file with conditional",
+                templateSetup: [
+                    .file(path: "main.swift.stencil", content: "{% if ___ASYNC___ %}@main\nstruct App {\n    static func main() async {}\n}{% else %}print(\"Hello\"){% endif %}"),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___ASYNC___", description: "", value: .boolean(true)),
+                ],
+                verifications: [
+                    .fileContent(path: "main.swift", expectedContent: "@main\nstruct App {\n    static func main() async {}\n}"),
+                ]
+            ),
+            .success(
+                "processes .stencil file with loop",
+                templateSetup: [
+                    .file(path: "imports.swift.stencil", content: "{% for m in ___MODULES___ %}import {{ m }}\n{% endfor %}"),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___MODULES___", description: "", value: .array(["Foundation", "UIKit"])),
+                ],
+                verifications: [
+                    .fileContent(path: "imports.swift", expectedContent: "import Foundation\nimport UIKit\n"),
+                ]
+            ),
+            .success(
+                "processes .stencil file with step outputs",
+                templateSetup: [
+                    .file(path: "version.txt.stencil", content: "v{{ pre_hatch.setup.outputs.version }}"),
+                ],
+                stepOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.2.3"]),
+                ],
+                verifications: [
+                    .fileContent(path: "version.txt", expectedContent: "v1.2.3"),
+                ]
+            ),
+            .success(
+                "keeps native files alongside .stencil files",
+                templateSetup: [
+                    .file(path: "native.swift", content: "// ___NAME___"),
+                    .file(path: "template.swift.stencil", content: "// {{ ___NAME___ }}"),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___NAME___", description: "", value: .string("Test")),
+                ],
+                verifications: [
+                    .fileContent(path: "native.swift", expectedContent: "// Test"),
+                    .fileContent(path: "template.swift", expectedContent: "// Test"),
+                ]
+            ),
         ]
     }
 

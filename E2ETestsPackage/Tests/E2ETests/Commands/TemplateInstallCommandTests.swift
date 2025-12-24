@@ -6,13 +6,15 @@ import Testing
 struct TemplateInstallCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    // Test repository URL (HTTPS for CI compatibility with GITHUB_TOKEN)
+    // Test repository URL (HTTPS with token for CI, SSH for local development)
+    static let testRepoOwner = "Ryu0118"
+    static let testRepoName = "swift-egg-templates"
+
     static var testRepoURL: String {
-        let baseURL = "github.com/Ryu0118/swift-egg-templates.git"
         if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
-            return "https://x-access-token:\(token)@\(baseURL)"
+            return "https://x-access-token:\(token)@github.com/\(testRepoOwner)/\(testRepoName).git"
         }
-        return "https://\(baseURL)"
+        return "git@github.com:\(testRepoOwner)/\(testRepoName).git"
     }
     // Known templates in the test repository
     static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
@@ -418,7 +420,7 @@ struct TemplateInstallCommandTests {
             // Failure cases
             NetworkTestCase(
                 description: "fails with non-existent repository",
-                url: "https://github.com/nonexistent-user-12345/nonexistent-repo-67890",
+                url: "git@github.com:nonexistent-user-12345/nonexistent-repo-67890.git",
                 refOption: nil,
                 location: .global,
                 templateFilter: [],

@@ -30,7 +30,7 @@ ___PROJECT_NAME___/
 │       └── App.swift.stencil       # Stencil
 ```
 
-## 変数の形式と共存
+## 変数の形式
 
 ### 変数形式の整理
 
@@ -41,21 +41,19 @@ ___PROJECT_NAME___/
 | `{{ ___MACRO___ }}` | Stencil内でのマクロ出力 | `{{ ___PROJECT_NAME___ }}` |
 | `{% tag %}` | Stencilタグ（if, for等） | `{% if ___USE_ASYNC___ %}` |
 
-### 共存の仕組み
+### エンジン別の利用可否
 
-1. **`___MACRO___` と `{{ }}`**: 衝突しない（形式が異なる）
-2. **`${{ }}` と `{{ }}`**: `$`プレフィックスで区別可能
+| 形式 | Native / config.yml | Stencil (`.stencil`) |
+|------|:-------------------:|:--------------------:|
+| `___MACRO___` | ✅ | ❌ |
+| `${{ outputs }}` | ✅ | ❌ |
+| `{{ ___MACRO___ }}` | ❌ | ✅ |
+| `{{ phase.step.outputs.key }}` | ❌ | ✅ |
+| `{% if %}` / `{% for %}` | ❌ | ✅ |
 
-### 処理順序
-
-```
-1. BuiltInMacros解決 (___DATE___, ___UUID___ など)
-2. マクロ + Step outputs → Stencilコンテキストに変換
-3. Stencilレンダリング ({{ }}, {% if %}, {% for %})
-4. (Nativeファイルのみ) 従来の ___MACRO___ 置換 + ${{ }} 解決
-```
-
-**重要**: Stencilテンプレートでは、step outputsを先にStencilコンテキストに変換することで、`{% if %}` 内での条件評価が可能になる。
+**注意**:
+- Nativeファイルで`{{ }}`や`{% %}`を書いても**処理されない**（そのまま出力）
+- Stencilファイルで`___MACRO___`や`${{ }}`を書いても**処理されない**
 
 ## Stencilコンテキストへの変換
 
@@ -63,8 +61,7 @@ ___PROJECT_NAME___/
 
 マクロは `___MACRO___` 形式のみをStencilコンテキストに登録する：
 
-```swift
-// 変換例
+```
 ___PROJECT_NAME___ (string: "MyApp")
   → { "___PROJECT_NAME___": "MyApp" }
 
@@ -79,42 +76,31 @@ ___MODULES___ (choices: ["Foundation", "UIKit"])
 
 ### Step Outputsの変換
 
-Step outputsは `${{ phase.step.outputs.key }}` 形式から、Stencilで使いやすい形式に変換する：
+Step outputsはネストしたdictとしてStencilコンテキストに渡す：
 
-```swift
-// 変換例
-${{ pre_hatch.setup.outputs.version }}
-  → { "pre_hatch_setup_outputs_version": "1.0.0" }
+```yaml
+# config.yml
+pre_hatch:
+  - id: setup
+    run: |
+      echo "version=1.0.0"
+      echo "enabled=yes"
 ```
 
-**命名規則**: `.` を `_` に置換してフラットなキー名にする。
-
-### Stencilテンプレートでの使用例
-
-```swift
-struct {{ ___PROJECT_NAME___ }}App { }
-
-// Step outputsの使用
-// Version: {{ pre_hatch_setup_outputs_version }}
-
-// 条件分岐
-{% if ___USE_ASYNC___ %}
-@main
-struct {{ ___PROJECT_NAME___ }}App {
-    static func main() async { }
+```
+→ {
+    "pre_hatch": {
+        "setup": {
+            "outputs": {
+                "version": "1.0.0",
+                "enabled": "yes"
+            }
+        }
+    }
 }
-{% endif %}
-
-// ループ
-{% for module in ___MODULES___ %}
-import {{ module }}
-{% endfor %}
-
-// Step outputsを条件で使用
-{% if pre_hatch_check_outputs_enabled == "yes" %}
-// Feature enabled
-{% endif %}
 ```
+
+これによりStencil内で `{{ pre_hatch.setup.outputs.version }}` のようにアクセスできる。
 
 ## Stencilの条件式
 
@@ -137,15 +123,9 @@ Stencilでは `{% %}` タグ内で変数名をそのまま使用する（`{{ }}`
 | 比較 | `==`, `!=`, `<`, `<=`, `>`, `>=` |
 | 論理 | `and`, `or`, `not` |
 
-```swift
-{% if ___USE_ASYNC___ and ___MODULES___ %}
-{% if not ___DEBUG_MODE___ %}
-{% if ___COUNT___ > 0 or ___FORCE_ENABLE___ %}
-```
-
 ## アーキテクチャ
 
-### 新規コンポーネント
+### ファイル構成
 
 ```
 Sources/EggKit/
@@ -159,15 +139,13 @@ Sources/EggKit/
 │   └── VariableResolver.swift        # 変更なし
 ```
 
-### Protocol定義
+### インターフェース
 
 ```swift
-// TemplateEngine.swift
 package protocol TemplateEngine {
     func render(_ content: String, with context: TemplateContext) async throws -> String
 }
 
-// TemplateContext.swift
 package struct TemplateContext {
     let macros: [ResolvedMacro]
     let outputs: StepOutputsStorage
@@ -175,164 +153,55 @@ package struct TemplateContext {
 }
 ```
 
-### NativeTemplateEngine
+## 処理フロー
 
-現行の `VariableResolver` ロジックをラップ：
+### TemplateExpander.transformFile
 
-```swift
-// NativeTemplateEngine.swift
-package struct NativeTemplateEngine: TemplateEngine {
-    func render(_ content: String, with context: TemplateContext) async throws -> String {
-        let resolver = VariableResolver(
-            macros: context.macros,
-            outputs: context.outputs,
-            builtInMacroContext: context.builtInMacroContext
-        )
-        return try await resolver.resolve(content)
-    }
-}
+```
+1. ファイル読み込み
+   └─ Data → String (UTF-8)
+
+2. 拡張子チェック
+   ├─ .stencil → StencilTemplateEngine
+   └─ other   → NativeTemplateEngine
+
+3. engine.render() 実行
+
+4. ファイル書き込み（変更があれば）
+
+5. リネーム（.stencilの場合）
+   └─ App.swift.stencil → App.swift
 ```
 
-### StencilTemplateEngine
+### StencilTemplateEngine.render
 
-```swift
-// StencilTemplateEngine.swift
-import Stencil
+```
+1. BuiltInMacros解決
+   └─ ___DATE___ → "2025-12-24"
 
-package struct StencilTemplateEngine: TemplateEngine {
-    func render(_ content: String, with context: TemplateContext) async throws -> String {
-        // 1. BuiltInMacros解決
-        var result = BuiltInMacros.resolve(content, context: context.builtInMacroContext)
+2. Stencilコンテキスト構築
+   ├─ マクロ → { ___PROJECT_NAME___: "MyApp" }
+   └─ outputs → { pre_hatch: { setup: { outputs: { ... } } } }
 
-        // 2. Stencilコンテキスト構築（マクロ + step outputs）
-        let stencilContext = buildStencilContext(from: context)
-
-        // 3. Stencilレンダリング
-        let environment = Environment()
-        result = try environment.renderTemplate(string: result, context: stencilContext)
-
-        return result
-    }
-
-    private func buildStencilContext(from context: TemplateContext) async -> [String: Any] {
-        var dict: [String: Any] = [:]
-
-        // マクロを変換（___MACRO___ 形式のみ）
-        for macro in context.macros {
-            let value = convertMacroValue(macro.value)
-            dict[macro.name] = value   // ___PROJECT_NAME___
-        }
-
-        // Step outputsを変換
-        let allOutputs = await context.outputs.getAll()
-        for (phase, stepOutputs) in allOutputs {
-            for (stepId, outputs) in stepOutputs {
-                for (key, value) in outputs {
-                    // ${{ pre_hatch.setup.outputs.version }} → pre_hatch_setup_outputs_version
-                    let flatKey = "\(phase)_\(stepId)_outputs_\(key)"
-                        .replacingOccurrences(of: "-", with: "_")
-                    dict[flatKey] = value
-                }
-            }
-        }
-
-        return dict
-    }
-
-    private func convertMacroValue(_ value: ResolvedMacro.Value) -> Any {
-        switch value {
-        case .string(let s): return s
-        case .boolean(let b): return b
-        case .choice(let c): return c
-        case .choices(let c): return c
-        case .array(let a, _): return a
-        case .path(let p): return p.path
-        }
-    }
-}
+3. Stencilレンダリング
+   ├─ {{ variable }} → 値展開
+   ├─ {% if %} → 条件評価
+   └─ {% for %} → ループ展開
 ```
 
-### TemplateExpanderの修正
+### NativeTemplateEngine.render
 
-```swift
-// TemplateExpander.swift 修正箇所
-
-private func transformFile(
-    at path: URL,
-    substituting macros: [ResolvedMacro],
-    with outputs: StepOutputsStorage
-) async throws {
-    let data = try fileManager.readFile(at: path)
-    guard let text = String(data: data, encoding: .utf8) else { return }
-
-    let context = TemplateContext(
-        macros: macros,
-        outputs: outputs,
-        builtInMacroContext: builtInMacroContext
-    )
-
-    // 拡張子でエンジンを選択
-    let isStencil = path.pathExtension == "stencil"
-    let engine: any TemplateEngine = isStencil
-        ? StencilTemplateEngine()
-        : NativeTemplateEngine()
-
-    let transformed = try await engine.render(text, with: context)
-
-    // 内容が変わった場合のみ書き込み
-    if transformed != text {
-        try fileManager.writeText(transformed, at: path, encoding: .utf8)
-    }
-
-    // .stencil拡張子を除去してリネーム
-    if isStencil {
-        let newPath = path.deletingPathExtension()
-        try fileManager.moveItem(at: path, to: newPath)
-    }
-}
+```
+1. BuiltInMacros解決
+2. ___MACRO___ 置換
+3. ${{ outputs }} 解決
 ```
 
-### collectFilesToGenerateの修正
-
-`.stencil`ファイルは変換後のファイル名（`.stencil`除去後）として扱う：
+## 依存関係
 
 ```swift
-private func collectFilesToGenerate(...) async throws -> [String] {
-    // ...
-    for (absolutePath, relativePath) in allPaths {
-        // ...
-        let transformedPath = try await resolvingMacros(in: relativePath, ...)
-
-        // .stencil拡張子を除去した最終パス
-        let finalPath: String
-        if transformedPath.hasSuffix(".stencil") {
-            finalPath = String(transformedPath.dropLast(8))  // ".stencil" = 8文字
-        } else {
-            finalPath = transformedPath
-        }
-
-        result.append(finalPath)
-    }
-    // ...
-}
-```
-
-## Package.swift修正
-
-```swift
-dependencies: [
-    // 既存の依存関係...
-    .package(url: "https://github.com/stencilproject/Stencil", from: "0.15.1"),
-],
-targets: [
-    .target(
-        name: "EggKit",
-        dependencies: [
-            // 既存の依存関係...
-            .product(name: "Stencil", package: "Stencil"),
-        ]
-    ),
-]
+// Package.swift
+.package(url: "https://github.com/stencilproject/Stencil", from: "0.15.1")
 ```
 
 ## 使用例
@@ -345,38 +214,6 @@ my-template/
 ├── ___PROJECT_NAME___/
 │   ├── main.swift                  # Native
 │   └── App.swift.stencil           # Stencil
-```
-
-### config.yml
-
-```yaml
-name: Swift App Template
-description: Create a Swift application with optional async support
-
-macros:
-  - name: ___PROJECT_NAME___
-    type: string
-    description: "Project name"
-
-  - name: ___MODULES___
-    type: choices
-    description: "Select modules"
-    choices: [Foundation, UIKit, SwiftUI, Combine]
-    default: [Foundation]
-
-  - name: ___USE_ASYNC___
-    type: boolean
-    description: "Use async/await?"
-    default: false
-
-pre_hatch:
-  - id: setup
-    run: |
-      echo "version=1.0.0"
-      echo "feature_enabled=yes"
-
-hatch:
-  output: ./
 ```
 
 ### main.swift (Native)
@@ -393,221 +230,89 @@ print("Hello from ___PROJECT_NAME___!")
 ### App.swift.stencil (Stencil)
 
 ```swift
-// Project: {{ PROJECT_NAME }}
-// Version: {{ pre_hatch_setup_outputs_version }}
+// Project: {{ ___PROJECT_NAME___ }}
+// Version: {{ pre_hatch.setup.outputs.version }}
 
 import Foundation
-{% for module in MODULES %}
+{% for module in ___MODULES___ %}
 import {{ module }}
 {% endfor %}
 
-{% if USE_ASYNC %}
+{% if ___USE_ASYNC___ %}
 @main
-struct {{ PROJECT_NAME }}App {
+struct {{ ___PROJECT_NAME___ }}App {
     static func main() async {
-        print("Hello from {{ PROJECT_NAME }} (async)")
-        {% if pre_hatch_setup_outputs_feature_enabled == "yes" %}
-        print("Feature is enabled!")
-        {% endif %}
+        print("Hello from {{ ___PROJECT_NAME___ }} (async)")
     }
 }
 {% else %}
 @main
-struct {{ PROJECT_NAME }}App {
+struct {{ ___PROJECT_NAME___ }}App {
     static func main() {
-        print("Hello from {{ PROJECT_NAME }}")
+        print("Hello from {{ ___PROJECT_NAME___ }}")
     }
 }
 {% endif %}
 ```
 
-### 出力結果（例）
+## テストへの影響
 
-`PROJECT_NAME=MyApp`, `MODULES=[Foundation, UIKit]`, `USE_ASYNC=true` の場合：
+### 既存テスト
 
-**App.swift:**
-```swift
-// Project: MyApp
-// Version: 1.0.0
+| ファイル | 変更内容 |
+|---------|---------|
+| `TemplateExpanderTests.swift` | Stencil用テストケース追加 |
+| `ArrayFormatEvaluatorTests.swift` | `format`廃止後、削除 |
+| `VariableResolverArrayFormatTests.swift` | `format`廃止後、削除 |
+| `ConfigValidatorArrayFormatTests.swift` | `format`関連テスト削除 |
 
-import Foundation
-import Foundation
-import UIKit
+### 新規テスト
 
-@main
-struct MyAppApp {
-    static func main() async {
-        print("Hello from MyApp (async)")
-        print("Feature is enabled!")
-    }
-}
+| ファイル | 内容 |
+|---------|------|
+| `StencilTemplateEngineTests.swift` | Stencilエンジンのユニットテスト |
+| `NativeTemplateEngineTests.swift` | Nativeエンジンのユニットテスト |
+
+### E2Eテスト (E2ETestsPackage/)
+
+- **変更不要**: CLIコマンドレベルのテストであり、テンプレートエンジン内部変更に影響されない
+- **推奨**: Stencil統合後、`.stencil`ファイルを含むテンプレートのE2Eテスト追加
+
+---
+
+## `format`フィールドの廃止
+
+Stencil導入に伴い、`array`型の`format`フィールドは廃止する。
+
+### 現状（Native）
+
+```yaml
+- name: ___MODULES___
+  type: array
+  format: '$elements.map(x => `import ${x}`).join("\n")'
 ```
 
-## 処理フロー図
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ TemplateExpander.transformFile(at: path)                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1. ファイル読み込み                                         │
-│     └─ Data → String (UTF-8)                                │
-│                                                             │
-│  2. 拡張子チェック                                          │
-│     ├─ .stencil → StencilTemplateEngine                     │
-│     └─ other   → NativeTemplateEngine                       │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ StencilTemplateEngine.render()                      │   │
-│  │                                                      │   │
-│  │  a. BuiltInMacros解決                               │   │
-│  │     ___DATE___ → "2025-12-22"                       │   │
-│  │                                                      │   │
-│  │  b. Stencilコンテキスト構築                          │   │
-│  │     ├─ マクロ → { PROJECT_NAME: "MyApp", ... }     │   │
-│  │     └─ outputs → { pre_hatch_setup_outputs_...: }  │   │
-│  │                                                      │   │
-│  │  c. Stencilレンダリング                              │   │
-│  │     ├─ {{ variable }} → 値展開                      │   │
-│  │     ├─ {% if %} → 条件評価                          │   │
-│  │     └─ {% for %} → ループ展開                       │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ NativeTemplateEngine.render()                       │   │
-│  │                                                      │   │
-│  │  a. BuiltInMacros解決                               │   │
-│  │  b. ___MACRO___ 置換                                │   │
-│  │  c. ${{ outputs }} 解決                             │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  3. ファイル書き込み（変更があれば）                         │
-│                                                             │
-│  4. リネーム（.stencilの場合）                              │
-│     App.swift.stencil → App.swift                          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## エラーハンドリング
-
-### Stencilエラー
+### Stencilでの代替
 
 ```swift
-enum StencilTemplateError: LocalizedError {
-    case renderingFailed(file: String, underlying: Error)
-    case invalidSyntax(file: String, line: Int?, message: String)
-
-    var errorDescription: String? {
-        switch self {
-        case .renderingFailed(let file, let underlying):
-            return "Failed to render Stencil template '\(file)': \(underlying.localizedDescription)"
-        case .invalidSyntax(let file, let line, let message):
-            if let line {
-                return "Stencil syntax error in '\(file)' at line \(line): \(message)"
-            }
-            return "Stencil syntax error in '\(file)': \(message)"
-        }
-    }
-}
+// template.swift.stencil
+{% for module in ___MODULES___ %}
+import {{ module }}
+{% endfor %}
 ```
 
-## テスト計画
+### Stencilの利点
 
-### 1. NativeTemplateEngine
+- 条件分岐も入れられる（`{% if %}`）
+- インデント調整も自由
+- JavaScript式を覚える必要がない
+- 可読性が高い
 
-既存の `VariableResolver` テストで担保済み。
+### 結論
 
-### 2. StencilTemplateEngine
-
-```swift
-// 基本的な変数展開
-func testBasicVariableExpansion() async throws {
-    let engine = StencilTemplateEngine()
-    let context = TemplateContext(
-        macros: [ResolvedMacro(name: "___NAME___", value: .string("MyApp"))],
-        outputs: StepOutputsStorage(),
-        builtInMacroContext: .test
-    )
-
-    let result = try await engine.render("Hello {{ NAME }}", with: context)
-    XCTAssertEqual(result, "Hello MyApp")
-}
-
-// if条件分岐
-func testIfCondition() async throws {
-    let template = """
-    {% if USE_ASYNC %}async{% else %}sync{% endif %}
-    """
-    // USE_ASYNC = true → "async"
-    // USE_ASYNC = false → "sync"
-}
-
-// forループ
-func testForLoop() async throws {
-    let template = """
-    {% for m in MODULES %}import {{ m }}
-    {% endfor %}
-    """
-    // MODULES = ["Foundation", "UIKit"]
-    // → "import Foundation\nimport UIKit\n"
-}
-
-// Step outputs
-func testStepOutputsInCondition() async throws {
-    let template = """
-    {% if pre_hatch_setup_outputs_enabled == "yes" %}enabled{% endif %}
-    """
-    // outputs: pre_hatch.setup.outputs.enabled = "yes"
-    // → "enabled"
-}
-```
-
-### 3. 拡張子除去
-
-```swift
-func testStencilExtensionRemoval() async throws {
-    // Input: App.swift.stencil
-    // Output: App.swift (content rendered, extension removed)
-}
-```
-
-### 4. 混在テンプレート
-
-```swift
-func testMixedTemplates() async throws {
-    // Template directory contains:
-    // - main.swift (Native)
-    // - App.swift.stencil (Stencil)
-    // Both should be processed correctly
-}
-```
-
-## 将来の拡張
-
-### カスタムフィルター
-
-```swift
-// 例: camelCase → snake_case フィルター
-environment.registerFilter("snake_case") { value in
-    // MyProjectName → my_project_name
-}
-
-// テンプレートでの使用
-// {{ PROJECT_NAME|snake_case }}
-```
-
-### カスタムタグ
-
-```swift
-// 例: インデントタグ
-{% indent 4 %}
-code here
-{% endindent %}
-```
+`format`フィールドは廃止。配列を整形して出力したい場合は`.stencil`ファイルを使用すること。
 
 ## 参考資料
 
 - [Stencil Documentation](https://stencil.fuller.li/en/latest/)
 - [Stencil GitHub](https://github.com/stencilproject/Stencil)
-- [StencilSwiftKit](https://github.com/SwiftGen/StencilSwiftKit) - 追加フィルター/タグ

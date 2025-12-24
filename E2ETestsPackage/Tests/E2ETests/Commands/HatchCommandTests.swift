@@ -148,7 +148,7 @@ struct HatchCommandTests {
         let description: String
         let template: TemplateSetup?
         let templateName: String
-        let macros: [String: String]
+        let macros: [String: [String]]
         let flags: Flags
         let existingFiles: [FileSetup]
         let expected: Expected
@@ -180,8 +180,10 @@ struct HatchCommandTests {
             }
 
             // Macros LAST (captureForPassthrough)
-            for (key, value) in macros.sorted(by: { $0.key < $1.key }) {
-                args += ["--\(key)", value]
+            // Values are passed as separate arguments for arrays/choices support
+            for (key, values) in macros.sorted(by: { $0.key < $1.key }) {
+                args.append("--\(key)")
+                args.append(contentsOf: values)
             }
 
             return args
@@ -267,6 +269,10 @@ struct HatchCommandTests {
             overrideConflicts,
             preHatchLifecycle,
             postHatchLifecycle,
+            // Stencil template tests
+            stencilBasicRendering,
+            stencilConditionalRendering,
+            stencilLoopRendering,
         ]
 
         // Basic template execution without macros
@@ -326,7 +332,7 @@ struct HatchCommandTests {
                 ]
             ),
             templateName: "MacroTemplate",
-            macros: ["MODULE-NAME": "MyModule"],
+            macros: ["MODULE-NAME": ["MyModule"]],
             flags: .directApply,
             existingFiles: [],
             expected: .success,
@@ -438,6 +444,146 @@ struct HatchCommandTests {
                     ExpectedFile("main.txt", contentContains: "main content"),
                     ExpectedFile("post_hatch_marker.txt", contentContains: "post-hatch executed"),
                 ]
+            )
+        )
+
+        // MARK: - Stencil Template Tests
+
+        // Basic Stencil variable rendering
+        static let stencilBasicRendering = TestCase(
+            description: "renders .stencil file with variable substitution",
+            template: TemplateSetup(
+                name: "StencilBasicTemplate",
+                location: .global,
+                configYaml: """
+                name: StencilBasicTemplate
+                description: Template with Stencil file
+                macros:
+                  - name: ___PROJECT_NAME___
+                    description: The project name
+                    type: string
+                  - name: ___AUTHOR___
+                    description: Author name
+                    type: string
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(
+                        path: "README.md.stencil",
+                        content: """
+                        # {{ ___PROJECT_NAME___ }}
+
+                        Created by {{ ___AUTHOR___ }}.
+                        """
+                    ),
+                ]
+            ),
+            templateName: "StencilBasicTemplate",
+            macros: ["AUTHOR": ["John Doe"], "PROJECT-NAME": ["MyAwesomeProject"]],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("README.md", contentContains: "# MyAwesomeProject"),
+                    ExpectedFile("README.md", contentContains: "Created by John Doe"),
+                ],
+                unexpectedFiles: ["README.md.stencil"]
+            )
+        )
+
+        // Stencil conditional rendering
+        static let stencilConditionalRendering = TestCase(
+            description: "renders .stencil file with conditional blocks",
+            template: TemplateSetup(
+                name: "StencilConditionalTemplate",
+                location: .global,
+                configYaml: """
+                name: StencilConditionalTemplate
+                description: Template with Stencil conditionals
+                macros:
+                  - name: ___BUILD_TYPE___
+                    description: Build type
+                    type: choice
+                    choices: [debug, release]
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(
+                        path: "Config.swift.stencil",
+                        content: """
+                        import Foundation
+
+                        {% if ___BUILD_TYPE___ == "release" %}
+                        let isRelease = true
+                        let optimization = "-O"
+                        {% else %}
+                        let isRelease = false
+                        let optimization = "-Onone"
+                        {% endif %}
+                        """
+                    ),
+                ]
+            ),
+            templateName: "StencilConditionalTemplate",
+            macros: ["BUILD-TYPE": ["release"]],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("Config.swift", contentContains: "let isRelease = true"),
+                    ExpectedFile("Config.swift", contentContains: "let optimization = \"-O\""),
+                ],
+                unexpectedFiles: ["Config.swift.stencil"]
+            )
+        )
+
+        // Stencil loop rendering using choices macro (multiple values)
+        static let stencilLoopRendering = TestCase(
+            description: "renders .stencil file with loop blocks",
+            template: TemplateSetup(
+                name: "StencilLoopTemplate",
+                location: .global,
+                configYaml: """
+                name: StencilLoopTemplate
+                description: Template with Stencil loops
+                macros:
+                  - name: ___PLATFORMS___
+                    description: Target platforms
+                    type: choices
+                    choices: [iOS, macOS, watchOS, tvOS]
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(
+                        path: "Platforms.swift.stencil",
+                        content: """
+                        import Foundation
+
+                        let platforms: [String] = [
+                        {% for p in ___PLATFORMS___ %}
+                            "{{ p }}",
+                        {% endfor %}
+                        ]
+                        """
+                    ),
+                ]
+            ),
+            templateName: "StencilLoopTemplate",
+            macros: ["PLATFORMS": ["iOS", "macOS"]],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("Platforms.swift", contentContains: "\"iOS\""),
+                    ExpectedFile("Platforms.swift", contentContains: "\"macOS\""),
+                ],
+                unexpectedFiles: ["Platforms.swift.stencil"]
             )
         )
     }

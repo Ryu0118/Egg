@@ -18,8 +18,8 @@ package struct ResolvedMacro: Equatable {
         case choice(String)
         /// Multiple selection from choices
         case choices([String])
-        /// Free-form array input with format expression
-        case array([String], format: String?)
+        /// Free-form array input
+        case array([String])
         case path(URL)
     }
 }

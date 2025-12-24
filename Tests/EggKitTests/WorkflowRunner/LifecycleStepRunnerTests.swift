@@ -317,7 +317,7 @@ struct LifecycleStepRunnerTests {
                     ),
                 ],
                 macros: [
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"], format: nil)),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"])),
                 ],
                 initialOutputs: [],
                 expectation: .success(expectedOutputs: [

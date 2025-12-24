@@ -55,6 +55,39 @@ actor StepOutputsStorage {
         get(phase: phase, stepId: stepId, key: key) != nil
     }
 
+    /// Returns all stored outputs as a nested dictionary for Stencil context.
+    ///
+    /// Returns:
+    /// ```
+    /// {
+    ///   "pre_hatch": {
+    ///     "setup": {
+    ///       "outputs": {
+    ///         "version": "1.0.0"
+    ///       }
+    ///     }
+    ///   }
+    /// }
+    /// ```
+    func allOutputsForStencil() -> [String: [String: [String: [String: String]]]] {
+        var result: [String: [String: [String: [String: String]]]] = [:]
+
+        for (key, outputs) in storage {
+            let components = key.split(separator: ".", maxSplits: 1)
+            guard components.count == 2 else { continue }
+
+            let phase = String(components[0])
+            let stepId = String(components[1])
+
+            if result[phase] == nil {
+                result[phase] = [:]
+            }
+            result[phase]![stepId] = ["outputs": outputs]
+        }
+
+        return result
+    }
+
     private func makeKey(phase: LifecyclePhase, stepId: String) -> String {
         "\(phase.rawValue).\(stepId)"
     }

@@ -134,7 +134,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ParsedMacroDefinition(macro: "___PLATFORMS___", values: ["iOS", "macOS", "watchOS"]),
                 ],
                 expected: .success([
-                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"], format: nil)),
+                    ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS", "watchOS"])),
                 ])
             ),
             TestCase(
@@ -399,7 +399,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ResolvedMacro(
                         name: "___MODULES___",
                         description: "Modules",
-                        value: .array(["ModuleA", "ModuleB", "ModuleC"], format: nil)
+                        value: .array(["ModuleA", "ModuleB", "ModuleC"])
                     ),
                 ])
             ),
@@ -451,7 +451,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ResolvedMacro(
                         name: "___MODULES___",
                         description: "Modules",
-                        value: .array(["SingleModule"], format: nil)
+                        value: .array(["SingleModule"])
                     ),
                 ])
             ),
@@ -465,8 +465,7 @@ struct ParsedMacroDefinitionValidatorTests {
                             name: "___PACKAGES___",
                             description: "Packages",
                             type: .array,
-                            validate: "^[a-z][a-z0-9-]*$",
-                            format: #"$elements.map(x => `.package(name: "${x}")`).join(", ")"#
+                            validate: "^[a-z][a-z0-9-]*$"
                         ),
                     ],
                     hatch: Config.HatchConfig(output: ".")
@@ -478,7 +477,7 @@ struct ParsedMacroDefinitionValidatorTests {
                     ResolvedMacro(
                         name: "___PACKAGES___",
                         description: "Packages",
-                        value: .array(["package-a", "package-b"], format: #"$elements.map(x => `.package(name: "${x}")`).join(", ")"#)
+                        value: .array(["package-a", "package-b"])
                     ),
                 ])
             ),

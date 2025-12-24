@@ -1,7 +1,7 @@
 @testable import EggKit
 import Testing
 
-struct ConfigValidatorArrayFormatTests {
+struct ConfigValidatorMacroFieldTests {
     let validator = ConfigValidator()
 
     @Test(arguments: TestCase.allCases)
@@ -41,23 +41,9 @@ struct ConfigValidatorArrayFormatTests {
         }
 
         static let allCases: [TestCase] = [
+            // MARK: - Array type
             TestCase(
-                description: "passes with valid array format expression",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___PLATFORMS___",
-                            description: "Platforms",
-                            type: .array,
-                            default: #"["iOS", "macOS"]"#,
-                            format: #"$elements.map(x => `.${x}`).join(", ")"#
-                        ),
-                    ]
-                ),
-                expected: .success
-            ),
-            TestCase(
-                description: "passes with array without format (uses default)",
+                description: "passes with array type",
                 config: makeConfig(
                     macros: [
                         Config.Macro(
@@ -84,133 +70,8 @@ struct ConfigValidatorArrayFormatTests {
                 ),
                 expected: .success
             ),
-            TestCase(
-                description: "fails with format on non-array type",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___NAME___",
-                            description: "Name",
-                            type: .string,
-                            format: #"$elements.join(", ")"#
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .formatOnlyValidForArrayType(context: "macros[0]", name: "___NAME___"),
-                ])
-            ),
-            TestCase(
-                description: "fails with format on choice type",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___TYPE___",
-                            description: "Type",
-                            type: .choice,
-                            default: "a",
-                            choices: ["a", "b"],
-                            format: #"$elements.join(", ")"#
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .formatOnlyValidForArrayType(context: "macros[0]", name: "___TYPE___"),
-                ])
-            ),
-            TestCase(
-                description: "fails with format on boolean type",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___ENABLED___",
-                            description: "Enabled",
-                            type: .boolean,
-                            default: "true",
-                            format: #"$elements.join(", ")"#
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .formatOnlyValidForArrayType(context: "macros[0]", name: "___ENABLED___"),
-                ])
-            ),
-            TestCase(
-                description: "fails with invalid format syntax",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___PLATFORMS___",
-                            description: "Platforms",
-                            type: .array,
-                            default: #"["iOS"]"#,
-                            format: "$elements.map(x =>"
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .invalidFormatExpression(context: "macros[0]", name: "___PLATFORMS___", format: "$elements.map(x =>"),
-                ])
-            ),
-            TestCase(
-                description: "fails with format returning non-string",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___PLATFORMS___",
-                            description: "Platforms",
-                            type: .array,
-                            default: #"["iOS"]"#,
-                            format: "$elements.length"
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .invalidFormatExpression(context: "macros[0]", name: "___PLATFORMS___", format: "$elements.length"),
-                ])
-            ),
-            TestCase(
-                description: "fails with format returning undefined",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___PLATFORMS___",
-                            description: "Platforms",
-                            type: .array,
-                            default: #"["iOS"]"#,
-                            format: "$elements.find(x => x === 'notfound')"
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .invalidFormatExpression(context: "macros[0]", name: "___PLATFORMS___", format: "$elements.find(x => x === 'notfound')"),
-                ])
-            ),
-            TestCase(
-                description: "aggregates format and other validation errors",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___NAME___",
-                            description: "Name",
-                            type: .string,
-                            format: #"$elements.join(", ")"#
-                        ),
-                        Config.Macro(
-                            name: "___PLATFORMS___",
-                            description: "Platforms",
-                            type: .array,
-                            default: #"["iOS"]"#,
-                            format: "$elements.map(x =>"
-                        ),
-                    ]
-                ),
-                expected: .failure([
-                    .formatOnlyValidForArrayType(context: "macros[0]", name: "___NAME___"),
-                    .invalidFormatExpression(context: "macros[1]", name: "___PLATFORMS___", format: "$elements.map(x =>"),
-                ])
-            ),
 
+            // MARK: - choices field compatibility
             TestCase(
                 description: "fails with choices on string type",
                 config: makeConfig(
@@ -308,6 +169,7 @@ struct ConfigValidatorArrayFormatTests {
                 ])
             ),
 
+            // MARK: - validate field compatibility
             TestCase(
                 description: "fails with validate on boolean type",
                 config: makeConfig(
@@ -403,22 +265,8 @@ struct ConfigValidatorArrayFormatTests {
                 ),
                 expected: .success
             ),
-            TestCase(
-                description: "passes with validate on array type with format",
-                config: makeConfig(
-                    macros: [
-                        Config.Macro(
-                            name: "___PACKAGES___",
-                            description: "Packages",
-                            type: .array,
-                            validate: "^[a-z][a-z0-9-]*$",
-                            format: #"$elements.map(x => `.package(name: "${x}")`).join(", ")"#
-                        ),
-                    ]
-                ),
-                expected: .success
-            ),
 
+            // MARK: - Aggregation
             TestCase(
                 description: "aggregates multiple field compatibility errors",
                 config: makeConfig(
@@ -429,13 +277,11 @@ struct ConfigValidatorArrayFormatTests {
                             type: .boolean,
                             default: "true",
                             validate: ".*",
-                            choices: ["true", "false"],
-                            format: #"$elements.join(", ")"#
+                            choices: ["true", "false"]
                         ),
                     ]
                 ),
                 expected: .failure([
-                    .formatOnlyValidForArrayType(context: "macros[0]", name: "___BAD___"),
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___BAD___"),
                     .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___BAD___"),
                 ])

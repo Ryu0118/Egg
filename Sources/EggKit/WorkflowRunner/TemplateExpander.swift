@@ -114,7 +114,17 @@ struct TemplateExpander {
             }
 
             // Transform the filename
-            let transformedPath = try await resolvingMacros(in: relativePath, substituting: macros, with: outputs)
+            var transformedPath = try await resolvingMacros(
+                in: relativePath,
+                substituting: macros,
+                with: outputs
+            )
+
+            // Strip .stencil extension from output path
+            if transformedPath.hasSuffix(".stencil") {
+                transformedPath = String(transformedPath.dropLast(".stencil".count))
+            }
+
             result.append(transformedPath)
         }
 
@@ -290,6 +300,12 @@ struct TemplateExpander {
     }
 
     /// Transforms a single file's contents in place.
+    ///
+    /// Engine selection:
+    /// - `.stencil` extension → StencilTemplateEngine ({{ }}, {% %} syntax)
+    /// - Other extensions → NativeTemplateEngine (___MACRO___, ${{ }} syntax)
+    ///
+    /// After rendering `.stencil` files, the extension is removed (e.g., `App.swift.stencil` → `App.swift`).
     private func transformFile(
         at path: URL,
         substituting macros: [ResolvedMacro],
@@ -300,16 +316,30 @@ struct TemplateExpander {
         // Skip binary files
         guard let text = String(data: data, encoding: .utf8) else { return }
 
-        let resolver = VariableResolver(
+        let context = TemplateContext(
             macros: macros,
             outputs: outputs,
             builtInMacroContext: builtInMacroContext
         )
-        let transformed = try await resolver.resolve(text)
+
+        // Select engine based on file extension
+        let isStencil = path.pathExtension == "stencil"
+
+        let engine: any TemplateEngine = isStencil
+            ? StencilTemplateEngine()
+            : NativeTemplateEngine()
+
+        let transformed = try await engine.render(text, with: context)
 
         // Only write if changed
         if transformed != text {
             try fileManager.writeText(transformed, at: path, encoding: .utf8)
+        }
+
+        // Remove .stencil extension after rendering
+        if isStencil {
+            let newPath = path.deletingPathExtension()
+            try fileManager.moveItem(at: path, to: newPath)
         }
     }
 
