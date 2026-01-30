@@ -1,0 +1,8 @@
+{
+  "name": "egg",
+  "version": "0.1.0",
+  "description": "Tools for creating egg templates with config.yml",
+  "author": {
+    "name": "Ryu0118"
+  }
+}

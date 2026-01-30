@@ -69,10 +69,25 @@ public struct MCPService: Sendable {
         outputDirectory: URL? = nil,
         useStaging: Bool = true,
         applyChanges: Bool = true,
-        stagingRoot: URL? = nil
+        stagingRoot: URL? = nil,
+        disableSandbox: Bool = false,
+        userConfirmedNoSandbox: Bool = false
     ) async throws -> HatchResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
+
+        // Check if template has sandbox.allowed_paths - require interactive mode or explicit user permission
+        if let allowedPaths = template.config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
+            throw MCPServiceError.sandboxPermissionRequired(
+                paths: allowedPaths,
+                templateName: templateName
+            )
+        }
+
+        // If sandbox is being disabled, require explicit user confirmation
+        if disableSandbox && !userConfirmedNoSandbox {
+            throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
+        }
 
         // Convert macros dict to ParsedMacroDefinition array
         let parsedMacros = parseMacros(macros, for: template)
@@ -87,7 +102,7 @@ public struct MCPService: Sendable {
             processRunner: ProcessRunner(),
             useStaging: useStaging,
             overrideConflicts: true,
-            sandboxDisabled: false,
+            sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
             applyChanges: applyChanges,
             stagingRoot: stagingRoot
         )
@@ -372,6 +387,8 @@ public struct MCPService: Sendable {
 public enum MCPServiceError: Error, LocalizedError, Sendable {
     case invalidLocation(String)
     case invalidGitURL(String)
+    case sandboxPermissionRequired(paths: [String], templateName: String)
+    case sandboxDisableRequiresConfirmation(templateName: String)
 
     public var errorDescription: String? {
         switch self {
@@ -379,6 +396,28 @@ public enum MCPServiceError: Error, LocalizedError, Sendable {
             "Invalid location '\(location)'. Must be 'global' or 'project'."
         case .invalidGitURL(let url):
             "Invalid Git URL: \(url)"
+        case let .sandboxPermissionRequired(paths, templateName):
+            """
+            ⚠️ SANDBOX EXTENDED WRITE ACCESS REQUIRED
+
+            This template requires write access to paths outside the sandbox:
+            \(paths.map { "  - \($0)" }.joined(separator: "\n"))
+
+            To proceed:
+            1. Run in interactive mode: egg hatch \(templateName)
+            2. Or use --no-sandbox flag with explicit user permission
+
+            MCP/direct mode cannot grant extended sandbox permissions automatically.
+            """
+        case let .sandboxDisableRequiresConfirmation(templateName):
+            """
+            ⚠️ SANDBOX DISABLED: This operation will run without filesystem restrictions.
+
+            Before proceeding, please confirm with the user that they approve running
+            'egg hatch' without sandbox protection for template: \(templateName)
+
+            If user approves, call this tool again with 'userConfirmedNoSandbox: true'
+            """
         }
     }
 }

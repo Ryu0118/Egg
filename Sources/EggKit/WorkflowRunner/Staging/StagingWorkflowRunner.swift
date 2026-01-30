@@ -148,19 +148,60 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // This is critical for path-type macros to resolve correctly
             let macros = try finalizeMacros(collectedMacroValues, config: config, workspaceRoot: staging.root)
 
+            // Expand and validate sandbox.allowed_paths
+            let sandboxResolver = SandboxAllowedPathsResolver(homeDirectory: homeDirectory, noora: noora)
+            let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
+                config.sandbox?.allowedPaths,
+                macros: macros,
+                workingDirectory: staging.root
+            )
+
+            // Track whether user confirmed extended sandbox permissions
+            var sandboxPermissionConfirmed = false
+
+            // If allowed_paths are specified and sandbox is enabled, handle permission
+            if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
+                if isInteractive {
+                    // Prompt user for permission in interactive mode
+                    sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
+                        expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                    )
+                    if !sandboxPermissionConfirmed {
+                        noora.passthrough("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).\n")
+                    }
+                } else {
+                    // Non-interactive mode: reject with error
+                    throw LifecycleStepError.sandboxPermissionRequired(
+                        paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                    )
+                }
+            }
+
             let outputs = StepOutputsStorage()
+
+            // Compute final allowed paths for sandbox configuration
+            // Only include if user confirmed in interactive mode
+            let finalAllowedPaths: [URL] = sandboxPermissionConfirmed ? expandedAllowedPaths : []
 
             // Step 2: Execute pre_hatch phase in staging workspace (with OS-level sandboxing)
             let executionEnvironment: ExecutionEnvironment =
                 if sandboxDisabled {
                     .unsandboxed
                 } else {
-                    .sandboxed(.staging(root: staging.root, originalWorkingDirectory: workingDirectory))
+                    .sandboxed(.staging(
+                        root: staging.root,
+                        originalWorkingDirectory: workingDirectory,
+                        allowedPaths: finalAllowedPaths
+                    ))
                 }
 
             // Common environment variables for all phases
             // In staging mode, EGG_WORKING_DIRECTORY points to the staging workspace
-            let commonEnvironment = ["EGG_WORKING_DIRECTORY": staging.root.path(percentEncoded: false)]
+            // EGG_ORIGINAL_WORKING_DIRECTORY always points to the original working directory
+            let commonEnvironment = [
+                "EGG_WORKING_DIRECTORY": staging.root.path(percentEncoded: false),
+                "EGG_ORIGINAL_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false),
+            ]
 
             if let preHatchSteps = config.preHatch {
                 try await phaseRunner.executePreHatch(
@@ -452,4 +493,5 @@ struct StagingWorkflowRunner: WorkflowRunning {
             )
         }
     }
+
 }

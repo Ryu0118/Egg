@@ -14,6 +14,9 @@ package struct Config: Codable, Equatable {
     /// Macro definitions (user input)
     package let macros: [Macro]?
 
+    /// Sandbox configuration (optional)
+    package let sandbox: SandboxConfig?
+
     /// Lifecycle hooks before template expansion
     package let preHatch: [LifecycleStep]?
 
@@ -28,6 +31,7 @@ package struct Config: Codable, Equatable {
         description: String,
         version: String? = nil,
         macros: [Macro]? = nil,
+        sandbox: SandboxConfig? = nil,
         preHatch: [LifecycleStep]? = nil,
         hatch: HatchConfig,
         postHatch: [LifecycleStep]? = nil
@@ -36,6 +40,7 @@ package struct Config: Codable, Equatable {
         self.description = description
         self.version = version
         self.macros = macros
+        self.sandbox = sandbox
         self.preHatch = preHatch
         self.hatch = hatch
         self.postHatch = postHatch
@@ -46,9 +51,26 @@ package struct Config: Codable, Equatable {
         case description
         case version
         case macros
+        case sandbox
         case preHatch = "pre_hatch"
         case hatch
         case postHatch = "post_hatch"
+    }
+
+    /// Sandbox configuration for lifecycle shell commands
+    package struct SandboxConfig: Codable, Equatable {
+        /// Paths outside the sandbox that are allowed for write access.
+        /// These paths support macro expansion (e.g., `/Users/___USERNAME___/Documents`).
+        /// Only absolute paths are supported.
+        package let allowedPaths: [String]?
+
+        package init(allowedPaths: [String]? = nil) {
+            self.allowedPaths = allowedPaths
+        }
+
+        package enum CodingKeys: String, CodingKey {
+            case allowedPaths = "allowed_paths"
+        }
     }
 
     /// Default value for a macro, supporting both string and array types

@@ -5,6 +5,7 @@ enum LifecycleStepError: LocalizedError, Equatable {
     case undefinedOutputReference(phase: LifecyclePhase, stepId: String, key: String)
     case conditionEvaluationError(condition: String, reason: String)
     case invalidOutputDirectory(String)
+    case sandboxPermissionRequired(paths: [String])
 
     var errorDescription: String? {
         switch self {
@@ -19,6 +20,17 @@ enum LifecycleStepError: LocalizedError, Equatable {
             "Failed to evaluate condition '\(condition)': \(reason)"
         case let .invalidOutputDirectory(message):
             "Invalid output directory: \(message)"
+        case let .sandboxPermissionRequired(paths):
+            """
+            ⚠️ SANDBOX EXTENDED WRITE ACCESS REQUIRED
+
+            This template requires write access to paths outside the sandbox:
+            \(paths.map { "  - \($0)" }.joined(separator: "\n"))
+
+            To proceed:
+            1. Run in interactive mode: egg hatch <template_name>
+            2. Or use --no-sandbox flag with explicit user permission
+            """
         }
     }
 }

@@ -140,6 +140,7 @@ struct ShellScriptRunner {
     /// - Allows process execution (required for running commands)
     /// - Allows read access to all files
     /// - Allows read/write access only to the staging root directory
+    /// - Allows read/write access to additional allowed paths (from config.sandbox.allowed_paths)
     /// - Explicitly denies write access to the original working directory
     /// - Allows network access (some scripts may need it)
     ///
@@ -157,6 +158,15 @@ struct ShellScriptRunner {
             """
         }.joined(separator: "\n")
 
+        let allowedPathRules = configuration.allowedPaths.map { path -> String in
+            let resolved = resolveRealPath(path.path(percentEncoded: false))
+            let escaped = resolved.replacingOccurrences(of: "\"", with: "\\\"")
+            return """
+            ; Allow write access to user-specified path: \(path.path(percentEncoded: false))
+            (allow file-write* (subpath "\(escaped)"))
+            """
+        }.joined(separator: "\n")
+
         return """
         (version 1)
         (deny default)
@@ -167,6 +177,7 @@ struct ShellScriptRunner {
         \(deniedRules)
         ; Allow full read/write access to sandbox directory only
         (allow file-write* (subpath "\(escapedWritableRoot)"))
+        \(allowedPathRules)
         ; Allow read/write access to system temp directories (needed for atomic writes, locks, etc.)
         (allow file-read* (subpath "/private/var/folders"))
         (allow file-read* (subpath "/private/tmp"))

@@ -37,6 +37,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     private let phaseRunner: PhaseRunner
     private let noora: any Noorable
     private let sandboxDisabled: Bool
+    private let isInteractive: Bool
 
     init(
         processRunner: any ProcessRunning,
@@ -55,6 +56,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         self.homeDirectory = homeDirectory
         self.noora = noora
         self.sandboxDisabled = sandboxDisabled
+        self.isInteractive = isInteractive
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
             fileManager: fileManager,
@@ -81,13 +83,49 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         // Resolve macros (for non-staging execution, use real working directory)
         let macros = try resolveMacros(macroInputs, config: config)
 
+        // Expand and validate sandbox.allowed_paths
+        let sandboxResolver = SandboxAllowedPathsResolver(homeDirectory: homeDirectory, noora: noora)
+        let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
+            config.sandbox?.allowedPaths,
+            macros: macros,
+            workingDirectory: workingDirectory
+        )
+
+        // Track whether user confirmed extended sandbox permissions
+        var sandboxPermissionConfirmed = false
+
+        // If allowed_paths are specified and sandbox is enabled, handle permission
+        if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
+            if isInteractive {
+                // Prompt user for permission in interactive mode
+                sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
+                    expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                )
+                if !sandboxPermissionConfirmed {
+                    noora.passthrough("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).\n")
+                }
+            } else {
+                // Non-interactive mode: reject with error
+                throw LifecycleStepError.sandboxPermissionRequired(
+                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                )
+            }
+        }
+
         let outputs = StepOutputsStorage()
 
+        // Compute final allowed paths for sandbox configuration
+        let finalAllowedPaths: [URL] = sandboxPermissionConfirmed ? expandedAllowedPaths : []
+
         let executionEnvironment: ExecutionEnvironment =
-            sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory))
+            sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory, allowedPaths: finalAllowedPaths))
 
         // Common environment variables for all phases
-        let commonEnvironment = ["EGG_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false)]
+        // In non-staging mode, both point to the same directory
+        let commonEnvironment = [
+            "EGG_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false),
+            "EGG_ORIGINAL_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false),
+        ]
 
         // Execute pre_hatch
         if let preHatchSteps = config.preHatch {
@@ -153,4 +191,5 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             return resolver.resolve()
         }
     }
+
 }

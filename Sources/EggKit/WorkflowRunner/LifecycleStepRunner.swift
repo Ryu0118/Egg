@@ -108,9 +108,13 @@ struct LifecycleStepRunner {
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment
         )
-        let stdout = try await shellRunner.executeStreaming(resolvedCommand) { output in
-            noora.passthrough("\(output)\n", tab: 2)
+        let lineStreamer = LineStreamer { line in
+            noora.passthrough("\(line)\n", tab: 2)
         }
+        let stdout = try await shellRunner.executeStreaming(resolvedCommand) { chunk in
+            lineStreamer.append(chunk)
+        }
+        lineStreamer.flush()
 
         if let stepId = step.id {
             let parsedOutputs = StepOutputParser.parse(stdout)
