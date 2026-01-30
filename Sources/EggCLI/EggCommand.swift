@@ -8,6 +8,7 @@ package struct EggCommand: AsyncParsableCommand {
         subcommands: [
             TemplateCommand.self,
             HatchCommand.self,
+            MCPCommand.self,
         ]
     )
 

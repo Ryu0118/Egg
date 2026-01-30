@@ -39,7 +39,49 @@ package struct DetailRunner {
             try await runInteractiveMode(location: location)
         case let .direct(template, location):
             displayer.display(template: template, location: location)
+        case .mcp:
+            // MCP mode returns result, use runMcp() instead
+            break
         }
+    }
+
+    /// Run in MCP mode and return structured result
+    package func runMcp(template: Template, location: TemplateLocationType) -> DetailResult {
+        let formatter = TemplateDetailFormatter()
+        let formatted = formatter.format(template: template, location: location)
+
+        let macros = formatted.macros.map { macro in
+            DetailResult.MacroInfo(
+                name: macro.name,
+                flag: macro.flag,
+                type: macro.type,
+                description: macro.description,
+                defaultValue: macro.defaultValue,
+                choices: macro.choices,
+                validation: macro.validation
+            )
+        }
+
+        let exampleMcpMacros = (template.config.macros ?? []).reduce(into: [String: String]()) { result, macro in
+            result[macro.name] = formatter.generateExampleValue(for: macro)
+        }
+
+        return DetailResult(
+            basicInfo: DetailResult.BasicInfo(
+                name: formatted.basicInfo.name,
+                description: formatted.basicInfo.description,
+                version: formatted.basicInfo.version,
+                locationName: formatted.basicInfo.locationName,
+                locationDir: formatted.basicInfo.locationDir,
+                path: formatted.basicInfo.path
+            ),
+            macros: macros,
+            exampleCliCommand: formatted.exampleCommand,
+            exampleMcpArguments: DetailResult.ExampleMcpArguments(
+                templateName: template.config.name,
+                macros: exampleMcpMacros
+            )
+        )
     }
 
     private func runInteractiveMode(location: TemplateLocationType?) async throws {

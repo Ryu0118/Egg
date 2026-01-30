@@ -51,6 +51,89 @@ package struct Config: Codable, Equatable {
         case postHatch = "post_hatch"
     }
 
+    /// Default value for a macro, supporting both string and array types
+    package enum MacroDefaultValue: Codable, Equatable, ExpressibleByStringLiteral, ExpressibleByArrayLiteral {
+        case string(String)
+        case array([String])
+
+        package init(stringLiteral value: String) {
+            self = .string(value)
+        }
+
+        package init(arrayLiteral elements: String...) {
+            self = .array(elements)
+        }
+
+        package init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+
+            // First try to decode as array
+            if let array = try? container.decode([String].self) {
+                self = .array(array)
+                return
+            }
+
+            // Then try to decode as string
+            if let string = try? container.decode(String.self) {
+                self = .string(string)
+                return
+            }
+
+            throw DecodingError.typeMismatch(
+                MacroDefaultValue.self,
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Expected String or [String] for macro default value"
+                )
+            )
+        }
+
+        package func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case let .string(s):
+                try container.encode(s)
+            case let .array(a):
+                try container.encode(a)
+            }
+        }
+
+        /// Returns the value as a string.
+        /// For arrays, returns JSON array format (e.g., `["a", "b"]`)
+        package var stringValue: String {
+            switch self {
+            case let .string(s):
+                return s
+            case let .array(a):
+                // Convert to JSON array format
+                let escaped = a.map { element in
+                    let escaped = element
+                        .replacingOccurrences(of: "\\", with: "\\\\")
+                        .replacingOccurrences(of: "\"", with: "\\\"")
+                    return "\"\(escaped)\""
+                }
+                return "[\(escaped.joined(separator: ", "))]"
+            }
+        }
+
+        /// Returns the value as an array.
+        /// For strings, attempts to parse as JSON array, otherwise returns single-element array
+        package var arrayValue: [String] {
+            switch self {
+            case let .string(s):
+                // Try to parse as JSON array
+                if let data = s.data(using: .utf8),
+                   let array = try? JSONDecoder().decode([String].self, from: data)
+                {
+                    return array
+                }
+                return [s]
+            case let .array(a):
+                return a
+            }
+        }
+    }
+
     /// Macro definition (user input)
     package struct Macro: Codable, Equatable {
         /// Macro name (e.g., `___MODULE_NAME___`)
@@ -63,7 +146,7 @@ package struct Config: Codable, Equatable {
         package let type: MacroType
 
         /// Default value (optional)
-        package let `default`: String?
+        package let `default`: MacroDefaultValue?
 
         /// Regular expression for validation (optional)
         package let validate: String?
@@ -75,7 +158,7 @@ package struct Config: Codable, Equatable {
             name: String,
             description: String,
             type: MacroType = .string,
-            default: String? = nil,
+            default: MacroDefaultValue? = nil,
             validate: String? = nil,
             choices: [String]? = nil
         ) {

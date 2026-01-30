@@ -1,17 +1,17 @@
 import Foundation
 
 /// The result of installing templates from a repository.
-package struct InstallResult: Sendable {
+public struct InstallResult: Sendable {
     /// Names of templates that were successfully installed.
-    package let installed: [String]
+    public let installed: [String]
 
     /// Templates that were skipped during installation.
-    package let skipped: [SkippedTemplate]
+    public let skipped: [SkippedTemplate]
 
     /// Templates that failed to install.
-    package let failed: [FailedTemplate]
+    public let failed: [FailedTemplate]
 
-    package init(
+    public init(
         installed: [String],
         skipped: [SkippedTemplate],
         failed: [FailedTemplate]
@@ -23,21 +23,21 @@ package struct InstallResult: Sendable {
 }
 
 /// A template that was skipped during installation.
-package struct SkippedTemplate: Sendable, Equatable {
+public struct SkippedTemplate: Sendable, Equatable {
     /// The name of the skipped template.
-    package let name: String
+    public let name: String
 
     /// The reason why the template was skipped.
-    package let reason: SkipReason
+    public let reason: SkipReason
 
-    package init(name: String, reason: SkipReason) {
+    public init(name: String, reason: SkipReason) {
         self.name = name
         self.reason = reason
     }
 }
 
 /// Reasons why a template might be skipped during installation.
-package enum SkipReason: Sendable, Equatable {
+public enum SkipReason: Sendable, Equatable {
     /// The template already exists at the destination.
     case alreadyExists
 
@@ -46,14 +46,14 @@ package enum SkipReason: Sendable, Equatable {
 }
 
 /// A template that failed to install.
-package struct FailedTemplate: Sendable {
+public struct FailedTemplate: Sendable {
     /// The name of the failed template.
-    package let name: String
+    public let name: String
 
     /// The error that occurred during installation.
-    package let error: any Error
+    public let error: any Error
 
-    package init(name: String, error: any Error) {
+    public init(name: String, error: any Error) {
         self.name = name
         self.error = error
     }

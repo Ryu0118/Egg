@@ -60,7 +60,7 @@ actor StagingContext {
     private let directoryCloner: any DirectoryCloning
 
     /// Noora instance for logging output.
-    private nonisolated(unsafe) let noora: any Noorable
+    private let noora: any Noorable
 
     private init(
         root: URL,
@@ -113,10 +113,6 @@ actor StagingContext {
         requireGitRepository: Bool = true,
         noora: some Noorable = Noora()
     ) async throws -> StagingContext {
-        // Wrap in nonisolated(unsafe) to avoid false-positive Sendable warnings.
-        // FileManagerProtocol and Noora are actually thread-safe and all their methods are nonisolated.
-        nonisolated(unsafe) let nra = noora
-
         do {
             // Create staging base directory in a temporary location
             let workspaceBaseDirectory = try fileManager.makeTemporaryDirectory(prefix: "egg-staging")
@@ -162,7 +158,7 @@ actor StagingContext {
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
                 directoryCloner: directoryCloner,
-                noora: nra
+                noora: noora
             )
         } catch let error as StagingContext.Error {
             throw error
@@ -310,16 +306,6 @@ actor StagingContext {
 }
 
 extension StagingContext {
-    /// Directories that should be excluded from change detection and conflict checks.
-    private static let excludedDirectories: Set<String> = [".git", ".eggs"]
-
-    /// Returns true if the path should be excluded from change detection.
-    private static func shouldExclude(_ path: String) -> Bool {
-        let components = path.split(separator: "/")
-        guard let first = components.first.map(String.init) else { return false }
-        return excludedDirectories.contains(first)
-    }
-
     private struct WatcherEvents: Sendable {
         let workspace: Set<String>
         let working: Set<String>
@@ -355,7 +341,7 @@ extension StagingContext {
         }
 
         // Filter out excluded directory paths (e.g., .git, .eggs)
-        let workspacePaths = events.workspace.filter { !Self.shouldExclude($0) }
+        let workspacePaths = events.workspace
 
         guard !workspacePaths.isEmpty else {
             return .none
@@ -391,8 +377,7 @@ extension StagingContext {
             throw StagingContext.Error.alreadyDiscarded
         }
 
-        // Filter out excluded directory paths (e.g., .git, .eggs)
-        let workingPaths = events.working.filter { !Self.shouldExclude($0) }
+        let workingPaths = events.working
 
         guard !workingPaths.isEmpty else {
             return .none
@@ -473,12 +458,6 @@ extension StagingContext {
         while let item = enumerator.nextObject() as? URL {
             let relativePathString = item.path(percentEncoded: false)
                 .replacingOccurrences(of: basePath, with: "")
-
-            // Skip excluded paths and their descendants
-            if Self.shouldExclude(relativePathString) {
-                enumerator.skipDescendants()
-                continue
-            }
 
             result.insert(relativePathString)
         }

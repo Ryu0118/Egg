@@ -83,7 +83,6 @@ struct StagingContextTests {
             case discardRemovesWorkspace
             case discardedState(Bool)
             case discardIsIdempotent
-            case changeSummaryIgnoresGitDirectory
         }
 
         enum Expectation {
@@ -200,18 +199,6 @@ struct StagingContextTests {
                 expectation: .applyChangesFailsAfterDiscard
             ),
 
-            // .git directory ignore test
-            TestCase(
-                description: "computeChangeSummary ignores .git directory changes",
-                initialFiles: [
-                    InitialFile(path: ".git/config", content: "git config"),
-                    InitialFile(path: ".git/objects/abc", content: "object"),
-                    InitialFile(path: "README.md", content: "readme"),
-                ],
-                expectation: .success(checks: [
-                    .changeSummaryIgnoresGitDirectory,
-                ])
-            ),
         ]
     }
 
@@ -316,36 +303,6 @@ struct StagingContextTests {
             await staging.discard()
             let discarded = await staging.isDiscarded
             #expect(discarded, "Multiple discards should not throw")
-
-        case .changeSummaryIgnoresGitDirectory:
-            // Modify files in staging area: both .git and regular files
-            let workspaceRoot = await staging.root
-            let gitConfigPath = workspaceRoot.appending(path: ".git").appending(path: "config")
-            let gitNewFilePath = workspaceRoot.appending(path: ".git").appending(path: "new-file")
-            let readmePath = workspaceRoot.appending(path: "README.md")
-
-            // Modify .git files (remove and rewrite to trigger change)
-            try fileManager.removeItem(at: gitConfigPath)
-            try fileManager.writeText("modified git config", at: gitConfigPath, encoding: .utf8)
-
-            // Add new file in .git
-            try fileManager.writeText("new file in git", at: gitNewFilePath, encoding: .utf8)
-
-            // Modify regular file (remove and rewrite)
-            try fileManager.removeItem(at: readmePath)
-            try fileManager.writeText("modified readme", at: readmePath, encoding: .utf8)
-
-            // Compute change summary
-            let summary = try await staging.computeChangeSummary()
-
-            // Verify .git paths are not in the summary
-            let allPaths = summary.added + summary.modified + summary.deleted
-            let gitPaths = allPaths.filter { $0.hasPrefix(".git/") || $0 == ".git" }
-            #expect(gitPaths.isEmpty, ".git paths should be ignored in change summary, but found: \(gitPaths)")
-
-            // Verify README.md is in the summary (as modified)
-            let hasReadme = summary.modified.contains { $0 == "README.md" }
-            #expect(hasReadme, "README.md should be in modified list")
         }
     }
 

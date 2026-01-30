@@ -85,7 +85,7 @@ package struct MacroResolver {
 
         // Build prompt message with default value hint
         let promptMessage: String
-        if let defaultValue = macro.default {
+        if let defaultValue = macro.default?.stringValue {
             promptMessage = "\(macro.description) [default: '\(defaultValue)'] (Type '\"\"' for empty string)"
         } else {
             promptMessage = macro.description
@@ -103,7 +103,7 @@ package struct MacroResolver {
         if value == "\"\"" {
             // User explicitly wants empty string
             finalValue = ""
-        } else if value.isEmpty, let defaultValue = macro.default {
+        } else if value.isEmpty, let defaultValue = macro.default?.stringValue {
             // User pressed Enter with default available
             finalValue = defaultValue
         } else {
@@ -184,7 +184,7 @@ package struct MacroResolver {
         // Build prompt message with default value hint
         let promptMessage: String
         if let defaultValue = macro.default {
-            promptMessage = "\(macro.description) (comma-separated) [default: '\(defaultValue)'] (Type '\"\"' for empty array)"
+            promptMessage = "\(macro.description) (comma-separated) [default: '\(defaultValue.stringValue)'] (Type '\"\"' for empty array)"
         } else {
             promptMessage = "\(macro.description) (comma-separated)"
         }
@@ -202,8 +202,8 @@ package struct MacroResolver {
             // User explicitly wants empty array
             values = []
         } else if input.isEmpty, let defaultValue = macro.default {
-            // User pressed Enter with default available
-            values = ArrayInputParser().parseFromInteractive(defaultValue)
+            // User pressed Enter with default available - use arrayValue directly
+            values = defaultValue.arrayValue
         } else {
             // User provided values
             values = ArrayInputParser().parseFromInteractive(input)
@@ -236,7 +236,7 @@ package struct MacroResolver {
 
         // Build prompt message with default value hint
         let promptMessage: String
-        if let defaultValue = macro.default {
+        if let defaultValue = macro.default?.stringValue {
             promptMessage = "\(macro.description) [default: '\(defaultValue)']"
         } else {
             promptMessage = macro.description
@@ -250,7 +250,7 @@ package struct MacroResolver {
         )
 
         // Resolve final path
-        let finalPathString = pathString.isEmpty && macro.default != nil ? macro.default! : pathString
+        let finalPathString = pathString.isEmpty && macro.default != nil ? macro.default!.stringValue : pathString
 
         // Resolve path using the standalone function
         let absolutePath = try! resolveToAbsoluteURL(

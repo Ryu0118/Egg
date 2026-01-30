@@ -380,6 +380,50 @@ struct TemplatesFinderTests {
     }
 
     @Test
+    func listAllIncludesTemplateWhenCustomPathIsTemplateRoot() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-list-test")
+
+        defer {
+            try? fileManager.removeItem(at: tempDir)
+        }
+
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let customTemplateDir = tempDir.appending(path: "CustomRocket")
+
+        try fileManager.createDirectory(at: projectDirectory.appending(path: ".eggs"), withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory.appending(path: ".eggs"), withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: customTemplateDir, withIntermediateDirectories: true)
+
+        let configContent = """
+        name: RocketStarter
+        description: Custom root template
+        hatch:
+          output: .
+        """
+        try fileManager.writeText(configContent, at: customTemplateDir.appending(path: "config.yml"))
+
+        let finder = TemplatesFinder(
+            fileManager: fileManager,
+            projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: [customTemplateDir]
+        )
+
+        let templates = try await finder.listAll(emitValidationErrorLog: false)
+
+        #expect(templates.custom.count == 1)
+        guard let template = templates.custom.first else {
+            Issue.record("Expected template from custom root path")
+            return
+        }
+        #expect(template.config.name == "RocketStarter")
+        #expect(template.path == customTemplateDir)
+    }
+
+    @Test
     func existsReturnsTrueForCustomPathTemplate() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-exists-test")
@@ -417,6 +461,43 @@ struct TemplatesFinderTests {
 
         #expect(finder.exists("CustomOnlyTemplate") == true)
         #expect(finder.exists("NonExistentTemplate") == false)
+    }
+
+    @Test
+    func validTemplateDirectoryResolvesCustomRootTemplateByConfigName() throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-valid-test")
+
+        defer {
+            try? fileManager.removeItem(at: tempDir)
+        }
+
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let customTemplateDir = tempDir.appending(path: "RootTemplate")
+
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: customTemplateDir, withIntermediateDirectories: true)
+
+        let configContent = """
+        name: DirectTemplate
+        description: Root-level template
+        hatch:
+          output: .
+        """
+        try fileManager.writeText(configContent, at: customTemplateDir.appending(path: "config.yml"))
+
+        let finder = TemplatesFinder(
+            fileManager: fileManager,
+            projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: [customTemplateDir]
+        )
+
+        let resolved = try finder.validTemplateDirectory("DirectTemplate")
+        #expect(resolved == customTemplateDir)
     }
 
     @Test

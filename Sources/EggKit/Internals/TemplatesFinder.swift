@@ -96,9 +96,9 @@ struct TemplatesFinder {
 
         var templates = [Template]()
 
-        let templateDirURLs = try? fileManager.contentsOfDirectory(at: templateDir, includingPropertiesForKeys: nil, options: [])
+        let candidateDirectories = candidateTemplateDirectories(at: templateDir)
 
-        for templateDirURL in templateDirURLs ?? [] {
+        for templateDirURL in candidateDirectories {
             let configPath = templateDirURL.appendingPathComponent("config.yml")
 
             guard fileManager.exists(configPath) else {
@@ -124,12 +124,36 @@ struct TemplatesFinder {
         return templates
     }
 
+    /// Returns the directories that should be scanned for templates for the given location directory.
+    ///
+    /// The directory itself is considered a candidate so that custom search paths pointing directly
+    /// at a single template still work, while the immediate subdirectories are included to support
+    /// directories that contain multiple templates.
+    private func candidateTemplateDirectories(at locationDirectory: URL) -> [URL] {
+        guard fileManager.isDirectory(at: locationDirectory) else {
+            return []
+        }
+
+        var directories: [URL] = [locationDirectory]
+
+        if let entries = try? fileManager.contentsOfDirectory(
+            at: locationDirectory,
+            includingPropertiesForKeys: nil,
+            options: []
+        ) {
+            for entry in entries where fileManager.isDirectory(at: entry) {
+                directories.append(entry)
+            }
+        }
+
+        return directories
+    }
+
     func validTemplateDirectory(_ name: String) throws -> URL? {
         // Check additional search paths first (in order, highest priority)
         for path in additionalSearchPaths {
-            let templateInCustom = location.template(name, type: .custom(path))
-            if fileManager.exists(templateInCustom) {
-                return templateInCustom
+            if let customTemplate = resolveCustomTemplateDirectory(name, in: path) {
+                return customTemplate
             }
         }
 
@@ -152,6 +176,42 @@ struct TemplatesFinder {
             templateInProject
         } else {
             nil
+        }
+    }
+
+    private func resolveCustomTemplateDirectory(_ name: String, in path: URL) -> URL? {
+        let templateInCustom = location.template(name, type: .custom(path))
+        if fileManager.exists(templateInCustom) {
+            return templateInCustom
+        }
+
+        return templatePathIfMatchesRoot(path, name: name)
+    }
+
+    private func templatePathIfMatchesRoot(_ candidate: URL, name: String) -> URL? {
+        let configURL = candidate.appendingPathComponent("config.yml")
+        guard fileManager.exists(configURL) else {
+            return nil
+        }
+
+        if candidate.lastPathComponent == name {
+            return candidate
+        }
+
+        guard let configName = configName(at: configURL) else {
+            return nil
+        }
+
+        return configName == name ? candidate : nil
+    }
+
+    private func configName(at configURL: URL) -> String? {
+        do {
+            let data = try fileManager.readFile(at: configURL)
+            let config = try decoder.decode(Config.self, from: data)
+            return config.name
+        } catch {
+            return nil
         }
     }
 

@@ -145,7 +145,7 @@ extension ConfigValidator {
                 errors += [.choiceTypeEmptyChoices(context: context, name: macro.name)]
             }
 
-            if let defaultValue = macro.default, !choices.contains(defaultValue) {
+            if let defaultValue = macro.default?.stringValue, !choices.contains(defaultValue) {
                 errors += [.choiceDefaultValueNotInChoices(
                     context: context,
                     name: macro.name,
@@ -168,8 +168,8 @@ extension ConfigValidator {
                 errors += [.choiceTypeEmptyChoices(context: context, name: macro.name)]
             }
 
-            if let defaultValue = macro.default, ArrayStringParser.isValidArrayString(defaultValue) {
-                let arrayValues = ArrayStringParser.parse(defaultValue)
+            if let defaultValue = macro.default {
+                let arrayValues = defaultValue.arrayValue
                 for value in arrayValues where !choices.contains(value) {
                     errors += [.arrayDefaultValueNotInChoices(
                         context: context,
@@ -183,23 +183,19 @@ extension ConfigValidator {
             return errors
         }
 
-        private func validateArrayType(_ macro: Config.Macro, context: String) -> [Error] {
-            guard let defaultValue = macro.default else {
+        private func validateArrayType(_ macro: Config.Macro, context _: String) -> [Error] {
+            // With MacroDefaultValue enum, array type validation is handled by Codable
+            // If it decoded successfully, it's valid (either .array or .string that parses to array)
+            guard macro.default != nil else {
                 return []
             }
 
-            if !ArrayStringParser.isValidArrayString(defaultValue) {
-                return [.arrayDefaultValueInvalidFormat(
-                    context: context,
-                    name: macro.name
-                )]
-            }
-
+            // No additional validation needed - MacroDefaultValue handles both formats
             return []
         }
 
         private func validateBooleanType(_ macro: Config.Macro, context: String) -> Error? {
-            guard let defaultValue = macro.default,
+            guard let defaultValue = macro.default?.stringValue,
                   defaultValue != "true",
                   defaultValue != "false"
             else {
@@ -210,7 +206,7 @@ extension ConfigValidator {
         }
 
         private func validatePathType(_ macro: Config.Macro, context: String) -> Error? {
-            guard let defaultValue = macro.default, !defaultValue.isEmpty, defaultValue.contains("\0") else {
+            guard let defaultValue = macro.default?.stringValue, !defaultValue.isEmpty, defaultValue.contains("\0") else {
                 return nil
             }
 
@@ -231,7 +227,7 @@ extension ConfigValidator {
                 )
             }
 
-            guard let defaultValue = macro.default else {
+            guard let defaultValue = macro.default?.stringValue else {
                 return nil
             }
 

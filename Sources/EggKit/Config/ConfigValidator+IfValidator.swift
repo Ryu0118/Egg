@@ -87,17 +87,17 @@ extension ConfigValidator {
             switch macro.type {
             case .boolean:
                 // Boolean type: true or false
-                return macro.default == "true" ? "true" : "false"
+                return macro.default?.stringValue == "true" ? "true" : "false"
 
             case .string, .path:
                 // String and path types: string literals
-                let defaultValue = macro.default ?? "test"
+                let defaultValue = macro.default?.stringValue ?? "test"
                 let escaped = escapeStringForJS(defaultValue)
                 return "\"\(escaped)\""
 
             case .choice:
                 // Choice type: string literal (use default value or first choice)
-                if let defaultValue = macro.default {
+                if let defaultValue = macro.default?.stringValue {
                     let escaped = escapeStringForJS(defaultValue)
                     return "\"\(escaped)\""
                 } else if let choices = macro.choices, let firstChoice = choices.first {
@@ -108,9 +108,10 @@ extension ConfigValidator {
 
             case .choices:
                 // Choices type (multiple selection): array literal
-                if let defaultValue = macro.default, isValidArrayString(defaultValue) {
-                    // Already in array format, use as is
-                    return defaultValue
+                if let defaultValue = macro.default {
+                    // Convert to JS array format
+                    let arrayValues = defaultValue.arrayValue.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
+                    return "[\(arrayValues)]"
                 } else if let choices = macro.choices, !choices.isEmpty {
                     // Create array from choices
                     let arrayValues = choices.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
@@ -120,9 +121,10 @@ extension ConfigValidator {
 
             case .array:
                 // Array type (free-form): array literal
-                if let defaultValue = macro.default, isValidArrayString(defaultValue) {
-                    // Already in array format, use as is
-                    return defaultValue
+                if let defaultValue = macro.default {
+                    // Convert to JS array format
+                    let arrayValues = defaultValue.arrayValue.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
+                    return "[\(arrayValues)]"
                 }
                 return "[]"
             }
@@ -135,11 +137,6 @@ extension ConfigValidator {
                 .replacingOccurrences(of: "\n", with: "\\n")
                 .replacingOccurrences(of: "\r", with: "\\r")
                 .replacingOccurrences(of: "\t", with: "\\t")
-        }
-
-        private func isValidArrayString(_ value: String) -> Bool {
-            let trimmed = value.trimmingCharacters(in: .whitespaces)
-            return trimmed.hasPrefix("[") && trimmed.hasSuffix("]")
         }
     }
 }

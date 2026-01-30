@@ -3,14 +3,15 @@ import Foundation
 import Noora
 
 package struct ListRunner {
-    let location: TemplateLocationType?
-    let finder: TemplatesFinder
-    let projectDirectory: URL
-    let workingDirectory: URL
-    let additionalSearchPaths: [URL]
-    let hideDescription: Bool
-    let noora: any Noorable
+    private let mode: ListRunnerMode
+    private let finder: TemplatesFinder
+    private let projectDirectory: URL
+    private let workingDirectory: URL
+    private let additionalSearchPaths: [URL]
+    private let hideDescription: Bool
+    private let noora: any Noorable
 
+    /// Initialize for display mode (backward compatible)
     package init(
         location: TemplateLocationType?,
         projectDirectory: URL,
@@ -21,7 +22,33 @@ package struct ListRunner {
         hideDescription: Bool = false,
         noora: some Noorable = Noora()
     ) {
-        self.location = location
+        self.mode = .display
+        self.projectDirectory = projectDirectory
+        self.workingDirectory = workingDirectory
+        self.additionalSearchPaths = additionalSearchPaths
+        self.hideDescription = hideDescription
+        self.noora = noora
+        finder = TemplatesFinder(
+            fileManager: fileManager,
+            projectDirectory: projectDirectory,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory,
+            additionalSearchPaths: additionalSearchPaths
+        )
+    }
+
+    /// Initialize with explicit mode
+    package init(
+        mode: ListRunnerMode,
+        projectDirectory: URL,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        additionalSearchPaths: [URL] = [],
+        fileManager: some FileManagerProtocol,
+        hideDescription: Bool = false,
+        noora: some Noorable = Noora()
+    ) {
+        self.mode = mode
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
@@ -37,9 +64,19 @@ package struct ListRunner {
     }
 
     package func run() async throws {
+        switch mode {
+        case .display:
+            try await runDisplayMode(location: nil)
+        case let .mcp(location):
+            // MCP mode returns result, use runMcp() instead
+            _ = try await runMcp(location: location)
+        }
+    }
+
+    /// Run in display mode (shows tables using Noora)
+    private func runDisplayMode(location: TemplateLocationType?) async throws {
         if let location {
             let list = try await finder.list(for: location)
-
             table(for: list, in: location)
         } else {
             let list = try await finder.listAll()
@@ -67,6 +104,61 @@ package struct ListRunner {
                 )
             )
         }
+    }
+
+    /// Run in MCP mode and return structured result
+    package func runMcp(location: TemplateLocationType? = nil) async throws -> ListResult {
+        var templates: [ListResult.TemplateInfo] = []
+
+        if let location {
+            let list = try await finder.list(for: location)
+            templates = list.map { template in
+                ListResult.TemplateInfo(
+                    name: template.config.name,
+                    description: template.config.description,
+                    version: template.config.version,
+                    location: location.name,
+                    path: template.path.path(percentEncoded: false)
+                )
+            }
+        } else {
+            let list = try await finder.listAll()
+
+            // Add global templates
+            for template in list.global {
+                templates.append(ListResult.TemplateInfo(
+                    name: template.config.name,
+                    description: template.config.description,
+                    version: template.config.version,
+                    location: "global",
+                    path: template.path.path(percentEncoded: false)
+                ))
+            }
+
+            // Add project templates
+            for template in list.project {
+                templates.append(ListResult.TemplateInfo(
+                    name: template.config.name,
+                    description: template.config.description,
+                    version: template.config.version,
+                    location: "project",
+                    path: template.path.path(percentEncoded: false)
+                ))
+            }
+
+            // Add custom path templates
+            for template in list.custom {
+                templates.append(ListResult.TemplateInfo(
+                    name: template.config.name,
+                    description: template.config.description,
+                    version: template.config.version,
+                    location: "custom",
+                    path: template.path.path(percentEncoded: false)
+                ))
+            }
+        }
+
+        return ListResult(templates: templates)
     }
 
     private func table(for list: [Template], in location: TemplateLocationType) {

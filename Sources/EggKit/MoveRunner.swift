@@ -58,6 +58,57 @@ package struct MoveRunner {
                 sourceLocation: sourceLocation,
                 targetLocation: targetLocation
             )
+        case .mcp:
+            // MCP mode returns result, use runMcp() instead
+            break
+        }
+    }
+
+    /// Run in MCP mode and return structured result
+    /// Note: MCP mode always uses force=true (overwrites existing)
+    package func runMcp(
+        name: String,
+        path: String,
+        sourceLocation: TemplateLocationType,
+        targetLocation: TemplateLocationType
+    ) async throws -> MoveResult {
+        let sourcePath = URL(filePath: path)
+
+        // Determine target path
+        let targetPath = templateLocation.template(name, type: targetLocation)
+
+        // Check if target exists - in MCP mode, we allow overwriting
+        let targetExists = fileManager.fileExists(atPath: targetPath.path(percentEncoded: false))
+
+        // Create target directory if needed
+        let targetDir = templateLocation.templateDir(for: targetLocation)
+        if !fileManager.fileExists(atPath: targetDir.path(percentEncoded: false)) {
+            try fileManager.createDirectory(
+                at: targetDir,
+                withIntermediateDirectories: true
+            )
+        }
+
+        // If target exists, remove it first (force mode)
+        if targetExists {
+            try fileManager.removeItem(at: targetPath)
+        }
+
+        do {
+            // Copy to target location
+            try fileManager.copyItem(at: sourcePath, to: targetPath)
+
+            // Remove source
+            try fileManager.removeItem(at: sourcePath)
+
+            return MoveResult(
+                name: name,
+                sourceLocation: sourceLocation.name,
+                targetLocation: targetLocation.name,
+                newPath: targetPath.path(percentEncoded: false)
+            )
+        } catch {
+            throw Error.moveFailed(name: name, underlying: error)
         }
     }
 
@@ -218,6 +269,12 @@ package enum MoveRunnerMode: Codable {
     case interactive
     case selectTarget(name: String, path: String, sourceLocation: TemplateLocationType)
     case direct(
+        name: String,
+        path: String,
+        sourceLocation: TemplateLocationType,
+        targetLocation: TemplateLocationType
+    )
+    case mcp(
         name: String,
         path: String,
         sourceLocation: TemplateLocationType,

@@ -93,9 +93,13 @@ struct HatchCommandTests {
             templateDir = projectDir.appending(path: ".eggs/\(template.name)")
         case .custom:
             templateDir = customDir.appending(path: template.name)
+        case .customRoot:
+            templateDir = customDir
         }
 
-        try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+        if !fileManager.fileExists(atPath: templateDir.path(percentEncoded: false)) {
+            try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+        }
 
         // Write config.yml
         try template.configYaml.write(
@@ -229,6 +233,7 @@ struct HatchCommandTests {
             case global
             case project
             case custom
+            case customRoot
         }
 
         enum Expected {
@@ -312,6 +317,7 @@ struct HatchCommandTests {
             stencilLoopRendering,
             // Custom search paths tests
             customSearchPathTemplate,
+            customSearchPathTemplateAtRoot,
             customSearchPathTemplateNotFoundWithoutFlag,
         ]
 
@@ -657,6 +663,38 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("MyCustomApp.swift", contentContains: "MyCustomApp from custom path"),
+                ]
+            ),
+            useCustomSearchPath: true
+        )
+
+        static let customSearchPathTemplateAtRoot = TestCase(
+            description: "executes template when custom search path points to template root",
+            template: TemplateSetup(
+                name: "CustomRootTemplate",
+                location: .customRoot,
+                configYaml: """
+                name: CustomRootTemplate
+                description: Custom root template
+                macros:
+                  - name: ___APP_NAME___
+                    description: App name
+                    type: string
+                hatch:
+                  output: .
+                """,
+                files: [
+                    FileSetup(path: "___APP_NAME___.swift", content: "// ___APP_NAME___ from custom root path\n"),
+                ]
+            ),
+            templateName: "CustomRootTemplate",
+            macros: ["APP-NAME": ["RootCustomApp"]],
+            flags: .directApply,
+            existingFiles: [],
+            expected: .success,
+            verification: Verification(
+                expectedFiles: [
+                    ExpectedFile("RootCustomApp.swift", contentContains: "RootCustomApp from custom root path"),
                 ]
             ),
             useCustomSearchPath: true

@@ -97,9 +97,9 @@ package struct InstallRunner {
         switch mode {
         case .interactive:
             return try await runInteractiveMode()
-        case let .direct(url, ref, locationKind, filter):
+        case let .direct(source, locationKind, filter):
             let location = locationKind.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
-            return try await runDirectMode(url: url, ref: ref, location: location, filter: filter)
+            return try await runDirectMode(source: source, location: location, filter: filter)
         }
     }
 
@@ -133,7 +133,7 @@ package struct InstallRunner {
         let allTemplates = try await templateDiscoverer.discoverTemplates(in: tempDir)
 
         guard !allTemplates.isEmpty else {
-            throw Error.noTemplatesFound(url: gitURL.original)
+            throw Error.noTemplatesFound(source: .git(url: gitURL, ref: ref))
         }
 
         // Prompt for template selection
@@ -211,23 +211,41 @@ package struct InstallRunner {
     }
 
     private func runDirectMode(
-        url: GitURL,
-        ref: GitRef?,
+        source: TemplateSource,
         location: TemplateLocationType,
         filter: TemplateFilter
     ) async throws -> InstallResult {
-        // Clone repository to temporary directory
-        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "egg-install-")
-        defer { try? fileManager.removeItem(at: tempDir) }
+        let templatesDirectory: URL
+        var cleanupDirectory: URL?
 
-        noora.info("Cloning repository...")
-        try await gitCloner.clone(url: url, to: tempDir, ref: ref)
+        switch source {
+        case let .git(url, ref):
+            // Clone repository to temporary directory
+            let tempDir = try fileManager.makeTemporaryDirectory(prefix: "egg-install-")
+            cleanupDirectory = tempDir
+
+            noora.info("Cloning repository...")
+            try await gitCloner.clone(url: url, to: tempDir, ref: ref)
+
+            templatesDirectory = tempDir
+
+        case let .local(path):
+            // Use local path directly
+            noora.info("Using local path: \(path.path(percentEncoded: false))")
+            templatesDirectory = path
+        }
+
+        defer {
+            if let cleanupDirectory {
+                try? fileManager.removeItem(at: cleanupDirectory)
+            }
+        }
 
         noora.info("Discovering templates...")
-        let allTemplates = try await templateDiscoverer.discoverTemplates(in: tempDir)
+        let allTemplates = try await templateDiscoverer.discoverTemplates(in: templatesDirectory)
 
         guard !allTemplates.isEmpty else {
-            throw Error.noTemplatesFound(url: url.original)
+            throw Error.noTemplatesFound(source: source)
         }
 
         // Apply filter and track skipped templates
@@ -312,15 +330,20 @@ extension InstallRunner {
     enum Error: LocalizedError, Equatable {
         /// The provided URL is not a valid Git URL
         case invalidURL(String)
-        /// No valid templates were found in the repository
-        case noTemplatesFound(url: String)
+        /// No valid templates were found in the source
+        case noTemplatesFound(source: TemplateSource)
 
         var errorDescription: String? {
             switch self {
             case let .invalidURL(url):
                 "Invalid Git URL: \(url)"
-            case let .noTemplatesFound(url):
-                "No valid templates found in repository: \(url)"
+            case let .noTemplatesFound(source):
+                switch source {
+                case let .git(url, _):
+                    "No valid templates found in repository: \(url.original)"
+                case let .local(path):
+                    "No valid templates found in directory: \(path.path(percentEncoded: false))"
+                }
             }
         }
     }

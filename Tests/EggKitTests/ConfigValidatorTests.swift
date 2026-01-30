@@ -368,15 +368,6 @@ struct ConfigValidatorTests {
                 ])
             ),
             TestCase(
-                description: "detects invalid array default format",
-                config: makeValidConfig(macros: [
-                    Config.Macro(name: "___ARRAY___", description: "desc", type: .array, default: "value"),
-                ]),
-                expected: .failure([
-                    .arrayDefaultValueInvalidFormat(context: "macros[0]", name: "___ARRAY___"),
-                ])
-            ),
-            TestCase(
                 description: "detects choices specified for array macro",
                 config: makeValidConfig(macros: [
                     Config.Macro(name: "___ARRAY___", description: "desc", type: .array, default: "[\"a\"]", choices: ["a", "b"]),

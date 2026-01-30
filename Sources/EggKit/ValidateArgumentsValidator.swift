@@ -56,4 +56,8 @@ package enum ValidateRunnerMode: Codable {
         config: Config,
         templatePath: URL
     )
+    case mcp(
+        config: Config,
+        templatePath: URL
+    )
 }

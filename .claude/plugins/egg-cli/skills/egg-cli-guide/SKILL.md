@@ -1,5 +1,6 @@
 ---
-description: Guide for using the egg CLI scaffolding tool. Use when executing egg commands, understanding argument ordering, or troubleshooting CLI usage. Covers pitfalls not shown in --help output.
+description: |
+  Use PROACTIVELY when running any egg CLI command (egg hatch, egg template list/detail/install/create/validate/open/duplicate/delete). CRITICAL for correct argument ordering and macro syntax. Invoke this skill BEFORE executing egg commands.
 ---
 
 # egg CLI Usage Guide
@@ -34,7 +35,7 @@ Use this output to construct the correct `egg hatch` command.
 | `egg template list` | List available templates | Finding what templates exist |
 | `egg template detail` | Show template info | Understanding required macros before hatch |
 | `egg template create` | Create new template | Starting a new template from scratch |
-| `egg template install` | Install from Git | Adding templates from remote repositories |
+| `egg template install` | Install templates | Adding templates from Git repos or local paths |
 | `egg template validate` | Validate config.yml | Checking template configuration errors |
 | `egg template open` | Open template in Finder | Editing template files directly |
 | `egg template duplicate` | Duplicate a template | Creating a copy with new name/description |
@@ -75,11 +76,17 @@ Different macro types require different CLI input formats:
 | Type | CLI syntax | Example |
 |------|------------|---------|
 | `string` | Plain value | `--app-name MyApp` |
-| `boolean` | `true` / `false` | `--init-git true` |
+| `boolean` | Flag only (no value) | `--init-git` |
 | `choice` | One of allowed values | `--platform iOS` |
 | `choices` | Space-separated values | `--platforms iOS macOS` |
 | `array` | Space-separated values | `--features auth analytics` |
 | `path` | Relative or absolute path | `--output-path ./generated` |
+
+**Boolean macros**:
+- Include the flag to set `true`: `--init-git`
+- Use `--no-` prefix to explicitly set `false`: `--no-init-git`
+- Omit the flag entirely to use the default value
+- Do NOT pass `true`/`false` as values
 
 ## Interactive vs Direct Mode
 
@@ -179,6 +186,21 @@ egg template validate ./.eggs/MyTemplate  # Validate before use
 ```
 
 Validation catches config.yml errors before `egg hatch` fails.
+
+## Template Installation
+
+`egg template install` supports Git repositories and local directories:
+
+```bash
+# From Git repository
+egg template install https://github.com/user/templates.git --global
+
+# From local directory
+egg template install ./my-templates --global
+egg template install /path/to/templates --global
+```
+
+**Note**: `--branch`, `--tag`, `--revision` options are only valid for Git sources, not local paths.
 
 ## Debugging Tips
 

@@ -54,7 +54,48 @@ package struct DuplicateRunner {
                 newName: newName,
                 newDescription: newDescription
             )
+        case .mcp:
+            // MCP mode returns result, use runMcp() instead
+            break
         }
+    }
+
+    /// Run in MCP mode and return structured result
+    package func runMcp(
+        sourceName: String,
+        sourcePath: String,
+        sourceLocation: TemplateLocationType,
+        newName: String,
+        newDescription: String
+    ) async throws -> DuplicateResult {
+        let sourcePathURL = URL(filePath: sourcePath)
+
+        // Determine target location (same as source)
+        let targetPath = templateLocation.template(newName, type: sourceLocation)
+
+        // Ensure target directory doesn't exist
+        guard !fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)) else {
+            throw Error.targetAlreadyExists(name: newName)
+        }
+
+        // Copy entire template directory
+        try fileManager.copyItem(at: sourcePathURL, to: targetPath)
+
+        // Update config.yml with new name and description
+        let configPath = targetPath.appendingPathComponent("config.yml")
+        try await updateConfig(
+            at: configPath,
+            newName: newName,
+            newDescription: newDescription
+        )
+
+        return DuplicateResult(
+            sourceName: sourceName,
+            newName: newName,
+            newDescription: newDescription,
+            location: sourceLocation.name,
+            path: targetPath.path(percentEncoded: false)
+        )
     }
 
     private func runInteractiveMode() async throws {
@@ -250,6 +291,13 @@ package struct DuplicateRunner {
 package enum DuplicateRunnerMode: Codable {
     case interactive
     case direct(
+        sourceName: String,
+        sourcePath: String,
+        sourceLocation: TemplateLocationType,
+        newName: String,
+        newDescription: String
+    )
+    case mcp(
         sourceName: String,
         sourcePath: String,
         sourceLocation: TemplateLocationType,

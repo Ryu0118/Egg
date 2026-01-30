@@ -75,6 +75,31 @@ package struct DeleteRunner {
                 path: URL(filePath: pathString),
                 location: location
             )
+
+        case .mcp:
+            // MCP mode returns result, use runMcp() instead
+            break
+        }
+    }
+
+    /// Run in MCP mode and return structured result
+    /// Note: MCP mode always uses force=true (no confirmation prompt)
+    package func runMcp(
+        name: String,
+        path: String,
+        location: TemplateLocationType
+    ) throws -> DeleteResult {
+        let pathURL = URL(filePath: path)
+
+        do {
+            try fileManager.removeItem(at: pathURL)
+            return DeleteResult(
+                name: name,
+                location: location.name,
+                path: path
+            )
+        } catch {
+            throw Error.deletionFailed(name: name, underlying: error)
         }
     }
 
@@ -126,4 +151,5 @@ package struct DeleteRunner {
 package enum DeleteRunnerMode: Codable {
     case interactive
     case direct(name: String, path: String, location: TemplateLocationType)
+    case mcp(name: String, path: String, location: TemplateLocationType)
 }

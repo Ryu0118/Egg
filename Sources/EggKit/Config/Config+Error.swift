@@ -11,7 +11,6 @@ extension ConfigValidator {
         case choiceTypeMissingChoices(context: String, name: String)
         case choiceTypeEmptyChoices(context: String, name: String)
         case choiceDefaultValueNotInChoices(context: String, name: String, defaultValue: String, choices: [String])
-        case arrayDefaultValueInvalidFormat(context: String, name: String)
         case arrayDefaultValueNotInChoices(context: String, name: String, value: String, choices: [String])
         case booleanDefaultValueInvalid(context: String, name: String, defaultValue: String)
         case pathDefaultValueInvalidCharacters(context: String, name: String)
@@ -52,8 +51,6 @@ extension ConfigValidator {
                 "\(context): Macro '\(name)' of type 'choice' must have at least one choice."
             case let .choiceDefaultValueNotInChoices(context, name, defaultValue, choices):
                 "\(context): Macro '\(name)' default value '\(defaultValue)' must be one of the choices: \(choices.joined(separator: ", "))."
-            case let .arrayDefaultValueInvalidFormat(context, name):
-                "\(context): Macro '\(name)' default value must be a valid array format like '[value1, value2]'."
             case let .arrayDefaultValueNotInChoices(context, name, value, choices):
                 "\(context): Macro '\(name)' default value '\(value)' must be one of the choices: \(choices.joined(separator: ", "))."
             case let .booleanDefaultValueInvalid(context, name, defaultValue):

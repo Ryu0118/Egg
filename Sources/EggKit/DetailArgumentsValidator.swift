@@ -72,4 +72,5 @@ package struct DetailArgumentsValidator {
 package enum DetailRunnerMode: Equatable {
     case interactive(location: TemplateLocationType?)
     case direct(template: Template, location: TemplateLocationType)
+    case mcp(template: Template, location: TemplateLocationType)
 }

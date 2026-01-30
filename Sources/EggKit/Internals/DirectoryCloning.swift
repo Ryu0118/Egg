@@ -43,7 +43,9 @@ public struct APFSDirectoryCloner: DirectoryCloning, Sendable {
                 guard let srcPath, let dstPath else {
                     return Int32(-1)
                 }
-                return clonefile(srcPath, dstPath, 0)
+                // Use CLONE_NOFOLLOW (0x0001) to preserve symbolic links as-is
+                // instead of following them and cloning their targets.
+                return clonefile(srcPath, dstPath, UInt32(CLONE_NOFOLLOW))
             }
         }
 

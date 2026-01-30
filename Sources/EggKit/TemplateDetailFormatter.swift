@@ -54,7 +54,7 @@ struct TemplateDetailFormatter {
                 flag: MacroNameConverter.macroToFlag(macro.name),
                 type: macro.type.rawValue,
                 description: macro.description,
-                defaultValue: macro.default,
+                defaultValue: macro.default?.stringValue,
                 choices: macro.choices,
                 validation: macro.validate
             )
@@ -112,11 +112,11 @@ struct TemplateDetailFormatter {
     func generateExampleValue(for macro: Config.Macro) -> String {
         // Use default value if available
         if let defaultValue = macro.default {
-            // For array/choices type, parse JSON array and convert to space-separated values
+            // For array/choices type, convert to space-separated values
             if macro.type == .array || macro.type == .choices {
-                return ArrayStringParser.toSpaceSeparated(defaultValue)
+                return defaultValue.arrayValue.joined(separator: " ")
             }
-            return defaultValue
+            return defaultValue.stringValue
         }
 
         // Use first choice if available

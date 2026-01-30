@@ -28,7 +28,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private let fileManager: any FileManagerProtocol
     private let apfsCloner: any DirectoryCloning
     private let gitRepositoryChecker: GitRepositoryChecker
-    private nonisolated(unsafe) let noora: any Noorable
+    private let noora: any Noorable
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),

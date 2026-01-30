@@ -90,22 +90,31 @@ struct ParsedMacroDefinitionValidator {
             return .failure(.missingDefaultValue(macro: configMacro.name))
         }
 
-        let resolvedValues = [defaultValue]
+        // Convert MacroDefaultValue to [String] for validation
+        let resolvedValues: [String]
+        switch configMacro.type {
+        case .array, .choices:
+            resolvedValues = defaultValue.arrayValue
+        default:
+            resolvedValues = [defaultValue.stringValue]
+        }
 
         return validateAndResolve(
             values: resolvedValues,
             configMacro: configMacro,
-            macroName: configMacro.name
+            macroName: configMacro.name,
+            isFromDefault: true
         )
     }
 
     private func validateAndResolve(
         values: [String],
         configMacro: Config.Macro,
-        macroName: String
+        macroName: String,
+        isFromDefault: Bool = false
     ) -> Result<ResolvedMacro, Error> {
         // Validate value count
-        if let error = validateValueCount(values, configMacro: configMacro, macroName: macroName) {
+        if let error = validateValueCount(values, configMacro: configMacro, macroName: macroName, isFromDefault: isFromDefault) {
             return .failure(error)
         }
 
@@ -137,11 +146,12 @@ struct ParsedMacroDefinitionValidator {
         config.macros?.first(where: { $0.name == parsedMacroDefinition.macro })
     }
 
-    private func validateValueCount(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) -> Error? {
+    private func validateValueCount(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String, isFromDefault: Bool) -> Error? {
         switch configMacro.type {
         case .array, .choices:
-            // Array/choices type can have one or more values
-            if resolvedValues.isEmpty {
+            // Array/choices type can have zero or more values when from default,
+            // but requires at least one value when provided by user
+            if resolvedValues.isEmpty && !isFromDefault {
                 return .arrayRequiresAtLeastOneValue(macro: macroName)
             }
         case .string, .boolean, .choice, .path:

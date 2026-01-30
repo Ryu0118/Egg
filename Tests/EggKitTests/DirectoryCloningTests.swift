@@ -117,6 +117,17 @@ extension DirectoryCloningTests {
                 fullPath = fullPath.appending(path: component)
             }
             try fileManager.createDirectory(at: fullPath, withIntermediateDirectories: true)
+
+        case let .symlink(path, target):
+            var fullPath = baseDir
+            for component in path.split(separator: "/").map(String.init) {
+                fullPath = fullPath.appending(path: component)
+            }
+            try createParentDirectoryIfNeeded(for: fullPath, using: fileManager)
+            try FileManager.default.createSymbolicLink(
+                atPath: fullPath.path(percentEncoded: false),
+                withDestinationPath: target
+            )
         }
     }
 
@@ -164,6 +175,22 @@ extension DirectoryCloningTests {
             let exists = fileManager.exists(fullPath)
             let isDir = exists ? fileManager.isDirectory(at: fullPath) : false
             #expect(exists && isDir, "Expected directory to exist at \(path)")
+
+        case let .symlinkExists(path, expectedTarget):
+            let fullPath = resolvePath(path, in: baseDir)
+            let pathString = fullPath.path(percentEncoded: false)
+            var isSymlink = false
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: pathString),
+               let fileType = attrs[.type] as? FileAttributeType
+            {
+                isSymlink = fileType == .typeSymbolicLink
+            }
+            #expect(isSymlink, "Expected symlink at \(path), but it's not a symlink")
+
+            if isSymlink {
+                let actualTarget = try? FileManager.default.destinationOfSymbolicLink(atPath: pathString)
+                #expect(actualTarget == expectedTarget, "Expected symlink target '\(expectedTarget)' at \(path), got '\(actualTarget ?? "nil")'")
+            }
         }
     }
 
@@ -190,12 +217,14 @@ extension DirectoryCloningTests {
         enum Setup: Sendable {
             case file(path: String, content: String)
             case directory(path: String)
+            case symlink(path: String, target: String)
         }
 
         enum Verification: Sendable {
             case fileExists(path: String)
             case fileContent(path: String, expected: String)
             case directoryExists(path: String)
+            case symlinkExists(path: String, target: String)
         }
 
         enum Expectation: Sendable {
@@ -275,6 +304,30 @@ extension DirectoryCloningTests {
                     .fileContent(path: "root.txt", expected: "root"),
                     .directoryExists(path: "empty_dir"),
                     .fileContent(path: "subdir/file.txt", expected: "subdir file"),
+                ])
+            ),
+
+            TestCase(
+                description: "preserves symbolic links",
+                sourceSetup: [
+                    .file(path: "target.txt", content: "target content"),
+                    .symlink(path: "link.txt", target: "target.txt"),
+                ],
+                expectation: .success(verifications: [
+                    .fileContent(path: "target.txt", expected: "target content"),
+                    .symlinkExists(path: "link.txt", target: "target.txt"),
+                ])
+            ),
+
+            TestCase(
+                description: "preserves symbolic links in nested directories",
+                sourceSetup: [
+                    .file(path: "dir/target.txt", content: "nested target"),
+                    .symlink(path: "dir/link.txt", target: "target.txt"),
+                ],
+                expectation: .success(verifications: [
+                    .fileContent(path: "dir/target.txt", expected: "nested target"),
+                    .symlinkExists(path: "dir/link.txt", target: "target.txt"),
                 ])
             ),
         ]

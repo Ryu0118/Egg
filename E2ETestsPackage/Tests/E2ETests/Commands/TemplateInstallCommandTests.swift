@@ -16,10 +16,13 @@ struct TemplateInstallCommandTests {
         }
         return "git@github.com:\(testRepoOwner)/\(testRepoName).git"
     }
+
     // Known templates in the test repository
     static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
     // Known commit SHA for revision tests
     static let knownCommitSHA = "8f65013501f58d2989eca79a20474c299b640e27"
+
+    // MARK: - Help
 
     @Test("--help shows install command help")
     func helpFlag() async throws {
@@ -27,7 +30,7 @@ struct TemplateInstallCommandTests {
         let result = try await runner.run("template", "install", "--help")
 
         #expect(result.succeeded)
-        #expect(result.stdout.contains("OVERVIEW: Install templates from a Git repository"))
+        #expect(result.stdout.contains("OVERVIEW: Install templates from a Git repository or local directory"))
         #expect(result.stdout.contains("USAGE: egg template install"))
         #expect(result.stdout.contains("--branch"))
         #expect(result.stdout.contains("--tag"))
@@ -38,410 +41,371 @@ struct TemplateInstallCommandTests {
         #expect(result.stdout.contains("--force"))
     }
 
-    @Test(arguments: ValidationErrorTestCase.allCases)
-    func validationErrors(_ testCase: ValidationErrorTestCase) async throws {
-        let runner = try await CLIRunner()
-        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-install")
-        defer { try? fileManager.removeItem(at: tempDir) }
+    // MARK: - Validation Errors
 
-        let homeDir = tempDir.appending(path: "home")
-        let projectDir = tempDir.appending(path: "project")
-        try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
-
-        let environment = ["HOME": homeDir.path(percentEncoded: false)]
-        let arguments = testCase.buildArguments(projectDir: projectDir)
+    @Test("fails with invalid URL")
+    func failsWithInvalidURL() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
 
         let result = try await runner.run(
-            arguments: arguments,
-            environment: environment
+            arguments: ["template", "install", "not-a-valid-url", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
         )
 
-        #expect(!result.succeeded, "Expected failure but command succeeded")
+        #expect(!result.succeeded)
+        #expect((result.stderr + result.stdout).contains("Invalid"))
+    }
+
+    @Test("fails when using both --template and --exclude")
+    func failsWithBothTemplateAndExclude() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "Foo", "--exclude", "Bar", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded)
+        #expect((result.stderr + result.stdout).contains("Cannot use both"))
+    }
+
+    @Test("fails when using --branch and --tag together")
+    func failsWithBranchAndTag() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--branch", "main", "--tag", "v1.0", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded)
+        #expect((result.stderr + result.stdout).contains("Only one of"))
+    }
+
+    @Test("fails when using --branch with local path")
+    func failsWithBranchAndLocalPath() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let localDir = projectDir.appending(path: "templates")
+        try fileManager.createDirectory(at: localDir, withIntermediateDirectories: true)
+
+        let result = try await runner.run(
+            arguments: ["template", "install", localDir.path(percentEncoded: false), "--global", "--branch", "main", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded)
+        #expect((result.stderr + result.stdout).contains("not allowed when installing from a local path"))
+    }
+
+    // MARK: - Git Repository Installation
+
+    @Test("installs all templates to global location")
+    func installAllToGlobal() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        for template in Self.knownTemplates {
+            let path = homeDir.appending(path: ".eggs/\(template)")
+            #expect(fileManager.fileExists(atPath: path.path(percentEncoded: false)), "Template \(template) should exist")
+        }
+    }
+
+    @Test("installs all templates to project location")
+    func installAllToProject() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        for template in Self.knownTemplates {
+            let path = projectDir.appending(path: ".eggs/\(template)")
+            #expect(fileManager.fileExists(atPath: path.path(percentEncoded: false)), "Template \(template) should exist")
+        }
+    }
+
+    @Test("installs specific template using --template filter")
+    func installWithTemplateFilter() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
+        #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/iOSProjectGenTemplate").path(percentEncoded: false)))
+    }
+
+    @Test("excludes specific template using --exclude filter")
+    func installWithExcludeFilter() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--exclude", "iOSProjectGenTemplate", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
+        #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/iOSProjectGenTemplate").path(percentEncoded: false)))
+    }
+
+    @Test("installs from specific branch")
+    func installFromBranch() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--branch", "main", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
+    }
+
+    @Test("installs from specific revision")
+    func installFromRevision() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--revision", Self.knownCommitSHA, "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
+    }
+
+    @Test("overwrites existing template with --force")
+    func overwriteWithForce() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        let existingTemplate = homeDir.appending(path: ".eggs/SwiftModule")
+        try fileManager.createDirectory(at: existingTemplate, withIntermediateDirectories: true)
+        let markerFile = existingTemplate.appending(path: "marker.txt")
+        try "original".write(to: markerFile, atomically: true, encoding: .utf8)
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "SwiftModule", "--force", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(!fileManager.fileExists(atPath: markerFile.path(percentEncoded: false)), "Marker should be gone after overwrite")
+    }
+
+    @Test("skips existing template without --force")
+    func skipExistingWithoutForce() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        let existingTemplate = homeDir.appending(path: ".eggs/SwiftModule")
+        try fileManager.createDirectory(at: existingTemplate, withIntermediateDirectories: true)
+        let markerFile = existingTemplate.appending(path: "marker.txt")
+        try "original".write(to: markerFile, atomically: true, encoding: .utf8)
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded, "Expected failure when all templates skipped")
+        #expect(fileManager.fileExists(atPath: markerFile.path(percentEncoded: false)), "Marker should still exist")
+    }
+
+    @Test("fails with non-existent repository")
+    func failsWithNonexistentRepo() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", "git@github.com:nonexistent-user-12345/nonexistent-repo-67890.git", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded)
+    }
+
+    @Test("fails with non-existent branch")
+    func failsWithNonexistentBranch() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let result = try await runner.run(
+            arguments: ["template", "install", Self.testRepoURL, "--global", "--branch", "nonexistent-branch-12345", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded)
+    }
+
+    // MARK: - Local Path Installation
+
+    @Test("installs templates from local absolute path")
+    func installFromLocalAbsolutePath() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let sourceDir = projectDir.appending(path: "source-templates")
+        try setupLocalTemplates(at: sourceDir, names: ["LocalTemplate1", "LocalTemplate2"])
+
+        let result = try await runner.run(
+            arguments: ["template", "install", sourceDir.path(percentEncoded: false), "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/LocalTemplate1").path(percentEncoded: false)))
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/LocalTemplate2").path(percentEncoded: false)))
+    }
+
+    @Test("installs templates from local relative path with ./")
+    func installFromLocalRelativePath() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let sourceDir = projectDir.appending(path: "my-templates")
+        try setupLocalTemplates(at: sourceDir, names: ["RelativePathTemplate"])
+
+        let result = try await runner.run(
+            arguments: ["template", "install", "./my-templates", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env,
+            workingDirectory: projectDir
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/RelativePathTemplate").path(percentEncoded: false)))
+    }
+
+    @Test("installs templates from plain relative path without ./")
+    func installFromPlainRelativePath() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let sourceDir = projectDir.appending(path: ".claude/plugins/my-plugin")
+        try setupLocalTemplates(at: sourceDir, names: ["PluginTemplate"])
+
+        let result = try await runner.run(
+            arguments: ["template", "install", ".claude/plugins/my-plugin", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env,
+            workingDirectory: projectDir
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/PluginTemplate").path(percentEncoded: false)))
+    }
+
+    @Test("installs templates from local path with filter")
+    func installFromLocalPathWithFilter() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let sourceDir = projectDir.appending(path: "source-templates")
+        try setupLocalTemplates(at: sourceDir, names: ["IncludedTemplate", "ExcludedTemplate"])
+
+        let result = try await runner.run(
+            arguments: ["template", "install", sourceDir.path(percentEncoded: false), "--global", "--template", "IncludedTemplate", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(result.succeeded, "Expected success: \(result.stderr)")
+
+        let homeDir = URL(filePath: env["HOME"]!)
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/IncludedTemplate").path(percentEncoded: false)))
+        #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/ExcludedTemplate").path(percentEncoded: false)))
+    }
+
+    @Test("fails when local path does not exist")
+    func failsWhenLocalPathDoesNotExist() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+
+        let nonExistentPath = projectDir.appending(path: "nonexistent-templates")
+
+        let result = try await runner.run(
+            arguments: ["template", "install", nonExistentPath.path(percentEncoded: false), "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env
+        )
+
+        #expect(!result.succeeded)
         let output = result.stderr + result.stdout
-        #expect(
-            output.contains(testCase.expectedErrorContains),
-            "Expected error containing '\(testCase.expectedErrorContains)' but got: \(output)"
-        )
+        #expect(output.lowercased().contains("invalid"), "Expected invalid source error but got: \(output)")
     }
 
-    @Test(arguments: NetworkTestCase.allCases)
-    func networkOperations(_ testCase: NetworkTestCase) async throws {
+    // MARK: - Helpers
+
+    private func makeTestEnvironment() async throws -> (runner: CLIRunner, env: [String: String], projectDir: URL, cleanup: () -> Void) {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-install")
-        defer { try? fileManager.removeItem(at: tempDir) }
 
         let homeDir = tempDir.appending(path: "home")
         let projectDir = tempDir.appending(path: "project")
         try fileManager.createDirectory(at: homeDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
 
-        // Setup existing templates if needed
-        if let existingTemplate = testCase.existingTemplate {
-            let eggsDir = homeDir.appending(path: ".eggs/\(existingTemplate)")
-            try fileManager.createDirectory(at: eggsDir, withIntermediateDirectories: true)
-            let markerFile = eggsDir.appending(path: "marker.txt")
-            try "original".write(to: markerFile, atomically: true, encoding: .utf8)
+        let env = ["HOME": homeDir.path(percentEncoded: false)]
+        let cleanup = { [fileManager] in
+            try? fileManager.removeItem(at: tempDir)
         }
 
-        let environment = ["HOME": homeDir.path(percentEncoded: false)]
-        let arguments = testCase.buildArguments(projectDir: projectDir)
-
-        let result = try await runner.run(
-            arguments: arguments,
-            environment: environment
-        )
-
-        switch testCase.expected {
-        case .success:
-            #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
-            try verifyInstallation(testCase: testCase, homeDir: homeDir, projectDir: projectDir)
-        case let .failure(errorContains):
-            #expect(!result.succeeded, "Expected failure but command succeeded")
-            if let errorContains {
-                let output = result.stderr + result.stdout
-                #expect(
-                    output.contains(errorContains),
-                    "Expected error containing '\(errorContains)' but got: \(output)"
-                )
-            }
-        }
+        return (runner, env, projectDir, cleanup)
     }
 
-    private func verifyInstallation(
-        testCase: NetworkTestCase,
-        homeDir: URL,
-        projectDir: URL
-    ) throws {
-        guard let verification = testCase.verification else { return }
+    private func setupLocalTemplates(at directory: URL, names: [String]) throws {
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let eggsDir = verification.location == .global
-            ? homeDir.appending(path: ".eggs")
-            : projectDir.appending(path: ".eggs")
+        for name in names {
+            let templateDir = directory.appending(path: name)
+            try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
 
-        for templateName in verification.expectedTemplates {
-            let templatePath = eggsDir.appending(path: templateName)
-            #expect(
-                fileManager.fileExists(atPath: templatePath.path(percentEncoded: false)),
-                "Template '\(templateName)' should exist at \(templatePath.path)"
-            )
+            let configContent = """
+            name: "\(name)"
+            description: "A test template"
+            hatch:
+              output: "./output"
+            """
+            let configPath = templateDir.appending(path: "config.yml")
+            try configContent.write(to: configPath, atomically: true, encoding: .utf8)
         }
-
-        for templateName in verification.unexpectedTemplates {
-            let templatePath = eggsDir.appending(path: templateName)
-            #expect(
-                !fileManager.fileExists(atPath: templatePath.path(percentEncoded: false)),
-                "Template '\(templateName)' should NOT exist at \(templatePath.path)"
-            )
-        }
-
-        if verification.markerShouldExist {
-            let markerPath = eggsDir.appending(path: "\(verification.expectedTemplates.first ?? "")/marker.txt")
-            #expect(
-                fileManager.fileExists(atPath: markerPath.path(percentEncoded: false)),
-                "Marker file should still exist (template was skipped)"
-            )
-        }
-
-        if verification.markerShouldBeGone {
-            let markerPath = eggsDir.appending(path: "\(verification.expectedTemplates.first ?? "")/marker.txt")
-            #expect(
-                !fileManager.fileExists(atPath: markerPath.path(percentEncoded: false)),
-                "Marker file should be gone (template was overwritten)"
-            )
-        }
-    }
-
-    struct ValidationErrorTestCase: CustomTestStringConvertible {
-        let description: String
-        let url: String?
-        let extraArgs: [String]
-        let expectedErrorContains: String
-
-        var testDescription: String { description }
-
-        func buildArguments(projectDir: URL) -> [String] {
-            var args = ["template", "install"]
-            if let url {
-                args.append(url)
-            }
-            args += extraArgs
-            args += ["--project-directory", projectDir.path(percentEncoded: false)]
-            return args
-        }
-
-        static let allCases: [ValidationErrorTestCase] = [
-            ValidationErrorTestCase(
-                description: "fails with invalid URL",
-                url: "not-a-valid-url",
-                extraArgs: ["--global"],
-                expectedErrorContains: "Invalid"
-            ),
-            ValidationErrorTestCase(
-                description: "fails when using both --template and --exclude",
-                url: TemplateInstallCommandTests.testRepoURL,
-                extraArgs: ["--global", "--template", "Foo", "--exclude", "Bar"],
-                expectedErrorContains: "Cannot use both"
-            ),
-            ValidationErrorTestCase(
-                description: "fails when using --branch and --tag together",
-                url: TemplateInstallCommandTests.testRepoURL,
-                extraArgs: ["--global", "--branch", "main", "--tag", "v1.0"],
-                expectedErrorContains: "Only one of"
-            ),
-            ValidationErrorTestCase(
-                description: "fails when using --branch and --revision together",
-                url: TemplateInstallCommandTests.testRepoURL,
-                extraArgs: ["--global", "--branch", "main", "--revision", "abc123"],
-                expectedErrorContains: "Only one of"
-            ),
-            ValidationErrorTestCase(
-                description: "fails when using --tag and --revision together",
-                url: TemplateInstallCommandTests.testRepoURL,
-                extraArgs: ["--global", "--tag", "v1.0", "--revision", "abc123"],
-                expectedErrorContains: "Only one of"
-            ),
-        ]
-    }
-
-    struct NetworkTestCase: CustomTestStringConvertible {
-        let description: String
-        let url: String
-        let refOption: RefOption?
-        let location: Location
-        let templateFilter: [String]
-        let excludeFilter: [String]
-        let force: Bool
-        let existingTemplate: String?
-        let expected: Expected
-        let verification: Verification?
-
-        var testDescription: String { description }
-
-        func buildArguments(projectDir: URL) -> [String] {
-            var args = ["template", "install", url]
-
-            switch refOption {
-            case let .branch(name):
-                args += ["--branch", name]
-            case let .tag(name):
-                args += ["--tag", name]
-            case let .revision(sha):
-                args += ["--revision", sha]
-            case nil:
-                break
-            }
-
-            if location == .global {
-                args.append("--global")
-            }
-
-            for template in templateFilter {
-                args += ["--template", template]
-            }
-
-            for exclude in excludeFilter {
-                args += ["--exclude", exclude]
-            }
-
-            if force {
-                args.append("--force")
-            }
-
-            args += ["--project-directory", projectDir.path(percentEncoded: false)]
-            return args
-        }
-
-        enum RefOption {
-            case branch(String)
-            case tag(String)
-            case revision(String)
-        }
-
-        enum Location: String {
-            case global
-            case project
-        }
-
-        enum Expected {
-            case success
-            case failure(errorContains: String?)
-        }
-
-        struct Verification {
-            let location: Location
-            let expectedTemplates: [String]
-            let unexpectedTemplates: [String]
-            let markerShouldExist: Bool
-            let markerShouldBeGone: Bool
-
-            init(
-                location: Location,
-                expectedTemplates: [String] = [],
-                unexpectedTemplates: [String] = [],
-                markerShouldExist: Bool = false,
-                markerShouldBeGone: Bool = false
-            ) {
-                self.location = location
-                self.expectedTemplates = expectedTemplates
-                self.unexpectedTemplates = unexpectedTemplates
-                self.markerShouldExist = markerShouldExist
-                self.markerShouldBeGone = markerShouldBeGone
-            }
-        }
-
-        static let allCases: [NetworkTestCase] = [
-            // Success cases
-            NetworkTestCase(
-                description: "installs all templates to global location",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: nil,
-                location: .global,
-                templateFilter: [],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .success,
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: TemplateInstallCommandTests.knownTemplates
-                )
-            ),
-            NetworkTestCase(
-                description: "installs all templates to project location",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: nil,
-                location: .project,
-                templateFilter: [],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .success,
-                verification: Verification(
-                    location: .project,
-                    expectedTemplates: TemplateInstallCommandTests.knownTemplates
-                )
-            ),
-            NetworkTestCase(
-                description: "installs specific template using --template filter",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: nil,
-                location: .global,
-                templateFilter: ["SwiftModule"],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .success,
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: ["SwiftModule"],
-                    unexpectedTemplates: ["iOSProjectGenTemplate"]
-                )
-            ),
-            NetworkTestCase(
-                description: "excludes specific template using --exclude filter",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: nil,
-                location: .global,
-                templateFilter: [],
-                excludeFilter: ["iOSProjectGenTemplate"],
-                force: false,
-                existingTemplate: nil,
-                expected: .success,
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: ["SwiftModule"],
-                    unexpectedTemplates: ["iOSProjectGenTemplate"]
-                )
-            ),
-            NetworkTestCase(
-                description: "installs from specific branch",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: .branch("main"),
-                location: .global,
-                templateFilter: ["SwiftModule"],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .success,
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: ["SwiftModule"]
-                )
-            ),
-            NetworkTestCase(
-                description: "installs from specific revision",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: .revision(TemplateInstallCommandTests.knownCommitSHA),
-                location: .global,
-                templateFilter: ["SwiftModule"],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .success,
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: ["SwiftModule"]
-                )
-            ),
-            NetworkTestCase(
-                description: "overwrites existing template with --force",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: nil,
-                location: .global,
-                templateFilter: ["SwiftModule"],
-                excludeFilter: [],
-                force: true,
-                existingTemplate: "SwiftModule",
-                expected: .success,
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: ["SwiftModule"],
-                    markerShouldBeGone: true
-                )
-            ),
-            NetworkTestCase(
-                description: "skips existing template without --force",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: nil,
-                location: .global,
-                templateFilter: ["SwiftModule"],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: "SwiftModule",
-                expected: .failure(errorContains: nil),
-                verification: Verification(
-                    location: .global,
-                    expectedTemplates: ["SwiftModule"],
-                    markerShouldExist: true
-                )
-            ),
-
-            // Failure cases
-            NetworkTestCase(
-                description: "fails with non-existent repository",
-                url: "git@github.com:nonexistent-user-12345/nonexistent-repo-67890.git",
-                refOption: nil,
-                location: .global,
-                templateFilter: [],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .failure(errorContains: nil),
-                verification: nil
-            ),
-            NetworkTestCase(
-                description: "fails with non-existent branch",
-                url: TemplateInstallCommandTests.testRepoURL,
-                refOption: .branch("nonexistent-branch-12345"),
-                location: .global,
-                templateFilter: [],
-                excludeFilter: [],
-                force: false,
-                existingTemplate: nil,
-                expected: .failure(errorContains: nil),
-                verification: nil
-            ),
-        ]
     }
 }

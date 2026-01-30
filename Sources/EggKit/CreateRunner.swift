@@ -101,7 +101,39 @@ package struct CreateRunner {
 
             let templateDir = templateLocation.template(name, type: locationConcreteType)
             successLog(name: name, templateDir: templateDir)
+
+        case .mcp:
+            // MCP mode returns result, use runMcp() instead
+            break
         }
+    }
+
+    /// Run in MCP mode and return structured result
+    package func runMcp(
+        name: String,
+        description: String,
+        location: TemplateLocationType.Kind
+    ) async throws -> CreateResult {
+        let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
+
+        guard !templatesFinder.exists(name) else {
+            throw Error.templateAlreadyExists
+        }
+
+        try await templateCreator.create(
+            name,
+            description: description,
+            in: locationConcreteType
+        )
+
+        let templateDir = templateLocation.template(name, type: locationConcreteType)
+
+        return CreateResult(
+            name: name,
+            description: description,
+            location: location.rawValue,
+            path: templateDir.path(percentEncoded: false)
+        )
     }
 
     private func successLog(name: String, templateDir: URL) {
@@ -123,4 +155,5 @@ package struct CreateRunner {
 package enum CreateRunnerMode: Codable {
     case interactive
     case direct(name: String, description: String, location: TemplateLocationType.Kind)
+    case mcp(name: String, description: String, location: TemplateLocationType.Kind)
 }

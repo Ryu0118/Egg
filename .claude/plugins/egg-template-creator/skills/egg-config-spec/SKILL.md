@@ -44,11 +44,13 @@ post_hatch:                       # Steps after template expansion (optional)
 | Type | Description | Required Fields | Optional Fields |
 |------|-------------|-----------------|-----------------|
 | `string` | Free-form text input | name, description | default, validate (regex) |
-| `boolean` | true/false selection | name, description | default ("true"/"false") |
+| `boolean` | true/false selection | name, description | default (`true`/`false`) |
 | `choice` | Single selection from list | name, description, choices | default (must be in choices) |
 | `choices` | Multiple selection from list | name, description, choices | default (array format) |
 | `array` | Free-form array input | name, description | default, validate |
 | `path` | File/directory path | name, description | default |
+
+**Note:** Boolean defaults accept both quoted (`"true"`/`"false"`) and unquoted (`true`/`false`) values.
 
 ### Macro Name Format
 

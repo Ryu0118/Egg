@@ -80,9 +80,13 @@ struct TemplateListCommandTests {
                 templateDir = projectDir.appending(path: ".eggs/\(template.name)")
             case .custom:
                 templateDir = customDir.appending(path: template.name)
+            case .customRoot:
+                templateDir = customDir
             }
 
-            try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+            if !fileManager.fileExists(atPath: templateDir.path(percentEncoded: false)) {
+                try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+            }
 
             // Config must include required 'hatch' section with 'output' field
             let configContent = """
@@ -155,6 +159,7 @@ struct TemplateListCommandTests {
                 case global
                 case project
                 case custom
+                case customRoot
             }
         }
 
@@ -274,6 +279,19 @@ struct TemplateListCommandTests {
                 expectedOutputContains: ["GlobalTemplate"],
                 expectedOutputNotContains: ["CustomOnlyTemplate"],
                 useCustomSearchPath: false
+            ),
+
+            // Custom search path pointing directly to a template root
+            TestCase(
+                description: "lists template when custom search path points to template root",
+                templates: [
+                    TemplateSetup(name: "CustomRootTemplate", description: "Root-level template", location: .customRoot),
+                ],
+                locationFilter: nil,
+                hideDescription: false,
+                expectedOutputContains: ["CustomRootTemplate"],
+                expectedOutputNotContains: [],
+                useCustomSearchPath: true
             ),
         ]
     }

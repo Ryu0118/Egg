@@ -8,33 +8,42 @@ package extension EggCommand.TemplateCommand {
     struct InstallCommand: AsyncParsableCommand, HasProjectDirectory {
         package static let configuration = CommandConfiguration(
             commandName: "install",
-            abstract: "Install templates from a Git repository.",
+            abstract: "Install templates from a Git repository or local directory.",
             discussion: """
             This command supports two modes:
 
             Interactive Mode:
-              When no URL is provided, you will be prompted to enter:
-              - Git repository URL
-              - Branch, tag, or commit (optional)
+              When no source is provided, you will be prompted to enter:
+              - Git repository URL or local path
+              - Branch, tag, or commit (optional, for Git sources)
               - Installation location (global or project)
               - Templates to install
 
             Direct Mode:
-              Provide the URL and options via command-line arguments.
-              Example: egg template install https://github.com/user/repo.git --tag v1.0.0 --global
+              Provide the source and options via command-line arguments.
+
+              From Git repository:
+                egg template install https://github.com/user/repo.git --tag v1.0.0 --global
+
+              From local directory:
+                egg template install ./my-templates --global
+                egg template install ~/Projects/templates
+                egg template install /path/to/templates
+
+            Note: --branch, --tag, and --revision options are only valid for Git sources.
             """
         )
 
-        @Argument(help: "Git repository URL.")
+        @Argument(help: "Git repository URL or local directory path.")
         package var url: String?
 
-        @Option(name: [.short, .long], help: "Install from specific branch.")
+        @Option(name: [.short, .long], help: "Install from specific branch (Git sources only).")
         package var branch: String?
 
-        @Option(name: [.short, .long], help: "Install from specific tag.")
+        @Option(name: [.short, .long], help: "Install from specific tag (Git sources only).")
         package var tag: String?
 
-        @Option(name: [.short, .long], help: "Install from specific commit.")
+        @Option(name: [.short, .long], help: "Install from specific commit (Git sources only).")
         package var revision: String?
 
         @Option(name: .long, parsing: .upToNextOption, help: "Install only specified templates (can be repeated).")

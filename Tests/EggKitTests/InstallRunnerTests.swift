@@ -150,8 +150,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "installs single template to project",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .none
                 ),
@@ -173,8 +175,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "installs multiple templates to global",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .global,
                     filter: .none
                 ),
@@ -199,8 +203,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "installs only included templates",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .include(["swift-module"])
                 ),
@@ -228,8 +234,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "skips excluded templates",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .exclude(["swiftui-view"])
                 ),
@@ -256,8 +264,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "skips existing template without force",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .none
                 ),
@@ -284,8 +294,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "overwrites existing template with force",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .none
                 ),
@@ -310,8 +322,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "throws error when no templates found",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/empty-repo.git", normalized: "https://github.com/user/empty-repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/empty-repo.git", normalized: "https://github.com/user/empty-repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .none
                 ),
@@ -319,7 +333,10 @@ struct InstallRunnerTests {
                 force: false,
                 repoTemplates: [],
                 existingTemplates: [],
-                expected: .failure(.noTemplatesFound(url: "https://github.com/user/empty-repo.git")),
+                expected: .failure(.noTemplatesFound(source: .git(
+                    url: GitURL(original: "https://github.com/user/empty-repo.git", normalized: "https://github.com/user/empty-repo.git"),
+                    ref: nil
+                ))),
                 expectedInstalledNames: []
             ),
 
@@ -327,8 +344,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "handles both filter and existing templates",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: nil,
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: nil
+                    ),
                     location: .project,
                     filter: .exclude(["swiftui-view"])
                 ),
@@ -358,8 +377,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "installs from specific branch",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: .branch("develop"),
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: .branch("develop")
+                    ),
                     location: .project,
                     filter: .none
                 ),
@@ -381,8 +402,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "installs from specific tag",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: .tag("v1.0.0"),
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: .tag("v1.0.0")
+                    ),
                     location: .project,
                     filter: .none
                 ),
@@ -404,8 +427,10 @@ struct InstallRunnerTests {
             TestCase(
                 description: "installs from specific revision",
                 mode: .direct(
-                    url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                    ref: .revision("abc123"),
+                    source: .git(
+                        url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
+                        ref: .revision("abc123")
+                    ),
                     location: .project,
                     filter: .none
                 ),

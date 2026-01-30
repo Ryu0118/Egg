@@ -93,6 +93,40 @@ package struct HatchRunner {
                 macroInputs: .parsed(parsedMacros),
                 templateDirectory: template.path
             )
+
+        case .mcp:
+            // MCP mode returns result, use runMcp() instead
+            break
+        }
+    }
+
+    /// Run in MCP mode and return structured result
+    package func runMcp(
+        template: Template,
+        parsedMacros: [ParsedMacroDefinition]
+    ) async throws -> HatchResult {
+        let workflowRunner = makeWorkflowRunner()
+
+        do {
+            let outputPath = try await workflowRunner.run(
+                config: template.config,
+                macroInputs: .parsed(parsedMacros),
+                templateDirectory: template.path
+            )
+
+            return HatchResult(
+                templateName: template.config.name,
+                outputDirectory: outputPath.path(percentEncoded: false),
+                success: true,
+                message: "Template '\(template.config.name)' hatched successfully"
+            )
+        } catch {
+            return HatchResult(
+                templateName: template.config.name,
+                outputDirectory: workingDirectory.path(percentEncoded: false),
+                success: false,
+                message: error.localizedDescription
+            )
         }
     }
 
@@ -163,7 +197,7 @@ extension HatchRunnerMode {
         switch self {
         case .interactive:
             true
-        case .direct:
+        case .direct, .mcp:
             false
         }
     }
