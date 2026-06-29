@@ -14,16 +14,21 @@ public struct DetailResult: Codable, Sendable {
     /// Example MCP arguments for hatching
     public let exampleMcpArguments: ExampleMcpArguments
 
+    /// Agent-oriented usage contract
+    public let agentUsage: AgentUsage
+
     public init(
         basicInfo: BasicInfo,
         macros: [MacroInfo],
         exampleCliCommand: String,
         exampleMcpArguments: ExampleMcpArguments,
+        agentUsage: AgentUsage,
     ) {
         self.basicInfo = basicInfo
         self.macros = macros
         self.exampleCliCommand = exampleCliCommand
         self.exampleMcpArguments = exampleMcpArguments
+        self.agentUsage = agentUsage
     }
 
     /// Basic template information
@@ -89,6 +94,31 @@ public struct DetailResult: Codable, Sendable {
         public init(templateName: String, macros: [String: String]) {
             self.templateName = templateName
             self.macros = macros
+        }
+    }
+
+    public struct AgentUsage: Codable, Sendable {
+        public let recommendedFlow: [String]
+        public let previewCliCommand: String
+        public let previewMcpTool: String
+        public let applyMcpTool: String
+        public let rollbackMcpTool: String
+        public let macroKeyFormat: String
+
+        public init(
+            recommendedFlow: [String],
+            previewCliCommand: String,
+            previewMcpTool: String,
+            applyMcpTool: String,
+            rollbackMcpTool: String,
+            macroKeyFormat: String,
+        ) {
+            self.recommendedFlow = recommendedFlow
+            self.previewCliCommand = previewCliCommand
+            self.previewMcpTool = previewMcpTool
+            self.applyMcpTool = applyMcpTool
+            self.rollbackMcpTool = rollbackMcpTool
+            self.macroKeyFormat = macroKeyFormat
         }
     }
 }

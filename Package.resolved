@@ -1,5 +1,5 @@
 {
-  "originHash" : "4774584e3b8dd83fc90ab45c4059551c057fffed0997eb67e06026d080f2e388",
+  "originHash" : "cd840f6467675f603b9d8d9a0de91ffbb4a1c32541e64fbab06e68e48cfabcbb",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -26,6 +26,15 @@
       "state" : {
         "revision" : "56b84a599e265e6bce299c255c06731b60d2d377",
         "version" : "0.13.53"
+      }
+    },
+    {
+      "identity" : "noora",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tuist/Noora",
+      "state" : {
+        "revision" : "c554521d3723d65fc2945f05150107cc8b2974ec",
+        "version" : "0.53.0"
       }
     },
     {
@@ -141,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/modelcontextprotocol/swift-sdk",
       "state" : {
-        "revision" : "c0407a0b52677cb395d824cac2879b963075ba8c",
-        "version" : "0.10.2"
+        "revision" : "a0ae212ebf6eab5f754c3129608bc5557637e605",
+        "version" : "0.12.1"
       }
     },
     {

@@ -110,6 +110,93 @@ public struct MCPService: Sendable {
         return try await runner.runMcp(template: template, parsedMacros: parsedMacros)
     }
 
+    public func previewHatchTemplate(
+        templateName: String,
+        macros: [String: Any],
+        outputDirectory: URL? = nil,
+        stagingRoot _: URL? = nil,
+    ) async throws -> AgentHatchPreviewResult {
+        let outputDir = outputDirectory ?? workingDirectory
+        let template = try await findTemplate(templateName, workingDirectory: outputDir)
+        let parsedMacros = parseMacros(macros, for: template)
+
+        let runner = AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: outputDir,
+            homeDirectory: homeDirectory,
+            templateDirectory: template.path,
+            config: template.config,
+            parsedMacros: parsedMacros,
+        )
+
+        return try await runner.preview()
+    }
+
+    public func applyHatchTransaction(
+        applyToken: String,
+        workingDirectory: URL? = nil,
+        force: Bool = false,
+    ) async throws -> AgentHatchApplyResult {
+        let outputDir = workingDirectory ?? self.workingDirectory
+        let runner = AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: outputDir,
+            homeDirectory: homeDirectory,
+            templateDirectory: outputDir,
+            config: Config(
+                name: "transaction",
+                description: "Existing hatch transaction",
+                hatch: .init(output: "."),
+            ),
+            parsedMacros: [],
+        )
+
+        return try await runner.apply(token: applyToken, force: force)
+    }
+
+    public func discardHatchTransaction(
+        applyToken: String,
+        workingDirectory: URL? = nil,
+    ) throws -> AgentHatchApplyResult {
+        let outputDir = workingDirectory ?? self.workingDirectory
+        let runner = AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: outputDir,
+            homeDirectory: homeDirectory,
+            templateDirectory: outputDir,
+            config: Config(
+                name: "transaction",
+                description: "Existing hatch transaction",
+                hatch: .init(output: "."),
+            ),
+            parsedMacros: [],
+        )
+
+        return try runner.discard(token: applyToken)
+    }
+
+    public func rollbackHatchTransaction(
+        rollbackId: String,
+        workingDirectory: URL? = nil,
+        force: Bool = false,
+    ) throws -> AgentHatchRollbackResult {
+        let outputDir = workingDirectory ?? self.workingDirectory
+        let runner = AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: outputDir,
+            homeDirectory: homeDirectory,
+            templateDirectory: outputDir,
+            config: Config(
+                name: "transaction",
+                description: "Existing hatch transaction",
+                hatch: .init(output: "."),
+            ),
+            parsedMacros: [],
+        )
+
+        return try runner.rollback(id: rollbackId, force: force)
+    }
+
     // MARK: - Create Template
 
     public func createTemplate(

@@ -1,0 +1,363 @@
+import FileManagerProtocol
+import Foundation
+import Noora
+import ProcessRunning
+
+package struct AgentHatchTransactionRunner {
+    private let processRunner: any ProcessRunning
+    private let fileManager: any FileManagerProtocol
+    private let workingDirectory: URL
+    private let homeDirectory: URL
+    private let noora: any Noorable
+    private let templateDirectory: URL
+    private let config: Config
+    private let parsedMacros: [ParsedMacroDefinition]
+    private let store: HatchTransactionStore
+    private let phaseRunner: PhaseRunner
+
+    package init(
+        processRunner: some ProcessRunning = ProcessRunner(),
+        fileManager: some FileManagerProtocol,
+        workingDirectory: URL,
+        homeDirectory: URL,
+        noora: some Noorable = Noora(),
+        templateDirectory: URL,
+        config: Config,
+        parsedMacros: [ParsedMacroDefinition],
+    ) {
+        self.processRunner = processRunner
+        self.fileManager = fileManager
+        self.workingDirectory = workingDirectory
+        self.homeDirectory = homeDirectory
+        self.noora = noora
+        self.templateDirectory = templateDirectory
+        self.config = config
+        self.parsedMacros = parsedMacros
+        store = HatchTransactionStore(fileManager: fileManager, workingDirectory: workingDirectory)
+        phaseRunner = PhaseRunner(
+            processRunner: processRunner,
+            fileManager: fileManager,
+            homeDirectory: homeDirectory,
+            noora: noora,
+            isInteractive: false,
+            override: true,
+        )
+    }
+
+    package func preview() async throws -> AgentHatchPreviewResult {
+        if let allowedPaths = config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
+            throw LifecycleStepError.sandboxPermissionRequired(paths: allowedPaths)
+        }
+
+        let token = makeToken(templateName: config.name)
+        let tempBase = try fileManager.makeTemporaryDirectory(prefix: "egg-agent-\(token)")
+        let tempWork = tempBase.appending(path: "work")
+        let tempReference = tempBase.appending(path: "reference")
+
+        let cloner = GitTrackedDirectoryCloner(
+            processRunner: processRunner,
+            fileManager: fileManager,
+            noora: noora,
+        )
+
+        async let cloneWork: () = try cloner.clone(from: workingDirectory, to: tempWork)
+        async let cloneReference: () = try cloner.clone(from: workingDirectory, to: tempReference)
+        _ = try await (cloneWork, cloneReference)
+
+        let outputPath = try await runWorkflow(in: tempWork)
+        let detector = FileSystemChangeDetector(fileManager: fileManager)
+        let summary = try detector.computeChanges(referenceRoot: tempReference, changedRoot: tempWork)
+        let changes = makeAgentChanges(summary)
+        let warnings = makeWarnings()
+
+        let transactionDirectory = try store.createDirectory(for: token)
+        let workDestination = transactionDirectory.appending(path: "work")
+        let referenceDestination = transactionDirectory.appending(path: "reference")
+        try fileManager.moveItem(at: tempWork, to: workDestination)
+        try fileManager.moveItem(at: tempReference, to: referenceDestination)
+        try? fileManager.removeItem(at: tempBase)
+
+        let metadata = HatchTransactionMetadata(
+            applyToken: token,
+            status: .preview,
+            templateName: config.name,
+            workingDirectory: workingDirectory.path(percentEncoded: false),
+            outputDirectory: remapOutputPath(outputPath, from: workDestination),
+            workDirectory: workDestination.path(percentEncoded: false),
+            referenceDirectory: referenceDestination.path(percentEncoded: false),
+            changes: changes.map(StoredChangeEntry.init),
+            warnings: warnings,
+            rollbackId: nil,
+        )
+        try store.save(metadata)
+
+        return AgentHatchPreviewResult(
+            applyToken: token,
+            templateName: config.name,
+            workingDirectory: workingDirectory.path(percentEncoded: false),
+            outputDirectory: metadata.outputDirectory,
+            strategy: "project_staging",
+            rollbackGuarantee: "scoped",
+            changes: changes,
+            warnings: warnings,
+            nextCommands: AgentTransactionCommands(
+                apply: "egg agent hatch-apply \(token)",
+                discard: "egg agent hatch-discard \(token)",
+            ),
+        )
+    }
+
+    package func apply(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
+        let metadata = try store.load(token: token)
+        guard metadata.status == .preview else {
+            throw Error.transactionNotPreview(token: token, status: metadata.status.rawValue)
+        }
+
+        let reference = URL(filePath: metadata.referenceDirectory)
+        let work = URL(filePath: metadata.workDirectory)
+        let working = URL(filePath: metadata.workingDirectory)
+
+        let detector = FileSystemChangeDetector(fileManager: fileManager)
+        let workingChanges = try detector.computeChanges(
+            referenceRoot: reference,
+            changedRoot: working,
+            limitingTo: metadata.changes.map(\.path),
+        )
+        if !workingChanges.isEmpty, !force {
+            throw Error.conflictingWorkingDirectoryChanges(workingChanges.allPaths.sorted())
+        }
+
+        let rollbackId = try createRollbackBundle(metadata: metadata)
+        try ApplyStagingArea.withStaging(
+            workspaceRoot: work,
+            workingDirectory: working,
+            fileManager: fileManager,
+        ) { staging, fs in
+            let manifest = try staging.stage(changes: metadata.changeSummary, fileManager: fs)
+            try staging.apply(manifest: manifest, fileManager: fs)
+        }
+
+        let applied = try store.markApplied(token: token, rollbackId: rollbackId)
+        return AgentHatchApplyResult(
+            status: "applied",
+            applyToken: token,
+            rollbackId: rollbackId,
+            appliedChanges: applied.changes.map(\.agentEntry),
+            warnings: applied.warnings,
+        )
+    }
+
+    package func discard(token: String) throws -> AgentHatchApplyResult {
+        let metadata = try store.load(token: token)
+        try store.discard(token: token)
+        return AgentHatchApplyResult(
+            status: "discarded",
+            applyToken: token,
+            rollbackId: nil,
+            appliedChanges: metadata.changes.map(\.agentEntry),
+            warnings: metadata.warnings,
+        )
+    }
+
+    package func rollback(id rollbackId: String, force _: Bool = false) throws -> AgentHatchRollbackResult {
+        let rollbackRoot = workingDirectory
+            .appending(path: ".egg/rollback")
+            .appending(path: rollbackId)
+        let manifestURL = rollbackRoot.appending(path: "manifest.json")
+        let data = try fileManager.readFile(at: manifestURL)
+        let manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
+        let beforeRoot = rollbackRoot.appending(path: "before")
+
+        for change in manifest.changes.reversed() {
+            let target = workingDirectory.appending(path: change.path)
+            switch change.kind {
+            case "add":
+                try fileManager.removeIfExists(target)
+            case "modify", "delete":
+                let source = beforeRoot.appending(path: change.path)
+                _ = try fileManager.copyIfExists(from: source, to: target)
+            default:
+                break
+            }
+        }
+
+        return AgentHatchRollbackResult(
+            status: "rolledBack",
+            rollbackId: rollbackId,
+            restoredChanges: manifest.changes.map(\.agentEntry),
+        )
+    }
+
+    private func runWorkflow(in workspace: URL) async throws -> URL {
+        let validator = ParsedMacroDefinitionValidator(
+            config: config,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory,
+        )
+        let resolved = try validator.validate(parsedMacros)
+        let macros = remapPathMacros(resolved, from: workingDirectory, to: workspace)
+        let outputs = StepOutputsStorage()
+        let environment = [
+            "EGG_WORKING_DIRECTORY": workspace.path(percentEncoded: false),
+            "EGG_WORKSPACE_ROOT": workspace.path(percentEncoded: false),
+            "EGG_ORIGINAL_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false),
+        ]
+        let executionEnvironment = ExecutionEnvironment.sandboxed(.staging(
+            root: workspace,
+            originalWorkingDirectory: workingDirectory,
+            allowedPaths: [],
+        ))
+
+        if let preHatch = config.preHatch {
+            try await phaseRunner.executePreHatch(
+                steps: preHatch,
+                macros: macros,
+                outputs: outputs,
+                workingDirectory: workspace,
+                additionalEnvironment: environment,
+                executionEnvironment: executionEnvironment,
+            )
+        }
+
+        let output = try await phaseRunner.executeHatch(
+            config: config,
+            macros: macros,
+            outputs: outputs,
+            templateDirectory: templateDirectory,
+            workingDirectory: workspace,
+            pathValidator: { path in
+                guard path.isUnder(workspace) || path == workspace else {
+                    throw StagingContext.Error.escapeAttempt(path: path.path(percentEncoded: false))
+                }
+            },
+        )
+
+        if let postHatch = config.postHatch {
+            try await phaseRunner.executePostHatch(
+                steps: postHatch,
+                macros: macros,
+                outputs: outputs,
+                workingDirectory: workspace,
+                additionalEnvironment: environment,
+                executionEnvironment: executionEnvironment,
+            )
+        }
+
+        return output
+    }
+
+    private func remapPathMacros(
+        _ macros: [ResolvedMacro],
+        from originalDirectory: URL,
+        to workspaceRoot: URL,
+    ) -> [ResolvedMacro] {
+        macros.map { macro in
+            guard case let .path(originalPath) = macro.value,
+                  originalPath.isUnder(originalDirectory)
+            else {
+                return macro
+            }
+            return ResolvedMacro(
+                name: macro.name,
+                description: macro.description,
+                value: .path(workspaceRoot.appending(path: originalPath.relativePath(from: originalDirectory))),
+            )
+        }
+    }
+
+    private func remapOutputPath(_ output: URL, from workDestination: URL) -> String {
+        if output.isUnder(workDestination) || output == workDestination {
+            let relative = output.relativePath(from: workDestination)
+            return workingDirectory.appending(path: relative).path(percentEncoded: false)
+        }
+        return output.path(percentEncoded: false)
+    }
+
+    private func makeAgentChanges(_ summary: ChangeSummary) -> [AgentChangeEntry] {
+        summary.added.map { AgentChangeEntry(path: $0, kind: "add") }
+            + summary.modified.map { AgentChangeEntry(path: $0, kind: "modify") }
+            + summary.deleted.map { AgentChangeEntry(path: $0, kind: "delete") }
+    }
+
+    private func makeWarnings() -> [AgentTransactionWarning] {
+        [
+            AgentTransactionWarning(
+                code: "rollback_scope",
+                message: "Rollback can restore files inside the managed workspace only. External writes and network side effects from lifecycle scripts are not reversible.",
+            ),
+            AgentTransactionWarning(
+                code: "excluded_artifacts",
+                message: "Generated artifact/cache directories are excluded from change detection.",
+                paths: Array(FileSystemChangeDetector.defaultExcludedDirectoryNames).sorted(),
+            ),
+        ]
+    }
+
+    private func createRollbackBundle(metadata: HatchTransactionMetadata) throws -> String {
+        let rollbackId = metadata.applyToken
+        let rollbackRoot = workingDirectory
+            .appending(path: ".egg/rollback")
+            .appending(path: rollbackId)
+        let beforeRoot = rollbackRoot.appending(path: "before")
+        try fileManager.createDirectory(at: beforeRoot, withIntermediateDirectories: true)
+
+        for change in metadata.changes where change.kind == "modify" || change.kind == "delete" {
+            let source = workingDirectory.appending(path: change.path)
+            let destination = beforeRoot.appending(path: change.path)
+            _ = try fileManager.copyIfExists(from: source, to: destination)
+        }
+
+        let manifest = RollbackManifest(
+            id: rollbackId,
+            applyToken: metadata.applyToken,
+            templateName: metadata.templateName,
+            workingDirectory: metadata.workingDirectory,
+            changes: metadata.changes,
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(manifest)
+        try data.write(to: rollbackRoot.appending(path: "manifest.json"))
+        return rollbackId
+    }
+
+    private func makeToken(templateName: String) -> String {
+        let safeName = templateName
+            .lowercased()
+            .map { character -> Character in
+                character.isLetter || character.isNumber ? character : "-"
+            }
+        return "\(Self.timestamp())-\(String(safeName))-\(UUID().uuidString.prefix(8))"
+    }
+
+    private static func timestamp() -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        return formatter.string(from: Date())
+            .replacingOccurrences(of: ":", with: "")
+    }
+}
+
+extension AgentHatchTransactionRunner {
+    enum Error: LocalizedError, Equatable {
+        case transactionNotPreview(token: String, status: String)
+        case conflictingWorkingDirectoryChanges([String])
+
+        var errorDescription: String? {
+            switch self {
+            case let .transactionNotPreview(token, status):
+                "Transaction '\(token)' cannot be applied because its status is '\(status)'."
+            case let .conflictingWorkingDirectoryChanges(paths):
+                "Working directory changed since preview: \(paths.joined(separator: ", ")). Re-run preview or pass --force."
+            }
+        }
+    }
+}
+
+private struct RollbackManifest: Codable {
+    let id: String
+    let applyToken: String
+    let templateName: String
+    let workingDirectory: String
+    let changes: [StoredChangeEntry]
+}

@@ -41,7 +41,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
 
         guard let stream = FSEventStreamCreate(
             nil,
-            FSEventsCallback.handle,
+            fsEventsCallbackHandle,
             context,
             pathsToWatch,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
@@ -181,25 +181,28 @@ private final class EventBuffer: @unchecked Sendable {
     }
 }
 
-private enum FSEventsCallback {
-    /// C-style callback function for FSEvents.
-    static func handle(
-        _: ConstFSEventStreamRef,
-        info: UnsafeMutableRawPointer?,
-        numEvents _: Int,
-        eventPaths: UnsafeMutableRawPointer,
-        _: UnsafePointer<FSEventStreamEventFlags>,
-        _: UnsafePointer<FSEventStreamEventId>,
-    ) {
-        guard let info else { return }
+/// C-style callback function for FSEvents.
+///
+/// Declared as a top-level function so it can be passed as a C function
+/// pointer: Swift 6.3 only forms `@convention(c)` pointers from references
+/// to top-level `func` declarations or non-capturing literal closures, not
+/// from static members.
+private func fsEventsCallbackHandle(
+    _: ConstFSEventStreamRef,
+    info: UnsafeMutableRawPointer?,
+    numEvents _: Int,
+    eventPaths: UnsafeMutableRawPointer,
+    _: UnsafePointer<FSEventStreamEventFlags>,
+    _: UnsafePointer<FSEventStreamEventId>,
+) {
+    guard let info else { return }
 
-        // Get the event buffer
-        let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
+    // Get the event buffer
+    let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
 
-        // Convert paths
-        guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
+    // Convert paths
+    guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
 
-        // Add to buffer
-        buffer.append(pathArray)
-    }
+    // Add to buffer
+    buffer.append(pathArray)
 }

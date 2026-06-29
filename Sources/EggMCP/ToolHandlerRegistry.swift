@@ -23,6 +23,10 @@ public actor ToolHandlerRegistry {
 
         // Hatch handler
         HatchHandler.toolName: HatchHandler(),
+        HatchPreviewHandler.toolName: HatchPreviewHandler(),
+        HatchApplyHandler.toolName: HatchApplyHandler(),
+        HatchRollbackHandler.toolName: HatchRollbackHandler(),
+        HatchDiscardHandler.toolName: HatchDiscardHandler(),
     ]
 
     /// Get handler for a tool name

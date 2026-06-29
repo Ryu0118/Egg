@@ -14,15 +14,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
-//        .package(url: "https://github.com/tuist/Noora", from: "0.51.2"),
-        .package(path: "REDACTED_LOCAL_PATH"),
+        .package(url: "https://github.com/tuist/Noora", from: "0.51.2"),
         .package(url: "https://github.com/Ryu0118/FileManagerProtocol", from: "0.1.0"),
         .package(url: "https://github.com/Ryu0118/ProcessRunning", from: "0.2.1"),
         .package(url: "https://github.com/jpsim/Yams", from: "6.2.0"),
         .package(url: "https://github.com/mtj0928/swift-async-operations", from: "0.4.0"),
         .package(url: "https://github.com/tuist/FileSystem", from: "0.13.47"),
         .package(url: "https://github.com/stencilproject/Stencil", from: "0.15.1"),
-        .package(url: "https://github.com/modelcontextprotocol/swift-sdk", exact: "0.10.2"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.12.1"),
     ],
     targets: [
         .executableTarget(

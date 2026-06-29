@@ -55,7 +55,7 @@ public struct EggMCPServer {
         Tool(
             name: "egg_hatch",
             description: """
-            Hatches (instantiates) a template with the provided macro values. Creates files and directories based on the template.
+            Legacy one-shot hatch tool. Prefer egg_hatch_preview followed by egg_hatch_apply for agent workflows.
 
             IMPORTANT: Before calling this tool, ALWAYS call egg_template_detail first to get the required macros.
             The detail response includes exampleMcpArguments showing the exact format to use for the macros parameter.
@@ -100,10 +100,113 @@ public struct EggMCPServer {
                     ]),
                     "apply_changes": .object([
                         "type": "boolean",
-                        "description": "Apply changes after staging. Default: true.",
+                        "description": "Apply changes immediately. Default: false; when false, egg_hatch returns the same transaction preview shape as egg_hatch_preview.",
                     ]),
                 ]),
                 "required": .array(["template_name"]),
+            ]),
+        ),
+        Tool(
+            name: "egg_hatch_preview",
+            description: """
+            Agent-safe hatch entrypoint. Runs the template in staging, returns a JSON change preview and an apply_token, and does not modify the target project except for storing the transaction under .egg/transactions.
+
+            REQUIRED FLOW:
+            1. Call egg_template_detail first.
+            2. Copy exact macro keys from exampleMcpArguments.macros. Keys use ___UPPER_SNAKE_CASE___.
+            3. Call egg_hatch_preview.
+            4. Inspect changes/warnings.
+            5. Call egg_hatch_apply with apply_token only when the caller approves.
+            """,
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "template_name": .object([
+                        "type": "string",
+                        "description": "Name of the template to hatch.",
+                    ]),
+                    "macros": .object([
+                        "type": "object",
+                        "description": "Macro name-value pairs. Keys MUST exactly match template macro names such as ___MODULE_NAME___.",
+                        "additionalProperties": .object(["type": "string"]),
+                    ]),
+                    "output_directory": .object([
+                        "type": "string",
+                        "description": "Project directory where the transaction should be prepared. Defaults to current working directory.",
+                    ]),
+                    "project_directory": .object([
+                        "type": "string",
+                        "description": "Directory used to resolve project-local templates.",
+                    ]),
+                    "template_search_paths": .object([
+                        "type": "array",
+                        "items": .object(["type": "string"]),
+                        "description": "Additional paths to search for templates.",
+                    ]),
+                ]),
+                "required": .array(["template_name"]),
+            ]),
+        ),
+        Tool(
+            name: "egg_hatch_apply",
+            description: "Applies a transaction returned by egg_hatch_preview. This is the only MCP hatch tool that should write previewed changes to the project.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "apply_token": .object([
+                        "type": "string",
+                        "description": "Token returned by egg_hatch_preview.applyToken.",
+                    ]),
+                    "working_directory": .object([
+                        "type": "string",
+                        "description": "Project directory that contains the .egg/transactions entry. Defaults to current working directory.",
+                    ]),
+                    "force": .object([
+                        "type": "boolean",
+                        "description": "Apply even if files changed since preview. Default: false.",
+                    ]),
+                ]),
+                "required": .array(["apply_token"]),
+            ]),
+        ),
+        Tool(
+            name: "egg_hatch_rollback",
+            description: "Rolls back an applied hatch transaction using the rollback_id returned by egg_hatch_apply.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "rollback_id": .object([
+                        "type": "string",
+                        "description": "Rollback id returned by egg_hatch_apply.rollbackId.",
+                    ]),
+                    "working_directory": .object([
+                        "type": "string",
+                        "description": "Project directory that contains the .egg/rollback entry. Defaults to current working directory.",
+                    ]),
+                    "force": .object([
+                        "type": "boolean",
+                        "description": "Reserved for future conflict override behavior. Default: false.",
+                    ]),
+                ]),
+                "required": .array(["rollback_id"]),
+            ]),
+        ),
+        Tool(
+            name: "egg_hatch_discard",
+            description: "Discards a transaction returned by egg_hatch_preview without applying changes.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "apply_token": .object([
+                        "type": "string",
+                        "description": "Token returned by egg_hatch_preview.applyToken.",
+                    ]),
+                    "working_directory": .object([
+                        "type": "string",
+                        "description": "Project directory that contains the .egg/transactions entry. Defaults to current working directory.",
+                    ]),
+                ]),
+                "required": .array(["apply_token"]),
             ]),
         ),
         Tool(
