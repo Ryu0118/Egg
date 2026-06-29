@@ -1,0 +1,47 @@
+rules:
+- name: readme-cli
+  sources:
+  - Sources/EggCLI/EggCommand.swift
+  - Sources/EggCLI/Commands/CreateCommand.swift
+  - Sources/EggCLI/Commands/DeleteCommand.swift
+  - Sources/EggCLI/Commands/DetailCommand.swift
+  - Sources/EggCLI/Commands/DuplicateCommand.swift
+  - Sources/EggCLI/Commands/HatchCommand.swift
+  - Sources/EggCLI/Commands/InstallCommand.swift
+  - Sources/EggCLI/Commands/ListCommand.swift
+  - Sources/EggCLI/Commands/MCPCommand.swift
+  - Sources/EggCLI/Commands/MoveCommand.swift
+  - Sources/EggCLI/Commands/OpenCommand.swift
+  - Sources/EggCLI/Commands/ValidateCommand.swift
+  doc: README.md
+  message: CLI command surface changed - update README if commands, options, or usage
+    changed.
+  checksum: b6028c355fa406687bd79c274b18c73fdc0a8b76b4eef51760a129883e899b56
+- name: specs-config
+  sources:
+  - Sources/EggKit/Config/Config.swift
+  - Sources/EggKit/Config/ConfigValidator.swift
+  - Sources/EggKit/Config/ConfigValidator+HatchValidator.swift
+  - Sources/EggKit/Config/ConfigValidator+MacrosValidator.swift
+  - Sources/EggKit/Config/ConfigValidator+PostHatchValidator.swift
+  - Sources/EggKit/Config/ConfigValidator+PreHatchValidator.swift
+  - Sources/EggKit/WorkflowRunner/ConditionEvaluator.swift
+  - Sources/EggKit/WorkflowRunner/LifecycleWorkflowRunner.swift
+  - Sources/EggKit/WorkflowRunner/ShellScriptRunner.swift
+  - Sources/EggKit/WorkflowRunner/TemplateExpander.swift
+  - Sources/EggKit/WorkflowRunner/VariableResolver.swift
+  doc: SPECS.md
+  message: Template config, lifecycle, or expansion behavior changed - update SPECS.md
+    if the spec changed.
+  checksum: 4990bb0bc0178477ec99c8fea4c80a711a2396d89207ae91f2f7a4055ecc44c0
+- name: agents-project
+  sources:
+  - Package.swift
+  - Sources/EggCLI/EggCommand.swift
+  - Sources/EggKit/HatchRunner.swift
+  - Sources/EggKit/InstallRunner.swift
+  - Sources/EggKit/WorkflowRunner/LifecycleWorkflowRunner.swift
+  doc: AGENTS.md
+  message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
+    agent guidance changed.
+  checksum: 27918e7a63f0eda0f50e88e5792dea761988767fef247590d6ef4091f42ed8c7

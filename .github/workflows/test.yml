@@ -9,6 +9,9 @@ on:
       - 'E2ETestsPackage/**'
       - 'Package.swift'
       - 'Package.resolved'
+      - '.swiftlint.yml'
+      - 'nestfile.yaml'
+      - 'scripts/nest.sh'
       - '.github/workflows/test.yml'
   pull_request:
     branches: [main]
@@ -18,16 +21,40 @@ on:
       - 'E2ETestsPackage/**'
       - 'Package.swift'
       - 'Package.resolved'
+      - '.swiftlint.yml'
+      - 'nestfile.yaml'
+      - 'scripts/nest.sh'
       - '.github/workflows/test.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-26
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap dev tools
+        run: ./scripts/nest.sh bootstrap nestfile.yaml
+
+      - name: SwiftLint
+        run: .nest/bin/swiftlint lint --config .swiftlint.yml --strict --no-cache
+
   unit-tests:
     name: Unit Tests
+    needs: swiftlint
     runs-on: macos-26
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,6 +69,8 @@ jobs:
     name: E2E Tests
     needs: unit-tests
     runs-on: macos-26
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
