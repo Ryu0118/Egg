@@ -248,7 +248,7 @@ package struct MacroResolver {
         let finalPathString = pathString.isEmpty && macro.default != nil ? macro.default!.stringValue : pathString
 
         // Resolve path using the standalone function
-        let absolutePath = try! resolveToAbsoluteURL(
+        let absolutePath = try! PathResolver.resolveToAbsoluteURL(
             finalPathString,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,

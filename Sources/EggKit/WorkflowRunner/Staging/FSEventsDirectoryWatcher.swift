@@ -41,7 +41,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
 
         guard let stream = FSEventStreamCreate(
             nil,
-            fsEventsCallback,
+            FSEventsCallback.handle,
             context,
             pathsToWatch,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
@@ -181,23 +181,25 @@ private final class EventBuffer: @unchecked Sendable {
     }
 }
 
-/// C-style callback function for FSEvents.
-private func fsEventsCallback(
-    _: ConstFSEventStreamRef,
-    info: UnsafeMutableRawPointer?,
-    numEvents _: Int,
-    eventPaths: UnsafeMutableRawPointer,
-    _: UnsafePointer<FSEventStreamEventFlags>,
-    _: UnsafePointer<FSEventStreamEventId>,
-) {
-    guard let info else { return }
+private enum FSEventsCallback {
+    /// C-style callback function for FSEvents.
+    static func handle(
+        _: ConstFSEventStreamRef,
+        info: UnsafeMutableRawPointer?,
+        numEvents _: Int,
+        eventPaths: UnsafeMutableRawPointer,
+        _: UnsafePointer<FSEventStreamEventFlags>,
+        _: UnsafePointer<FSEventStreamEventId>,
+    ) {
+        guard let info else { return }
 
-    // Get the event buffer
-    let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
+        // Get the event buffer
+        let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
 
-    // Convert paths
-    guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
+        // Convert paths
+        guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
 
-    // Add to buffer
-    buffer.append(pathArray)
+        // Add to buffer
+        buffer.append(pathArray)
+    }
 }

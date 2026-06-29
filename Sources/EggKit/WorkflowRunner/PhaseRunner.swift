@@ -132,7 +132,7 @@ struct PhaseRunner {
         )
         let resolvedOutput = try await resolver.resolve(config.hatch.output)
 
-        let outputDirectory = try resolveToAbsoluteURL(
+        let outputDirectory = try PathResolver.resolveToAbsoluteURL(
             resolvedOutput,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,

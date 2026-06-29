@@ -37,11 +37,11 @@ struct GitRepositoryChecker {
 
         guard let result else { return false }
 
-        switch result.terminationStatus {
+        return switch result.terminationStatus {
         case let .exited(code):
-            return code == 0
+            code == 0
         case .unhandledException:
-            return false
+            false
         }
     }
 }

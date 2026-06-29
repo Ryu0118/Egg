@@ -129,19 +129,19 @@ struct TemplateDetailFormatter {
         }
 
         // Generate type-appropriate placeholder
-        switch macro.type {
+        return switch macro.type {
         case .string:
-            return "value"
+            "value"
         case .boolean:
-            return "true"
+            "true"
         case .choice:
-            return "option"
+            "option"
         case .choices:
-            return "option1 option2"
+            "option1 option2"
         case .array:
-            return "item1 item2"
+            "item1 item2"
         case .path:
-            return "./path/to/file"
+            "./path/to/file"
         }
     }
 }

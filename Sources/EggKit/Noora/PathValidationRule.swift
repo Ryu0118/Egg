@@ -17,7 +17,7 @@ package struct PathValidationRule: ValidatableRule {
 
         // Try to resolve the path
         do {
-            let _ = try resolveToAbsoluteURL(
+            let _ = try PathResolver.resolveToAbsoluteURL(
                 input,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,

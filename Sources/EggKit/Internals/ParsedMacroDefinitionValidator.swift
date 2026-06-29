@@ -251,7 +251,7 @@ struct ParsedMacroDefinitionValidator {
         case .path:
             guard let value = resolvedValues.first, !value.isEmpty else { return nil }
 
-            guard let absolutePath = try? resolveToAbsoluteURL(
+            guard let absolutePath = try? PathResolver.resolveToAbsoluteURL(
                 value,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,

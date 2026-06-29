@@ -50,19 +50,6 @@ struct TemplatesFinder {
         return try await fetchTemplate(templateDir: templateDir)
     }
 
-    /// Finds a template by its config.yml name
-    private func findTemplateByConfigName(_ name: String) async throws -> Template? {
-        let templates = try await listAll(emitValidationErrorLog: false)
-
-        // Find template where config.name matches (custom paths have priority)
-        guard let template = templates.all.first(where: { $0.config.name == name }) else {
-            return nil
-        }
-
-        // Re-fetch with validation
-        return try await fetchTemplate(templateDir: template.path)
-    }
-
     func listAll(emitValidationErrorLog: Bool = true) async throws -> Templates {
         // Collect templates from custom search paths (in order)
         var customTemplates: [Template] = []
@@ -124,31 +111,6 @@ struct TemplatesFinder {
         return templates
     }
 
-    /// Returns the directories that should be scanned for templates for the given location directory.
-    ///
-    /// The directory itself is considered a candidate so that custom search paths pointing directly
-    /// at a single template still work, while the immediate subdirectories are included to support
-    /// directories that contain multiple templates.
-    private func candidateTemplateDirectories(at locationDirectory: URL) -> [URL] {
-        guard fileManager.isDirectory(at: locationDirectory) else {
-            return []
-        }
-
-        var directories: [URL] = [locationDirectory]
-
-        if let entries = try? fileManager.contentsOfDirectory(
-            at: locationDirectory,
-            includingPropertiesForKeys: nil,
-            options: [],
-        ) {
-            for entry in entries where fileManager.isDirectory(at: entry) {
-                directories.append(entry)
-            }
-        }
-
-        return directories
-    }
-
     func validTemplateDirectory(_ name: String) throws -> URL? {
         // Check additional search paths first (in order, highest priority)
         for path in additionalSearchPaths {
@@ -177,6 +139,76 @@ struct TemplatesFinder {
         } else {
             nil
         }
+    }
+
+    func listWithLocations(emitValidationErrorLog: Bool = true) async throws -> [TemplateWithLocation] {
+        // Collect templates from custom search paths first (highest priority)
+        var customOptions: [TemplateWithLocation] = []
+        for path in additionalSearchPaths {
+            let templates = try await list(for: .custom(path), emitValidationErrorLog: emitValidationErrorLog)
+            let options = templates.map { TemplateWithLocation(template: $0, location: .custom(path)) }
+            customOptions.append(contentsOf: options)
+        }
+
+        let globalTemplates = try await list(for: .global, emitValidationErrorLog: emitValidationErrorLog)
+        let projectTemplates = try await list(
+            for: .project(
+                projectDirectory,
+                workingDirectory: workingDirectory,
+            ),
+            emitValidationErrorLog: emitValidationErrorLog,
+        )
+
+        let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
+        let projectOptions = projectTemplates.map {
+            TemplateWithLocation(
+                template: $0,
+                location: .project(
+                    projectDirectory,
+                    workingDirectory: workingDirectory,
+                ),
+            )
+        }
+
+        return customOptions + globalOptions + projectOptions
+    }
+
+    /// Finds a template by its config.yml name
+    private func findTemplateByConfigName(_ name: String) async throws -> Template? {
+        let templates = try await listAll(emitValidationErrorLog: false)
+
+        // Find template where config.name matches (custom paths have priority)
+        guard let template = templates.all.first(where: { $0.config.name == name }) else {
+            return nil
+        }
+
+        // Re-fetch with validation
+        return try await fetchTemplate(templateDir: template.path)
+    }
+
+    /// Returns the directories that should be scanned for templates for the given location directory.
+    ///
+    /// The directory itself is considered a candidate so that custom search paths pointing directly
+    /// at a single template still work, while the immediate subdirectories are included to support
+    /// directories that contain multiple templates.
+    private func candidateTemplateDirectories(at locationDirectory: URL) -> [URL] {
+        guard fileManager.isDirectory(at: locationDirectory) else {
+            return []
+        }
+
+        var directories: [URL] = [locationDirectory]
+
+        if let entries = try? fileManager.contentsOfDirectory(
+            at: locationDirectory,
+            includingPropertiesForKeys: nil,
+            options: [],
+        ) {
+            for entry in entries where fileManager.isDirectory(at: entry) {
+                directories.append(entry)
+            }
+        }
+
+        return directories
     }
 
     private func resolveCustomTemplateDirectory(_ name: String, in path: URL) -> URL? {
@@ -213,38 +245,6 @@ struct TemplatesFinder {
         } catch {
             return nil
         }
-    }
-
-    func listWithLocations(emitValidationErrorLog: Bool = true) async throws -> [TemplateWithLocation] {
-        // Collect templates from custom search paths first (highest priority)
-        var customOptions: [TemplateWithLocation] = []
-        for path in additionalSearchPaths {
-            let templates = try await list(for: .custom(path), emitValidationErrorLog: emitValidationErrorLog)
-            let options = templates.map { TemplateWithLocation(template: $0, location: .custom(path)) }
-            customOptions.append(contentsOf: options)
-        }
-
-        let globalTemplates = try await list(for: .global, emitValidationErrorLog: emitValidationErrorLog)
-        let projectTemplates = try await list(
-            for: .project(
-                projectDirectory,
-                workingDirectory: workingDirectory,
-            ),
-            emitValidationErrorLog: emitValidationErrorLog,
-        )
-
-        let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
-        let projectOptions = projectTemplates.map {
-            TemplateWithLocation(
-                template: $0,
-                location: .project(
-                    projectDirectory,
-                    workingDirectory: workingDirectory,
-                ),
-            )
-        }
-
-        return customOptions + globalOptions + projectOptions
     }
 
     private func fetchTemplate(

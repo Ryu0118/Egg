@@ -8,7 +8,7 @@ struct PathResolverTests {
 
     @Test(arguments: PathResolverTestCase.allCases)
     func `resolve to absolute URL`(_ testCase: PathResolverTestCase) throws {
-        let result = try EggKit.resolveToAbsoluteURL(
+        let result = try EggKit.PathResolver.resolveToAbsoluteURL(
             testCase.input,
             workingDirectory: Self.workingDirectory,
             homeDirectory: Self.homeDirectory,

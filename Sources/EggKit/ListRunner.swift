@@ -73,39 +73,6 @@ package struct ListRunner {
         }
     }
 
-    /// Run in display mode (shows tables using Noora)
-    private func runDisplayMode(location: TemplateLocationType?) async throws {
-        if let location {
-            let list = try await finder.list(for: location)
-            table(for: list, in: location)
-        } else {
-            let list = try await finder.listAll()
-            guard !(list.custom.isEmpty && list.global.isEmpty && list.project.isEmpty) else {
-                noora.info("No templates found.")
-                return
-            }
-
-            // Display custom path templates first
-            for customPath in additionalSearchPaths {
-                let customTemplates = list.custom.filter { template in
-                    template.path.path(percentEncoded: false).hasPrefix(customPath.path(percentEncoded: false))
-                }
-                if !customTemplates.isEmpty {
-                    table(for: customTemplates, in: .custom(customPath))
-                }
-            }
-
-            table(for: list.global, in: .global)
-            table(
-                for: list.project,
-                in: .project(
-                    projectDirectory,
-                    workingDirectory: workingDirectory,
-                ),
-            )
-        }
-    }
-
     /// Run in MCP mode and return structured result
     package func runMcp(location: TemplateLocationType? = nil) async throws -> ListResult {
         var templates: [ListResult.TemplateInfo] = []
@@ -159,6 +126,39 @@ package struct ListRunner {
         }
 
         return ListResult(templates: templates)
+    }
+
+    /// Run in display mode (shows tables using Noora)
+    private func runDisplayMode(location: TemplateLocationType?) async throws {
+        if let location {
+            let list = try await finder.list(for: location)
+            table(for: list, in: location)
+        } else {
+            let list = try await finder.listAll()
+            guard !(list.custom.isEmpty && list.global.isEmpty && list.project.isEmpty) else {
+                noora.info("No templates found.")
+                return
+            }
+
+            // Display custom path templates first
+            for customPath in additionalSearchPaths {
+                let customTemplates = list.custom.filter { template in
+                    template.path.path(percentEncoded: false).hasPrefix(customPath.path(percentEncoded: false))
+                }
+                if !customTemplates.isEmpty {
+                    table(for: customTemplates, in: .custom(customPath))
+                }
+            }
+
+            table(for: list.global, in: .global)
+            table(
+                for: list.project,
+                in: .project(
+                    projectDirectory,
+                    workingDirectory: workingDirectory,
+                ),
+            )
+        }
     }
 
     private func table(for list: [Template], in location: TemplateLocationType) {

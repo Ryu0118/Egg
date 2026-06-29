@@ -5,34 +5,38 @@ excluded_paths:
   - "E2ETestsPackage/.build/**"
   - "**/.build/**"
   - "**/.swiftpm/**"
+  - "**/Generated/**"
 
-# Start with an explicit baseline instead of my-swift-linter defaults.
-# Move rules from the disabled include to real paths incrementally.
 rules:
-  missing-docs:
-    include:
-      - "__disabled__/**"
-  property-declaration-ordering:
-    include:
-      - "__disabled__/**"
-  test-function-naming:
-    include:
-      - "__disabled__/**"
-  branch-assignment-to-tuple:
-    include:
-      - "__disabled__/**"
   deep-nesting:
+    args:
+      warning_depth: 3
+      error_depth: 5
     include:
-      - "__disabled__/**"
-  return-switch-expression:
+      - "Sources/EggKit/**"
+  single-large-type-per-file:
+    args:
+      warning_lines: 80
+      error_lines: 160
     include:
-      - "__disabled__/**"
-  function-access-modifier-grouping:
+      - "Sources/EggKit/**"
+    exclude:
+      - "**/*Generated.swift"
+
+  # Start documentation enforcement from the workflow staging surface.
+  # Expanding this across all EggKit at once turns normal legacy cleanup into noise.
+  # Keep project-wide structural rules above, and widen this include as files gain docs.
+  missing-docs:
+    args:
+      ignore_patterns:
+        - kinds: [init]
+        - kinds: [enum]
+          names: [CodingKeys]
+        - kinds: [var]
+          names: [errorDescription]
+        - kinds: [func]
+          names: ["=="]
     include:
-      - "__disabled__/**"
-  use-url-file-path:
-    include:
-      - "__disabled__/**"
-  no-top-level-function:
-    include:
-      - "__disabled__/**"
+      - "Sources/EggKit/WorkflowRunner/Staging/**"
+    exclude:
+      - "**/*Generated.swift"

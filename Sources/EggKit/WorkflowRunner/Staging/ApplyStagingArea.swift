@@ -20,20 +20,6 @@ struct ApplyStagingArea {
     /// The original working directory (destination of changes).
     let workingDirectory: URL
 
-    private var stagedPayloadRoot: URL {
-        root.appending(path: "staged")
-    }
-
-    private var backupRoot: URL {
-        root.appending(path: "backup")
-    }
-
-    private init(root: URL, workspaceRoot: URL, workingDirectory: URL) {
-        self.root = root
-        self.workspaceRoot = workspaceRoot
-        self.workingDirectory = workingDirectory
-    }
-
     /// Creates a new staging area within the staging directory.
     ///
     /// - Parameters:
@@ -94,6 +80,23 @@ struct ApplyStagingArea {
             staging.cleanup(fileManager: fileManager)
             throw error
         }
+    }
+
+    /// Cleans up the staging area.
+    ///
+    /// Removes all staging artifacts. Safe to call multiple times.
+    ///
+    /// - Parameter fileManager: File manager for operations
+    func cleanup(fileManager: some FileManagerProtocol) {
+        try? fileManager.removeItem(at: root)
+    }
+
+    private var stagedPayloadRoot: URL {
+        root.appending(path: "staged")
+    }
+
+    private var backupRoot: URL {
+        root.appending(path: "backup")
     }
 
     /// Stages all changes from the staging based on the change summary.
@@ -166,6 +169,12 @@ struct ApplyStagingArea {
             }
             throw error
         }
+    }
+
+    private init(root: URL, workspaceRoot: URL, workingDirectory: URL) {
+        self.root = root
+        self.workspaceRoot = workspaceRoot
+        self.workingDirectory = workingDirectory
     }
 
     private func performDelete(_ entry: ChangeEntry, fileManager: some FileManagerProtocol) throws {
@@ -350,15 +359,6 @@ struct ApplyStagingArea {
         try ensureParentDirectory(for: backupDestination, fileManager: fileManager)
         try fileManager.copyItem(at: original, to: backupDestination)
         return backupDestination
-    }
-
-    /// Cleans up the staging area.
-    ///
-    /// Removes all staging artifacts. Safe to call multiple times.
-    ///
-    /// - Parameter fileManager: File manager for operations
-    func cleanup(fileManager: some FileManagerProtocol) {
-        try? fileManager.removeItem(at: root)
     }
 }
 
