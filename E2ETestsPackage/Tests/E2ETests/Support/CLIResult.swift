@@ -1,7 +1,7 @@
 import Foundation
 
 /// Result of a CLI execution
-struct CLIResult: Sendable {
+struct CLIResult {
     /// The exit code of the process
     let exitCode: Int32
 

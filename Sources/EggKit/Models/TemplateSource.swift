@@ -5,7 +5,7 @@ import Foundation
 /// Templates can be installed from:
 /// - A remote Git repository (HTTPS, SSH, or Git protocol)
 /// - A local filesystem path (absolute or relative)
-package enum TemplateSource: Sendable, Equatable {
+package enum TemplateSource: Equatable {
     /// A remote Git repository.
     ///
     /// - Parameters:

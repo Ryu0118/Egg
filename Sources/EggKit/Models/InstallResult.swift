@@ -14,7 +14,7 @@ public struct InstallResult: Sendable {
     public init(
         installed: [String],
         skipped: [SkippedTemplate],
-        failed: [FailedTemplate]
+        failed: [FailedTemplate],
     ) {
         self.installed = installed
         self.skipped = skipped

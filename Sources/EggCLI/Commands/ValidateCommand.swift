@@ -14,7 +14,7 @@ package extension EggCommand.TemplateCommand {
             and meets all requirements.
 
             Example: egg template validate path/to/template
-            """
+            """,
         )
 
         @Argument(help: "Path to the template directory containing config.yaml.")
@@ -32,7 +32,7 @@ package extension EggCommand.TemplateCommand {
             do {
                 try await ValidateRunner(
                     mode: mode,
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -44,7 +44,7 @@ package extension EggCommand.TemplateCommand {
             do {
                 return try await ValidateArgumentsValidator(
                     templatePath: templatePath,
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

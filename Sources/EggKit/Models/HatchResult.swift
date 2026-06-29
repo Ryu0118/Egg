@@ -22,7 +22,7 @@ public struct HatchResult: Codable, Sendable {
         outputDirectory: String,
         success: Bool,
         message: String? = nil,
-        createdFiles: [String]? = nil
+        createdFiles: [String]? = nil,
     ) {
         self.templateName = templateName
         self.outputDirectory = outputDirectory

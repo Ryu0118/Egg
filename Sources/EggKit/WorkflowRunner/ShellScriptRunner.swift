@@ -23,7 +23,7 @@ struct ShellScriptRunner {
         processRunner: any ProcessRunning,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .unsandboxed
+        executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
@@ -41,7 +41,7 @@ struct ShellScriptRunner {
     /// - Throws: LifecycleStepError.shellExecutionError if the command exits with non-zero status
     func executeStreaming(
         _ command: String,
-        onOutput: @escaping (String) -> Void
+        onOutput: @escaping (String) -> Void,
     ) async throws -> String {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
@@ -57,7 +57,7 @@ struct ShellScriptRunner {
             input: .none,
             error: .standardError,
             preferredBufferSize: nil,
-            isolation: nil
+            isolation: nil,
         ) { _, stdoutSequence in
             var stdoutBuffer = Data()
 
@@ -78,17 +78,16 @@ struct ShellScriptRunner {
         let stdout = String(decoding: result.value, as: UTF8.self)
 
         guard result.terminationStatus.isSuccess else {
-            let exitCode: Int32
-            switch result.terminationStatus {
+            let exitCode: Int32 = switch result.terminationStatus {
             case let .exited(code):
-                exitCode = code
+                code
             case let .unhandledException(code):
-                exitCode = code
+                code
             }
             throw LifecycleStepError.shellExecutionError(
                 command: command,
                 exitCode: exitCode,
-                stderr: ""
+                stderr: "",
             )
         }
 
@@ -128,7 +127,7 @@ struct ShellScriptRunner {
             let profile = generateSandboxProfile(for: configuration)
             return (
                 .path("/usr/bin/sandbox-exec"),
-                ["-p", profile, "/bin/sh", "-c", command]
+                ["-p", profile, "/bin/sh", "-c", command],
             )
         }
     }

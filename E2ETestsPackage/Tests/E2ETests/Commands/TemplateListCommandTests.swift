@@ -6,8 +6,8 @@ import Testing
 struct TemplateListCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows list command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows list command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "list", "--help")
 
@@ -21,7 +21,7 @@ struct TemplateListCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func listTemplates(_ testCase: TestCase) async throws {
+    func `list templates`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-list")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -38,7 +38,7 @@ struct TemplateListCommandTests {
             testCase.templates,
             homeDir: homeDir,
             projectDir: projectDir,
-            customDir: customDir
+            customDir: customDir,
         )
 
         let customDirForArgs = testCase.useCustomSearchPath ? customDir : nil
@@ -47,7 +47,7 @@ struct TemplateListCommandTests {
 
         let result = try await runner.run(
             arguments: arguments,
-            environment: environment
+            environment: environment,
         )
 
         #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
@@ -69,19 +69,18 @@ struct TemplateListCommandTests {
         _ templates: [TestCase.TemplateSetup],
         homeDir: URL,
         projectDir: URL,
-        customDir: URL
+        customDir: URL,
     ) throws {
         for template in templates {
-            let templateDir: URL
-            switch template.location {
+            let templateDir: URL = switch template.location {
             case .global:
-                templateDir = homeDir.appending(path: ".eggs/\(template.name)")
+                homeDir.appending(path: ".eggs/\(template.name)")
             case .project:
-                templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+                projectDir.appending(path: ".eggs/\(template.name)")
             case .custom:
-                templateDir = customDir.appending(path: template.name)
+                customDir.appending(path: template.name)
             case .customRoot:
-                templateDir = customDir
+                customDir
             }
 
             if !fileManager.fileExists(atPath: templateDir.path(percentEncoded: false)) {
@@ -109,7 +108,9 @@ struct TemplateListCommandTests {
         let expectedOutputNotContains: [String]
         let useCustomSearchPath: Bool
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         init(
             description: String,
@@ -118,7 +119,7 @@ struct TemplateListCommandTests {
             hideDescription: Bool,
             expectedOutputContains: [String],
             expectedOutputNotContains: [String],
-            useCustomSearchPath: Bool = false
+            useCustomSearchPath: Bool = false,
         ) {
             self.description = description
             self.templates = templates
@@ -171,7 +172,7 @@ struct TemplateListCommandTests {
                 locationFilter: nil,
                 hideDescription: false,
                 expectedOutputContains: [],
-                expectedOutputNotContains: []
+                expectedOutputNotContains: [],
             ),
 
             // Basic listing
@@ -183,7 +184,7 @@ struct TemplateListCommandTests {
                 locationFilter: nil,
                 hideDescription: false,
                 expectedOutputContains: ["TestTemplate"],
-                expectedOutputNotContains: []
+                expectedOutputNotContains: [],
             ),
             TestCase(
                 description: "lists existing project template",
@@ -193,7 +194,7 @@ struct TemplateListCommandTests {
                 locationFilter: nil,
                 hideDescription: false,
                 expectedOutputContains: ["ProjectTemplate"],
-                expectedOutputNotContains: []
+                expectedOutputNotContains: [],
             ),
             TestCase(
                 description: "lists multiple templates from both locations",
@@ -204,7 +205,7 @@ struct TemplateListCommandTests {
                 locationFilter: nil,
                 hideDescription: false,
                 expectedOutputContains: ["GlobalTemplate", "ProjectTemplate"],
-                expectedOutputNotContains: []
+                expectedOutputNotContains: [],
             ),
 
             // Location filter tests
@@ -217,7 +218,7 @@ struct TemplateListCommandTests {
                 locationFilter: .global,
                 hideDescription: false,
                 expectedOutputContains: ["GlobalTemplate"],
-                expectedOutputNotContains: ["ProjectTemplate"]
+                expectedOutputNotContains: ["ProjectTemplate"],
             ),
             TestCase(
                 description: "filters by project location",
@@ -228,7 +229,7 @@ struct TemplateListCommandTests {
                 locationFilter: .project,
                 hideDescription: false,
                 expectedOutputContains: ["ProjectTemplate"],
-                expectedOutputNotContains: ["GlobalTemplate"]
+                expectedOutputNotContains: ["GlobalTemplate"],
             ),
 
             // Hide description tests
@@ -240,7 +241,7 @@ struct TemplateListCommandTests {
                 locationFilter: nil,
                 hideDescription: true,
                 expectedOutputContains: ["TestTemplate"],
-                expectedOutputNotContains: ["UniqueDescriptionText"]
+                expectedOutputNotContains: ["UniqueDescriptionText"],
             ),
 
             // Custom search paths tests
@@ -253,7 +254,7 @@ struct TemplateListCommandTests {
                 hideDescription: false,
                 expectedOutputContains: ["CustomTemplate"],
                 expectedOutputNotContains: [],
-                useCustomSearchPath: true
+                useCustomSearchPath: true,
             ),
             TestCase(
                 description: "lists templates from all locations including custom",
@@ -266,7 +267,7 @@ struct TemplateListCommandTests {
                 hideDescription: false,
                 expectedOutputContains: ["GlobalTemplate", "ProjectTemplate", "CustomTemplate"],
                 expectedOutputNotContains: [],
-                useCustomSearchPath: true
+                useCustomSearchPath: true,
             ),
             TestCase(
                 description: "does not list custom template when search path not provided",
@@ -278,7 +279,7 @@ struct TemplateListCommandTests {
                 hideDescription: false,
                 expectedOutputContains: ["GlobalTemplate"],
                 expectedOutputNotContains: ["CustomOnlyTemplate"],
-                useCustomSearchPath: false
+                useCustomSearchPath: false,
             ),
 
             // Custom search path pointing directly to a template root
@@ -291,7 +292,7 @@ struct TemplateListCommandTests {
                 hideDescription: false,
                 expectedOutputContains: ["CustomRootTemplate"],
                 expectedOutputNotContains: [],
-                useCustomSearchPath: true
+                useCustomSearchPath: true,
             ),
         ]
     }

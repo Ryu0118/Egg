@@ -46,12 +46,12 @@ actor ScanningDirectoryWatcher: DirectoryWatching {
     private func enumerateFiles(
         in directory: URL,
         baseDirectory: URL,
-        events: inout Set<String>
+        events: inout Set<String>,
     ) {
         guard let contents = try? fileManager.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: [.isDirectoryKey],
-            options: []
+            options: [],
         ) else {
             return
         }

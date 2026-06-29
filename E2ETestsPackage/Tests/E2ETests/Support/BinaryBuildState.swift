@@ -64,7 +64,7 @@ actor BinaryBuildState {
                 "--product",
                 "egg",
             ],
-            workingDirectory: FilePath(packageRoot.path(percentEncoded: false))
+            workingDirectory: FilePath(packageRoot.path(percentEncoded: false)),
         ) { _, stream in
             var stdoutBuffer = Data()
 
@@ -85,12 +85,11 @@ actor BinaryBuildState {
         let output = String(data: result.value, encoding: .utf8)
 
         guard result.terminationStatus.isSuccess else {
-            let exitCode: Int32
-            switch result.terminationStatus {
+            let exitCode: Int32 = switch result.terminationStatus {
             case let .exited(code):
-                exitCode = code
+                code
             case let .unhandledException(code):
-                exitCode = code
+                code
             }
             throw BinaryBuildError.buildFailed(exitCode: exitCode, output: output ?? "")
         }

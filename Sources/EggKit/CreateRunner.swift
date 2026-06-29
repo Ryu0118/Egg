@@ -18,10 +18,10 @@ package struct CreateRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         let templateLocation = TemplateLocation(
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         self.mode = mode
         self.templateLocation = templateLocation
@@ -31,13 +31,13 @@ package struct CreateRunner {
         templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
     }
 
@@ -52,7 +52,7 @@ package struct CreateRunner {
                     NonEmptyValidationRule(error: "Project name cannot be empty."),
                     DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
                     LengthValidationRule.templateName,
-                ]
+                ],
             )
 
             guard !templatesFinder.exists(templateName) else {
@@ -66,7 +66,7 @@ package struct CreateRunner {
                 validationRules: [
                     NonEmptyValidationRule(error: "Description cannot be empty."),
                     LengthValidationRule.description,
-                ]
+                ],
             )
 
             let locationType: TemplateLocationType = noora.singleChoicePrompt(
@@ -76,16 +76,16 @@ package struct CreateRunner {
                     .global,
                     .project(
                         projectDirectory,
-                        workingDirectory: workingDirectory
+                        workingDirectory: workingDirectory,
                     ),
                 ],
-                description: "Global templates are available across all projects, while project templates are specific to the current project."
+                description: "Global templates are available across all projects, while project templates are specific to the current project.",
             )
 
             try await templateCreator.create(
                 templateName,
                 description: description,
-                in: locationType
+                in: locationType,
             )
 
             let templateDir = templateLocation.template(templateName, type: locationType)
@@ -96,7 +96,7 @@ package struct CreateRunner {
             try await templateCreator.create(
                 name,
                 description: description,
-                in: locationConcreteType
+                in: locationConcreteType,
             )
 
             let templateDir = templateLocation.template(name, type: locationConcreteType)
@@ -112,7 +112,7 @@ package struct CreateRunner {
     package func runMcp(
         name: String,
         description: String,
-        location: TemplateLocationType.Kind
+        location: TemplateLocationType.Kind,
     ) async throws -> CreateResult {
         let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
 
@@ -123,7 +123,7 @@ package struct CreateRunner {
         try await templateCreator.create(
             name,
             description: description,
-            in: locationConcreteType
+            in: locationConcreteType,
         )
 
         let templateDir = templateLocation.template(name, type: locationConcreteType)
@@ -132,7 +132,7 @@ package struct CreateRunner {
             name: name,
             description: description,
             location: location.rawValue,
-            path: templateDir.path(percentEncoded: false)
+            path: templateDir.path(percentEncoded: false),
         )
     }
 

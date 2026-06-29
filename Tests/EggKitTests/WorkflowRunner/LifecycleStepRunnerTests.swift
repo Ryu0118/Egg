@@ -6,26 +6,26 @@ import Testing
 struct LifecycleStepRunnerTests {
     private func makeBuiltInMacroContext(
         workingDirectory: URL,
-        additionalEnvironment: [String: String] = [:]
+        additionalEnvironment: [String: String] = [:],
     ) -> BuiltInMacroContext {
         BuiltInMacroContext(
             outputDirectory: nil,
             workingDirectory: workingDirectory,
             homeDirectory: workingDirectory,
             currentDate: Date(timeIntervalSince1970: 0),
-            environment: additionalEnvironment
+            environment: additionalEnvironment,
         )
     }
 
     @Test(arguments: TestCase.allCases)
-    func executePhase(_ testCase: TestCase) async throws {
+    func `execute phase`(_ testCase: TestCase) async throws {
         let processRunner = ProcessRunner()
         let workingDirectory = URL(filePath: NSTemporaryDirectory())
 
         let runner = LifecycleStepRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
-            builtInMacroContext: makeBuiltInMacroContext(workingDirectory: workingDirectory)
+            builtInMacroContext: makeBuiltInMacroContext(workingDirectory: workingDirectory),
         )
 
         let initialOutputs = StepOutputsStorage()
@@ -41,7 +41,7 @@ struct LifecycleStepRunnerTests {
                 testCase.phase,
                 steps: testCase.steps,
                 substituting: testCase.macros,
-                merging: initialOutputs
+                merging: initialOutputs,
             )
 
             // Verify expected outputs
@@ -58,7 +58,7 @@ struct LifecycleStepRunnerTests {
                     testCase.phase,
                     steps: testCase.steps,
                     substituting: testCase.macros,
-                    merging: initialOutputs
+                    merging: initialOutputs,
                 )
             }
 
@@ -85,7 +85,9 @@ struct LifecycleStepRunnerTests {
         let initialOutputs: [TestOutput]
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Expectation {
             case success(expectedOutputs: [TestOutput])
@@ -101,14 +103,14 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "setup",
                         if: nil,
-                        run: "echo \"version=1.0.0\""
+                        run: "echo \"version=1.0.0\"",
                     ),
                 ],
                 macros: [],
                 initialOutputs: [],
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
-                ])
+                ]),
             ),
 
             // Multiple outputs from single step
@@ -123,7 +125,7 @@ struct LifecycleStepRunnerTests {
                         echo "version=1.0.0"
                         echo "name=MyApp"
                         echo "platform=iOS"
-                        """
+                        """,
                     ),
                 ],
                 macros: [],
@@ -134,7 +136,7 @@ struct LifecycleStepRunnerTests {
                         "name": "MyApp",
                         "platform": "iOS",
                     ]),
-                ])
+                ]),
             ),
 
             // Multiple steps with sequential dependencies
@@ -145,12 +147,12 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "setup",
                         if: nil,
-                        run: "echo \"version=1.0.0\""
+                        run: "echo \"version=1.0.0\"",
                     ),
                     Config.LifecycleStep(
                         id: "build",
                         if: nil,
-                        run: "echo \"build-version=${{ pre_hatch.setup.outputs.version }}\""
+                        run: "echo \"build-version=${{ pre_hatch.setup.outputs.version }}\"",
                     ),
                 ],
                 macros: [],
@@ -158,7 +160,7 @@ struct LifecycleStepRunnerTests {
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                     TestOutput(phase: .preHatch, stepId: "build", values: ["build-version": "1.0.0"]),
-                ])
+                ]),
             ),
 
             // Macro substitution
@@ -169,7 +171,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "echo-name",
                         if: nil,
-                        run: "echo \"project-name=___PROJECT_NAME___\""
+                        run: "echo \"project-name=___PROJECT_NAME___\"",
                     ),
                 ],
                 macros: [
@@ -178,7 +180,7 @@ struct LifecycleStepRunnerTests {
                 initialOutputs: [],
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "echo-name", values: ["project-name": "MyApp"]),
-                ])
+                ]),
             ),
 
             // Conditional execution - condition true
@@ -189,7 +191,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "conditional",
                         if: "___DEBUG___ === true",
-                        run: "echo \"executed=yes\""
+                        run: "echo \"executed=yes\"",
                     ),
                 ],
                 macros: [
@@ -198,7 +200,7 @@ struct LifecycleStepRunnerTests {
                 initialOutputs: [],
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "conditional", values: ["executed": "yes"]),
-                ])
+                ]),
             ),
 
             // Conditional execution - condition false (step skipped)
@@ -209,14 +211,14 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "skipped",
                         if: "___DEBUG___ === true",
-                        run: "echo \"should-not-execute=yes\""
+                        run: "echo \"should-not-execute=yes\"",
                     ),
                 ],
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(false)),
                 ],
                 initialOutputs: [],
-                expectation: .success(expectedOutputs: [])
+                expectation: .success(expectedOutputs: []),
             ),
 
             // Step without ID (no output captured)
@@ -227,12 +229,12 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: nil,
                         if: nil,
-                        run: "echo \"version=1.0.0\""
+                        run: "echo \"version=1.0.0\"",
                     ),
                 ],
                 macros: [],
                 initialOutputs: [],
-                expectation: .success(expectedOutputs: [])
+                expectation: .success(expectedOutputs: []),
             ),
 
             // Cross-phase output reference
@@ -243,7 +245,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "deploy",
                         if: nil,
-                        run: "echo \"deployed-version=${{ pre_hatch.setup.outputs.version }}\""
+                        run: "echo \"deployed-version=${{ pre_hatch.setup.outputs.version }}\"",
                     ),
                 ],
                 macros: [],
@@ -252,7 +254,7 @@ struct LifecycleStepRunnerTests {
                 ],
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["deployed-version": "1.0.0"]),
-                ])
+                ]),
             ),
 
             // Conditional with step output
@@ -263,12 +265,12 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "setup",
                         if: nil,
-                        run: "echo \"ready=true\""
+                        run: "echo \"ready=true\"",
                     ),
                     Config.LifecycleStep(
                         id: "conditional",
                         if: "\"${{ pre_hatch.setup.outputs.ready }}\" === \"true\"",
-                        run: "echo \"executed=yes\""
+                        run: "echo \"executed=yes\"",
                     ),
                 ],
                 macros: [],
@@ -276,7 +278,7 @@ struct LifecycleStepRunnerTests {
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["ready": "true"]),
                     TestOutput(phase: .preHatch, stepId: "conditional", values: ["executed": "yes"]),
-                ])
+                ]),
             ),
 
             // Complex condition with macro and output
@@ -287,12 +289,12 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "setup",
                         if: nil,
-                        run: "echo \"status=ready\""
+                        run: "echo \"status=ready\"",
                     ),
                     Config.LifecycleStep(
                         id: "build",
                         if: "___DEBUG___ && \"${{ pre_hatch.setup.outputs.status }}\" === \"ready\"",
-                        run: "echo \"built=yes\""
+                        run: "echo \"built=yes\"",
                     ),
                 ],
                 macros: [
@@ -302,7 +304,7 @@ struct LifecycleStepRunnerTests {
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "ready"]),
                     TestOutput(phase: .preHatch, stepId: "build", values: ["built": "yes"]),
-                ])
+                ]),
             ),
 
             // Array macro with includes()
@@ -313,7 +315,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "ios-step",
                         if: "___PLATFORMS___.includes(\"iOS\")",
-                        run: "echo \"platform=iOS\""
+                        run: "echo \"platform=iOS\"",
                     ),
                 ],
                 macros: [
@@ -322,7 +324,7 @@ struct LifecycleStepRunnerTests {
                 initialOutputs: [],
                 expectation: .success(expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "ios-step", values: ["platform": "iOS"]),
-                ])
+                ]),
             ),
 
             // Error case - undefined output reference
@@ -333,7 +335,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "fail",
                         if: nil,
-                        run: "echo \"value=${{ pre_hatch.unknown.outputs.key }}\""
+                        run: "echo \"value=${{ pre_hatch.unknown.outputs.key }}\"",
                     ),
                 ],
                 macros: [],
@@ -341,8 +343,8 @@ struct LifecycleStepRunnerTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch,
                     stepId: "unknown",
-                    key: "key"
-                ))
+                    key: "key",
+                )),
             ),
 
             // Error case - invalid condition
@@ -353,15 +355,15 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "fail",
                         if: "!@#$%^&*()",
-                        run: "echo \"should-not-execute=yes\""
+                        run: "echo \"should-not-execute=yes\"",
                     ),
                 ],
                 macros: [],
                 initialOutputs: [],
                 expectation: .failure(expectedError: .conditionEvaluationError(
                     condition: "!@#$%^&*()",
-                    reason: "JavaScript evaluation failed or returned null/undefined"
-                ))
+                    reason: "JavaScript evaluation failed or returned null/undefined",
+                )),
             ),
 
             // Multiple steps with some skipped
@@ -372,17 +374,17 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "always",
                         if: nil,
-                        run: "echo \"always=yes\""
+                        run: "echo \"always=yes\"",
                     ),
                     Config.LifecycleStep(
                         id: "debug-only",
                         if: "___DEBUG___ === true",
-                        run: "echo \"debug=yes\""
+                        run: "echo \"debug=yes\"",
                     ),
                     Config.LifecycleStep(
                         id: "release-only",
                         if: "___DEBUG___ === false",
-                        run: "echo \"release=yes\""
+                        run: "echo \"release=yes\"",
                     ),
                 ],
                 macros: [
@@ -393,13 +395,13 @@ struct LifecycleStepRunnerTests {
                     TestOutput(phase: .preHatch, stepId: "always", values: ["always": "yes"]),
                     TestOutput(phase: .preHatch, stepId: "debug-only", values: ["debug": "yes"]),
                     // release-only is skipped
-                ])
+                ]),
             ),
         ]
     }
 
     @Test(arguments: EnvironmentPropagationTestCase.allCases)
-    func executeWithAdditionalEnvironment(_ testCase: EnvironmentPropagationTestCase) async throws {
+    func `execute with additional environment`(_ testCase: EnvironmentPropagationTestCase) async throws {
         let processRunner = ProcessRunner()
         let workingDirectory = URL(filePath: NSTemporaryDirectory())
 
@@ -409,8 +411,8 @@ struct LifecycleStepRunnerTests {
             additionalEnvironment: testCase.additionalEnvironment,
             builtInMacroContext: makeBuiltInMacroContext(
                 workingDirectory: workingDirectory,
-                additionalEnvironment: testCase.additionalEnvironment
-            )
+                additionalEnvironment: testCase.additionalEnvironment,
+            ),
         )
 
         let initialOutputs = StepOutputsStorage()
@@ -419,7 +421,7 @@ struct LifecycleStepRunnerTests {
             testCase.phase,
             steps: testCase.steps,
             substituting: testCase.macros,
-            merging: initialOutputs
+            merging: initialOutputs,
         )
 
         // Verify expected outputs
@@ -439,7 +441,9 @@ struct LifecycleStepRunnerTests {
         let additionalEnvironment: [String: String]
         let expectedOutputs: [TestOutput]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [EnvironmentPropagationTestCase] = [
             // Single environment variable propagation
@@ -450,14 +454,14 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "env-test",
                         if: nil,
-                        run: "echo \"workspace=$EGG_WORKSPACE_ROOT\""
+                        run: "echo \"workspace=$EGG_WORKSPACE_ROOT\"",
                     ),
                 ],
                 macros: [],
                 additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
                 expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "env-test", values: ["workspace": "/tmp/workspace"]),
-                ]
+                ],
             ),
 
             // Multiple environment variables propagation
@@ -471,7 +475,7 @@ struct LifecycleStepRunnerTests {
                         run: """
                         echo "workspace=$EGG_WORKSPACE_ROOT"
                         echo "workdir=$EGG_ORIGINAL_WORKING_DIR"
-                        """
+                        """,
                     ),
                 ],
                 macros: [],
@@ -484,7 +488,7 @@ struct LifecycleStepRunnerTests {
                         "workspace": "/tmp/workspace",
                         "workdir": "/Users/test/project",
                     ]),
-                ]
+                ],
             ),
 
             // Environment variables with macro substitution
@@ -495,7 +499,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "combined",
                         if: nil,
-                        run: "echo \"result=___PROJECT_NAME___:$EGG_WORKSPACE_ROOT\""
+                        run: "echo \"result=___PROJECT_NAME___:$EGG_WORKSPACE_ROOT\"",
                     ),
                 ],
                 macros: [
@@ -504,7 +508,7 @@ struct LifecycleStepRunnerTests {
                 additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
                 expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "combined", values: ["result": "MyApp:/tmp/workspace"]),
-                ]
+                ],
             ),
 
             // Environment variables across multiple steps
@@ -515,12 +519,12 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "step1",
                         if: nil,
-                        run: "echo \"first=$EGG_CUSTOM_VAR\""
+                        run: "echo \"first=$EGG_CUSTOM_VAR\"",
                     ),
                     Config.LifecycleStep(
                         id: "step2",
                         if: nil,
-                        run: "echo \"second=$EGG_CUSTOM_VAR\""
+                        run: "echo \"second=$EGG_CUSTOM_VAR\"",
                     ),
                 ],
                 macros: [],
@@ -528,7 +532,7 @@ struct LifecycleStepRunnerTests {
                 expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "step1", values: ["first": "shared_value"]),
                     TestOutput(phase: .preHatch, stepId: "step2", values: ["second": "shared_value"]),
-                ]
+                ],
             ),
 
             // postHatch phase environment propagation
@@ -539,14 +543,14 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "post-env",
                         if: nil,
-                        run: "echo \"workspace=$EGG_WORKSPACE_ROOT\""
+                        run: "echo \"workspace=$EGG_WORKSPACE_ROOT\"",
                     ),
                 ],
                 macros: [],
                 additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
                 expectedOutputs: [
                     TestOutput(phase: .postHatch, stepId: "post-env", values: ["workspace": "/tmp/workspace"]),
-                ]
+                ],
             ),
 
             // Empty additional environment (inherits parent)
@@ -557,14 +561,14 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "no-extra-env",
                         if: nil,
-                        run: "echo \"path-exists=$(echo $PATH | grep -q '/' && echo yes || echo no)\""
+                        run: "echo \"path-exists=$(echo $PATH | grep -q '/' && echo yes || echo no)\"",
                     ),
                 ],
                 macros: [],
                 additionalEnvironment: [:],
                 expectedOutputs: [
                     TestOutput(phase: .preHatch, stepId: "no-extra-env", values: ["path-exists": "yes"]),
-                ]
+                ],
             ),
         ]
     }

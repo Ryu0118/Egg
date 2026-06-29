@@ -42,7 +42,7 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
 
     package func updatingProjectDirectory(
         _ projectDirectory: URL,
-        workingDirectory: URL
+        workingDirectory: URL,
     ) -> Self? {
         if case .project = self {
             return .project(projectDirectory, workingDirectory: workingDirectory)
@@ -60,15 +60,15 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
 }
 
 package extension TemplateLocationType {
-    enum Kind: String, Codable, Sendable {
+    enum Kind: String, Codable {
         case global
         case project
 
         package func toConcreteType(
             _ projectDirectory: URL,
-            workingDirectory: URL
+            workingDirectory: URL,
         ) -> TemplateLocationType {
-            return switch self {
+            switch self {
             case .global:
                 .global
             case .project:

@@ -5,7 +5,7 @@ import Testing
 
 struct ApplyStagingAreaTests {
     @Test(arguments: TestCase.allCases)
-    func applyStagingArea(_ testCase: TestCase) throws {
+    func `apply staging area`(_ testCase: TestCase) throws {
         let context = try TestContext.setUp(testCase: testCase)
         defer { try? context.tearDown() }
 
@@ -59,7 +59,7 @@ extension ApplyStagingAreaTests {
                 tempDir: tempDir,
                 workspaceRoot: workspaceRoot,
                 workingDir: workingDir,
-                changes: changes
+                changes: changes,
             )
         }
 
@@ -71,7 +71,7 @@ extension ApplyStagingAreaTests {
             try ApplyStagingArea.withStaging(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileManager: fileManager
+                fileManager: fileManager,
             ) { staging, fs in
                 let manifest = try staging.stage(changes: changes, fileManager: fs)
                 try staging.apply(manifest: manifest, fileManager: fs)
@@ -82,7 +82,7 @@ extension ApplyStagingAreaTests {
             let staging = try ApplyStagingArea.create(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileManager: fileManager
+                fileManager: fileManager,
             )
             let root = staging.root
 
@@ -102,7 +102,7 @@ extension ApplyStagingAreaTests {
             let staging = try ApplyStagingArea.create(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileManager: fileManager
+                fileManager: fileManager,
             )
             let root = staging.root
 
@@ -110,7 +110,7 @@ extension ApplyStagingAreaTests {
                 let badChanges = ChangeSummary(
                     added: ["nonexistent.txt"],
                     modified: [],
-                    deleted: []
+                    deleted: [],
                 )
                 _ = try staging.stage(changes: badChanges, fileManager: fileManager)
                 staging.cleanup(fileManager: fileManager)
@@ -124,24 +124,24 @@ extension ApplyStagingAreaTests {
         func verifyExpectedFiles(_ expectedFiles: [ExpectedFile]) throws {
             for expectedFile in expectedFiles {
                 let filePath = workingDir.appending(
-                    path: expectedFile.path
+                    path: expectedFile.path,
                 )
 
                 if let expectedContent = expectedFile.expectedContent {
                     #expect(
                         fileManager.exists(filePath),
-                        "File '\(expectedFile.path)' should exist"
+                        "File '\(expectedFile.path)' should exist",
                     )
                     let data = try fileManager.readFile(at: filePath)
                     let content = String(data: data, encoding: .utf8) ?? ""
                     #expect(
                         content == expectedContent,
-                        "File '\(expectedFile.path)' content mismatch: expected '\(expectedContent)', got '\(content)'"
+                        "File '\(expectedFile.path)' content mismatch: expected '\(expectedContent)', got '\(content)'",
                     )
                 } else {
                     #expect(
                         !fileManager.exists(filePath),
-                        "File '\(expectedFile.path)' should not exist"
+                        "File '\(expectedFile.path)' should not exist",
                     )
                 }
             }
@@ -151,7 +151,7 @@ extension ApplyStagingAreaTests {
             try ApplyStagingArea.withStaging(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileManager: fileManager
+                fileManager: fileManager,
             ) { staging, fs in
                 let manifest = try staging.stage(changes: changes, fileManager: fs)
                 #expect(manifest.totalCount == 0, "Expected empty manifest")
@@ -162,7 +162,7 @@ extension ApplyStagingAreaTests {
             try ApplyStagingArea.withStaging(
                 workspaceRoot: workspaceRoot,
                 workingDirectory: workingDir,
-                fileManager: fileManager
+                fileManager: fileManager,
             ) { staging, fs in
                 let manifest = try staging.stage(changes: changes, fileManager: fs)
                 #expect(manifest.addCount == add, "Expected \(add) adds, got \(manifest.addCount)")
@@ -174,14 +174,14 @@ extension ApplyStagingAreaTests {
         func verifyStagingCleanedUp(stagingRoot: URL) throws {
             #expect(
                 !fileManager.exists(stagingRoot),
-                "Staging directory should be cleaned up"
+                "Staging directory should be cleaned up",
             )
         }
 
         private static func createFiles(
             _ files: [FileEntry],
             in directory: URL,
-            fileManager: any FileManagerProtocol
+            fileManager: any FileManagerProtocol,
         ) throws {
             for file in files {
                 let filePath = directory.appending(path: file.path)
@@ -194,10 +194,10 @@ extension ApplyStagingAreaTests {
         }
 
         private static func buildChangeSummary(testCase: TestCase) -> ChangeSummary {
-            return ChangeSummary(
+            ChangeSummary(
                 added: testCase.addedPaths,
                 modified: testCase.modifiedPaths,
-                deleted: testCase.deletedPaths
+                deleted: testCase.deletedPaths,
             )
         }
     }
@@ -223,7 +223,9 @@ extension ApplyStagingAreaTests {
         let deletedPaths: [String]
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         init(
             description: String,
@@ -232,7 +234,7 @@ extension ApplyStagingAreaTests {
             addedPaths: [String] = [],
             modifiedPaths: [String] = [],
             deletedPaths: [String] = [],
-            expectation: Expectation
+            expectation: Expectation,
         ) {
             self.description = description
             self.workspaceFiles = workspaceFiles
@@ -266,7 +268,7 @@ extension ApplyStagingAreaTests.TestCase {
 
     private static let emptyChangesCase = ApplyStagingAreaTests.TestCase(
         description: "empty changes produces empty manifest",
-        expectation: .emptyManifest
+        expectation: .emptyManifest,
     )
 
     private static let addOperationCases: [ApplyStagingAreaTests.TestCase] = [
@@ -278,7 +280,7 @@ extension ApplyStagingAreaTests.TestCase {
             addedPaths: ["new.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "new.txt", expectedContent: "new content"),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies added file in subdirectory",
@@ -288,7 +290,7 @@ extension ApplyStagingAreaTests.TestCase {
             addedPaths: ["subdir/nested/file.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "subdir/nested/file.txt", expectedContent: "nested content"),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies multiple added files",
@@ -302,7 +304,7 @@ extension ApplyStagingAreaTests.TestCase {
                 ApplyStagingAreaTests.ExpectedFile(path: "file1.txt", expectedContent: "content1"),
                 ApplyStagingAreaTests.ExpectedFile(path: "file2.txt", expectedContent: "content2"),
                 ApplyStagingAreaTests.ExpectedFile(path: "dir/file3.txt", expectedContent: "content3"),
-            ])
+            ]),
         ),
     ]
 
@@ -318,7 +320,7 @@ extension ApplyStagingAreaTests.TestCase {
             modifiedPaths: ["existing.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "existing.txt", expectedContent: "modified content"),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies multiple modified files",
@@ -334,7 +336,7 @@ extension ApplyStagingAreaTests.TestCase {
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "file1.txt", expectedContent: "modified1"),
                 ApplyStagingAreaTests.ExpectedFile(path: "dir/file2.txt", expectedContent: "modified2"),
-            ])
+            ]),
         ),
     ]
 
@@ -347,7 +349,7 @@ extension ApplyStagingAreaTests.TestCase {
             deletedPaths: ["delete-me.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "delete-me.txt", expectedContent: nil),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "stages and applies multiple deleted files",
@@ -359,12 +361,12 @@ extension ApplyStagingAreaTests.TestCase {
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "delete1.txt", expectedContent: nil),
                 ApplyStagingAreaTests.ExpectedFile(path: "dir/delete2.txt", expectedContent: nil),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "delete of nonexistent file is skipped",
             deletedPaths: ["nonexistent.txt"],
-            expectation: .emptyManifest
+            expectation: .emptyManifest,
         ),
     ]
 
@@ -388,7 +390,7 @@ extension ApplyStagingAreaTests.TestCase {
                 ApplyStagingAreaTests.ExpectedFile(path: "modify.txt", expectedContent: "modified content"),
                 ApplyStagingAreaTests.ExpectedFile(path: "delete.txt", expectedContent: nil),
                 ApplyStagingAreaTests.ExpectedFile(path: "untouched.txt", expectedContent: "unchanged"),
-            ])
+            ]),
         ),
     ]
 
@@ -400,7 +402,7 @@ extension ApplyStagingAreaTests.TestCase {
                 ApplyStagingAreaTests.FileEntry(path: "b.txt", content: "b"),
             ],
             addedPaths: ["a.txt", "b.txt"],
-            expectation: .manifestCounts(add: 2, modify: 0, delete: 0)
+            expectation: .manifestCounts(add: 2, modify: 0, delete: 0),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "manifest has correct counts for modifies",
@@ -415,7 +417,7 @@ extension ApplyStagingAreaTests.TestCase {
                 ApplyStagingAreaTests.FileEntry(path: "c.txt", content: "orig-c"),
             ],
             modifiedPaths: ["a.txt", "b.txt", "c.txt"],
-            expectation: .manifestCounts(add: 0, modify: 3, delete: 0)
+            expectation: .manifestCounts(add: 0, modify: 3, delete: 0),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "manifest has correct counts for deletes",
@@ -424,7 +426,7 @@ extension ApplyStagingAreaTests.TestCase {
                 ApplyStagingAreaTests.FileEntry(path: "b.txt", content: "b"),
             ],
             deletedPaths: ["a.txt", "b.txt"],
-            expectation: .manifestCounts(add: 0, modify: 0, delete: 2)
+            expectation: .manifestCounts(add: 0, modify: 0, delete: 2),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "manifest has correct mixed counts",
@@ -442,7 +444,7 @@ extension ApplyStagingAreaTests.TestCase {
             addedPaths: ["new1.txt", "new2.txt"],
             modifiedPaths: ["mod1.txt"],
             deletedPaths: ["del1.txt", "del2.txt", "del3.txt"],
-            expectation: .manifestCounts(add: 2, modify: 1, delete: 3)
+            expectation: .manifestCounts(add: 2, modify: 1, delete: 3),
         ),
     ]
 
@@ -453,11 +455,11 @@ extension ApplyStagingAreaTests.TestCase {
                 ApplyStagingAreaTests.FileEntry(path: "file.txt", content: "content"),
             ],
             addedPaths: ["file.txt"],
-            expectation: .stagingCleanedUp
+            expectation: .stagingCleanedUp,
         ),
         ApplyStagingAreaTests.TestCase(
             description: "staging directory is cleaned up on error",
-            expectation: .stagingCleanedUpOnError
+            expectation: .stagingCleanedUpOnError,
         ),
     ]
 
@@ -470,7 +472,7 @@ extension ApplyStagingAreaTests.TestCase {
             addedPaths: ["file with spaces.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "file with spaces.txt", expectedContent: "spaces"),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "handles deeply nested paths",
@@ -480,7 +482,7 @@ extension ApplyStagingAreaTests.TestCase {
             addedPaths: ["a/b/c/d/e/file.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "a/b/c/d/e/file.txt", expectedContent: "deep"),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "preserves files not in change summary",
@@ -494,7 +496,7 @@ extension ApplyStagingAreaTests.TestCase {
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "new.txt", expectedContent: "new"),
                 ApplyStagingAreaTests.ExpectedFile(path: "existing.txt", expectedContent: "keep me"),
-            ])
+            ]),
         ),
         ApplyStagingAreaTests.TestCase(
             description: "handles empty file content",
@@ -504,7 +506,7 @@ extension ApplyStagingAreaTests.TestCase {
             addedPaths: ["empty.txt"],
             expectation: .success(expectedFiles: [
                 ApplyStagingAreaTests.ExpectedFile(path: "empty.txt", expectedContent: ""),
-            ])
+            ]),
         ),
     ]
 }

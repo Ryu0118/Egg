@@ -18,7 +18,7 @@ public struct MoveResult: Codable, Sendable {
         name: String,
         sourceLocation: String,
         targetLocation: String,
-        newPath: String
+        newPath: String,
     ) {
         self.name = name
         self.sourceLocation = sourceLocation

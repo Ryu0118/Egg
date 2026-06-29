@@ -14,7 +14,7 @@ package struct CreateArgumentsValidator {
         projectDirectory: URL,
         workingDirectory: URL,
         homeDirectory: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.name = name
         self.description = description
@@ -23,13 +23,13 @@ package struct CreateArgumentsValidator {
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
     }
 
     package func validate() async throws -> CreateRunnerMode {
         // All nil means interactive mode
-        if name == nil && description == nil && location == nil {
+        if name == nil, description == nil, location == nil {
             return .interactive
         }
 
@@ -38,7 +38,7 @@ package struct CreateArgumentsValidator {
             name != nil ? Field.name : nil,
             description != nil ? Field.description : nil,
             location != nil ? Field.location : nil,
-        ].compactMap { $0 })
+        ].compactMap(\.self))
 
         // Check if all required fields are provided
         let requiredFields: Set<Field> = [.name, .description, .location]
@@ -94,7 +94,7 @@ package struct CreateArgumentsValidator {
             switch self {
             case let .missingFields(missing, provided):
                 let missingText = missing.sorted(by: { $0.rawValue < $1.rawValue })
-                    .map { $0.displayName }
+                    .map(\.displayName)
                     .joined(separator: " and ")
 
                 if provided.isEmpty {
@@ -102,7 +102,7 @@ package struct CreateArgumentsValidator {
                 }
 
                 let providedText = provided.sorted(by: { $0.rawValue < $1.rawValue })
-                    .map { $0.displayName }
+                    .map(\.displayName)
                     .joined(separator: " and ")
 
                 return "Template \(missingText) \(missing.count == 1 ? "is" : "are") required when \(providedText) \(provided.count == 1 ? "is" : "are") specified"

@@ -29,7 +29,7 @@ struct ShellScriptRunnerTests {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
-            workingDirectory: tempDir
+            workingDirectory: tempDir,
         )
 
         switch testCase.expectation {
@@ -57,11 +57,11 @@ struct ShellScriptRunnerTests {
     }
 
     @Test(arguments: StreamingTestCase.allCases)
-    func executeStreaming(_ testCase: StreamingTestCase) async throws {
+    func `execute streaming`(_ testCase: StreamingTestCase) async throws {
         let tempDir = URL(filePath: NSTemporaryDirectory())
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
-            workingDirectory: tempDir
+            workingDirectory: tempDir,
         )
 
         switch testCase.expectation {
@@ -108,7 +108,9 @@ struct ShellScriptRunnerTests {
         let command: String
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Expectation {
             case success(expectedStdout: String, expectedStderr: String?)
@@ -119,12 +121,12 @@ struct ShellScriptRunnerTests {
             TestCase(
                 description: "executes simple echo command",
                 command: "echo 'Hello, World!'",
-                expectation: .success(expectedStdout: "Hello, World!", expectedStderr: nil)
+                expectation: .success(expectedStdout: "Hello, World!", expectedStderr: nil),
             ),
             TestCase(
                 description: "captures stdout from command",
                 command: "echo 'version=1.0.0'",
-                expectation: .success(expectedStdout: "version=1.0.0", expectedStderr: nil)
+                expectation: .success(expectedStdout: "version=1.0.0", expectedStderr: nil),
             ),
             TestCase(
                 description: "captures multiline stdout",
@@ -133,37 +135,37 @@ struct ShellScriptRunnerTests {
                 echo "line2"
                 echo "line3"
                 """,
-                expectation: .success(expectedStdout: "line1", expectedStderr: nil)
+                expectation: .success(expectedStdout: "line1", expectedStderr: nil),
             ),
             TestCase(
                 description: "executes command with variables",
                 command: "VAR='test'; echo $VAR",
-                expectation: .success(expectedStdout: "test", expectedStderr: nil)
+                expectation: .success(expectedStdout: "test", expectedStderr: nil),
             ),
             TestCase(
                 description: "executes command with pipe",
                 command: "echo 'hello world' | tr '[:lower:]' '[:upper:]'",
-                expectation: .success(expectedStdout: "HELLO WORLD", expectedStderr: nil)
+                expectation: .success(expectedStdout: "HELLO WORLD", expectedStderr: nil),
             ),
             TestCase(
                 description: "handles empty stdout",
                 command: "true",
-                expectation: .success(expectedStdout: "", expectedStderr: nil)
+                expectation: .success(expectedStdout: "", expectedStderr: nil),
             ),
             TestCase(
                 description: "throws on non-zero exit code",
                 command: "exit 1",
-                expectation: .failure(expectedExitCode: 1)
+                expectation: .failure(expectedExitCode: 1),
             ),
             TestCase(
                 description: "throws on command not found",
                 command: "nonexistent-command-xyz",
-                expectation: .failure(expectedExitCode: 127)
+                expectation: .failure(expectedExitCode: 127),
             ),
             TestCase(
                 description: "captures stderr on failure",
                 command: "cat /nonexistent/file 2>&1",
-                expectation: .failure(expectedExitCode: 1)
+                expectation: .failure(expectedExitCode: 1),
             ),
             TestCase(
                 description: "executes complex shell script",
@@ -174,7 +176,7 @@ struct ShellScriptRunnerTests {
                   echo "HOME is not set"
                 fi
                 """,
-                expectation: .success(expectedStdout: "HOME is set", expectedStderr: nil)
+                expectation: .success(expectedStdout: "HOME is set", expectedStderr: nil),
             ),
         ]
     }
@@ -184,7 +186,9 @@ struct ShellScriptRunnerTests {
         let command: String
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Expectation {
             case success(expectedStdout: String)
@@ -195,7 +199,7 @@ struct ShellScriptRunnerTests {
             StreamingTestCase(
                 description: "streams simple echo command",
                 command: "echo 'Hello, Streaming!'",
-                expectation: .success(expectedStdout: "Hello, Streaming!")
+                expectation: .success(expectedStdout: "Hello, Streaming!"),
             ),
             StreamingTestCase(
                 description: "streams multiline output",
@@ -204,33 +208,33 @@ struct ShellScriptRunnerTests {
                 echo "line2"
                 echo "line3"
                 """,
-                expectation: .success(expectedStdout: "line1")
+                expectation: .success(expectedStdout: "line1"),
             ),
             StreamingTestCase(
                 description: "streams command with pipe",
                 command: "echo 'streaming test' | tr '[:lower:]' '[:upper:]'",
-                expectation: .success(expectedStdout: "STREAMING TEST")
+                expectation: .success(expectedStdout: "STREAMING TEST"),
             ),
             StreamingTestCase(
                 description: "throws on non-zero exit code",
                 command: "exit 1",
-                expectation: .failure(expectedExitCode: 1)
+                expectation: .failure(expectedExitCode: 1),
             ),
             StreamingTestCase(
                 description: "throws on command not found",
                 command: "nonexistent-streaming-command",
-                expectation: .failure(expectedExitCode: 127)
+                expectation: .failure(expectedExitCode: 127),
             ),
         ]
     }
 
     @Test(arguments: EnvironmentTestCase.allCases)
-    func executeWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
+    func `execute with additional environment`(_ testCase: EnvironmentTestCase) async throws {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
             workingDirectory: tempDir,
-            additionalEnvironment: testCase.additionalEnvironment
+            additionalEnvironment: testCase.additionalEnvironment,
         )
 
         let stdout = try await runner.executeStreaming(testCase.command) { _ in }
@@ -238,12 +242,12 @@ struct ShellScriptRunnerTests {
     }
 
     @Test(arguments: EnvironmentTestCase.allCases)
-    func executeStreamingWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
+    func `execute streaming with additional environment`(_ testCase: EnvironmentTestCase) async throws {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
             workingDirectory: tempDir,
-            additionalEnvironment: testCase.additionalEnvironment
+            additionalEnvironment: testCase.additionalEnvironment,
         )
 
         let stdout = try await runner.executeStreaming(testCase.command) { _ in }
@@ -256,14 +260,16 @@ struct ShellScriptRunnerTests {
         let additionalEnvironment: [String: String]
         let expectedOutput: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [EnvironmentTestCase] = [
             EnvironmentTestCase(
                 description: "accesses single additional environment variable",
                 command: "echo $EGG_WORKSPACE_ROOT",
                 additionalEnvironment: ["EGG_WORKSPACE_ROOT": "/tmp/workspace"],
-                expectedOutput: "/tmp/workspace"
+                expectedOutput: "/tmp/workspace",
             ),
             EnvironmentTestCase(
                 description: "accesses multiple additional environment variables",
@@ -272,31 +278,31 @@ struct ShellScriptRunnerTests {
                     "EGG_WORKSPACE_ROOT": "/tmp/workspace",
                     "EGG_ORIGINAL_WORKING_DIR": "/Users/test/project",
                 ],
-                expectedOutput: "/tmp/workspace:/Users/test/project"
+                expectedOutput: "/tmp/workspace:/Users/test/project",
             ),
             EnvironmentTestCase(
                 description: "additional environment variables are available in subshell",
                 command: "sh -c 'echo $EGG_TEST_VAR'",
                 additionalEnvironment: ["EGG_TEST_VAR": "subshell_value"],
-                expectedOutput: "subshell_value"
+                expectedOutput: "subshell_value",
             ),
             EnvironmentTestCase(
                 description: "additional environment overrides inherited variable",
                 command: "echo $HOME",
                 additionalEnvironment: ["HOME": "/custom/home"],
-                expectedOutput: "/custom/home"
+                expectedOutput: "/custom/home",
             ),
             EnvironmentTestCase(
                 description: "inherited environment is still accessible",
                 command: "echo $PATH | grep -q '/' && echo 'PATH_EXISTS'",
                 additionalEnvironment: ["EGG_CUSTOM": "value"],
-                expectedOutput: "PATH_EXISTS"
+                expectedOutput: "PATH_EXISTS",
             ),
             EnvironmentTestCase(
                 description: "empty additional environment still inherits parent",
                 command: "echo $PATH | grep -q '/' && echo 'PATH_EXISTS'",
                 additionalEnvironment: [:],
-                expectedOutput: "PATH_EXISTS"
+                expectedOutput: "PATH_EXISTS",
             ),
         ]
     }

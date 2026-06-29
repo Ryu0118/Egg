@@ -48,7 +48,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = true,
-        applyChanges: Bool = false
+        applyChanges: Bool = false,
     ) {
         // Note: applyChanges is unused in direct mode as there's no confirmation step
         _ = applyChanges
@@ -63,7 +63,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            override: overrideConflicts
+            override: overrideConflicts,
         )
     }
 
@@ -78,7 +78,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     func run(
         config: Config,
         macroInputs: MacroInputs,
-        templateDirectory: URL
+        templateDirectory: URL,
     ) async throws -> URL {
         // Resolve macros (for non-staging execution, use real working directory)
         let macros = try resolveMacros(macroInputs, config: config)
@@ -88,7 +88,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
             config.sandbox?.allowedPaths,
             macros: macros,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
         )
 
         // Track whether user confirmed extended sandbox permissions
@@ -99,7 +99,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             if isInteractive {
                 // Prompt user for permission in interactive mode
                 sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                    expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                    expandedAllowedPaths.map { $0.path(percentEncoded: false) },
                 )
                 if !sandboxPermissionConfirmed {
                     noora.passthrough("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).\n")
@@ -107,7 +107,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             } else {
                 // Non-interactive mode: reject with error
                 throw LifecycleStepError.sandboxPermissionRequired(
-                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
                 )
             }
         }
@@ -135,7 +135,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 outputs: outputs,
                 workingDirectory: workingDirectory,
                 additionalEnvironment: commonEnvironment,
-                executionEnvironment: executionEnvironment
+                executionEnvironment: executionEnvironment,
             )
         }
 
@@ -145,7 +145,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             macros: macros,
             outputs: outputs,
             templateDirectory: templateDirectory,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
         )
 
         // Execute post_hatch
@@ -156,7 +156,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 outputs: outputs,
                 workingDirectory: workingDirectory,
                 additionalEnvironment: commonEnvironment,
-                executionEnvironment: executionEnvironment
+                executionEnvironment: executionEnvironment,
             )
         }
 
@@ -178,7 +178,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             let validator = ParsedMacroDefinitionValidator(
                 config: config,
                 workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             return try validator.validate(parsedMacros)
         case .interactive:
@@ -186,10 +186,9 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 config: config,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora
+                noora: noora,
             )
             return resolver.resolve()
         }
     }
-
 }

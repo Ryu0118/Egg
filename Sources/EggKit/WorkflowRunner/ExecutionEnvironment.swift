@@ -38,7 +38,7 @@ extension SandboxConfiguration {
         SandboxConfiguration(
             writableRoot: root,
             deniedPaths: [originalWorkingDirectory],
-            allowedPaths: allowedPaths
+            allowedPaths: allowedPaths,
         )
     }
 }

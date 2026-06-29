@@ -22,7 +22,7 @@ package struct DuplicateArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templateName = templateName
         self.newName = newName
@@ -37,7 +37,7 @@ package struct DuplicateArgumentsValidator {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -50,7 +50,7 @@ package struct DuplicateArgumentsValidator {
         let sourceConfig = try readSourceConfig(at: sourcePath)
         let (finalNewName, finalNewDescription) = try await determineNewTemplateInfo(
             sourceConfig: sourceConfig,
-            sourceLocation: sourceLocation
+            sourceLocation: sourceLocation,
         )
 
         return .direct(
@@ -58,7 +58,7 @@ package struct DuplicateArgumentsValidator {
             sourcePath: sourcePath.path(percentEncoded: false),
             sourceLocation: sourceLocation,
             newName: finalNewName,
-            newDescription: finalNewDescription
+            newDescription: finalNewDescription,
         )
     }
 
@@ -73,7 +73,7 @@ package struct DuplicateArgumentsValidator {
                 templatePath: sourcePath,
                 additionalSearchPaths: additionalSearchPaths,
                 projectDirectory: projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             )
 
         return (sourcePath, sourceLocation)
@@ -87,14 +87,14 @@ package struct DuplicateArgumentsValidator {
 
     private func determineNewTemplateInfo(
         sourceConfig: Config,
-        sourceLocation: TemplateLocationType
+        sourceLocation: TemplateLocationType,
     ) async throws -> (name: String, description: String) {
         let finalNewName = if let newName {
             newName
         } else {
             await generateDefaultName(
                 baseName: sourceConfig.name,
-                sourceLocation: sourceLocation
+                sourceLocation: sourceLocation,
             )
         }
 
@@ -118,13 +118,13 @@ package struct DuplicateArgumentsValidator {
 
     private func generateDefaultName(
         baseName: String,
-        sourceLocation: TemplateLocationType
+        sourceLocation: TemplateLocationType,
     ) async -> String {
         await DuplicateTemplateNameGenerator.generateDefaultName(
             baseName: baseName,
             sourceLocation: sourceLocation,
             templatesFinder: templatesFinder,
-            emitValidationErrorLog: true
+            emitValidationErrorLog: true,
         )
     }
 
@@ -135,9 +135,9 @@ package struct DuplicateArgumentsValidator {
         var errorDescription: String? {
             switch self {
             case let .templateNotFound(name):
-                return "Template '\(name)' not found"
+                "Template '\(name)' not found"
             case let .templateAlreadyExists(name):
-                return "A template with the name '\(name)' already exists"
+                "A template with the name '\(name)' already exists"
             }
         }
     }

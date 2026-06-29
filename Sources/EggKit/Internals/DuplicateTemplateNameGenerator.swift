@@ -8,14 +8,14 @@ package enum DuplicateTemplateNameGenerator {
         baseName: String,
         sourceLocation: TemplateLocationType,
         templatesFinder: TemplatesFinder,
-        emitValidationErrorLog: Bool
+        emitValidationErrorLog: Bool,
     ) async -> String {
         // Get all templates from the same location as source
         let allTemplates = try? await templatesFinder.list(
             for: sourceLocation,
-            emitValidationErrorLog: emitValidationErrorLog
+            emitValidationErrorLog: emitValidationErrorLog,
         )
-        let existingNames = Set(allTemplates?.map { $0.config.name } ?? [])
+        let existingNames = Set(allTemplates?.map(\.config.name) ?? [])
 
         // Find the smallest available number
         var number = 1

@@ -13,7 +13,7 @@ package struct HatchArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templateName = templateName
         self.macros = macros
@@ -22,7 +22,7 @@ package struct HatchArgumentsValidator {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 

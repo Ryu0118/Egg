@@ -124,13 +124,13 @@ enum MacrosParseError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case let .missingDoubleDash(macro):
-            return "Macro must start with '--': \(macro)"
+            "Macro must start with '--': \(macro)"
         case let .singleDashNotAllowed(macro):
-            return "Macro must start with '--', not '-': \(macro)"
+            "Macro must start with '--', not '-': \(macro)"
         case .emptyMacroName:
-            return "Macro name cannot be empty"
+            "Macro name cannot be empty"
         case let .missingContent(macro):
-            return "Macro '\(macro)' requires at least one value"
+            "Macro '\(macro)' requires at least one value"
         }
     }
 }

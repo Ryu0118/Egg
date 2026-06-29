@@ -5,7 +5,7 @@ struct ArrayInputParserTests {
     private let parser = ArrayInputParser()
 
     @Test(arguments: CLITestCase.allCases)
-    func parseFromCLI(_ testCase: CLITestCase) {
+    func `parse from CLI`(_ testCase: CLITestCase) {
         let result = parser.parseFromCLI(testCase.input)
         #expect(result == testCase.expected)
     }
@@ -15,34 +15,36 @@ struct ArrayInputParserTests {
         let input: [String]
         let expected: [String]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [CLITestCase] = [
             CLITestCase(
                 description: "parses space-separated values",
                 input: ["iOS", "macOS", "watchOS"],
-                expected: ["iOS", "macOS", "watchOS"]
+                expected: ["iOS", "macOS", "watchOS"],
             ),
             CLITestCase(
                 description: "splits comma-separated single value",
                 input: ["iOS,macOS,watchOS"],
-                expected: ["iOS", "macOS", "watchOS"]
+                expected: ["iOS", "macOS", "watchOS"],
             ),
             CLITestCase(
                 description: "normalizes mixed separators",
                 input: ["iOS,macOS", "watchOS"],
-                expected: ["iOS", "macOS", "watchOS"]
+                expected: ["iOS", "macOS", "watchOS"],
             ),
             CLITestCase(
                 description: "returns empty array for empty input",
                 input: [],
-                expected: []
+                expected: [],
             ),
         ]
     }
 
     @Test(arguments: InteractiveTestCase.allCases)
-    func parseFromInteractive(_ testCase: InteractiveTestCase) {
+    func `parse from interactive`(_ testCase: InteractiveTestCase) {
         let result = parser.parseFromInteractive(testCase.input)
         #expect(result == testCase.expected)
     }
@@ -52,28 +54,30 @@ struct ArrayInputParserTests {
         let input: String
         let expected: [String]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [InteractiveTestCase] = [
             InteractiveTestCase(
                 description: "parses comma-separated input",
                 input: "iOS, macOS, watchOS",
-                expected: ["iOS", "macOS", "watchOS"]
+                expected: ["iOS", "macOS", "watchOS"],
             ),
             InteractiveTestCase(
                 description: "trims whitespace from values",
                 input: "  iOS  ,  macOS  ",
-                expected: ["iOS", "macOS"]
+                expected: ["iOS", "macOS"],
             ),
             InteractiveTestCase(
                 description: "filters empty segments",
                 input: "iOS,,macOS,",
-                expected: ["iOS", "macOS"]
+                expected: ["iOS", "macOS"],
             ),
             InteractiveTestCase(
                 description: "returns empty array for empty input",
                 input: "",
-                expected: []
+                expected: [],
             ),
         ]
     }

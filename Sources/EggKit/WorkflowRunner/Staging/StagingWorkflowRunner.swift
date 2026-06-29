@@ -68,7 +68,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         applyChanges: Bool = false,
         workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
-        stagingRoot: URL? = nil
+        stagingRoot: URL? = nil,
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -93,7 +93,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             homeDirectory: homeDirectory,
             noora: noora,
             isInteractive: isInteractive,
-            override: overrideConflicts
+            override: overrideConflicts,
         )
         self.workspaceWatcher = workspaceWatcher
         self.workingDirectoryWatcher = workingDirectoryWatcher
@@ -110,7 +110,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     func run(
         config: Config,
         macroInputs: MacroInputs,
-        templateDirectory: URL
+        templateDirectory: URL,
     ) async throws -> URL {
         // Step 1: Create staging workspace
         // Use stagingRoot if specified, otherwise fall back to workingDirectory
@@ -123,7 +123,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
-            noora: noora
+            noora: noora,
         )
 
         // Register cleanup handler for SIGINT/SIGTERM (Control+C) IMMEDIATELY after staging creation
@@ -153,7 +153,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
                 config.sandbox?.allowedPaths,
                 macros: macros,
-                workingDirectory: staging.root
+                workingDirectory: staging.root,
             )
 
             // Track whether user confirmed extended sandbox permissions
@@ -164,7 +164,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 if isInteractive {
                     // Prompt user for permission in interactive mode
                     sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                        expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                        expandedAllowedPaths.map { $0.path(percentEncoded: false) },
                     )
                     if !sandboxPermissionConfirmed {
                         noora.passthrough("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).\n")
@@ -172,7 +172,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 } else {
                     // Non-interactive mode: reject with error
                     throw LifecycleStepError.sandboxPermissionRequired(
-                        paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) }
+                        paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
                     )
                 }
             }
@@ -191,7 +191,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     .sandboxed(.staging(
                         root: staging.root,
                         originalWorkingDirectory: workingDirectory,
-                        allowedPaths: finalAllowedPaths
+                        allowedPaths: finalAllowedPaths,
                     ))
                 }
 
@@ -210,7 +210,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     outputs: outputs,
                     workingDirectory: staging.root,
                     additionalEnvironment: commonEnvironment,
-                    executionEnvironment: executionEnvironment
+                    executionEnvironment: executionEnvironment,
                 )
             }
 
@@ -223,7 +223,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 workingDirectory: staging.root,
                 pathValidator: { path in
                     try await staging.validatePath(path)
-                }
+                },
             )
 
             // Calculate relative path for later use
@@ -232,7 +232,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 resolvedOutputPath = try workspaceOutputDirectory.relativePathThrowing(from: staging.root)
             } catch is RelativePathError {
                 throw LifecycleStepError.invalidOutputDirectory(
-                    "Output path is not within staging workspace: \(workspaceOutputDirectory.normalizedPath)"
+                    "Output path is not within staging workspace: \(workspaceOutputDirectory.normalizedPath)",
                 )
             }
 
@@ -244,7 +244,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                     outputs: outputs,
                     workingDirectory: staging.root,
                     additionalEnvironment: commonEnvironment,
-                    executionEnvironment: executionEnvironment
+                    executionEnvironment: executionEnvironment,
                 )
             }
 
@@ -324,12 +324,12 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 if hasConflicts {
                     noora.yesOrNoChoicePrompt(
                         title: "Apply Changes and Override Conflicts",
-                        question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?"
+                        question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?",
                     )
                 } else {
                     noora.yesOrNoChoicePrompt(
                         title: "Apply Changes (staging workspace → current directory)",
-                        question: "Apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?"
+                        question: "Apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?",
                     )
                 }
             guard confirmed else {
@@ -408,7 +408,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 config: config,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora
+                noora: noora,
             )
             return .interactive(resolver.resolve())
         }
@@ -428,7 +428,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private func finalizeMacros(
         _ collected: CollectedMacroValues,
         config: Config,
-        workspaceRoot: URL
+        workspaceRoot: URL,
     ) throws -> [ResolvedMacro] {
         // The directory that was cloned into the staging workspace
         let clonedDirectory = stagingRoot ?? workingDirectory
@@ -440,7 +440,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             let validator = ParsedMacroDefinitionValidator(
                 config: config,
                 workingDirectory: clonedDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             let resolvedMacros = try validator.validate(parsedMacros)
             // Remap path macros to staging workspace
@@ -468,7 +468,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private func remapPathMacros(
         _ macros: [ResolvedMacro],
         from originalDirectory: URL,
-        to workspaceRoot: URL
+        to workspaceRoot: URL,
     ) -> [ResolvedMacro] {
         macros.map { macro in
             guard case let .path(originalPath) = macro.value else {
@@ -489,9 +489,8 @@ struct StagingWorkflowRunner: WorkflowRunning {
             return ResolvedMacro(
                 name: macro.name,
                 description: macro.description,
-                value: .path(workspacePath)
+                value: .path(workspacePath),
             )
         }
     }
-
 }

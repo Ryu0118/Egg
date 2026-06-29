@@ -16,7 +16,7 @@ package struct DeleteArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templateName = templateName
         self.homeDirectory = homeDirectory
@@ -29,7 +29,7 @@ package struct DeleteArgumentsValidator {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -51,7 +51,7 @@ package struct DeleteArgumentsValidator {
                 templatePath: path,
                 additionalSearchPaths: additionalSearchPaths,
                 projectDirectory: projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             )
 
         // Block deletion from custom paths
@@ -69,9 +69,9 @@ package struct DeleteArgumentsValidator {
         var errorDescription: String? {
             switch self {
             case let .templateNotFound(name):
-                return "Template '\(name)' not found"
+                "Template '\(name)' not found"
             case let .cannotDeleteFromCustomPath(name):
-                return "Cannot delete template '\(name)' from custom search path. Templates in custom paths are read-only."
+                "Cannot delete template '\(name)' from custom search path. Templates in custom paths are read-only."
             }
         }
     }

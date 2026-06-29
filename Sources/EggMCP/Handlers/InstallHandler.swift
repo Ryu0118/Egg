@@ -16,7 +16,7 @@ struct InstallHandler: ToolHandler {
 
         let service = MCPService(
             workingDirectory: nil,
-            projectDirectory: projectDir
+            projectDirectory: projectDir,
         )
 
         let result = try await service.installTemplates(
@@ -24,14 +24,14 @@ struct InstallHandler: ToolHandler {
             location: location,
             ref: ref,
             include: include,
-            exclude: exclude
+            exclude: exclude,
         )
 
         // Convert to JSON-encodable response
         let response = InstallResponse(
             installed: result.installed,
             skipped: result.skipped.map { InstallResponse.SkippedItem(name: $0.name, reason: $0.reason.description) },
-            failed: result.failed.map { InstallResponse.FailedItem(name: $0.name, error: $0.error.localizedDescription) }
+            failed: result.failed.map { InstallResponse.FailedItem(name: $0.name, error: $0.error.localizedDescription) },
         )
 
         return try JSONEncoderHelper.encode(response)
@@ -40,17 +40,17 @@ struct InstallHandler: ToolHandler {
 
 // MARK: - Response Types
 
-private struct InstallResponse: Codable, Sendable {
+private struct InstallResponse: Codable {
     let installed: [String]
     let skipped: [SkippedItem]
     let failed: [FailedItem]
 
-    struct SkippedItem: Codable, Sendable {
+    struct SkippedItem: Codable {
         let name: String
         let reason: String
     }
 
-    struct FailedItem: Codable, Sendable {
+    struct FailedItem: Codable {
         let name: String
         let error: String
     }

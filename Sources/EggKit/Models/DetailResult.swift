@@ -18,7 +18,7 @@ public struct DetailResult: Codable, Sendable {
         basicInfo: BasicInfo,
         macros: [MacroInfo],
         exampleCliCommand: String,
-        exampleMcpArguments: ExampleMcpArguments
+        exampleMcpArguments: ExampleMcpArguments,
     ) {
         self.basicInfo = basicInfo
         self.macros = macros
@@ -41,7 +41,7 @@ public struct DetailResult: Codable, Sendable {
             version: String?,
             locationName: String,
             locationDir: String,
-            path: String
+            path: String,
         ) {
             self.name = name
             self.description = description
@@ -69,7 +69,7 @@ public struct DetailResult: Codable, Sendable {
             description: String,
             defaultValue: String?,
             choices: [String]?,
-            validation: String?
+            validation: String?,
         ) {
             self.name = name
             self.flag = flag

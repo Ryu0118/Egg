@@ -11,6 +11,6 @@ package struct ChoiceValidationRule: ValidatableRule {
     }
 
     package func validate(input: String) -> Bool {
-        return choices.contains(input)
+        choices.contains(input)
     }
 }

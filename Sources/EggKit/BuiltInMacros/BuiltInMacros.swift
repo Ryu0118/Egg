@@ -75,7 +75,7 @@ enum BuiltInMacros {
         formatter.dateFormat = format ?? DateFormatter.dateFormat(
             fromTemplate: "ydMMM",
             options: 0,
-            locale: .current
+            locale: .current,
         )
         return formatter.string(from: date)
     }
@@ -85,7 +85,7 @@ private extension BuiltInMacros {
     static func resolveMacro(
         _ macro: BuiltInMacro,
         in text: String,
-        context: BuiltInMacroContext
+        context: BuiltInMacroContext,
     ) -> String {
         let baseName = String(macro.name.dropFirst(3).dropLast(3))
         return if macro.acceptsArgument {
@@ -95,11 +95,11 @@ private extension BuiltInMacros {
         }
     }
 
-    static func resolveWithPattern<R: RegexComponent>(
+    static func resolveWithPattern(
         _ macro: BuiltInMacro,
         in text: String,
         context: BuiltInMacroContext,
-        pattern: R
+        pattern: some RegexComponent,
     ) -> String {
         var result = text
         let matches = Array(text.matches(of: pattern).reversed())

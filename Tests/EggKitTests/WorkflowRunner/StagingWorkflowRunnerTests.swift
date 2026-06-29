@@ -36,7 +36,7 @@ struct StagingWorkflowRunnerTests {
             macros: testCase.macroDefinitions.isEmpty ? nil : testCase.macroDefinitions,
             preHatch: testCase.preHatchSteps,
             hatch: testCase.hatchConfig,
-            postHatch: testCase.postHatchSteps
+            postHatch: testCase.postHatchSteps,
         )
 
         let nooraMock = NooraMock()
@@ -50,14 +50,14 @@ struct StagingWorkflowRunnerTests {
             overrideConflicts: testCase.override,
             applyChanges: true,
             workspaceWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default),
-            workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default)
+            workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: FileManager.default),
         )
 
         do {
             let outputDir = try await runner.run(
                 config: config,
                 macroInputs: .parsed(testCase.macros),
-                templateDirectory: templateDir
+                templateDirectory: templateDir,
             )
 
             // Verify success expectations
@@ -88,7 +88,9 @@ struct StagingWorkflowRunnerTests {
         let override: Bool
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         init(
             _ description: String,
@@ -100,7 +102,7 @@ struct StagingWorkflowRunnerTests {
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
             override: Bool = true,
-            expectation: Expectation
+            expectation: Expectation,
         ) {
             self.description = description
             self.workingDirSetup = workingDirSetup
@@ -124,7 +126,7 @@ struct StagingWorkflowRunnerTests {
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
             override: Bool = true,
-            verifications: [Verification]
+            verifications: [Verification],
         ) -> TestCase {
             TestCase(
                 description,
@@ -136,7 +138,7 @@ struct StagingWorkflowRunnerTests {
                 hatchConfig: hatchConfig,
                 postHatchSteps: postHatchSteps,
                 override: override,
-                expectation: .success(verifications: verifications)
+                expectation: .success(verifications: verifications),
             )
         }
 
@@ -172,7 +174,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "README.md"),
                     .fileContent(path: "README.md", expectedContent: "Hello World"),
-                ]
+                ],
             ),
 
             // Pre-hatch creates file that appears in working dir after apply
@@ -188,7 +190,7 @@ struct StagingWorkflowRunnerTests {
                     .fileExists(path: "app.txt"),
                     .fileExists(path: "pre_output.txt"),
                     .fileContent(path: "pre_output.txt", expectedContent: "pre_hatch_output\n"),
-                ]
+                ],
             ),
 
             // Post-hatch creates file that appears in working dir after apply
@@ -204,7 +206,7 @@ struct StagingWorkflowRunnerTests {
                     .fileExists(path: "app.txt"),
                     .fileExists(path: "post_output.txt"),
                     .fileContent(path: "post_output.txt", expectedContent: "post_hatch_output\n"),
-                ]
+                ],
             ),
 
             // Complete workflow: pre_hatch + hatch + post_hatch
@@ -228,7 +230,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     .fileContent(path: "PROJECT", expectedContent: "MyApp v2.0.0"),
                     .fileExists(path: "done.txt"),
-                ]
+                ],
             ),
 
             // Macro substitution
@@ -247,7 +249,7 @@ struct StagingWorkflowRunnerTests {
                 ],
                 verifications: [
                     .fileContent(path: "config.txt", expectedContent: "name=TestProject\nversion=1.0.0"),
-                ]
+                ],
             ),
 
             // Environment variables available in staging workspace scripts
@@ -262,7 +264,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "env.txt"),
                     // File should contain workspace= (non-empty value)
-                ]
+                ],
             ),
 
             // Hatch with exclusion rules
@@ -274,12 +276,12 @@ struct StagingWorkflowRunnerTests {
                 ],
                 hatchConfig: Config.HatchConfig(
                     output: ".",
-                    exclude: [.path("exclude.txt")]
+                    exclude: [.path("exclude.txt")],
                 ),
                 verifications: [
                     .fileExists(path: "keep.txt"),
                     .fileNotExists(path: "exclude.txt"),
-                ]
+                ],
             ),
 
             // Output to subdirectory
@@ -292,7 +294,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     .directoryExists(path: "."),
                     .fileExists(path: "README.md"),
-                ]
+                ],
             ),
 
             // Existing files are modified (not duplicated)
@@ -306,7 +308,7 @@ struct StagingWorkflowRunnerTests {
                 ],
                 verifications: [
                     .fileContent(path: "existing.txt", expectedContent: "new content"),
-                ]
+                ],
             ),
 
             // Pre-hatch output propagates to hatch
@@ -320,7 +322,7 @@ struct StagingWorkflowRunnerTests {
                 ],
                 verifications: [
                     .fileContent(path: "version.txt", expectedContent: "3.5.1"),
-                ]
+                ],
             ),
 
             // Post-hatch can access pre_hatch outputs
@@ -338,7 +340,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "info.txt"),
                     .fileContent(path: "info.txt", expectedContent: "Project: TestProject\n"),
-                ]
+                ],
             ),
 
             // Multiple pre-hatch steps
@@ -353,7 +355,7 @@ struct StagingWorkflowRunnerTests {
                 ],
                 verifications: [
                     .fileContent(path: "combined.txt", expectedContent: "A,B"),
-                ]
+                ],
             ),
 
             // Multiple post-hatch steps
@@ -369,7 +371,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "step1.txt"),
                     .fileExists(path: "step2.txt"),
-                ]
+                ],
             ),
 
             // Directory structure preservation
@@ -386,7 +388,7 @@ struct StagingWorkflowRunnerTests {
                     .fileExists(path: "src/main.swift"),
                     .directoryExists(path: "tests"),
                     .fileExists(path: "tests/test.swift"),
-                ]
+                ],
             ),
 
             // Conditional step execution
@@ -405,12 +407,12 @@ struct StagingWorkflowRunnerTests {
                     Config.LifecycleStep(
                         id: "conditional",
                         if: "___ENABLE___ === true",
-                        run: "echo enabled=yes > conditional.txt"
+                        run: "echo enabled=yes > conditional.txt",
                     ),
                 ],
                 verifications: [
                     .fileExists(path: "conditional.txt"),
-                ]
+                ],
             ),
 
             // Path macro with absolute path outside working directory should be preserved
@@ -427,7 +429,7 @@ struct StagingWorkflowRunnerTests {
                 ],
                 verifications: [
                     .fileContent(path: "path.txt", expectedContent: "/usr/local/bin"),
-                ]
+                ],
             ),
 
             // Path macro with root path should be preserved as root
@@ -444,7 +446,7 @@ struct StagingWorkflowRunnerTests {
                 ],
                 verifications: [
                     .fileContent(path: "root.txt", expectedContent: "/"),
-                ]
+                ],
             ),
 
             // Path macro with relative path should resolve relative to working directory
@@ -465,7 +467,7 @@ struct StagingWorkflowRunnerTests {
                 verifications: [
                     // The path should contain "subdir" as part of a full path
                     .fileExists(path: "relpath.txt"),
-                ]
+                ],
             ),
         ]
     }

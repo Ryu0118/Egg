@@ -5,7 +5,7 @@ import Testing
 @Suite(.serialized)
 struct BuiltInMacrosTests {
     @Test(arguments: IsReservedTestCase.allCases)
-    func isReserved(_ testCase: IsReservedTestCase) {
+    func `is reserved`(_ testCase: IsReservedTestCase) {
         let result = BuiltInMacros.isReserved(testCase.name)
         #expect(result == testCase.expected)
     }
@@ -15,51 +15,53 @@ struct BuiltInMacrosTests {
         let name: String
         let expected: Bool
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [IsReservedTestCase] = [
             // Reserved names
             IsReservedTestCase(
                 description: "DATE is reserved",
                 name: "___DATE___",
-                expected: true
+                expected: true,
             ),
             IsReservedTestCase(
                 description: "YEAR is reserved",
                 name: "___YEAR___",
-                expected: true
+                expected: true,
             ),
             IsReservedTestCase(
                 description: "SYSTEM_USER is reserved",
                 name: "___SYSTEM_USER___",
-                expected: true
+                expected: true,
             ),
             IsReservedTestCase(
                 description: "UUID is reserved",
                 name: "___UUID___",
-                expected: true
+                expected: true,
             ),
 
             // Non-reserved names
             IsReservedTestCase(
                 description: "MODULE_NAME is not reserved",
                 name: "___MODULE_NAME___",
-                expected: false
+                expected: false,
             ),
             IsReservedTestCase(
                 description: "CUSTOM is not reserved",
                 name: "___CUSTOM___",
-                expected: false
+                expected: false,
             ),
             IsReservedTestCase(
                 description: "empty string is not reserved",
                 name: "",
-                expected: false
+                expected: false,
             ),
             IsReservedTestCase(
                 description: "DATE without underscores is not reserved",
                 name: "DATE",
-                expected: false
+                expected: false,
             ),
         ]
     }
@@ -76,7 +78,9 @@ struct BuiltInMacrosTests {
         let context: BuiltInMacroContext
         let expected: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let fixedDate = Date(timeIntervalSince1970: 1_733_961_600) // 2024-12-12 00:00:00 UTC
 
@@ -84,7 +88,7 @@ struct BuiltInMacrosTests {
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/testuser"),
             currentDate: fixedDate,
-            environment: ["USER": "testuser"]
+            environment: ["USER": "testuser"],
         )
 
         static var expectedDateString: String {
@@ -101,25 +105,25 @@ struct BuiltInMacrosTests {
                 description: "resolves ___DATE___ to locale-dependent format",
                 input: "Today is ___DATE___",
                 context: defaultContext,
-                expected: "Today is \(expectedDateString)"
+                expected: "Today is \(expectedDateString)",
             ),
             ResolveTestCase(
                 description: "resolves ___DATE(yyyyMMdd)___ to specified format",
                 input: "Date: ___DATE(yyyyMMdd)___",
                 context: defaultContext,
-                expected: "Date: \(expectedDateString("yyyyMMdd"))"
+                expected: "Date: \(expectedDateString("yyyyMMdd"))",
             ),
             ResolveTestCase(
                 description: "resolves ___DATE(MM/dd/yyyy)___ to specified format",
                 input: "___DATE(MM/dd/yyyy)___",
                 context: defaultContext,
-                expected: expectedDateString("MM/dd/yyyy")
+                expected: expectedDateString("MM/dd/yyyy"),
             ),
             ResolveTestCase(
                 description: "resolves multiple DATE macros",
                 input: "___DATE___ and ___DATE(yyyyMMdd)___",
                 context: defaultContext,
-                expected: "\(expectedDateString) and \(expectedDateString("yyyyMMdd"))"
+                expected: "\(expectedDateString) and \(expectedDateString("yyyyMMdd"))",
             ),
 
             // YEAR macro (uses yyyy format)
@@ -127,7 +131,7 @@ struct BuiltInMacrosTests {
                 description: "resolves ___YEAR___",
                 input: "Copyright ___YEAR___",
                 context: defaultContext,
-                expected: "Copyright \(expectedDateString("yyyy"))"
+                expected: "Copyright \(expectedDateString("yyyy"))",
             ),
 
             // SYSTEM_USER macro
@@ -135,7 +139,7 @@ struct BuiltInMacrosTests {
                 description: "resolves ___SYSTEM_USER___",
                 input: "Author: ___SYSTEM_USER___",
                 context: defaultContext,
-                expected: "Author: testuser"
+                expected: "Author: testuser",
             ),
 
             // UUID macro - can't test exact value, tested separately
@@ -144,7 +148,7 @@ struct BuiltInMacrosTests {
                 description: "resolves multiple different macros",
                 input: "___YEAR___ by ___SYSTEM_USER___",
                 context: defaultContext,
-                expected: "\(expectedDateString("yyyy")) by testuser"
+                expected: "\(expectedDateString("yyyy")) by testuser",
             ),
 
             // No macros
@@ -152,13 +156,13 @@ struct BuiltInMacrosTests {
                 description: "returns unchanged text when no macros",
                 input: "Hello World",
                 context: defaultContext,
-                expected: "Hello World"
+                expected: "Hello World",
             ),
             ResolveTestCase(
                 description: "returns empty string unchanged",
                 input: "",
                 context: defaultContext,
-                expected: ""
+                expected: "",
             ),
 
             // Partial matches (should not resolve)
@@ -166,24 +170,24 @@ struct BuiltInMacrosTests {
                 description: "does not resolve incomplete macro prefix",
                 input: "___DATE",
                 context: defaultContext,
-                expected: "___DATE"
+                expected: "___DATE",
             ),
             ResolveTestCase(
                 description: "does not resolve incomplete macro suffix",
                 input: "DATE___",
                 context: defaultContext,
-                expected: "DATE___"
+                expected: "DATE___",
             ),
         ]
     }
 
     @Test
-    func resolveUUID_generatesValidUUID() {
+    func `resolve UUID generates valid UUID`() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(),
-            environment: [:]
+            environment: [:],
         )
 
         let result = BuiltInMacros.resolve("___UUID___", context: context)
@@ -193,12 +197,12 @@ struct BuiltInMacrosTests {
     }
 
     @Test
-    func resolveUUID_generatesUniqueValuesPerOccurrence() {
+    func `resolve UUID generates unique values per occurrence`() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(),
-            environment: [:]
+            environment: [:],
         )
 
         let result = BuiltInMacros.resolve("___UUID___ ___UUID___", context: context)
@@ -209,12 +213,12 @@ struct BuiltInMacrosTests {
     }
 
     @Test
-    func resolveSystemUser_fallsBackToNSUserName_whenEnvMissing() {
+    func `resolve system user falls back to NS user name when env missing`() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(),
-            environment: [:] // No USER in environment
+            environment: [:], // No USER in environment
         )
 
         let result = BuiltInMacros.resolve("___SYSTEM_USER___", context: context)
@@ -226,14 +230,14 @@ struct BuiltInMacrosTests {
 
 struct BuiltInMacroTests {
     @Test
-    func declare_createsSimpleMacro() {
+    func `declare creates simple macro`() {
         let macro = BuiltInMacro.declare("___TEST___") { _ in "resolved" }
 
         #expect(macro.name == "___TEST___")
     }
 
     @Test
-    func declareWithArgument_createsMacroThatAcceptsArgument() {
+    func `declare with argument creates macro that accepts argument`() {
         let macro = BuiltInMacro.declareWithArgument("___TEST___") { arg, _ in
             arg ?? "default"
         }
@@ -242,14 +246,14 @@ struct BuiltInMacroTests {
     }
 
     @Test(arguments: ArgumentExtractionTestCase.allCases)
-    func declareWithArgument_extractsArgumentCorrectly(_ testCase: ArgumentExtractionTestCase) {
+    func `declare with argument extracts argument correctly`(_ testCase: ArgumentExtractionTestCase) {
         // Use BuiltInMacros.DATE which is declared with argument to test extraction
         // We test this indirectly by checking the output format changes based on argument
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
             currentDate: Date(timeIntervalSince1970: 1_733_961_600), // 2024-12-12
-            environment: [:]
+            environment: [:],
         )
 
         let result = BuiltInMacros.resolve(testCase.matchedString, context: context)
@@ -261,7 +265,9 @@ struct BuiltInMacroTests {
         let matchedString: String
         let expectedResult: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let fixedDate = Date(timeIntervalSince1970: 1_733_961_600) // 2024-12-12 00:00:00 UTC
 
@@ -273,22 +279,22 @@ struct BuiltInMacroTests {
             ArgumentExtractionTestCase(
                 description: "DATE with yyyyMMdd format",
                 matchedString: "___DATE(yyyyMMdd)___",
-                expectedResult: expectedDateString("yyyyMMdd")
+                expectedResult: expectedDateString("yyyyMMdd"),
             ),
             ArgumentExtractionTestCase(
                 description: "DATE with yyyy-MM-dd format",
                 matchedString: "___DATE(yyyy-MM-dd)___",
-                expectedResult: expectedDateString("yyyy-MM-dd")
+                expectedResult: expectedDateString("yyyy-MM-dd"),
             ),
             ArgumentExtractionTestCase(
                 description: "DATE without argument uses default format",
                 matchedString: "___DATE___",
-                expectedResult: expectedDateString(nil)
+                expectedResult: expectedDateString(nil),
             ),
             ArgumentExtractionTestCase(
                 description: "DATE with MM/dd/yyyy format",
                 matchedString: "___DATE(MM/dd/yyyy)___",
-                expectedResult: expectedDateString("MM/dd/yyyy")
+                expectedResult: expectedDateString("MM/dd/yyyy"),
             ),
         ]
     }

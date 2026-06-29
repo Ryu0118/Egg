@@ -3,7 +3,7 @@ import Foundation
 /// Represents a filter condition for selecting which templates to install.
 ///
 /// Used with `--template` and `--exclude` options in the install command.
-package enum TemplateFilter: Equatable, Sendable {
+package enum TemplateFilter: Equatable {
     /// No filtering - all templates will be installed
     case none
     /// Only install templates with the specified names

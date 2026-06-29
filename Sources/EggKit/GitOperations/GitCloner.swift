@@ -24,7 +24,7 @@ package protocol GitCloning: Sendable {
 ///
 /// Supports cloning with specific branches, tags, or commit SHAs.
 /// Uses the user's existing Git authentication (SSH keys, credential helpers).
-package struct GitCloner: GitCloning, Sendable {
+package struct GitCloner: GitCloning {
     private let processRunner: any ProcessRunning
 
     package init(processRunner: some ProcessRunning = ProcessRunner()) {
@@ -60,7 +60,7 @@ package struct GitCloner: GitCloning, Sendable {
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: .max),
-            error: .bytes(limit: .max)
+            error: .bytes(limit: .max),
         )
 
         switch result.terminationStatus {
@@ -91,7 +91,7 @@ package struct GitCloner: GitCloning, Sendable {
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: .max),
-            error: .bytes(limit: .max)
+            error: .bytes(limit: .max),
         )
 
         switch result.terminationStatus {
@@ -124,7 +124,7 @@ package struct GitCloner: GitCloning, Sendable {
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: .max),
-            error: .bytes(limit: .max)
+            error: .bytes(limit: .max),
         )
 
         switch checkoutResult.terminationStatus {

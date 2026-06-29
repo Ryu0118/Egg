@@ -34,12 +34,12 @@ public struct ToolArguments: Sendable {
         guard let arrayValue = raw[key]?.arrayValue else {
             throw ToolArgumentError.missingParameter(key)
         }
-        return arrayValue.compactMap { $0.stringValue }
+        return arrayValue.compactMap(\.stringValue)
     }
 
     /// Get an optional array of strings
     public func optionalStringArray(_ key: String) -> [String]? {
-        raw[key]?.arrayValue?.compactMap { $0.stringValue }
+        raw[key]?.arrayValue?.compactMap(\.stringValue)
     }
 
     /// Get a required object (dictionary) of string to any value
@@ -84,19 +84,19 @@ public struct ToolArguments: Sendable {
     /// Convert a Value to its Swift equivalent
     private func convertValue(_ value: Value) -> Any {
         if let stringValue = value.stringValue {
-            return stringValue
+            stringValue
         } else if let boolValue = value.boolValue {
-            return boolValue
+            boolValue
         } else if let intValue = value.intValue {
-            return intValue
+            intValue
         } else if let doubleValue = value.doubleValue {
-            return doubleValue
+            doubleValue
         } else if let arrayValue = value.arrayValue {
-            return arrayValue.map { convertValue($0) }
+            arrayValue.map { convertValue($0) }
         } else if let objectValue = value.objectValue {
-            return parseMacros(from: objectValue)
+            parseMacros(from: objectValue)
         } else {
-            return ""
+            ""
         }
     }
 }

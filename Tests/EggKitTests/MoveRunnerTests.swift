@@ -25,7 +25,7 @@ struct MoveRunnerTests {
             templates: testCase.initialTemplates,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         let mode = testCase.mode(projectDirectory: projectDirectory)
@@ -36,7 +36,7 @@ struct MoveRunnerTests {
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
-            noora: NooraMock()
+            noora: NooraMock(),
         )
 
         if let expectedError = testCase.expectedError {
@@ -51,7 +51,7 @@ struct MoveRunnerTests {
                 testCase: testCase,
                 projectDirectory: projectDirectory,
                 homeDirectory: homeDirectory,
-                fileManager: fileManager
+                fileManager: fileManager,
             )
         }
     }
@@ -60,13 +60,13 @@ struct MoveRunnerTests {
         templates: [(name: String, location: TemplateLocationType.Kind, content: String)],
         projectDirectory: URL,
         homeDirectory: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         for (name, location, content) in templates {
             let templatePath = location.toPath(
                 templateName: name,
                 projectDirectory: projectDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
 
@@ -83,7 +83,7 @@ struct MoveRunnerTests {
         testCase: TestCase,
         projectDirectory: URL,
         homeDirectory: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         guard let verification = testCase.verification else {
             return
@@ -93,7 +93,7 @@ struct MoveRunnerTests {
         let sourcePath = verification.sourceLocation.toPath(
             templateName: verification.templateName,
             projectDirectory: projectDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         #expect(!fileManager.fileExists(atPath: sourcePath.path(percentEncoded: false)))
 
@@ -101,7 +101,7 @@ struct MoveRunnerTests {
         let targetPath = verification.targetLocation.toPath(
             templateName: verification.templateName,
             projectDirectory: projectDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         #expect(fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)))
 
@@ -125,7 +125,9 @@ struct MoveRunnerTests {
         let verification: Verification?
         let expectedError: MoveRunner.Error?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func mode(projectDirectory: URL) -> MoveRunnerMode {
             modeConfig.toMode(projectDirectory: projectDirectory)
@@ -146,15 +148,15 @@ struct MoveRunnerTests {
                 modeConfig: .direct(
                     name: "MyTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: false,
                 verification: Verification(
                     templateName: "MyTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
             TestCase(
                 description: "successfully moves template from project to global",
@@ -169,15 +171,15 @@ struct MoveRunnerTests {
                 modeConfig: .direct(
                     name: "ProjectTemplate",
                     sourceLocation: .project,
-                    targetLocation: .global
+                    targetLocation: .global,
                 ),
                 force: false,
                 verification: Verification(
                     templateName: "ProjectTemplate",
                     sourceLocation: .project,
-                    targetLocation: .global
+                    targetLocation: .global,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
             TestCase(
                 description: "successfully overwrites target when force is true",
@@ -198,15 +200,15 @@ struct MoveRunnerTests {
                 modeConfig: .direct(
                     name: "MyTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: true,
                 verification: Verification(
                     templateName: "MyTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
             TestCase(
                 description: "auto-creates target directory if it doesn't exist",
@@ -221,15 +223,15 @@ struct MoveRunnerTests {
                 modeConfig: .direct(
                     name: "NewTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: false,
                 verification: Verification(
                     templateName: "NewTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
             TestCase(
                 description: "preserves template content during move",
@@ -248,15 +250,15 @@ struct MoveRunnerTests {
                 modeConfig: .direct(
                     name: "ComplexTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: false,
                 verification: Verification(
                     templateName: "ComplexTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
 
             // Error cases
@@ -279,11 +281,11 @@ struct MoveRunnerTests {
                 modeConfig: .direct(
                     name: "MyTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: false,
                 verification: nil,
-                expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project")
+                expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project"),
             ),
         ]
 
@@ -291,7 +293,7 @@ struct MoveRunnerTests {
             case direct(
                 name: String,
                 sourceLocation: TemplateLocationType.Kind,
-                targetLocation: TemplateLocationType.Kind
+                targetLocation: TemplateLocationType.Kind,
             )
 
             func toMode(projectDirectory: URL) -> MoveRunnerMode {
@@ -300,19 +302,19 @@ struct MoveRunnerTests {
                     let sourcePath = sourceLocation.toPath(
                         templateName: name,
                         projectDirectory: projectDirectory,
-                        homeDirectory: projectDirectory.deletingLastPathComponent().appending(path: "home")
+                        homeDirectory: projectDirectory.deletingLastPathComponent().appending(path: "home"),
                     )
                     return .direct(
                         name: name,
                         path: sourcePath.path(percentEncoded: false),
                         sourceLocation: sourceLocation.toConcreteType(
                             projectDirectory,
-                            workingDirectory: projectDirectory
+                            workingDirectory: projectDirectory,
                         ),
                         targetLocation: targetLocation.toConcreteType(
                             projectDirectory,
-                            workingDirectory: projectDirectory
-                        )
+                            workingDirectory: projectDirectory,
+                        ),
                     )
                 }
             }
@@ -330,32 +332,32 @@ extension MoveRunner.Error: Equatable {
     public static func == (lhs: MoveRunner.Error, rhs: MoveRunner.Error) -> Bool {
         switch (lhs, rhs) {
         case (.noTemplatesFound, .noTemplatesFound):
-            return true
+            true
         case (.noAvailableTargets, .noAvailableTargets):
-            return true
+            true
         case let (.targetAlreadyExists(lhsName, lhsLocation), .targetAlreadyExists(rhsName, rhsLocation)):
-            return lhsName == rhsName && lhsLocation == rhsLocation
+            lhsName == rhsName && lhsLocation == rhsLocation
         case let (.moveFailed(lhsName, _), .moveFailed(rhsName, _)):
             // Compare only the name, not the underlying error
-            return lhsName == rhsName
+            lhsName == rhsName
         default:
-            return false
+            false
         }
     }
 }
 
-// Shared helper extension to convert Kind to actual path
+/// Shared helper extension to convert Kind to actual path
 private extension TemplateLocationType.Kind {
     func toPath(
         templateName: String,
         projectDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) -> URL {
         switch self {
         case .global:
-            return homeDirectory.appending(path: ".eggs").appending(path: templateName)
+            homeDirectory.appending(path: ".eggs").appending(path: templateName)
         case .project:
-            return projectDirectory.appending(path: ".eggs").appending(path: templateName)
+            projectDirectory.appending(path: ".eggs").appending(path: templateName)
         }
     }
 }
@@ -386,7 +388,7 @@ struct MoveRunnerWithCustomPathsTests {
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             customPath: customPath,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         let mode = testCase.mode(projectDirectory: projectDirectory, customPath: customPath)
@@ -398,7 +400,7 @@ struct MoveRunnerWithCustomPathsTests {
             homeDirectory: homeDirectory,
             additionalSearchPaths: [customPath],
             fileManager: fileManager,
-            noora: NooraMock()
+            noora: NooraMock(),
         )
 
         if let expectedError = testCase.expectedError {
@@ -414,7 +416,7 @@ struct MoveRunnerWithCustomPathsTests {
                 projectDirectory: projectDirectory,
                 homeDirectory: homeDirectory,
                 customPath: customPath,
-                fileManager: fileManager
+                fileManager: fileManager,
             )
         }
     }
@@ -424,14 +426,14 @@ struct MoveRunnerWithCustomPathsTests {
         projectDirectory: URL,
         homeDirectory: URL,
         customPath: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         for (name, location, content) in templates {
             let templatePath = location.toPath(
                 templateName: name,
                 projectDirectory: projectDirectory,
                 homeDirectory: homeDirectory,
-                customPath: customPath
+                customPath: customPath,
             )
             try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
 
@@ -449,7 +451,7 @@ struct MoveRunnerWithCustomPathsTests {
         projectDirectory: URL,
         homeDirectory: URL,
         customPath: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         guard let verification = testCase.verification else {
             return
@@ -460,7 +462,7 @@ struct MoveRunnerWithCustomPathsTests {
             templateName: verification.templateName,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            customPath: customPath
+            customPath: customPath,
         )
         #expect(!fileManager.fileExists(atPath: sourcePath.path(percentEncoded: false)))
 
@@ -469,7 +471,7 @@ struct MoveRunnerWithCustomPathsTests {
             templateName: verification.templateName,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            customPath: customPath
+            customPath: customPath,
         )
         #expect(fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)))
 
@@ -494,26 +496,26 @@ struct MoveRunnerWithCustomPathsTests {
             templateName: String,
             projectDirectory: URL,
             homeDirectory: URL,
-            customPath: URL
+            customPath: URL,
         ) -> URL {
             switch self {
             case .global:
-                return homeDirectory.appending(path: ".eggs").appending(path: templateName)
+                homeDirectory.appending(path: ".eggs").appending(path: templateName)
             case .project:
-                return projectDirectory.appending(path: ".eggs").appending(path: templateName)
+                projectDirectory.appending(path: ".eggs").appending(path: templateName)
             case .custom:
-                return customPath.appending(path: templateName)
+                customPath.appending(path: templateName)
             }
         }
 
         func toTemplateLocationType(projectDirectory: URL, workingDirectory: URL, customPath: URL) -> TemplateLocationType {
             switch self {
             case .global:
-                return .global
+                .global
             case .project:
-                return .project(projectDirectory, workingDirectory: workingDirectory)
+                .project(projectDirectory, workingDirectory: workingDirectory)
             case .custom:
-                return .custom(customPath)
+                .custom(customPath)
             }
         }
     }
@@ -526,7 +528,9 @@ struct MoveRunnerWithCustomPathsTests {
         let verification: Verification?
         let expectedError: MoveRunner.Error?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func mode(projectDirectory: URL, customPath: URL) -> MoveRunnerMode {
             modeConfig.toMode(projectDirectory: projectDirectory, customPath: customPath)
@@ -547,15 +551,15 @@ struct MoveRunnerWithCustomPathsTests {
                 modeConfig: .direct(
                     name: "CustomTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: false,
                 verification: Verification(
                     templateName: "CustomTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
             TestCase(
                 description: "successfully moves template from custom path to global",
@@ -570,15 +574,15 @@ struct MoveRunnerWithCustomPathsTests {
                 modeConfig: .direct(
                     name: "CustomTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .global
+                    targetLocation: .global,
                 ),
                 force: false,
                 verification: Verification(
                     templateName: "CustomTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .global
+                    targetLocation: .global,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
             TestCase(
                 description: "successfully overwrites project target when moving from custom with force",
@@ -599,15 +603,15 @@ struct MoveRunnerWithCustomPathsTests {
                 modeConfig: .direct(
                     name: "MyTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: true,
                 verification: Verification(
                     templateName: "MyTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
-                expectedError: nil
+                expectedError: nil,
             ),
 
             // Error cases
@@ -630,11 +634,11 @@ struct MoveRunnerWithCustomPathsTests {
                 modeConfig: .direct(
                     name: "MyTemplate",
                     sourceLocation: .custom,
-                    targetLocation: .project
+                    targetLocation: .project,
                 ),
                 force: false,
                 verification: nil,
-                expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project")
+                expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project"),
             ),
         ]
 
@@ -642,7 +646,7 @@ struct MoveRunnerWithCustomPathsTests {
             case direct(
                 name: String,
                 sourceLocation: LocationKind,
-                targetLocation: LocationKind
+                targetLocation: LocationKind,
             )
 
             func toMode(projectDirectory: URL, customPath: URL) -> MoveRunnerMode {
@@ -653,7 +657,7 @@ struct MoveRunnerWithCustomPathsTests {
                         templateName: name,
                         projectDirectory: projectDirectory,
                         homeDirectory: homeDirectory,
-                        customPath: customPath
+                        customPath: customPath,
                     )
                     return .direct(
                         name: name,
@@ -661,13 +665,13 @@ struct MoveRunnerWithCustomPathsTests {
                         sourceLocation: sourceLocation.toTemplateLocationType(
                             projectDirectory: projectDirectory,
                             workingDirectory: projectDirectory,
-                            customPath: customPath
+                            customPath: customPath,
                         ),
                         targetLocation: targetLocation.toTemplateLocationType(
                             projectDirectory: projectDirectory,
                             workingDirectory: projectDirectory,
-                            customPath: customPath
-                        )
+                            customPath: customPath,
+                        ),
                     )
                 }
             }

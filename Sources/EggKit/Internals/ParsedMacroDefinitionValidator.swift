@@ -6,7 +6,7 @@ struct ParsedMacroDefinitionValidator {
     let homeDirectory: URL
 
     func validate(_ parsedMacroDefinitions: [ParsedMacroDefinition]) throws -> [ResolvedMacro] {
-        let providedMacroNames = Set(parsedMacroDefinitions.map { $0.macro })
+        let providedMacroNames = Set(parsedMacroDefinitions.map(\.macro))
 
         let allResults = validateProvidedMacros(parsedMacroDefinitions)
             + validateMissingMacrosWithDefaults(providedMacroNames: providedMacroNames)
@@ -52,7 +52,7 @@ struct ParsedMacroDefinitionValidator {
         if !errors.isEmpty {
             throw CombinedError(
                 errors: errors,
-                errorMessageModifier: { "⛔️ \($0)" }
+                errorMessageModifier: { "⛔️ \($0)" },
             )
         }
     }
@@ -68,7 +68,7 @@ struct ParsedMacroDefinitionValidator {
 
     private func validate(
         _ parsedMacroDefinition: ParsedMacroDefinition,
-        isFromDefault _: Bool
+        isFromDefault _: Bool,
     ) -> Result<ResolvedMacro, Error> {
         // Find the macro definition in config
         guard let configMacro = findConfigMacro(for: parsedMacroDefinition) else {
@@ -81,7 +81,7 @@ struct ParsedMacroDefinitionValidator {
         return validateAndResolve(
             values: resolvedValues,
             configMacro: configMacro,
-            macroName: parsedMacroDefinition.macro
+            macroName: parsedMacroDefinition.macro,
         )
     }
 
@@ -91,19 +91,18 @@ struct ParsedMacroDefinitionValidator {
         }
 
         // Convert MacroDefaultValue to [String] for validation
-        let resolvedValues: [String]
-        switch configMacro.type {
+        let resolvedValues: [String] = switch configMacro.type {
         case .array, .choices:
-            resolvedValues = defaultValue.arrayValue
+            defaultValue.arrayValue
         default:
-            resolvedValues = [defaultValue.stringValue]
+            [defaultValue.stringValue]
         }
 
         return validateAndResolve(
             values: resolvedValues,
             configMacro: configMacro,
             macroName: configMacro.name,
-            isFromDefault: true
+            isFromDefault: true,
         )
     }
 
@@ -111,7 +110,7 @@ struct ParsedMacroDefinitionValidator {
         values: [String],
         configMacro: Config.Macro,
         macroName: String,
-        isFromDefault: Bool = false
+        isFromDefault: Bool = false,
     ) -> Result<ResolvedMacro, Error> {
         // Validate value count
         if let error = validateValueCount(values, configMacro: configMacro, macroName: macroName, isFromDefault: isFromDefault) {
@@ -136,7 +135,7 @@ struct ParsedMacroDefinitionValidator {
         let resolvedMacro = ResolvedMacro(
             name: macroName,
             description: configMacro.description,
-            value: resolvedValue
+            value: resolvedValue,
         )
 
         return .success(resolvedMacro)
@@ -151,7 +150,7 @@ struct ParsedMacroDefinitionValidator {
         case .array, .choices:
             // Array/choices type can have zero or more values when from default,
             // but requires at least one value when provided by user
-            if resolvedValues.isEmpty && !isFromDefault {
+            if resolvedValues.isEmpty, !isFromDefault {
                 return .arrayRequiresAtLeastOneValue(macro: macroName)
             }
         case .string, .boolean, .choice, .path:
@@ -160,7 +159,7 @@ struct ParsedMacroDefinitionValidator {
                 return .nonArrayRequiresSingleValue(
                     macro: macroName,
                     type: configMacro.type,
-                    actualCount: resolvedValues.count
+                    actualCount: resolvedValues.count,
                 )
             }
         }
@@ -179,7 +178,7 @@ struct ParsedMacroDefinitionValidator {
         // Use ChoiceValidationRule for validation
         let validationRule = ChoiceValidationRule(
             choices: choices,
-            error: "Value not in choices"
+            error: "Value not in choices",
         )
 
         for value in resolvedValues {
@@ -187,7 +186,7 @@ struct ParsedMacroDefinitionValidator {
                 return .valueNotInChoices(
                     macro: macroName,
                     value: value,
-                    choices: choices
+                    choices: choices,
                 )
             }
         }
@@ -203,7 +202,7 @@ struct ParsedMacroDefinitionValidator {
         // Use RegexPatternValidationRule for validation
         let validationRule = RegexPatternValidationRule(
             pattern: regexPattern,
-            error: "Value does not match pattern"
+            error: "Value does not match pattern",
         )
 
         // Check if the pattern itself is valid
@@ -216,7 +215,7 @@ struct ParsedMacroDefinitionValidator {
                 return .valueDoesNotMatchRegex(
                     macro: macroName,
                     value: value,
-                    pattern: regexPattern
+                    pattern: regexPattern,
                 )
             }
         }
@@ -255,7 +254,7 @@ struct ParsedMacroDefinitionValidator {
             guard let absolutePath = try? resolveToAbsoluteURL(
                 value,
                 workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             ) else {
                 return nil
             }

@@ -17,7 +17,7 @@ public struct MCPService: Sendable {
         workingDirectory: URL? = nil,
         projectDirectory: URL? = nil,
         homeDirectory: URL? = nil,
-        additionalSearchPaths: [URL] = []
+        additionalSearchPaths: [URL] = [],
     ) {
         self.fileManager = fileManager
         self.workingDirectory = workingDirectory ?? URL(filePath: FileManager.default.currentDirectoryPath)
@@ -37,7 +37,7 @@ public struct MCPService: Sendable {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return try await runner.runMcp(location: locationType)
@@ -55,7 +55,7 @@ public struct MCPService: Sendable {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return runner.runMcp(template: template, location: location)
@@ -71,7 +71,7 @@ public struct MCPService: Sendable {
         applyChanges: Bool = true,
         stagingRoot: URL? = nil,
         disableSandbox: Bool = false,
-        userConfirmedNoSandbox: Bool = false
+        userConfirmedNoSandbox: Bool = false,
     ) async throws -> HatchResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -80,12 +80,12 @@ public struct MCPService: Sendable {
         if let allowedPaths = template.config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
             throw MCPServiceError.sandboxPermissionRequired(
                 paths: allowedPaths,
-                templateName: templateName
+                templateName: templateName,
             )
         }
 
         // If sandbox is being disabled, require explicit user confirmation
-        if disableSandbox && !userConfirmedNoSandbox {
+        if disableSandbox, !userConfirmedNoSandbox {
             throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
         }
 
@@ -104,7 +104,7 @@ public struct MCPService: Sendable {
             overrideConflicts: true,
             sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
             applyChanges: applyChanges,
-            stagingRoot: stagingRoot
+            stagingRoot: stagingRoot,
         )
 
         return try await runner.runMcp(template: template, parsedMacros: parsedMacros)
@@ -115,7 +115,7 @@ public struct MCPService: Sendable {
     public func createTemplate(
         name: String,
         description: String,
-        location: String
+        location: String,
     ) async throws -> CreateResult {
         let locationKind = try parseLocationKind(location)
 
@@ -125,7 +125,7 @@ public struct MCPService: Sendable {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return try await runner.runMcp(name: name, description: description, location: locationKind)
@@ -144,13 +144,13 @@ public struct MCPService: Sendable {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return try runner.runMcp(
             name: templateName,
             path: template.path.path(percentEncoded: false),
-            location: location
+            location: location,
         )
     }
 
@@ -159,7 +159,7 @@ public struct MCPService: Sendable {
     public func duplicateTemplate(
         sourceName: String,
         newName: String,
-        newDescription: String? = nil
+        newDescription: String? = nil,
     ) async throws -> DuplicateResult {
         let sourceTemplate = try await findTemplate(sourceName)
         let sourceLocation = determineLocation(for: sourceTemplate, templateName: sourceName)
@@ -171,13 +171,13 @@ public struct MCPService: Sendable {
                 sourcePath: sourceTemplate.path.path(percentEncoded: false),
                 sourceLocation: sourceLocation,
                 newName: newName,
-                newDescription: finalDescription
+                newDescription: finalDescription,
             ),
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return try await runner.runMcp(
@@ -185,7 +185,7 @@ public struct MCPService: Sendable {
             sourcePath: sourceTemplate.path.path(percentEncoded: false),
             sourceLocation: sourceLocation,
             newName: newName,
-            newDescription: finalDescription
+            newDescription: finalDescription,
         )
     }
 
@@ -193,7 +193,7 @@ public struct MCPService: Sendable {
 
     public func moveTemplate(
         templateName: String,
-        targetLocation: String
+        targetLocation: String,
     ) async throws -> MoveResult {
         let target = try parseLocationType(targetLocation, required: true)!
         let sourceTemplate = try await findTemplate(templateName)
@@ -204,21 +204,21 @@ public struct MCPService: Sendable {
                 name: templateName,
                 path: sourceTemplate.path.path(percentEncoded: false),
                 sourceLocation: sourceLocation,
-                targetLocation: target
+                targetLocation: target,
             ),
             force: true,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return try await runner.runMcp(
             name: templateName,
             path: sourceTemplate.path.path(percentEncoded: false),
             sourceLocation: sourceLocation,
-            targetLocation: target
+            targetLocation: target,
         )
     }
 
@@ -231,7 +231,7 @@ public struct MCPService: Sendable {
 
         let runner = ValidateRunner(
             mode: .mcp(config: config, templatePath: path),
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return await runner.runMcp(config: config, templatePath: path)
@@ -244,7 +244,7 @@ public struct MCPService: Sendable {
         location: String,
         ref: String? = nil,
         include: [String]? = nil,
-        exclude: [String]? = nil
+        exclude: [String]? = nil,
     ) async throws -> InstallResult {
         let locationKind = try parseLocationKind(location)
         let templateSource = try parseTemplateSource(source, ref: ref)
@@ -256,7 +256,7 @@ public struct MCPService: Sendable {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         return try await runner.run()
@@ -271,7 +271,7 @@ public struct MCPService: Sendable {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory ?? self.workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -288,7 +288,7 @@ public struct MCPService: Sendable {
                 templatePath: template.path,
                 additionalSearchPaths: additionalSearchPaths,
                 projectDirectory: projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             )
     }
 
@@ -338,11 +338,11 @@ public struct MCPService: Sendable {
     /// Parses include/exclude filters to TemplateFilter.
     private func parseTemplateFilter(include: [String]?, exclude: [String]?) -> TemplateFilter {
         if let include, !include.isEmpty {
-            return .include(include)
+            .include(include)
         } else if let exclude, !exclude.isEmpty {
-            return .exclude(exclude)
+            .exclude(exclude)
         } else {
-            return .none
+            .none
         }
     }
 
@@ -366,15 +366,14 @@ public struct MCPService: Sendable {
                 return nil
             }
 
-            let values: [String]
-            if let stringValue = value as? String {
-                values = [stringValue]
+            let values: [String] = if let stringValue = value as? String {
+                [stringValue]
             } else if let boolValue = value as? Bool {
-                values = [String(boolValue)]
+                [String(boolValue)]
             } else if let arrayValue = value as? [String] {
-                values = arrayValue
+                arrayValue
             } else {
-                values = [String(describing: value)]
+                [String(describing: value)]
             }
 
             return ParsedMacroDefinition(macro: macroName, values: values)
@@ -392,9 +391,9 @@ public enum MCPServiceError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidLocation(let location):
+        case let .invalidLocation(location):
             "Invalid location '\(location)'. Must be 'global' or 'project'."
-        case .invalidGitURL(let url):
+        case let .invalidGitURL(url):
             "Invalid Git URL: \(url)"
         case let .sandboxPermissionRequired(paths, templateName):
             """
@@ -427,9 +426,9 @@ public enum MCPServiceError: Error, LocalizedError, Sendable {
 extension Config.MacroDefaultValue {
     var asStringArray: [String] {
         switch self {
-        case .string(let value):
+        case let .string(value):
             [value]
-        case .array(let values):
+        case let .array(values):
             values
         }
     }

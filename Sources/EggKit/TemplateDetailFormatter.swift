@@ -35,7 +35,7 @@ struct TemplateDetailFormatter {
     /// Formats a template for display
     func format(
         template: Template,
-        location: TemplateLocationType
+        location: TemplateLocationType,
     ) -> FormattedDetail {
         let config = template.config
 
@@ -45,7 +45,7 @@ struct TemplateDetailFormatter {
             version: config.version,
             locationName: location.name,
             locationDir: location.dir,
-            path: template.path.path
+            path: template.path.path,
         )
 
         let formattedMacros = (config.macros ?? []).map { macro in
@@ -56,26 +56,26 @@ struct TemplateDetailFormatter {
                 description: macro.description,
                 defaultValue: macro.default?.stringValue,
                 choices: macro.choices,
-                validation: macro.validate
+                validation: macro.validate,
             )
         }
 
         let exampleCommand = generateExampleCommand(
             templateName: config.name,
-            macros: config.macros
+            macros: config.macros,
         )
 
         return FormattedDetail(
             basicInfo: basicInfo,
             macros: formattedMacros,
-            exampleCommand: exampleCommand
+            exampleCommand: exampleCommand,
         )
     }
 
     /// Generates an example one-liner command for egg hatch
     func generateExampleCommand(
         templateName: String,
-        macros: [Config.Macro]?
+        macros: [Config.Macro]?,
     ) -> String {
         let quotedTemplateName = templateName.contains(" ") ? "\"\(templateName)\"" : templateName
         var commandParts = ["egg", "hatch", quotedTemplateName]

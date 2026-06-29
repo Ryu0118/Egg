@@ -15,12 +15,12 @@ struct MoveHandler: ToolHandler {
         let service = MCPService(
             workingDirectory: nil,
             projectDirectory: projectDir,
-            additionalSearchPaths: searchPaths
+            additionalSearchPaths: searchPaths,
         )
 
         let result = try await service.moveTemplate(
             templateName: templateName,
-            targetLocation: targetLocation
+            targetLocation: targetLocation,
         )
 
         return try JSONEncoderHelper.encode(result)

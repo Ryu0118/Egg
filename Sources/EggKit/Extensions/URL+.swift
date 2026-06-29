@@ -21,7 +21,7 @@ package extension URL {
         guard path != "/" else { return path }
 
         var result = path
-        while result.hasSuffix("/") && result.count > 1 {
+        while result.hasSuffix("/"), result.count > 1 {
             result.removeLast()
         }
         return result

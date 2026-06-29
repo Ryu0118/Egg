@@ -21,7 +21,7 @@ extension ConfigValidator {
 
         private func validateMacroReferences(_ config: Config, definedMacros: [Config.Macro]) -> [Error] {
             var errors: [Error] = []
-            let definedMacroNames = Set(definedMacros.map { $0.name })
+            let definedMacroNames = Set(definedMacros.map(\.name))
 
             // Check macros used in pre_hatch run commands
             if let preHatch = config.preHatch {
@@ -120,17 +120,17 @@ extension ConfigValidator {
         private func validateMacroType(_ macro: Config.Macro, context: String) -> [Error] {
             switch macro.type {
             case .choice:
-                return validateChoiceType(macro, context: context)
+                validateChoiceType(macro, context: context)
             case .choices:
-                return validateChoicesType(macro, context: context)
+                validateChoicesType(macro, context: context)
             case .array:
-                return validateArrayType(macro, context: context)
+                validateArrayType(macro, context: context)
             case .boolean:
-                return validateBooleanType(macro, context: context).asErrors
+                validateBooleanType(macro, context: context).asErrors
             case .path:
-                return validatePathType(macro, context: context).asErrors
+                validatePathType(macro, context: context).asErrors
             case .string:
-                return []
+                []
             }
         }
 
@@ -150,7 +150,7 @@ extension ConfigValidator {
                     context: context,
                     name: macro.name,
                     defaultValue: defaultValue,
-                    choices: choices
+                    choices: choices,
                 )]
             }
 
@@ -175,7 +175,7 @@ extension ConfigValidator {
                         context: context,
                         name: macro.name,
                         value: value,
-                        choices: choices
+                        choices: choices,
                     )]
                 }
             }
@@ -223,7 +223,7 @@ extension ConfigValidator {
                 return .invalidRegexPattern(
                     context: context,
                     name: macro.name,
-                    pattern: validatePattern
+                    pattern: validatePattern,
                 )
             }
 
@@ -241,7 +241,7 @@ extension ConfigValidator {
                     context: context,
                     name: macro.name,
                     defaultValue: defaultValue,
-                    pattern: validatePattern
+                    pattern: validatePattern,
                 )
             }
 

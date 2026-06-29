@@ -16,13 +16,13 @@ struct DuplicateHandler: ToolHandler {
         let service = MCPService(
             workingDirectory: nil,
             projectDirectory: projectDir,
-            additionalSearchPaths: searchPaths
+            additionalSearchPaths: searchPaths,
         )
 
         let result = try await service.duplicateTemplate(
             sourceName: sourceName,
             newName: newName,
-            newDescription: newDescription
+            newDescription: newDescription,
         )
 
         return try JSONEncoderHelper.encode(result)

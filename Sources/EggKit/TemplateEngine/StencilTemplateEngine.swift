@@ -61,17 +61,17 @@ struct StencilTemplateEngine: TemplateEngine {
     private func convertMacroValue(_ value: ResolvedMacro.Value) -> Any {
         switch value {
         case let .string(s):
-            return s
+            s
         case let .boolean(b):
-            return b
+            b
         case let .choice(c):
-            return c
+            c
         case let .choices(c):
-            return c
+            c
         case let .array(a):
-            return a
+            a
         case let .path(url):
-            return url.path(percentEncoded: false)
+            url.path(percentEncoded: false)
         }
     }
 }
@@ -86,11 +86,11 @@ extension StencilTemplateEngine {
         var errorDescription: String? {
             switch self {
             case let .syntaxError(message):
-                return "Stencil syntax error: \(message)"
+                "Stencil syntax error: \(message)"
             case let .templateNotFound(name):
-                return "Stencil template not found: \(name)"
+                "Stencil template not found: \(name)"
             case let .renderingFailed(underlyingError):
-                return "Stencil rendering failed: \(underlyingError.localizedDescription)"
+                "Stencil rendering failed: \(underlyingError.localizedDescription)"
             }
         }
     }

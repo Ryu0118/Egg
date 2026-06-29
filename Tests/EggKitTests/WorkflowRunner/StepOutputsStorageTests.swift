@@ -4,7 +4,7 @@ import Testing
 
 struct StepOutputsStorageTests {
     @Test(arguments: TestCase.allCases)
-    func storeAndRetrieve(_ testCase: TestCase) async {
+    func `store and retrieve`(_ testCase: TestCase) async {
         let storage = StepOutputsStorage()
 
         for operation in testCase.operations {
@@ -25,7 +25,9 @@ struct StepOutputsStorageTests {
         let description: String
         let operations: [Operation]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Operation {
             case store(phase: LifecyclePhase, stepId: String, outputs: [String: String])
@@ -40,14 +42,14 @@ struct StepOutputsStorageTests {
                     .store(phase: .preHatch, stepId: "setup", outputs: ["version": "1.0.0", "name": "MyApp"]),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "version", expectedValue: "1.0.0"),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "name", expectedValue: "MyApp"),
-                ]
+                ],
             ),
             TestCase(
                 description: "returns nil for non-existent output",
                 operations: [
                     .expectGet(phase: .preHatch, stepId: "setup", key: "version", expectedValue: nil),
                     .expectGet(phase: .preHatch, stepId: "nonexistent", key: "key", expectedValue: nil),
-                ]
+                ],
             ),
             TestCase(
                 description: "checks if output exists",
@@ -56,7 +58,7 @@ struct StepOutputsStorageTests {
                     .expectHas(phase: .preHatch, stepId: "setup", key: "version", expectedResult: true),
                     .expectHas(phase: .preHatch, stepId: "setup", key: "nonexistent", expectedResult: false),
                     .expectHas(phase: .preHatch, stepId: "other", key: "version", expectedResult: false),
-                ]
+                ],
             ),
             TestCase(
                 description: "supports cross-phase access",
@@ -65,7 +67,7 @@ struct StepOutputsStorageTests {
                     .store(phase: .postHatch, stepId: "deploy", outputs: ["status": "success"]),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "version", expectedValue: "1.0.0"),
                     .expectGet(phase: .postHatch, stepId: "deploy", key: "status", expectedValue: "success"),
-                ]
+                ],
             ),
             TestCase(
                 description: "handles multiple steps in same phase",
@@ -75,7 +77,7 @@ struct StepOutputsStorageTests {
                     .expectGet(phase: .preHatch, stepId: "step1", key: "key1", expectedValue: "value1"),
                     .expectGet(phase: .preHatch, stepId: "step2", key: "key2", expectedValue: "value2"),
                     .expectGet(phase: .preHatch, stepId: "step1", key: "key2", expectedValue: nil),
-                ]
+                ],
             ),
             TestCase(
                 description: "overwrites existing output",
@@ -84,7 +86,7 @@ struct StepOutputsStorageTests {
                     .store(phase: .preHatch, stepId: "setup", outputs: ["version": "2.0.0", "new-key": "new-value"]),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "version", expectedValue: "2.0.0"),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "new-key", expectedValue: "new-value"),
-                ]
+                ],
             ),
             TestCase(
                 description: "handles empty outputs",
@@ -92,7 +94,7 @@ struct StepOutputsStorageTests {
                     .store(phase: .preHatch, stepId: "setup", outputs: [:]),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "any", expectedValue: nil),
                     .expectHas(phase: .preHatch, stepId: "setup", key: "any", expectedResult: false),
-                ]
+                ],
             ),
             TestCase(
                 description: "handles special characters in keys",
@@ -104,12 +106,12 @@ struct StepOutputsStorageTests {
                             "src-dir": "/tmp/src",
                             "app.name": "MyApp",
                             "BUILD_TYPE": "DEBUG",
-                        ]
+                        ],
                     ),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "src-dir", expectedValue: "/tmp/src"),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "app.name", expectedValue: "MyApp"),
                     .expectGet(phase: .preHatch, stepId: "setup", key: "BUILD_TYPE", expectedValue: "DEBUG"),
-                ]
+                ],
             ),
         ]
     }

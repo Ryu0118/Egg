@@ -21,7 +21,7 @@ package extension EggCommand.TemplateCommand {
             Direct Mode:
               Provide all required information via command-line arguments.
               Example: egg template duplicate MyTemplate --name NewTemplate --description "Duplicated template"
-            """
+            """,
         )
 
         @Argument(help: "The name of the template to duplicate (optional for interactive mode).")
@@ -50,11 +50,11 @@ package extension EggCommand.TemplateCommand {
                 let homeDirectory = resolveHomeDirectory()
                 try await DuplicateRunner(
                     mode: mode,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -69,11 +69,11 @@ package extension EggCommand.TemplateCommand {
                     templateName: templateName,
                     newName: name,
                     newDescription: description,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

@@ -27,7 +27,7 @@ struct TemplateExpander {
         builtInMacroContext: BuiltInMacroContext,
         noora: some Noorable = Noora(),
         isInteractive: Bool = true,
-        override: Bool = false
+        override: Bool = false,
     ) {
         self.fileManager = fileManager
         self.templateDirectory = templateDirectory
@@ -50,19 +50,19 @@ struct TemplateExpander {
     func expand(
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage,
-        excluding rules: [Config.ExcludeRule]? = nil
+        excluding rules: [Config.ExcludeRule]? = nil,
     ) async throws {
         let excludePatterns = try await makeExcludePatterns(
             from: rules,
             evaluatingWith: macros,
-            and: outputs
+            and: outputs,
         )
 
         // Collect files that will be generated (with transformed names)
         let filesToGenerate = try await collectFilesToGenerate(
             substituting: macros,
             with: outputs,
-            excluding: excludePatterns
+            excluding: excludePatterns,
         )
 
         // Check for existing files in output directory
@@ -77,7 +77,7 @@ struct TemplateExpander {
 
         try await fileManager.withAtomicCopyAndWrite(
             from: templateDirectory,
-            to: outputDirectory
+            to: outputDirectory,
         ) { workingDirectory in
             try removeConfigFile(in: workingDirectory)
             try removeExcludedFiles(in: workingDirectory, matching: excludePatterns)
@@ -91,7 +91,7 @@ struct TemplateExpander {
     private func collectFilesToGenerate(
         substituting macros: [ResolvedMacro],
         with outputs: StepOutputsStorage,
-        excluding patterns: [Glob.Pattern]
+        excluding patterns: [Glob.Pattern],
     ) async throws -> [String] {
         let allPaths = try collectAllPaths(in: templateDirectory, relativeTo: templateDirectory)
         var result: [String] = []
@@ -117,7 +117,7 @@ struct TemplateExpander {
             var transformedPath = try await resolvingMacros(
                 in: relativePath,
                 substituting: macros,
-                with: outputs
+                with: outputs,
             )
 
             // Strip .stencil extension from output path
@@ -176,7 +176,7 @@ struct TemplateExpander {
             }
             return noora.yesOrNoChoicePrompt(
                 title: "Overwrite",
-                question: "Do you want to overwrite these files?"
+                question: "Do you want to overwrite these files?",
             )
         }
 
@@ -188,7 +188,7 @@ struct TemplateExpander {
     private func makeExcludePatterns(
         from rules: [Config.ExcludeRule]?,
         evaluatingWith macros: [ResolvedMacro],
-        and outputs: StepOutputsStorage
+        and outputs: StepOutputsStorage,
     ) async throws -> [Glob.Pattern] {
         guard let rules else { return [] }
 
@@ -203,7 +203,7 @@ struct TemplateExpander {
                 let evaluator = ConditionEvaluator(
                     macros: macros,
                     outputs: outputs,
-                    builtInMacroContext: builtInMacroContext
+                    builtInMacroContext: builtInMacroContext,
                 )
                 let shouldExclude = try await evaluator.evaluate(conditional.if)
 
@@ -229,7 +229,7 @@ struct TemplateExpander {
     /// Removes files matching exclusion patterns from the working directory.
     private func removeExcludedFiles(
         in directory: URL,
-        matching patterns: [Glob.Pattern]
+        matching patterns: [Glob.Pattern],
     ) throws {
         guard !patterns.isEmpty else { return }
 
@@ -249,7 +249,7 @@ struct TemplateExpander {
     private func transformFilenames(
         in directory: URL,
         substituting macros: [ResolvedMacro],
-        with outputs: StepOutputsStorage
+        with outputs: StepOutputsStorage,
     ) async throws {
         let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
@@ -269,7 +269,7 @@ struct TemplateExpander {
     private func transformFilename(
         at path: URL,
         substituting macros: [ResolvedMacro],
-        with outputs: StepOutputsStorage
+        with outputs: StepOutputsStorage,
     ) async throws {
         let originalName = path.lastPathComponent
         let transformedName = try await resolvingMacros(in: originalName, substituting: macros, with: outputs)
@@ -284,7 +284,7 @@ struct TemplateExpander {
     private func transformFileContents(
         in directory: URL,
         substituting macros: [ResolvedMacro],
-        with outputs: StepOutputsStorage
+        with outputs: StepOutputsStorage,
     ) async throws {
         let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
@@ -309,7 +309,7 @@ struct TemplateExpander {
     private func transformFile(
         at path: URL,
         substituting macros: [ResolvedMacro],
-        with outputs: StepOutputsStorage
+        with outputs: StepOutputsStorage,
     ) async throws {
         let data = try fileManager.readFile(at: path)
 
@@ -319,7 +319,7 @@ struct TemplateExpander {
         let context = TemplateContext(
             macros: macros,
             outputs: outputs,
-            builtInMacroContext: builtInMacroContext
+            builtInMacroContext: builtInMacroContext,
         )
 
         // Select engine based on file extension
@@ -346,7 +346,7 @@ struct TemplateExpander {
     /// Collects all paths in a directory recursively.
     private func collectAllPaths(
         in directory: URL,
-        relativeTo root: URL
+        relativeTo root: URL,
     ) throws -> [(absolutePath: URL, relativePath: String)] {
         var result: [(URL, String)] = []
         let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
@@ -368,12 +368,12 @@ struct TemplateExpander {
     private func resolvingMacros(
         in text: String,
         substituting macros: [ResolvedMacro],
-        with outputs: StepOutputsStorage
+        with outputs: StepOutputsStorage,
     ) async throws -> String {
         let resolver = VariableResolver(
             macros: macros,
             outputs: outputs,
-            builtInMacroContext: builtInMacroContext
+            builtInMacroContext: builtInMacroContext,
         )
         return try await resolver.resolve(text)
     }

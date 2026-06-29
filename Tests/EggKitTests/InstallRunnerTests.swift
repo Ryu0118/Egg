@@ -23,14 +23,14 @@ struct InstallRunnerTests {
         // Setup cloned repo templates
         try setupClonedRepoTemplates(
             templates: testCase.repoTemplates,
-            repoDirectory: clonedRepoDirectory
+            repoDirectory: clonedRepoDirectory,
         )
 
         // Setup existing templates if any
         try setupExistingTemplates(
             templates: testCase.existingTemplates,
             projectDirectory: projectDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
 
         let mockGitCloner = MockGitCloner(clonedDirectory: clonedRepoDirectory, fileManager: fileManager)
@@ -47,7 +47,7 @@ struct InstallRunnerTests {
             noora: NooraMock(),
             gitCloner: mockGitCloner,
             directoryCloner: APFSDirectoryCloner(),
-            templateDiscoverer: TemplateDiscoverer(fileManager: fileManager)
+            templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),
         )
 
         switch testCase.expected {
@@ -58,7 +58,7 @@ struct InstallRunnerTests {
                 testCase: testCase,
                 location: location,
                 projectDirectory: projectDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
         case let .failure(expectedError):
             await #expect(throws: expectedError) {
@@ -69,7 +69,7 @@ struct InstallRunnerTests {
 
     private func setupClonedRepoTemplates(
         templates: [RepoTemplate],
-        repoDirectory: URL
+        repoDirectory: URL,
     ) throws {
         for template in templates {
             let templateDir = repoDirectory.appending(path: template.name)
@@ -87,13 +87,13 @@ struct InstallRunnerTests {
     private func setupExistingTemplates(
         templates: [ExistingTemplate],
         projectDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) throws {
         for template in templates {
             let templatePath = template.location.toPath(
                 templateName: template.name,
                 projectDirectory: projectDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
 
@@ -117,13 +117,13 @@ struct InstallRunnerTests {
         testCase: TestCase,
         location _: TemplateLocationType,
         projectDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) throws {
         for templateName in testCase.expectedInstalledNames {
             let templatePath = testCase.location.toPath(
                 templateName: templateName,
                 projectDirectory: projectDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             #expect(fileManager.fileExists(atPath: templatePath.path(percentEncoded: false)))
 
@@ -143,7 +143,9 @@ struct InstallRunnerTests {
         let expected: Result
         let expectedInstalledNames: [String]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [TestCase] = [
             // Success cases - install all templates
@@ -152,10 +154,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: false,
@@ -167,9 +169,9 @@ struct InstallRunnerTests {
                     installed: ["swift-module"],
                     skippedCount: 0,
                     failedCount: 0,
-                    skippedReasons: []
+                    skippedReasons: [],
                 )),
-                expectedInstalledNames: ["swift-module"]
+                expectedInstalledNames: ["swift-module"],
             ),
 
             TestCase(
@@ -177,10 +179,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .global,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .global,
                 force: false,
@@ -194,9 +196,9 @@ struct InstallRunnerTests {
                     installed: ["swift-module", "swift-package", "swiftui-view"],
                     skippedCount: 0,
                     failedCount: 0,
-                    skippedReasons: []
+                    skippedReasons: [],
                 )),
-                expectedInstalledNames: ["swift-module", "swift-package", "swiftui-view"]
+                expectedInstalledNames: ["swift-module", "swift-package", "swiftui-view"],
             ),
 
             // Filter cases - include filter
@@ -205,10 +207,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .include(["swift-module"])
+                    filter: .include(["swift-module"]),
                 ),
                 location: .project,
                 force: false,
@@ -225,9 +227,9 @@ struct InstallRunnerTests {
                     skippedReasons: [
                         (name: "swift-package", reason: .excludedByFilter),
                         (name: "swiftui-view", reason: .excludedByFilter),
-                    ]
+                    ],
                 )),
-                expectedInstalledNames: ["swift-module"]
+                expectedInstalledNames: ["swift-module"],
             ),
 
             // Filter cases - exclude filter
@@ -236,10 +238,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .exclude(["swiftui-view"])
+                    filter: .exclude(["swiftui-view"]),
                 ),
                 location: .project,
                 force: false,
@@ -255,9 +257,9 @@ struct InstallRunnerTests {
                     failedCount: 0,
                     skippedReasons: [
                         (name: "swiftui-view", reason: .excludedByFilter),
-                    ]
+                    ],
                 )),
-                expectedInstalledNames: ["swift-module", "swift-package"]
+                expectedInstalledNames: ["swift-module", "swift-package"],
             ),
 
             // Already exists cases
@@ -266,10 +268,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: false,
@@ -286,9 +288,9 @@ struct InstallRunnerTests {
                     failedCount: 0,
                     skippedReasons: [
                         (name: "swift-module", reason: .alreadyExists),
-                    ]
+                    ],
                 )),
-                expectedInstalledNames: ["swift-package"]
+                expectedInstalledNames: ["swift-package"],
             ),
 
             TestCase(
@@ -296,10 +298,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: true,
@@ -313,9 +315,9 @@ struct InstallRunnerTests {
                     installed: ["swift-module"],
                     skippedCount: 0,
                     failedCount: 0,
-                    skippedReasons: []
+                    skippedReasons: [],
                 )),
-                expectedInstalledNames: ["swift-module"]
+                expectedInstalledNames: ["swift-module"],
             ),
 
             // Error cases
@@ -324,10 +326,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/empty-repo.git", normalized: "https://github.com/user/empty-repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: false,
@@ -335,9 +337,9 @@ struct InstallRunnerTests {
                 existingTemplates: [],
                 expected: .failure(.noTemplatesFound(source: .git(
                     url: GitURL(original: "https://github.com/user/empty-repo.git", normalized: "https://github.com/user/empty-repo.git"),
-                    ref: nil
+                    ref: nil,
                 ))),
-                expectedInstalledNames: []
+                expectedInstalledNames: [],
             ),
 
             // Combined filter and existing
@@ -346,10 +348,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .exclude(["swiftui-view"])
+                    filter: .exclude(["swiftui-view"]),
                 ),
                 location: .project,
                 force: false,
@@ -368,9 +370,9 @@ struct InstallRunnerTests {
                     skippedReasons: [
                         (name: "swift-module", reason: .alreadyExists),
                         (name: "swiftui-view", reason: .excludedByFilter),
-                    ]
+                    ],
                 )),
-                expectedInstalledNames: ["swift-package"]
+                expectedInstalledNames: ["swift-package"],
             ),
 
             // Git ref cases
@@ -379,10 +381,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .branch("develop")
+                        ref: .branch("develop"),
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: false,
@@ -394,9 +396,9 @@ struct InstallRunnerTests {
                     installed: ["swift-module"],
                     skippedCount: 0,
                     failedCount: 0,
-                    skippedReasons: []
+                    skippedReasons: [],
                 )),
-                expectedInstalledNames: ["swift-module"]
+                expectedInstalledNames: ["swift-module"],
             ),
 
             TestCase(
@@ -404,10 +406,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .tag("v1.0.0")
+                        ref: .tag("v1.0.0"),
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: false,
@@ -419,9 +421,9 @@ struct InstallRunnerTests {
                     installed: ["swift-module"],
                     skippedCount: 0,
                     failedCount: 0,
-                    skippedReasons: []
+                    skippedReasons: [],
                 )),
-                expectedInstalledNames: ["swift-module"]
+                expectedInstalledNames: ["swift-module"],
             ),
 
             TestCase(
@@ -429,10 +431,10 @@ struct InstallRunnerTests {
                 mode: .direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .revision("abc123")
+                        ref: .revision("abc123"),
                     ),
                     location: .project,
-                    filter: .none
+                    filter: .none,
                 ),
                 location: .project,
                 force: false,
@@ -444,9 +446,9 @@ struct InstallRunnerTests {
                     installed: ["swift-module"],
                     skippedCount: 0,
                     failedCount: 0,
-                    skippedReasons: []
+                    skippedReasons: [],
                 )),
-                expectedInstalledNames: ["swift-module"]
+                expectedInstalledNames: ["swift-module"],
             ),
         ]
 
@@ -484,7 +486,7 @@ private struct MockGitCloner: GitCloning {
         let contents = try fileManager.contentsOfDirectory(
             at: clonedDirectory,
             includingPropertiesForKeys: nil,
-            options: []
+            options: [],
         )
 
         for item in contents {
@@ -498,13 +500,13 @@ private extension TemplateLocationType.Kind {
     func toPath(
         templateName: String,
         projectDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) -> URL {
         switch self {
         case .global:
-            return homeDirectory.appending(path: ".eggs").appending(path: templateName)
+            homeDirectory.appending(path: ".eggs").appending(path: templateName)
         case .project:
-            return projectDirectory.appending(path: ".eggs").appending(path: templateName)
+            projectDirectory.appending(path: ".eggs").appending(path: templateName)
         }
     }
 }

@@ -7,7 +7,7 @@ package extension EggCommand.TemplateCommand {
     struct ListCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
         package static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List all available templates."
+            abstract: "List all available templates.",
         )
 
         @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
@@ -32,14 +32,14 @@ package extension EggCommand.TemplateCommand {
             try await ListRunner(
                 location: location?.toConcreteType(
                     resolveProjectDirectory(),
-                    workingDirectory: workingDirectory
+                    workingDirectory: workingDirectory,
                 ),
                 projectDirectory: resolveProjectDirectory(),
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 additionalSearchPaths: resolveTemplateSearchPaths(),
                 fileManager: Self.fileManager,
-                hideDescription: hideDescription
+                hideDescription: hideDescription,
             ).run()
         }
     }

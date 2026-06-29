@@ -18,7 +18,7 @@ struct InstallArgumentsValidatorTests {
             global: testCase.global,
             projectDirectory: testCase.projectDirectory,
             workingDirectory: testCase.workingDirectory,
-            homeDirectory: testCase.homeDirectory
+            homeDirectory: testCase.homeDirectory,
         )
 
         switch testCase.expected {
@@ -33,7 +33,7 @@ struct InstallArgumentsValidatorTests {
     }
 
     @Test
-    func validateLocalPathAbsolute() async throws {
+    func `validate local path absolute`() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -50,7 +50,7 @@ struct InstallArgumentsValidatorTests {
             global: false,
             projectDirectory: tempDir,
             workingDirectory: tempDir,
-            homeDirectory: tempDir
+            homeDirectory: tempDir,
         )
 
         let result = try await validator.validate()
@@ -68,7 +68,7 @@ struct InstallArgumentsValidatorTests {
     }
 
     @Test
-    func validateLocalPathRelative() async throws {
+    func `validate local path relative`() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -85,7 +85,7 @@ struct InstallArgumentsValidatorTests {
             global: true,
             projectDirectory: tempDir,
             workingDirectory: tempDir,
-            homeDirectory: tempDir
+            homeDirectory: tempDir,
         )
 
         let result = try await validator.validate()
@@ -103,7 +103,7 @@ struct InstallArgumentsValidatorTests {
     }
 
     @Test
-    func validateLocalPathPlainRelative() async throws {
+    func `validate local path plain relative`() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -120,7 +120,7 @@ struct InstallArgumentsValidatorTests {
             global: true,
             projectDirectory: tempDir,
             workingDirectory: tempDir,
-            homeDirectory: tempDir
+            homeDirectory: tempDir,
         )
 
         let result = try await validator.validate()
@@ -138,7 +138,7 @@ struct InstallArgumentsValidatorTests {
     }
 
     @Test
-    func validateLocalPathWithFilter() async throws {
+    func `validate local path with filter`() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -155,7 +155,7 @@ struct InstallArgumentsValidatorTests {
             global: false,
             projectDirectory: tempDir,
             workingDirectory: tempDir,
-            homeDirectory: tempDir
+            homeDirectory: tempDir,
         )
 
         let result = try await validator.validate()
@@ -173,7 +173,7 @@ struct InstallArgumentsValidatorTests {
     }
 
     @Test
-    func validateLocalPathWithRefOptionThrowsError() async throws {
+    func `validate local path with ref option throws error`() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -190,7 +190,7 @@ struct InstallArgumentsValidatorTests {
             global: false,
             projectDirectory: tempDir,
             workingDirectory: tempDir,
-            homeDirectory: tempDir
+            homeDirectory: tempDir,
         )
 
         await #expect(throws: InstallArgumentsValidator.Error.refOptionsNotAllowedForLocalPath) {
@@ -212,7 +212,9 @@ struct InstallArgumentsValidatorTests {
         let homeDirectory: URL
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         private static let defaultProjectDirectory = URL(filePath: "/project")
         private static let defaultWorkingDirectory = URL(filePath: "/project")
@@ -227,7 +229,7 @@ struct InstallArgumentsValidatorTests {
             templates: [String] = [],
             excludeTemplates: [String] = [],
             global: Bool = false,
-            expected: Result
+            expected: Result,
         ) -> TestCase {
             TestCase(
                 description: description,
@@ -241,7 +243,7 @@ struct InstallArgumentsValidatorTests {
                 projectDirectory: defaultProjectDirectory,
                 workingDirectory: defaultWorkingDirectory,
                 homeDirectory: defaultHomeDirectory,
-                expected: expected
+                expected: expected,
             )
         }
 
@@ -249,7 +251,7 @@ struct InstallArgumentsValidatorTests {
             // Interactive mode
             makeTestCase(
                 description: "returns interactive mode when URL is nil",
-                expected: .success(.interactive)
+                expected: .success(.interactive),
             ),
 
             // Direct mode - Git URL only (default branch, no filter)
@@ -259,11 +261,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .none
-                ))
+                    filter: .none,
+                )),
             ),
             makeTestCase(
                 description: "returns direct mode with git source when only URL is provided (SSH)",
@@ -271,11 +273,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "git@github.com:user/repo.git", normalized: "git@github.com:user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .none
-                ))
+                    filter: .none,
+                )),
             ),
 
             // Direct mode with branch
@@ -286,11 +288,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .branch("develop")
+                        ref: .branch("develop"),
                     ),
                     location: .project,
-                    filter: .none
-                ))
+                    filter: .none,
+                )),
             ),
 
             // Direct mode with tag
@@ -301,11 +303,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .tag("v1.0.0")
+                        ref: .tag("v1.0.0"),
                     ),
                     location: .project,
-                    filter: .none
-                ))
+                    filter: .none,
+                )),
             ),
 
             // Direct mode with revision
@@ -316,11 +318,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .revision("abc123def456")
+                        ref: .revision("abc123def456"),
                     ),
                     location: .project,
-                    filter: .none
-                ))
+                    filter: .none,
+                )),
             ),
 
             // Direct mode with global location
@@ -331,11 +333,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .global,
-                    filter: .none
-                ))
+                    filter: .none,
+                )),
             ),
 
             // Direct mode with include filter
@@ -346,11 +348,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .include(["swift-module"])
-                ))
+                    filter: .include(["swift-module"]),
+                )),
             ),
             makeTestCase(
                 description: "returns direct mode with include filter (multiple templates)",
@@ -359,11 +361,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .include(["swift-module", "swift-package"])
-                ))
+                    filter: .include(["swift-module", "swift-package"]),
+                )),
             ),
 
             // Direct mode with exclude filter
@@ -374,11 +376,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .exclude(["swiftui-view"])
-                ))
+                    filter: .exclude(["swiftui-view"]),
+                )),
             ),
             makeTestCase(
                 description: "returns direct mode with exclude filter (multiple templates)",
@@ -387,11 +389,11 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: nil
+                        ref: nil,
                     ),
                     location: .project,
-                    filter: .exclude(["swiftui-view", "swift-package"])
-                ))
+                    filter: .exclude(["swiftui-view", "swift-package"]),
+                )),
             ),
 
             // Direct mode with all options
@@ -404,28 +406,28 @@ struct InstallArgumentsValidatorTests {
                 expected: .success(.direct(
                     source: .git(
                         url: GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git"),
-                        ref: .tag("v2.0.0")
+                        ref: .tag("v2.0.0"),
                     ),
                     location: .global,
-                    filter: .include(["swift-module"])
-                ))
+                    filter: .include(["swift-module"]),
+                )),
             ),
 
             // Error cases - invalid source
             makeTestCase(
                 description: "throws error for invalid source",
                 url: "not-a-valid-url",
-                expected: .failure(.invalidSourcePath("not-a-valid-url"))
+                expected: .failure(.invalidSourcePath("not-a-valid-url")),
             ),
             makeTestCase(
                 description: "throws error for empty source",
                 url: "",
-                expected: .failure(.invalidSourcePath(""))
+                expected: .failure(.invalidSourcePath("")),
             ),
             makeTestCase(
                 description: "throws error for URL with unsupported protocol",
                 url: "ftp://github.com/user/repo.git",
-                expected: .failure(.invalidSourcePath("ftp://github.com/user/repo.git"))
+                expected: .failure(.invalidSourcePath("ftp://github.com/user/repo.git")),
             ),
 
             // Error cases - mutually exclusive ref options
@@ -434,21 +436,21 @@ struct InstallArgumentsValidatorTests {
                 url: "https://github.com/user/repo.git",
                 branch: "develop",
                 tag: "v1.0.0",
-                expected: .failure(.mutuallyExclusiveRefOptions)
+                expected: .failure(.mutuallyExclusiveRefOptions),
             ),
             makeTestCase(
                 description: "throws error when both branch and revision are specified",
                 url: "https://github.com/user/repo.git",
                 branch: "develop",
                 revision: "abc123",
-                expected: .failure(.mutuallyExclusiveRefOptions)
+                expected: .failure(.mutuallyExclusiveRefOptions),
             ),
             makeTestCase(
                 description: "throws error when both tag and revision are specified",
                 url: "https://github.com/user/repo.git",
                 tag: "v1.0.0",
                 revision: "abc123",
-                expected: .failure(.mutuallyExclusiveRefOptions)
+                expected: .failure(.mutuallyExclusiveRefOptions),
             ),
             makeTestCase(
                 description: "throws error when all three ref options are specified",
@@ -456,7 +458,7 @@ struct InstallArgumentsValidatorTests {
                 branch: "develop",
                 tag: "v1.0.0",
                 revision: "abc123",
-                expected: .failure(.mutuallyExclusiveRefOptions)
+                expected: .failure(.mutuallyExclusiveRefOptions),
             ),
 
             // Error cases - mutually exclusive filter options
@@ -465,7 +467,7 @@ struct InstallArgumentsValidatorTests {
                 url: "https://github.com/user/repo.git",
                 templates: ["swift-module"],
                 excludeTemplates: ["swiftui-view"],
-                expected: .failure(.mutuallyExclusiveFilterOptions)
+                expected: .failure(.mutuallyExclusiveFilterOptions),
             ),
         ]
 
@@ -480,12 +482,12 @@ extension InstallRunnerMode: Equatable {
     public static func == (lhs: InstallRunnerMode, rhs: InstallRunnerMode) -> Bool {
         switch (lhs, rhs) {
         case (.interactive, .interactive):
-            return true
+            true
         case let (.direct(lhsSource, lhsLocation, lhsFilter),
                   .direct(rhsSource, rhsLocation, rhsFilter)):
-            return lhsSource == rhsSource && lhsLocation == rhsLocation && lhsFilter == rhsFilter
+            lhsSource == rhsSource && lhsLocation == rhsLocation && lhsFilter == rhsFilter
         default:
-            return false
+            false
         }
     }
 }

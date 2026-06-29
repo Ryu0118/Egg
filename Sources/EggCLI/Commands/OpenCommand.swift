@@ -20,7 +20,7 @@ package extension EggCommand.TemplateCommand {
             Direct Mode:
               Provide the template name as an argument.
               Example: egg template open MyTemplate
-            """
+            """,
         )
 
         @Argument(help: "The name of the template to open (optional for interactive mode).")
@@ -44,11 +44,11 @@ package extension EggCommand.TemplateCommand {
                 try await OpenRunner(
                     mode: mode,
                     processRunner: ProcessRunner(),
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -61,11 +61,11 @@ package extension EggCommand.TemplateCommand {
                 let homeDirectory = resolveHomeDirectory()
                 return try await OpenArgumentsValidator(
                     templateName: templateName,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

@@ -26,7 +26,7 @@ package extension EggCommand.TemplateCommand {
               Provide all required information via command-line arguments.
               Example: egg template move MyTemplate --to global
               Use --force to overwrite if the target already exists.
-            """
+            """,
         )
 
         @Argument(help: "The name of the template to move (optional for interactive mode).")
@@ -54,11 +54,11 @@ package extension EggCommand.TemplateCommand {
                 try await MoveRunner(
                     mode: mode,
                     force: force,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -77,7 +77,7 @@ package extension EggCommand.TemplateCommand {
                     workingDirectory: workingDirectory,
                     homeDirectory: resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

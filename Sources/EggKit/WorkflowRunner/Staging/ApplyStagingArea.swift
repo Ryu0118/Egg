@@ -44,7 +44,7 @@ struct ApplyStagingArea {
     static func create(
         workspaceRoot: URL,
         workingDirectory: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> ApplyStagingArea {
         // Create staging directory under system temporary directory with unique prefix
         let stagingRoot = try fileManager.makeTemporaryDirectory(prefix: "egg-apply-staging")
@@ -52,7 +52,7 @@ struct ApplyStagingArea {
         let area = ApplyStagingArea(
             root: stagingRoot,
             workspaceRoot: workspaceRoot,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
         )
 
         try area.ensureBaseDirectories(fileManager: fileManager)
@@ -78,12 +78,12 @@ struct ApplyStagingArea {
         workspaceRoot: URL,
         workingDirectory: URL,
         fileManager: FM,
-        body: @Sendable (ApplyStagingArea, FM) throws -> T
+        body: @Sendable (ApplyStagingArea, FM) throws -> T,
     ) throws -> T {
         let staging = try create(
             workspaceRoot: workspaceRoot,
             workingDirectory: workingDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         do {
@@ -109,7 +109,7 @@ struct ApplyStagingArea {
     /// - Throws: If staging fails
     func stage(
         changes: ChangeSummary,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> ChangeManifest {
         try ensureBaseDirectories(fileManager: fileManager)
 
@@ -132,7 +132,7 @@ struct ApplyStagingArea {
     /// - Throws: If apply fails
     func apply(
         manifest: ChangeManifest,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         let deleteEntries = manifest.entries.filter { $0.kind == .delete }
         let addEntries = manifest.entries.filter { $0.kind == .add }
@@ -161,7 +161,7 @@ struct ApplyStagingArea {
             } catch let rollbackError {
                 throw ApplyStagingArea.Error.rollbackFailed(
                     applyError: error,
-                    rollbackError: rollbackError
+                    rollbackError: rollbackError,
                 )
             }
             throw error
@@ -197,7 +197,7 @@ struct ApplyStagingArea {
 
     private func rollback(
         entries: [ChangeEntry],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         guard !entries.isEmpty else { return }
 
@@ -239,7 +239,7 @@ struct ApplyStagingArea {
 
     private func ensureParentDirectory(
         for path: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         let parent = path.deletingLastPathComponent()
         if !fileManager.exists(parent) {
@@ -254,7 +254,7 @@ struct ApplyStagingArea {
 
     private func stageAddedFiles(
         _ paths: [String],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> [ChangeEntry] {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(paths.count)
@@ -269,8 +269,8 @@ struct ApplyStagingArea {
                     relativePath: path,
                     kind: .add,
                     stagedPath: stagedDestination,
-                    backupPath: nil
-                )
+                    backupPath: nil,
+                ),
             )
         }
 
@@ -279,7 +279,7 @@ struct ApplyStagingArea {
 
     private func stageModifiedFiles(
         _ paths: [String],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> [ChangeEntry] {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(paths.count)
@@ -295,8 +295,8 @@ struct ApplyStagingArea {
                     relativePath: path,
                     kind: .modify,
                     stagedPath: stagedDestination,
-                    backupPath: backup
-                )
+                    backupPath: backup,
+                ),
             )
         }
 
@@ -305,7 +305,7 @@ struct ApplyStagingArea {
 
     private func stageDeletedFiles(
         _ paths: [String],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> [ChangeEntry] {
         var entries: [ChangeEntry] = []
         entries.reserveCapacity(paths.count)
@@ -320,8 +320,8 @@ struct ApplyStagingArea {
                     relativePath: path,
                     kind: .delete,
                     stagedPath: nil,
-                    backupPath: backup
-                )
+                    backupPath: backup,
+                ),
             )
         }
 
@@ -331,7 +331,7 @@ struct ApplyStagingArea {
     private func copyToStaging(
         source: URL,
         destination: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         try ensureParentDirectory(for: destination, fileManager: fileManager)
         try fileManager.copyItem(at: source, to: destination)
@@ -339,7 +339,7 @@ struct ApplyStagingArea {
 
     private func backupOriginalIfNeeded(
         relativePath: String,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> URL? {
         let original = targetPath(for: relativePath)
         guard fileManager.exists(original) else {
@@ -363,17 +363,28 @@ struct ApplyStagingArea {
 }
 
 /// Manifest describing all changes to be applied.
-struct ChangeManifest: Equatable, Sendable {
+struct ChangeManifest: Equatable {
     let entries: [ChangeEntry]
 
-    var addCount: Int { entries.filter { $0.kind == .add }.count }
-    var modifyCount: Int { entries.filter { $0.kind == .modify }.count }
-    var deleteCount: Int { entries.filter { $0.kind == .delete }.count }
-    var totalCount: Int { entries.count }
+    var addCount: Int {
+        entries.count(where: { $0.kind == .add })
+    }
+
+    var modifyCount: Int {
+        entries.count(where: { $0.kind == .modify })
+    }
+
+    var deleteCount: Int {
+        entries.count(where: { $0.kind == .delete })
+    }
+
+    var totalCount: Int {
+        entries.count
+    }
 }
 
 /// A single change entry in the manifest.
-struct ChangeEntry: Equatable, Sendable {
+struct ChangeEntry: Equatable {
     let relativePath: String
     let kind: ChangeKind
     let stagedPath: URL?
@@ -381,7 +392,7 @@ struct ChangeEntry: Equatable, Sendable {
 }
 
 /// The type of change to apply.
-enum ChangeKind: Equatable, Sendable {
+enum ChangeKind: Equatable {
     case add
     case modify
     case delete
@@ -396,9 +407,9 @@ extension ApplyStagingArea {
         var errorDescription: String? {
             switch self {
             case let .rollbackFailed(applyError, rollbackError):
-                return "Failed to roll back partially applied changes. Apply error: \(applyError.localizedDescription); Rollback error: \(rollbackError.localizedDescription)"
+                "Failed to roll back partially applied changes. Apply error: \(applyError.localizedDescription); Rollback error: \(rollbackError.localizedDescription)"
             case let .missingStagedArtifact(path):
-                return "Missing staged artifact for \(path)"
+                "Missing staged artifact for \(path)"
             }
         }
 

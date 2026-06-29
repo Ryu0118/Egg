@@ -8,7 +8,7 @@ struct ConditionEvaluatorTests {
         workingDirectory: URL(filePath: "/tmp/work"),
         homeDirectory: URL(filePath: "/tmp/home"),
         currentDate: Date(timeIntervalSince1970: 0),
-        environment: [:]
+        environment: [:],
     )
 
     @Test(arguments: TestCase.allCases)
@@ -23,7 +23,7 @@ struct ConditionEvaluatorTests {
         let evaluator = ConditionEvaluator(
             macros: testCase.macros,
             outputs: outputs,
-            builtInMacroContext: Self.defaultBuiltInMacroContext
+            builtInMacroContext: Self.defaultBuiltInMacroContext,
         )
 
         switch testCase.expectation {
@@ -58,7 +58,9 @@ struct ConditionEvaluatorTests {
         let outputs: [TestOutput]
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Expectation {
             case success(expectedResult: Bool)
@@ -72,14 +74,14 @@ struct ConditionEvaluatorTests {
                 condition: "true",
                 macros: [],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates simple false condition",
                 condition: "false",
                 macros: [],
                 outputs: [],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
 
             // Boolean macro evaluation
@@ -90,7 +92,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___DEBUG___", description: "Debug Mode", value: .boolean(true)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates boolean macro false comparison",
@@ -99,7 +101,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___DEBUG___", description: "Debug Mode", value: .boolean(false)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates boolean macro with !== operator",
@@ -108,7 +110,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___DEBUG___", description: "Debug Mode", value: .boolean(true)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // String macro evaluation
@@ -119,7 +121,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___NAME___", description: "Name", value: .string("MyApp")),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates string macro with !== operator",
@@ -128,7 +130,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___NAME___", description: "Name", value: .string("MyApp")),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Choice macro evaluation
@@ -139,7 +141,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___BUILD_TYPE___", description: "Build Type", value: .choice("release")),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Path macro evaluation
@@ -150,7 +152,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___OUTPUT_DIR___", description: "Output Directory", value: .path(URL(filePath: "/tmp/test"))),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Array macro with includes()
@@ -161,7 +163,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"])),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates array includes with non-matching element",
@@ -170,7 +172,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS", "macOS"])),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
             TestCase(
                 description: "evaluates array includes with empty array",
@@ -179,7 +181,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array([])),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
 
             // Step output evaluation (user quotes in condition)
@@ -190,7 +192,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "success"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates step output with !== operator",
@@ -199,7 +201,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "success"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates post_hatch output string",
@@ -208,7 +210,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["url": "https://example.com"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Complex expressions with && operator
@@ -220,7 +222,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"])),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates AND operator with first false",
@@ -230,7 +232,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___PLATFORMS___", description: "Platforms", value: .array(["iOS"])),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
 
             // Complex expressions with || operator
@@ -242,7 +244,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___SKIP___", description: "Skip", value: .boolean(false)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates OR operator with both false",
@@ -252,7 +254,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___SKIP___", description: "Skip", value: .boolean(false)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
 
             // Complex expressions with parentheses
@@ -265,7 +267,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___SKIP___", description: "Skip", value: .boolean(false)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates complex expression with parentheses - false result",
@@ -276,7 +278,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___SKIP___", description: "Skip", value: .boolean(false)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
 
             // Mixed macro and output references
@@ -289,7 +291,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "ready"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "evaluates mixed macro and output - false result",
@@ -300,7 +302,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "ready"]),
                 ],
-                expectation: .success(expectedResult: false)
+                expectation: .success(expectedResult: false),
             ),
 
             // String escaping tests
@@ -311,7 +313,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___MESSAGE___", description: "Message", value: .string("Hello \"World\"")),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "handles strings with backslashes",
@@ -320,7 +322,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___PATH___", description: "Path", value: .string("C:\\\\Users\\\\test")),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Error cases - undefined output reference
@@ -334,8 +336,8 @@ struct ConditionEvaluatorTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch,
                     stepId: "setup",
-                    key: "unknown"
-                ))
+                    key: "unknown",
+                )),
             ),
             TestCase(
                 description: "throws error for undefined step ID",
@@ -347,8 +349,8 @@ struct ConditionEvaluatorTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch,
                     stepId: "unknown",
-                    key: "version"
-                ))
+                    key: "version",
+                )),
             ),
             TestCase(
                 description: "throws error for undefined phase",
@@ -358,8 +360,8 @@ struct ConditionEvaluatorTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch, // Fallback to .preHatch for invalid phase
                     stepId: "setup",
-                    key: "version"
-                ))
+                    key: "version",
+                )),
             ),
 
             // Error cases - invalid JavaScript syntax
@@ -370,8 +372,8 @@ struct ConditionEvaluatorTests {
                 outputs: [],
                 expectation: .failure(expectedError: .conditionEvaluationError(
                     condition: "!@#$%^&*()",
-                    reason: "JavaScript evaluation failed or returned null/undefined"
-                ))
+                    reason: "JavaScript evaluation failed or returned null/undefined",
+                )),
             ),
             TestCase(
                 description: "throws error for non-boolean result",
@@ -380,8 +382,8 @@ struct ConditionEvaluatorTests {
                 outputs: [],
                 expectation: .failure(expectedError: .conditionEvaluationError(
                     condition: "\"hello\"",
-                    reason: "Condition must evaluate to a boolean, got: hello"
-                ))
+                    reason: "Condition must evaluate to a boolean, got: hello",
+                )),
             ),
 
             // Edge cases
@@ -392,7 +394,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "handles step ID with hyphens",
@@ -401,7 +403,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "my-step-1", values: ["result": "ok"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "handles output key with hyphens",
@@ -410,7 +412,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["src-dir": "/tmp/src"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
             TestCase(
                 description: "handles output key with dots",
@@ -419,7 +421,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["app.name": "MyApp"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Cross-phase access
@@ -431,7 +433,7 @@ struct ConditionEvaluatorTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["url": "https://example.com"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Multiple macros
@@ -443,7 +445,7 @@ struct ConditionEvaluatorTests {
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(true)),
                 ],
                 outputs: [],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
 
             // Multiple outputs
@@ -454,7 +456,7 @@ struct ConditionEvaluatorTests {
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["name": "MyApp", "version": "1.0.0"]),
                 ],
-                expectation: .success(expectedResult: true)
+                expectation: .success(expectedResult: true),
             ),
         ]
     }

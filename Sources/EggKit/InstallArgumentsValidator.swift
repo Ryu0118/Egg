@@ -44,7 +44,7 @@ package struct InstallArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         gitURLParser: some GitURLParsing = GitURLParser(),
-        fileManager: some FileManagerProtocol = FileManager.default
+        fileManager: some FileManagerProtocol = FileManager.default,
     ) {
         self.url = url
         self.branch = branch
@@ -104,7 +104,7 @@ package struct InstallArgumentsValidator {
         }
 
         // Check for mutually exclusive ref options
-        let refOptions = [branch, tag, revision].compactMap { $0 }
+        let refOptions = [branch, tag, revision].compactMap(\.self)
         if refOptions.count > 1 {
             throw Error.mutuallyExclusiveRefOptions
         }

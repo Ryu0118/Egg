@@ -20,7 +20,7 @@ package struct PathValidationRule: ValidatableRule {
             let _ = try resolveToAbsoluteURL(
                 input,
                 workingDirectory: workingDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             return true
         } catch {

@@ -6,14 +6,14 @@ import Testing
 struct TemplateExpanderTests {
     private func makeBuiltInMacroContext(
         workingDirectory: URL,
-        outputDirectory: URL
+        outputDirectory: URL,
     ) -> BuiltInMacroContext {
         BuiltInMacroContext(
             outputDirectory: outputDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: workingDirectory,
             currentDate: Date(timeIntervalSince1970: 0),
-            environment: [:]
+            environment: [:],
         )
     }
 
@@ -46,10 +46,10 @@ struct TemplateExpanderTests {
             outputDirectory: outputDir,
             builtInMacroContext: makeBuiltInMacroContext(
                 workingDirectory: tempDir,
-                outputDirectory: outputDir
+                outputDirectory: outputDir,
             ),
             isInteractive: testCase.isInteractive,
-            override: testCase.override
+            override: testCase.override,
         )
 
         switch testCase.expectation {
@@ -57,7 +57,7 @@ struct TemplateExpanderTests {
             try await expander.expand(
                 substituting: testCase.macros,
                 with: outputs,
-                excluding: testCase.excludeRules
+                excluding: testCase.excludeRules,
             )
             // Verify expectations using helper
             try verifyExpectations(verifications, in: outputDir, using: fileManager)
@@ -67,7 +67,7 @@ struct TemplateExpanderTests {
                 try await expander.expand(
                     substituting: testCase.macros,
                     with: outputs,
-                    excluding: testCase.excludeRules
+                    excluding: testCase.excludeRules,
                 )
             }
             #expect(error == expectedError)
@@ -85,9 +85,11 @@ struct TemplateExpanderTests {
         let override: Bool
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
-        // Convenience initializer with defaults
+        /// Convenience initializer with defaults
         init(
             _ description: String,
             templateSetup: [TemplateSetup],
@@ -97,7 +99,7 @@ struct TemplateExpanderTests {
             existingFiles: [ExistingFile] = [],
             isInteractive: Bool = false,
             override: Bool = false,
-            expectation: Expectation
+            expectation: Expectation,
         ) {
             self.description = description
             self.templateSetup = templateSetup
@@ -110,7 +112,7 @@ struct TemplateExpanderTests {
             self.expectation = expectation
         }
 
-        // Convenience method for simple success cases
+        /// Convenience method for simple success cases
         static func success(
             _ description: String,
             templateSetup: [TemplateSetup],
@@ -120,7 +122,7 @@ struct TemplateExpanderTests {
             existingFiles: [ExistingFile] = [],
             isInteractive: Bool = false,
             override: Bool = false,
-            verifications: [Verification]
+            verifications: [Verification],
         ) -> TestCase {
             TestCase(
                 description,
@@ -131,11 +133,11 @@ struct TemplateExpanderTests {
                 existingFiles: existingFiles,
                 isInteractive: isInteractive,
                 override: override,
-                expectation: .success(verifications: verifications)
+                expectation: .success(verifications: verifications),
             )
         }
 
-        // Convenience method for failure cases
+        /// Convenience method for failure cases
         static func failure(
             _ description: String,
             templateSetup: [TemplateSetup],
@@ -145,7 +147,7 @@ struct TemplateExpanderTests {
             existingFiles: [ExistingFile] = [],
             isInteractive: Bool = false,
             override: Bool = false,
-            expectedError: TemplateExpander.Error
+            expectedError: TemplateExpander.Error,
         ) -> TestCase {
             TestCase(
                 description,
@@ -156,7 +158,7 @@ struct TemplateExpanderTests {
                 existingFiles: existingFiles,
                 isInteractive: isInteractive,
                 override: override,
-                expectation: .failure(expectedError: expectedError)
+                expectation: .failure(expectedError: expectedError),
             )
         }
 
@@ -194,7 +196,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileExists(path: "README.md"),
                     .fileContent(path: "README.md", expectedContent: "Hello World"),
-                ]
+                ],
             ),
 
             // Macro substitution in content
@@ -208,7 +210,7 @@ struct TemplateExpanderTests {
                 ],
                 verifications: [
                     .fileContent(path: "info.txt", expectedContent: "Project: MyApp"),
-                ]
+                ],
             ),
 
             // Macro substitution in filenames
@@ -223,7 +225,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileExists(path: "MyApp.swift"),
                     .fileNotExists(path: "___PROJECT_NAME___.swift"),
-                ]
+                ],
             ),
 
             // Step output substitution
@@ -237,7 +239,7 @@ struct TemplateExpanderTests {
                 ],
                 verifications: [
                     .fileContent(path: "VERSION", expectedContent: "Version: 1.0.0"),
-                ]
+                ],
             ),
 
             // Directory structure
@@ -254,7 +256,7 @@ struct TemplateExpanderTests {
                     .fileExists(path: "src/main.swift"),
                     .directoryExists(path: "tests"),
                     .fileExists(path: "tests/test.swift"),
-                ]
+                ],
             ),
 
             // Skip config.yml
@@ -267,7 +269,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileNotExists(path: "config.yml"),
                     .fileExists(path: "README.md"),
-                ]
+                ],
             ),
 
             // Unconditional exclusion
@@ -281,7 +283,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileExists(path: "keep.txt"),
                     .fileNotExists(path: "exclude.txt"),
-                ]
+                ],
             ),
 
             // Conditional exclusion - true
@@ -297,13 +299,13 @@ struct TemplateExpanderTests {
                 excludeRules: [
                     .conditional(Config.ConditionalExclude(
                         if: "___DEBUG___ === true",
-                        paths: ["debug.txt"]
+                        paths: ["debug.txt"],
                     )),
                 ],
                 verifications: [
                     .fileExists(path: "keep.txt"),
                     .fileNotExists(path: "debug.txt"),
-                ]
+                ],
             ),
 
             // Conditional exclusion - false
@@ -319,13 +321,13 @@ struct TemplateExpanderTests {
                 excludeRules: [
                     .conditional(Config.ConditionalExclude(
                         if: "___DEBUG___ === true",
-                        paths: ["debug.txt"]
+                        paths: ["debug.txt"],
                     )),
                 ],
                 verifications: [
                     .fileExists(path: "keep.txt"),
                     .fileExists(path: "debug.txt"),
-                ]
+                ],
             ),
 
             // Glob pattern exclusion
@@ -341,7 +343,7 @@ struct TemplateExpanderTests {
                     .fileExists(path: "keep.txt"),
                     .fileNotExists(path: "test1.tmp"),
                     .fileNotExists(path: "test2.tmp"),
-                ]
+                ],
             ),
 
             // Binary file handling
@@ -353,7 +355,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileExists(path: "image.jpg"),
                     .binaryFileContent(path: "image.jpg", expectedData: Data([0xFF, 0xD8, 0xFF, 0xE0])),
-                ]
+                ],
             ),
 
             // Combined macros and outputs
@@ -370,7 +372,7 @@ struct TemplateExpanderTests {
                 ],
                 verifications: [
                     .fileContent(path: "info.txt", expectedContent: "Project: MyApp v2.0.0"),
-                ]
+                ],
             ),
 
             // Override overwrites existing files
@@ -385,7 +387,7 @@ struct TemplateExpanderTests {
                 override: true,
                 verifications: [
                     .fileContent(path: "file.txt", expectedContent: "new content"),
-                ]
+                ],
             ),
 
             // Override overwrites nested files
@@ -400,7 +402,7 @@ struct TemplateExpanderTests {
                 override: true,
                 verifications: [
                     .fileContent(path: "src/main.swift", expectedContent: "new main"),
-                ]
+                ],
             ),
 
             // No conflict when files don't overlap
@@ -416,7 +418,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileExists(path: "new-file.txt"),
                     .fileExists(path: "existing-file.txt"),
-                ]
+                ],
             ),
 
             // Error without override when files conflict
@@ -429,7 +431,7 @@ struct TemplateExpanderTests {
                     ExistingFile(path: "file.txt", content: "old content"),
                 ],
                 override: false,
-                expectedError: .existingFilesWouldBeOverwritten(files: ["file.txt"])
+                expectedError: .existingFilesWouldBeOverwritten(files: ["file.txt"]),
             ),
 
             // Error reports only leaf paths, not parent directories
@@ -442,10 +444,11 @@ struct TemplateExpanderTests {
                     ExistingFile(path: "Sources/Module/File.swift", content: "old code"),
                 ],
                 override: false,
-                expectedError: .existingFilesWouldBeOverwritten(files: ["Sources/Module/File.swift"])
+                expectedError: .existingFilesWouldBeOverwritten(files: ["Sources/Module/File.swift"]),
             ),
 
             // MARK: - Stencil template processing
+
             .success(
                 "processes .stencil file with Stencil engine",
                 templateSetup: [
@@ -458,7 +461,7 @@ struct TemplateExpanderTests {
                     .fileExists(path: "App.swift"),
                     .fileNotExists(path: "App.swift.stencil"),
                     .fileContent(path: "App.swift", expectedContent: "struct MyApp {}"),
-                ]
+                ],
             ),
             .success(
                 "processes .stencil file with conditional",
@@ -470,7 +473,7 @@ struct TemplateExpanderTests {
                 ],
                 verifications: [
                     .fileContent(path: "main.swift", expectedContent: "@main\nstruct App {\n    static func main() async {}\n}"),
-                ]
+                ],
             ),
             .success(
                 "processes .stencil file with loop",
@@ -482,7 +485,7 @@ struct TemplateExpanderTests {
                 ],
                 verifications: [
                     .fileContent(path: "imports.swift", expectedContent: "import Foundation\nimport UIKit\n"),
-                ]
+                ],
             ),
             .success(
                 "processes .stencil file with step outputs",
@@ -494,7 +497,7 @@ struct TemplateExpanderTests {
                 ],
                 verifications: [
                     .fileContent(path: "version.txt", expectedContent: "v1.2.3"),
-                ]
+                ],
             ),
             .success(
                 "keeps native files alongside .stencil files",
@@ -508,7 +511,7 @@ struct TemplateExpanderTests {
                 verifications: [
                     .fileContent(path: "native.swift", expectedContent: "// Test"),
                     .fileContent(path: "template.swift", expectedContent: "// Test"),
-                ]
+                ],
             ),
         ]
     }

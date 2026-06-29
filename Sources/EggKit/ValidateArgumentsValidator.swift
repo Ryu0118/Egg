@@ -9,7 +9,7 @@ package struct ValidateArgumentsValidator {
 
     package init(
         templatePath: String,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templatePath = templatePath
         self.fileManager = fileManager
@@ -32,7 +32,7 @@ package struct ValidateArgumentsValidator {
 
         return .direct(
             config: config,
-            templatePath: templateURL
+            templatePath: templateURL,
         )
     }
 
@@ -43,9 +43,9 @@ package struct ValidateArgumentsValidator {
         var errorDescription: String? {
             switch self {
             case let .configNotFound(path):
-                return "config.yml not found at path: \(path)"
+                "config.yml not found at path: \(path)"
             case let .notADirectory(path):
-                return "Path is not a directory: \(path)"
+                "Path is not a directory: \(path)"
             }
         }
     }
@@ -54,10 +54,10 @@ package struct ValidateArgumentsValidator {
 package enum ValidateRunnerMode: Codable {
     case direct(
         config: Config,
-        templatePath: URL
+        templatePath: URL,
     )
     case mcp(
         config: Config,
-        templatePath: URL
+        templatePath: URL,
     )
 }

@@ -9,7 +9,7 @@ package struct EggCommand: AsyncParsableCommand {
             TemplateCommand.self,
             HatchCommand.self,
             MCPCommand.self,
-        ]
+        ],
     )
 
     package init() {}
@@ -30,7 +30,7 @@ package extension EggCommand {
                 MoveCommand.self,
                 OpenCommand.self,
                 ValidateCommand.self,
-            ]
+            ],
         )
 
         package init() {}

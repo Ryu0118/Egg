@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This structure provides all the runtime information needed to resolve built-in macros.
 /// It is designed to be injectable for testing purposes.
-struct BuiltInMacroContext: Sendable {
+struct BuiltInMacroContext {
     /// The resolved output directory (available after hatch.output resolution).
     let outputDirectory: URL?
 
@@ -25,7 +25,7 @@ struct BuiltInMacroContext: Sendable {
         workingDirectory: URL,
         homeDirectory: URL,
         currentDate: Date = Date(),
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
     ) {
         self.outputDirectory = outputDirectory
         self.workingDirectory = workingDirectory

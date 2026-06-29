@@ -6,8 +6,8 @@ import Testing
 struct HatchCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows hatch command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows hatch command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("hatch", "--help")
 
@@ -23,7 +23,7 @@ struct HatchCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func hatchTemplate(_ testCase: TestCase) async throws {
+    func `hatch template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-hatch")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -43,7 +43,7 @@ struct HatchCommandTests {
                 template,
                 homeDir: homeDir,
                 projectDir: projectDir,
-                customDir: customDir
+                customDir: customDir,
             )
         }
 
@@ -62,7 +62,7 @@ struct HatchCommandTests {
         let result = try await runner.run(
             arguments: arguments,
             workingDirectory: outputDir,
-            environment: environment
+            environment: environment,
         )
 
         switch testCase.expected {
@@ -74,7 +74,7 @@ struct HatchCommandTests {
             let output = result.stderr + result.stdout
             #expect(
                 output.contains(errorContains),
-                "Expected error containing '\(errorContains)' but got: \(output)"
+                "Expected error containing '\(errorContains)' but got: \(output)",
             )
         }
     }
@@ -83,18 +83,17 @@ struct HatchCommandTests {
         _ template: TestCase.TemplateSetup,
         homeDir: URL,
         projectDir: URL,
-        customDir: URL
+        customDir: URL,
     ) throws {
-        let templateDir: URL
-        switch template.location {
+        let templateDir: URL = switch template.location {
         case .global:
-            templateDir = homeDir.appending(path: ".eggs/\(template.name)")
+            homeDir.appending(path: ".eggs/\(template.name)")
         case .project:
-            templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+            projectDir.appending(path: ".eggs/\(template.name)")
         case .custom:
-            templateDir = customDir.appending(path: template.name)
+            customDir.appending(path: template.name)
         case .customRoot:
-            templateDir = customDir
+            customDir
         }
 
         if !fileManager.fileExists(atPath: templateDir.path(percentEncoded: false)) {
@@ -105,7 +104,7 @@ struct HatchCommandTests {
         try template.configYaml.write(
             to: templateDir.appending(path: "config.yml"),
             atomically: true,
-            encoding: .utf8
+            encoding: .utf8,
         )
 
         // Write template files
@@ -135,14 +134,14 @@ struct HatchCommandTests {
             let filePath = outputDir.appending(path: expectedFile.path)
             #expect(
                 fileManager.fileExists(atPath: filePath.path(percentEncoded: false)),
-                "Expected file '\(expectedFile.path)' should exist"
+                "Expected file '\(expectedFile.path)' should exist",
             )
 
             if let expectedContent = expectedFile.contentContains {
                 let content = try String(contentsOf: filePath, encoding: .utf8)
                 #expect(
                     content.contains(expectedContent),
-                    "File '\(expectedFile.path)' should contain '\(expectedContent)' but got: \(content)"
+                    "File '\(expectedFile.path)' should contain '\(expectedContent)' but got: \(content)",
                 )
             }
         }
@@ -151,7 +150,7 @@ struct HatchCommandTests {
             let filePath = outputDir.appending(path: unexpectedFile)
             #expect(
                 !fileManager.fileExists(atPath: filePath.path(percentEncoded: false)),
-                "Unexpected file '\(unexpectedFile)' should NOT exist"
+                "Unexpected file '\(unexpectedFile)' should NOT exist",
             )
         }
     }
@@ -167,7 +166,9 @@ struct HatchCommandTests {
         let verification: Verification?
         let useCustomSearchPath: Bool
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         init(
             description: String,
@@ -178,7 +179,7 @@ struct HatchCommandTests {
             existingFiles: [FileSetup],
             expected: Expected,
             verification: Verification?,
-            useCustomSearchPath: Bool = false
+            useCustomSearchPath: Bool = false,
         ) {
             self.description = description
             self.template = template
@@ -267,7 +268,7 @@ struct HatchCommandTests {
                 configYaml: String,
                 files: [FileSetup] = [],
                 preHatchScript: String? = nil,
-                postHatchScript: String? = nil
+                postHatchScript: String? = nil,
             ) {
                 self.name = name
                 self.location = location
@@ -321,7 +322,7 @@ struct HatchCommandTests {
             customSearchPathTemplateNotFoundWithoutFlag,
         ]
 
-        // Basic template execution without macros
+        /// Basic template execution without macros
         static let basicTemplateExecution = TestCase(
             description: "executes basic template without macros",
             template: TemplateSetup(
@@ -335,7 +336,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "README.md", content: "# Hello World\n"),
-                ]
+                ],
             ),
             templateName: "BasicTemplate",
             macros: [:],
@@ -345,11 +346,11 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("README.md", contentContains: "Hello World"),
-                ]
-            )
+                ],
+            ),
         )
 
-        // Macro substitution test
+        /// Macro substitution test
         static let macroSubstitution = TestCase(
             description: "performs macro substitution in file names and content",
             template: TemplateSetup(
@@ -373,9 +374,9 @@ struct HatchCommandTests {
                         struct ___MODULE_NAME___ {
                             let name = "___MODULE_NAME___"
                         }
-                        """
+                        """,
                     ),
-                ]
+                ],
             ),
             templateName: "MacroTemplate",
             macros: ["MODULE-NAME": ["MyModule"]],
@@ -385,11 +386,11 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("MyModule.swift", contentContains: "struct MyModule"),
-                ]
-            )
+                ],
+            ),
         )
 
-        // Template not found error
+        /// Template not found error
         static let templateNotFound = TestCase(
             description: "fails when template does not exist",
             template: nil,
@@ -398,10 +399,10 @@ struct HatchCommandTests {
             flags: .directApply,
             existingFiles: [],
             expected: .failure(errorContains: "not found"),
-            verification: nil
+            verification: nil,
         )
 
-        // Override conflicts test
+        /// Override conflicts test
         static let overrideConflicts = TestCase(
             description: "overwrites existing files with --override-conflicts",
             template: TemplateSetup(
@@ -415,7 +416,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "existing.txt", content: "new content from template"),
-                ]
+                ],
             ),
             templateName: "OverrideTemplate",
             macros: [:],
@@ -427,11 +428,11 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("existing.txt", contentContains: "new content from template"),
-                ]
-            )
+                ],
+            ),
         )
 
-        // Pre-hatch lifecycle test
+        /// Pre-hatch lifecycle test
         static let preHatchLifecycle = TestCase(
             description: "executes pre_hatch lifecycle scripts",
             template: TemplateSetup(
@@ -447,7 +448,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "main.txt", content: "main content"),
-                ]
+                ],
             ),
             templateName: "PreHatchTemplate",
             macros: [:],
@@ -458,11 +459,11 @@ struct HatchCommandTests {
                 expectedFiles: [
                     ExpectedFile("main.txt", contentContains: "main content"),
                     ExpectedFile("pre_hatch_marker.txt", contentContains: "pre-hatch executed"),
-                ]
-            )
+                ],
+            ),
         )
 
-        // Post-hatch lifecycle test
+        /// Post-hatch lifecycle test
         static let postHatchLifecycle = TestCase(
             description: "executes post_hatch lifecycle scripts",
             template: TemplateSetup(
@@ -478,7 +479,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "main.txt", content: "main content"),
-                ]
+                ],
             ),
             templateName: "PostHatchTemplate",
             macros: [:],
@@ -489,13 +490,13 @@ struct HatchCommandTests {
                 expectedFiles: [
                     ExpectedFile("main.txt", contentContains: "main content"),
                     ExpectedFile("post_hatch_marker.txt", contentContains: "post-hatch executed"),
-                ]
-            )
+                ],
+            ),
         )
 
         // MARK: - Stencil Template Tests
 
-        // Basic Stencil variable rendering
+        /// Basic Stencil variable rendering
         static let stencilBasicRendering = TestCase(
             description: "renders .stencil file with variable substitution",
             template: TemplateSetup(
@@ -521,9 +522,9 @@ struct HatchCommandTests {
                         # {{ ___PROJECT_NAME___ }}
 
                         Created by {{ ___AUTHOR___ }}.
-                        """
+                        """,
                     ),
-                ]
+                ],
             ),
             templateName: "StencilBasicTemplate",
             macros: ["AUTHOR": ["John Doe"], "PROJECT-NAME": ["MyAwesomeProject"]],
@@ -535,11 +536,11 @@ struct HatchCommandTests {
                     ExpectedFile("README.md", contentContains: "# MyAwesomeProject"),
                     ExpectedFile("README.md", contentContains: "Created by John Doe"),
                 ],
-                unexpectedFiles: ["README.md.stencil"]
-            )
+                unexpectedFiles: ["README.md.stencil"],
+            ),
         )
 
-        // Stencil conditional rendering
+        /// Stencil conditional rendering
         static let stencilConditionalRendering = TestCase(
             description: "renders .stencil file with conditional blocks",
             template: TemplateSetup(
@@ -569,9 +570,9 @@ struct HatchCommandTests {
                         let isRelease = false
                         let optimization = "-Onone"
                         {% endif %}
-                        """
+                        """,
                     ),
-                ]
+                ],
             ),
             templateName: "StencilConditionalTemplate",
             macros: ["BUILD-TYPE": ["release"]],
@@ -583,11 +584,11 @@ struct HatchCommandTests {
                     ExpectedFile("Config.swift", contentContains: "let isRelease = true"),
                     ExpectedFile("Config.swift", contentContains: "let optimization = \"-O\""),
                 ],
-                unexpectedFiles: ["Config.swift.stencil"]
-            )
+                unexpectedFiles: ["Config.swift.stencil"],
+            ),
         )
 
-        // Stencil loop rendering using choices macro (multiple values)
+        /// Stencil loop rendering using choices macro (multiple values)
         static let stencilLoopRendering = TestCase(
             description: "renders .stencil file with loop blocks",
             template: TemplateSetup(
@@ -615,9 +616,9 @@ struct HatchCommandTests {
                             "{{ p }}",
                         {% endfor %}
                         ]
-                        """
+                        """,
                     ),
-                ]
+                ],
             ),
             templateName: "StencilLoopTemplate",
             macros: ["PLATFORMS": ["iOS", "macOS"]],
@@ -629,13 +630,13 @@ struct HatchCommandTests {
                     ExpectedFile("Platforms.swift", contentContains: "\"iOS\""),
                     ExpectedFile("Platforms.swift", contentContains: "\"macOS\""),
                 ],
-                unexpectedFiles: ["Platforms.swift.stencil"]
-            )
+                unexpectedFiles: ["Platforms.swift.stencil"],
+            ),
         )
 
         // MARK: - Custom Search Paths Tests
 
-        // Template in custom search path
+        /// Template in custom search path
         static let customSearchPathTemplate = TestCase(
             description: "executes template from custom search path",
             template: TemplateSetup(
@@ -653,7 +654,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "___APP_NAME___.swift", content: "// ___APP_NAME___ from custom path\n"),
-                ]
+                ],
             ),
             templateName: "CustomPathTemplate",
             macros: ["APP-NAME": ["MyCustomApp"]],
@@ -663,9 +664,9 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("MyCustomApp.swift", contentContains: "MyCustomApp from custom path"),
-                ]
+                ],
             ),
-            useCustomSearchPath: true
+            useCustomSearchPath: true,
         )
 
         static let customSearchPathTemplateAtRoot = TestCase(
@@ -685,7 +686,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "___APP_NAME___.swift", content: "// ___APP_NAME___ from custom root path\n"),
-                ]
+                ],
             ),
             templateName: "CustomRootTemplate",
             macros: ["APP-NAME": ["RootCustomApp"]],
@@ -695,12 +696,12 @@ struct HatchCommandTests {
             verification: Verification(
                 expectedFiles: [
                     ExpectedFile("RootCustomApp.swift", contentContains: "RootCustomApp from custom root path"),
-                ]
+                ],
             ),
-            useCustomSearchPath: true
+            useCustomSearchPath: true,
         )
 
-        // Template not found when custom path not provided
+        /// Template not found when custom path not provided
         static let customSearchPathTemplateNotFoundWithoutFlag = TestCase(
             description: "fails when template only in custom path but flag not provided",
             template: TemplateSetup(
@@ -714,7 +715,7 @@ struct HatchCommandTests {
                 """,
                 files: [
                     FileSetup(path: "file.txt", content: "content"),
-                ]
+                ],
             ),
             templateName: "CustomOnlyTemplate",
             macros: [:],
@@ -722,7 +723,7 @@ struct HatchCommandTests {
             existingFiles: [],
             expected: .failure(errorContains: "not found"),
             verification: nil,
-            useCustomSearchPath: false
+            useCustomSearchPath: false,
         )
     }
 }

@@ -6,8 +6,8 @@ import Testing
 struct TemplateDeleteCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows delete command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows delete command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "delete", "--help")
 
@@ -21,7 +21,7 @@ struct TemplateDeleteCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func deleteTemplate(_ testCase: TestCase) async throws {
+    func `delete template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-delete")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -35,7 +35,7 @@ struct TemplateDeleteCommandTests {
         try setupTemplates(
             testCase.templates,
             homeDir: homeDir,
-            projectDir: projectDir
+            projectDir: projectDir,
         )
 
         let arguments = testCase.buildArguments(projectDir: projectDir)
@@ -43,7 +43,7 @@ struct TemplateDeleteCommandTests {
 
         let result = try await runner.run(
             arguments: arguments,
-            environment: environment
+            environment: environment,
         )
 
         switch testCase.expected {
@@ -52,7 +52,7 @@ struct TemplateDeleteCommandTests {
             try verifyDeletion(
                 testCase: testCase,
                 homeDir: homeDir,
-                projectDir: projectDir
+                projectDir: projectDir,
             )
         case let .failure(errorContains):
             #expect(!result.succeeded, "Expected failure but command succeeded")
@@ -64,15 +64,14 @@ struct TemplateDeleteCommandTests {
     private func setupTemplates(
         _ templates: [TestCase.TemplateSetup],
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         for template in templates {
-            let templateDir: URL
-            switch template.location {
+            let templateDir: URL = switch template.location {
             case .global:
-                templateDir = homeDir.appending(path: ".eggs/\(template.name)")
+                homeDir.appending(path: ".eggs/\(template.name)")
             case .project:
-                templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+                projectDir.appending(path: ".eggs/\(template.name)")
             }
 
             try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -89,16 +88,15 @@ struct TemplateDeleteCommandTests {
     private func verifyDeletion(
         testCase: TestCase,
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         guard let verification = testCase.verification else { return }
 
-        let templateDir: URL
-        switch verification.location {
+        let templateDir: URL = switch verification.location {
         case .global:
-            templateDir = homeDir.appending(path: ".eggs/\(verification.templateName)")
+            homeDir.appending(path: ".eggs/\(verification.templateName)")
         case .project:
-            templateDir = projectDir.appending(path: ".eggs/\(verification.templateName)")
+            projectDir.appending(path: ".eggs/\(verification.templateName)")
         }
 
         #expect(!fileManager.fileExists(atPath: templateDir.path(percentEncoded: false)),
@@ -113,7 +111,9 @@ struct TemplateDeleteCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func buildArguments(projectDir: URL) -> [String] {
             var args = ["template", "delete", templateToDelete]
@@ -155,7 +155,7 @@ struct TemplateDeleteCommandTests {
                 templateToDelete: "TestTemplate",
                 force: true,
                 expected: .success,
-                verification: Verification(templateName: "TestTemplate", location: .global)
+                verification: Verification(templateName: "TestTemplate", location: .global),
             ),
             TestCase(
                 description: "deletes project template with --force flag",
@@ -165,7 +165,7 @@ struct TemplateDeleteCommandTests {
                 templateToDelete: "ProjectTemplate",
                 force: true,
                 expected: .success,
-                verification: Verification(templateName: "ProjectTemplate", location: .project)
+                verification: Verification(templateName: "ProjectTemplate", location: .project),
             ),
 
             // Error cases
@@ -175,7 +175,7 @@ struct TemplateDeleteCommandTests {
                 templateToDelete: "NonExistentTemplate",
                 force: true,
                 expected: .failure(errorContains: "not found"),
-                verification: nil
+                verification: nil,
             ),
         ]
     }

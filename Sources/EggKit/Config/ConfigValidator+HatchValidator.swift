@@ -61,7 +61,7 @@ extension ConfigValidator {
                     errors += [
                         .excludeConditionalPathEmpty(
                             context: context,
-                            pathIndex: pathIndex
+                            pathIndex: pathIndex,
                         ),
                     ]
                 }

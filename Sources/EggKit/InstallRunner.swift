@@ -48,7 +48,7 @@ package struct InstallRunner {
         fileManager: some FileManagerProtocol = FileManager.default,
         noora: some Noorable = Noora(),
         gitCloner: some GitCloning = GitCloner(),
-        directoryCloner: some DirectoryCloning = APFSDirectoryCloner()
+        directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
     ) {
         self.mode = mode
         self.force = force
@@ -74,7 +74,7 @@ package struct InstallRunner {
         noora: some Noorable,
         gitCloner: some GitCloning,
         directoryCloner: some DirectoryCloning,
-        templateDiscoverer: some TemplateDiscovering
+        templateDiscoverer: some TemplateDiscovering,
     ) {
         self.mode = mode
         self.force = force
@@ -108,7 +108,7 @@ package struct InstallRunner {
         let urlString = noora.textPrompt(
             title: "Repository URL",
             prompt: "Enter the Git repository URL:",
-            description: "HTTPS (https://...) or SSH (git@...) URL of the repository"
+            description: "HTTPS (https://...) or SSH (git@...) URL of the repository",
         )
 
         guard let gitURL = GitURLParser().parse(urlString) else {
@@ -153,7 +153,7 @@ package struct InstallRunner {
             title: "Git Reference",
             question: "Which reference would you like to use?",
             options: options,
-            description: "Select how to specify the version"
+            description: "Select how to specify the version",
         )
 
         switch selected {
@@ -163,21 +163,21 @@ package struct InstallRunner {
             let branch = noora.textPrompt(
                 title: "Branch Name",
                 prompt: "Enter the branch name:",
-                description: "The branch to clone from"
+                description: "The branch to clone from",
             )
             return .branch(branch)
         case "Tag":
             let tag = noora.textPrompt(
                 title: "Tag Name",
                 prompt: "Enter the tag name:",
-                description: "The tag to clone from"
+                description: "The tag to clone from",
             )
             return .tag(tag)
         case "Commit SHA":
             let sha = noora.textPrompt(
                 title: "Commit SHA",
                 prompt: "Enter the commit SHA:",
-                description: "The commit to checkout"
+                description: "The commit to checkout",
             )
             return .revision(sha)
         default:
@@ -193,18 +193,18 @@ package struct InstallRunner {
             title: "Installation Location",
             question: "Where would you like to install the templates?",
             options: [globalOption, projectOption],
-            description: "Select the installation location"
+            description: "Select the installation location",
         )
     }
 
     private func promptForTemplateSelection(_ templates: [DiscoveredTemplate]) -> [DiscoveredTemplate] {
-        let templateNames = templates.map { $0.name }
+        let templateNames = templates.map(\.name)
 
         let selectedNames = noora.multipleChoicePrompt(
             title: "Select Templates",
             question: "Which templates would you like to install?",
             options: templateNames,
-            description: "Select the templates to install"
+            description: "Select the templates to install",
         )
 
         return templates.filter { selectedNames.contains($0.name) }
@@ -213,7 +213,7 @@ package struct InstallRunner {
     private func runDirectMode(
         source: TemplateSource,
         location: TemplateLocationType,
-        filter: TemplateFilter
+        filter: TemplateFilter,
     ) async throws -> InstallResult {
         let templatesDirectory: URL
         var cleanupDirectory: URL?
@@ -267,7 +267,7 @@ package struct InstallRunner {
         result = InstallResult(
             installed: result.installed,
             skipped: result.skipped + skippedByFilter,
-            failed: result.failed
+            failed: result.failed,
         )
 
         return result
@@ -275,7 +275,7 @@ package struct InstallRunner {
 
     private func installTemplates(
         _ templates: [DiscoveredTemplate],
-        to location: TemplateLocationType
+        to location: TemplateLocationType,
     ) async throws -> InstallResult {
         var installed: [String] = []
         var skipped: [SkippedTemplate] = []

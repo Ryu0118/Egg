@@ -38,7 +38,7 @@ struct LifecycleStepRunner {
         noora: some Noorable = Noora(),
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
-        builtInMacroContext: BuiltInMacroContext
+        builtInMacroContext: BuiltInMacroContext,
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
@@ -61,7 +61,7 @@ struct LifecycleStepRunner {
         _ phase: LifecyclePhase,
         steps: [Config.LifecycleStep],
         substituting macros: [ResolvedMacro],
-        merging previousOutputs: StepOutputsStorage
+        merging previousOutputs: StepOutputsStorage,
     ) async throws -> StepOutputsStorage {
         let outputs = previousOutputs
 
@@ -87,7 +87,7 @@ struct LifecycleStepRunner {
         at index: Int,
         in phase: LifecyclePhase,
         substituting macros: [ResolvedMacro],
-        storingTo outputs: StepOutputsStorage
+        storingTo outputs: StepOutputsStorage,
     ) async throws {
         let stepLabel = formatStepLabel(phase: phase, index: index, stepId: step.id)
 
@@ -106,7 +106,7 @@ struct LifecycleStepRunner {
             processRunner: processRunner,
             workingDirectory: workingDirectory,
             additionalEnvironment: additionalEnvironment,
-            executionEnvironment: executionEnvironment
+            executionEnvironment: executionEnvironment,
         )
         let lineStreamer = LineStreamer { line in
             noora.passthrough("\(line)\n", tab: 2)
@@ -132,7 +132,7 @@ struct LifecycleStepRunner {
     private func shouldExecute(
         _ step: Config.LifecycleStep,
         given macros: [ResolvedMacro],
-        and outputs: StepOutputsStorage
+        and outputs: StepOutputsStorage,
     ) async throws -> Bool {
         guard let condition = step.if else {
             return true
@@ -141,7 +141,7 @@ struct LifecycleStepRunner {
         let evaluator = ConditionEvaluator(
             macros: macros,
             outputs: outputs,
-            builtInMacroContext: builtInMacroContext
+            builtInMacroContext: builtInMacroContext,
         )
         return try await evaluator.evaluate(condition)
     }
@@ -156,7 +156,7 @@ struct LifecycleStepRunner {
     private func resolveCommand(
         from step: Config.LifecycleStep,
         substituting macros: [ResolvedMacro],
-        referencing outputs: StepOutputsStorage
+        referencing outputs: StepOutputsStorage,
     ) async throws -> String? {
         guard let runCommand = step.run else {
             return nil
@@ -165,7 +165,7 @@ struct LifecycleStepRunner {
         let resolver = VariableResolver(
             macros: macros,
             outputs: outputs,
-            builtInMacroContext: builtInMacroContext
+            builtInMacroContext: builtInMacroContext,
         )
         return try await resolver.resolve(runCommand)
     }

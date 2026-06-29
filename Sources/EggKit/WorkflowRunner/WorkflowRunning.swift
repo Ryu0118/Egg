@@ -32,7 +32,7 @@ protocol WorkflowRunning {
     func run(
         config: Config,
         macroInputs: MacroInputs,
-        templateDirectory: URL
+        templateDirectory: URL,
     ) async throws -> URL
 }
 
@@ -44,7 +44,7 @@ protocol WorkflowRunning {
 ///
 /// The workflow runner is responsible for resolving macros at the appropriate time
 /// (after staging creation for staging runners), especially for path-type macros.
-enum MacroInputs: Sendable {
+enum MacroInputs {
     /// Parsed macro definitions from CLI arguments.
     /// Path-type macros will be resolved by the workflow runner.
     case parsed([ParsedMacroDefinition])

@@ -14,13 +14,13 @@ struct CreateHandler: ToolHandler {
 
         let service = MCPService(
             workingDirectory: nil,
-            projectDirectory: projectDir
+            projectDirectory: projectDir,
         )
 
         let result = try await service.createTemplate(
             name: name,
             description: description,
-            location: location
+            location: location,
         )
 
         return try JSONEncoderHelper.encode(result)

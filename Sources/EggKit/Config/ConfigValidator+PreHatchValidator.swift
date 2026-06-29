@@ -78,7 +78,7 @@ extension ConfigValidator {
         }
 
         private func isValidStepId(_ id: String) -> Bool {
-            return id.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+            id.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
         }
     }
 }

@@ -8,8 +8,8 @@ struct EggCommandTests {
         runner = try await CLIRunner()
     }
 
-    @Test("--help flag shows help information")
-    func helpFlag() async throws {
+    @Test
+    func `--help flag shows help information`() async throws {
         let result = try await runner.run("--help")
 
         #expect(result.succeeded)
@@ -21,8 +21,8 @@ struct EggCommandTests {
         #expect(result.stdout.contains("hatch"))
     }
 
-    @Test("-h flag shows help information")
-    func shortHelpFlag() async throws {
+    @Test
+    func `-h flag shows help information`() async throws {
         let result = try await runner.run("-h")
 
         #expect(result.succeeded)
@@ -30,16 +30,16 @@ struct EggCommandTests {
         #expect(result.stdout.contains("USAGE: egg <subcommand>"))
     }
 
-    @Test("No arguments shows help information")
-    func noArguments() async throws {
+    @Test
+    func `No arguments shows help information`() async throws {
         let result = try await runner.run()
 
         #expect(result.succeeded)
         #expect(result.stdout.contains("USAGE: egg <subcommand>"))
     }
 
-    @Test("Invalid subcommand shows error")
-    func invalidSubcommand() async throws {
+    @Test
+    func `Invalid subcommand shows error`() async throws {
         let result = try await runner.run("invalidcommand")
 
         #expect(!result.succeeded)
@@ -47,8 +47,8 @@ struct EggCommandTests {
         #expect(result.stderr.contains("See 'egg --help' for more information"))
     }
 
-    @Test("template --help shows template subcommand help")
-    func templateHelp() async throws {
+    @Test
+    func `template --help shows template subcommand help`() async throws {
         let result = try await runner.run("template", "--help")
 
         #expect(result.succeeded)
@@ -64,8 +64,8 @@ struct EggCommandTests {
         #expect(result.stdout.contains("validate"))
     }
 
-    @Test("hatch --help shows hatch subcommand help")
-    func hatchHelp() async throws {
+    @Test
+    func `hatch --help shows hatch subcommand help`() async throws {
         let result = try await runner.run("hatch", "--help")
 
         #expect(result.succeeded)

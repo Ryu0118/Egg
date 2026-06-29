@@ -14,7 +14,7 @@ public struct DeleteResult: Codable, Sendable {
     public init(
         name: String,
         location: String,
-        path: String
+        path: String,
     ) {
         self.name = name
         self.location = location

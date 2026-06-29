@@ -33,7 +33,7 @@ package struct HatchRunner {
         sandboxDisabled: Bool = false,
         applyChanges: Bool = false,
         stagingRoot: URL? = nil,
-        pickerStyle: TemplatePickerStyle = .list
+        pickerStyle: TemplatePickerStyle = .list,
     ) {
         self.mode = mode
         self.workingDirectory = workingDirectory
@@ -54,7 +54,7 @@ package struct HatchRunner {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            noora: noora
+            noora: noora,
         )
     }
 
@@ -79,7 +79,7 @@ package struct HatchRunner {
             _ = try await workflowRunner.run(
                 config: selectedOption.template.config,
                 macroInputs: .interactive,
-                templateDirectory: selectedOption.template.path
+                templateDirectory: selectedOption.template.path,
             )
 
         case let .direct(template, parsedMacros):
@@ -91,7 +91,7 @@ package struct HatchRunner {
             _ = try await workflowRunner.run(
                 config: template.config,
                 macroInputs: .parsed(parsedMacros),
-                templateDirectory: template.path
+                templateDirectory: template.path,
             )
 
         case .mcp:
@@ -103,7 +103,7 @@ package struct HatchRunner {
     /// Run in MCP mode and return structured result
     package func runMcp(
         template: Template,
-        parsedMacros: [ParsedMacroDefinition]
+        parsedMacros: [ParsedMacroDefinition],
     ) async throws -> HatchResult {
         let workflowRunner = makeWorkflowRunner()
 
@@ -111,21 +111,21 @@ package struct HatchRunner {
             let outputPath = try await workflowRunner.run(
                 config: template.config,
                 macroInputs: .parsed(parsedMacros),
-                templateDirectory: template.path
+                templateDirectory: template.path,
             )
 
             return HatchResult(
                 templateName: template.config.name,
                 outputDirectory: outputPath.path(percentEncoded: false),
                 success: true,
-                message: "Template '\(template.config.name)' hatched successfully"
+                message: "Template '\(template.config.name)' hatched successfully",
             )
         } catch {
             return HatchResult(
                 templateName: template.config.name,
                 outputDirectory: workingDirectory.path(percentEncoded: false),
                 success: false,
-                message: error.localizedDescription
+                message: error.localizedDescription,
             )
         }
     }
@@ -142,14 +142,14 @@ package struct HatchRunner {
                 title: "Select Template",
                 question: "Which template would you like to use?",
                 options: options,
-                description: "Select a template to hatch."
+                description: "Select a template to hatch.",
             )
         case .text:
             let availableNames = options.map(\.template.config.name).joined(separator: ", ")
             let templateName = noora.textPrompt(
                 title: "Template Name (\(availableNames))",
                 prompt: "Enter the template name:",
-                collapseOnAnswer: true
+                collapseOnAnswer: true,
             )
             guard let selected = options.first(where: { $0.template.config.name == templateName }) else {
                 throw Error.templateNotFound(templateName)
@@ -173,7 +173,7 @@ package struct HatchRunner {
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,
                 applyChanges: applyChanges,
-                stagingRoot: stagingRoot
+                stagingRoot: stagingRoot,
             )
         } else {
             noora.warning("Running in direct mode. filesystem changes are permanent")
@@ -186,7 +186,7 @@ package struct HatchRunner {
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,
-                applyChanges: applyChanges
+                applyChanges: applyChanges,
             )
         }
     }

@@ -6,8 +6,8 @@ import Testing
 struct TemplateValidateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows validate command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows validate command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "validate", "--help")
 
@@ -18,7 +18,7 @@ struct TemplateValidateCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func validateTemplate(_ testCase: TestCase) async throws {
+    func `validate template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-validate")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -51,7 +51,9 @@ struct TemplateValidateCommandTests {
         let configContent: String?
         let expected: Expected
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Expected {
             case success
@@ -68,7 +70,7 @@ struct TemplateValidateCommandTests {
                 hatch:
                   output: .
                 """,
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "validates config with macros",
@@ -82,14 +84,14 @@ struct TemplateValidateCommandTests {
                 hatch:
                   output: .
                 """,
-                expected: .success
+                expected: .success,
             ),
 
             // Error cases
             TestCase(
                 description: "fails when config.yml is missing",
                 configContent: nil,
-                expected: .failure(errorContains: "Error")
+                expected: .failure(errorContains: "Error"),
             ),
             TestCase(
                 description: "fails when config.yml has invalid YAML syntax",
@@ -97,7 +99,7 @@ struct TemplateValidateCommandTests {
                 name: InvalidTemplate
                 description: [invalid yaml
                 """,
-                expected: .failure(errorContains: "Error")
+                expected: .failure(errorContains: "Error"),
             ),
             TestCase(
                 description: "fails when required field is missing",
@@ -106,7 +108,7 @@ struct TemplateValidateCommandTests {
                 hatch:
                   output: .
                 """,
-                expected: .failure(errorContains: "Error")
+                expected: .failure(errorContains: "Error"),
             ),
         ]
     }

@@ -26,7 +26,7 @@ struct MoveArgumentsValidatorTests {
             testCase: testCase,
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         let validator = MoveArgumentsValidator(
@@ -36,7 +36,7 @@ struct MoveArgumentsValidatorTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         switch testCase.expected {
@@ -54,14 +54,14 @@ struct MoveArgumentsValidatorTests {
         testCase: TestCase,
         projectDirectory: URL,
         homeDirectory: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         // Create source templates
         for (name, location) in testCase.existingTemplates {
             let templatePath = location.toPath(
                 templateName: name,
                 projectDirectory: projectDirectory,
-                homeDirectory: homeDirectory
+                homeDirectory: homeDirectory,
             )
             try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
 
@@ -84,7 +84,9 @@ struct MoveArgumentsValidatorTests {
         let existingTemplates: [(name: String, location: TemplateLocationType.Kind)]
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [TestCase] = [
             // Success cases
@@ -94,7 +96,7 @@ struct MoveArgumentsValidatorTests {
                 targetLocation: nil,
                 force: false,
                 existingTemplates: [],
-                expected: .success(.interactive)
+                expected: .success(.interactive),
             ),
             TestCase(
                 description: "returns selectTarget mode when templateName is provided but targetLocation is nil",
@@ -104,8 +106,8 @@ struct MoveArgumentsValidatorTests {
                 existingTemplates: [("MyTemplate", .global)],
                 expected: .success(.selectTarget(
                     name: "MyTemplate",
-                    sourceLocation: .global
-                ))
+                    sourceLocation: .global,
+                )),
             ),
             TestCase(
                 description: "returns direct mode when both templateName and targetLocation are provided",
@@ -116,8 +118,8 @@ struct MoveArgumentsValidatorTests {
                 expected: .success(.direct(
                     name: "MyTemplate",
                     sourceLocationKind: .global,
-                    targetLocationKind: .project
-                ))
+                    targetLocationKind: .project,
+                )),
             ),
             TestCase(
                 description: "returns direct mode with force when target exists and force is true",
@@ -128,8 +130,8 @@ struct MoveArgumentsValidatorTests {
                 expected: .success(.direct(
                     name: "MyTemplate",
                     sourceLocationKind: .global,
-                    targetLocationKind: .project
-                ))
+                    targetLocationKind: .project,
+                )),
             ),
             TestCase(
                 description: "correctly identifies template in project location",
@@ -140,8 +142,8 @@ struct MoveArgumentsValidatorTests {
                 expected: .success(.direct(
                     name: "ProjectTemplate",
                     sourceLocationKind: .project,
-                    targetLocationKind: .global
-                ))
+                    targetLocationKind: .global,
+                )),
             ),
             TestCase(
                 description: "correctly identifies template in global location",
@@ -152,8 +154,8 @@ struct MoveArgumentsValidatorTests {
                 expected: .success(.direct(
                     name: "GlobalTemplate",
                     sourceLocationKind: .global,
-                    targetLocationKind: .project
-                ))
+                    targetLocationKind: .project,
+                )),
             ),
 
             // Error cases
@@ -163,7 +165,7 @@ struct MoveArgumentsValidatorTests {
                 targetLocation: .project,
                 force: false,
                 existingTemplates: [],
-                expected: .failure(.templateNotFound(name: "NonExistent"))
+                expected: .failure(.templateNotFound(name: "NonExistent")),
             ),
             TestCase(
                 description: "throws sameLocation when trying to move to same location (global)",
@@ -171,7 +173,7 @@ struct MoveArgumentsValidatorTests {
                 targetLocation: .global,
                 force: false,
                 existingTemplates: [("MyTemplate", .global)],
-                expected: .failure(.sameLocation(name: "MyTemplate", location: "global"))
+                expected: .failure(.sameLocation(name: "MyTemplate", location: "global")),
             ),
             TestCase(
                 description: "throws sameLocation when trying to move to same location (project)",
@@ -179,7 +181,7 @@ struct MoveArgumentsValidatorTests {
                 targetLocation: .project,
                 force: false,
                 existingTemplates: [("MyTemplate", .project)],
-                expected: .failure(.sameLocation(name: "MyTemplate", location: "project"))
+                expected: .failure(.sameLocation(name: "MyTemplate", location: "project")),
             ),
             TestCase(
                 description: "throws targetAlreadyExists when target exists and force is false",
@@ -187,7 +189,7 @@ struct MoveArgumentsValidatorTests {
                 targetLocation: .project,
                 force: false,
                 existingTemplates: [("MyTemplate", .global), ("MyTemplate", .project)],
-                expected: .failure(.targetAlreadyExists(name: "MyTemplate", location: "project"))
+                expected: .failure(.targetAlreadyExists(name: "MyTemplate", location: "project")),
             ),
             TestCase(
                 description: "throws sameLocation when both exist and trying to move to where template is found (global takes priority)",
@@ -195,7 +197,7 @@ struct MoveArgumentsValidatorTests {
                 targetLocation: .global,
                 force: false,
                 existingTemplates: [("MyTemplate", .project), ("MyTemplate", .global)],
-                expected: .failure(.sameLocation(name: "MyTemplate", location: "global"))
+                expected: .failure(.sameLocation(name: "MyTemplate", location: "global")),
             ),
         ]
 
@@ -210,7 +212,7 @@ struct MoveArgumentsValidatorTests {
             case direct(
                 name: String,
                 sourceLocationKind: TemplateLocationType.Kind,
-                targetLocationKind: TemplateLocationType.Kind
+                targetLocationKind: TemplateLocationType.Kind,
             )
         }
     }
@@ -220,17 +222,17 @@ extension MoveRunnerMode {
     func matches(_ expected: MoveArgumentsValidatorTests.TestCase.ExpectedMode) -> Bool {
         switch (self, expected) {
         case (.interactive, .interactive):
-            return true
+            true
         case let (.selectTarget(actualName, _, actualSource),
                   .selectTarget(expectedName, expectedSource)):
-            return actualName == expectedName && actualSource.name == expectedSource.rawValue
+            actualName == expectedName && actualSource.name == expectedSource.rawValue
         case let (.direct(actualName, _, actualSource, actualTarget),
                   .direct(expectedName, expectedSource, expectedTarget)):
-            return actualName == expectedName
+            actualName == expectedName
                 && actualSource.name == expectedSource.rawValue
                 && actualTarget.name == expectedTarget.rawValue
         default:
-            return false
+            false
         }
     }
 }
@@ -239,29 +241,29 @@ extension MoveArgumentsValidator.Error: Equatable {
     public static func == (lhs: MoveArgumentsValidator.Error, rhs: MoveArgumentsValidator.Error) -> Bool {
         switch (lhs, rhs) {
         case let (.templateNotFound(lhsName), .templateNotFound(rhsName)):
-            return lhsName == rhsName
+            lhsName == rhsName
         case let (.sameLocation(lhsName, lhsLocation), .sameLocation(rhsName, rhsLocation)):
-            return lhsName == rhsName && lhsLocation == rhsLocation
+            lhsName == rhsName && lhsLocation == rhsLocation
         case let (.targetAlreadyExists(lhsName, lhsLocation), .targetAlreadyExists(rhsName, rhsLocation)):
-            return lhsName == rhsName && lhsLocation == rhsLocation
+            lhsName == rhsName && lhsLocation == rhsLocation
         default:
-            return false
+            false
         }
     }
 }
 
-// Shared helper extension to convert Kind to actual path
+/// Shared helper extension to convert Kind to actual path
 private extension TemplateLocationType.Kind {
     func toPath(
         templateName: String,
         projectDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) -> URL {
         switch self {
         case .global:
-            return homeDirectory.appending(path: ".eggs").appending(path: templateName)
+            homeDirectory.appending(path: ".eggs").appending(path: templateName)
         case .project:
-            return projectDirectory.appending(path: ".eggs").appending(path: templateName)
+            projectDirectory.appending(path: ".eggs").appending(path: templateName)
         }
     }
 }
@@ -294,7 +296,7 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
             projectDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             customPath: customPath,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         let validator = MoveArgumentsValidator(
@@ -305,7 +307,7 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: [customPath],
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         switch testCase.expected {
@@ -324,7 +326,7 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
         projectDirectory: URL,
         homeDirectory: URL,
         customPath: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws {
         // Create source templates
         for (name, location) in testCase.existingTemplates {
@@ -332,7 +334,7 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 templateName: name,
                 projectDirectory: projectDirectory,
                 homeDirectory: homeDirectory,
-                customPath: customPath
+                customPath: customPath,
             )
             try fileManager.createDirectory(at: templatePath, withIntermediateDirectories: true)
 
@@ -355,7 +357,9 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
         let existingTemplates: [(name: String, location: LocationKind)]
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum LocationKind {
             case global
@@ -366,15 +370,15 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 templateName: String,
                 projectDirectory: URL,
                 homeDirectory: URL,
-                customPath: URL
+                customPath: URL,
             ) -> URL {
                 switch self {
                 case .global:
-                    return homeDirectory.appending(path: ".eggs").appending(path: templateName)
+                    homeDirectory.appending(path: ".eggs").appending(path: templateName)
                 case .project:
-                    return projectDirectory.appending(path: ".eggs").appending(path: templateName)
+                    projectDirectory.appending(path: ".eggs").appending(path: templateName)
                 case .custom:
-                    return customPath.appending(path: templateName)
+                    customPath.appending(path: templateName)
                 }
             }
         }
@@ -389,8 +393,8 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 existingTemplates: [("CustomTemplate", .custom)],
                 expected: .success(.selectTarget(
                     name: "CustomTemplate",
-                    sourceLocation: .custom
-                ))
+                    sourceLocation: .custom,
+                )),
             ),
             TestCase(
                 description: "finds template in custom path and allows move to global",
@@ -401,8 +405,8 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 expected: .success(.direct(
                     name: "CustomTemplate",
                     sourceLocationKind: .custom,
-                    targetLocationKind: .global
-                ))
+                    targetLocationKind: .global,
+                )),
             ),
             TestCase(
                 description: "finds template in custom path and allows move to project",
@@ -413,8 +417,8 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 expected: .success(.direct(
                     name: "CustomTemplate",
                     sourceLocationKind: .custom,
-                    targetLocationKind: .project
-                ))
+                    targetLocationKind: .project,
+                )),
             ),
             TestCase(
                 description: "custom path takes priority over global when finding template",
@@ -425,8 +429,8 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 expected: .success(.direct(
                     name: "MyTemplate",
                     sourceLocationKind: .custom,
-                    targetLocationKind: .project
-                ))
+                    targetLocationKind: .project,
+                )),
             ),
             TestCase(
                 description: "custom path takes priority over project when finding template",
@@ -437,8 +441,8 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 expected: .success(.direct(
                     name: "MyTemplate",
                     sourceLocationKind: .custom,
-                    targetLocationKind: .global
-                ))
+                    targetLocationKind: .global,
+                )),
             ),
         ]
 
@@ -453,7 +457,7 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
             case direct(
                 name: String,
                 sourceLocationKind: LocationKind,
-                targetLocationKind: TemplateLocationType.Kind
+                targetLocationKind: TemplateLocationType.Kind,
             )
         }
     }
@@ -463,30 +467,30 @@ extension MoveRunnerMode {
     func matchesCustomPath(_ expected: MoveArgumentsValidatorWithCustomPathsTests.TestCase.ExpectedMode, customPath: URL) -> Bool {
         switch (self, expected) {
         case (.interactive, .interactive):
-            return true
+            true
         case let (.selectTarget(actualName, _, actualSource),
                   .selectTarget(expectedName, expectedSource)):
-            return actualName == expectedName && sourceMatchesLocation(actualSource, expectedSource, customPath: customPath)
+            actualName == expectedName && sourceMatchesLocation(actualSource, expectedSource, customPath: customPath)
         case let (.direct(actualName, _, actualSource, actualTarget),
                   .direct(expectedName, expectedSource, expectedTarget)):
-            return actualName == expectedName
+            actualName == expectedName
                 && sourceMatchesLocation(actualSource, expectedSource, customPath: customPath)
                 && actualTarget.name == expectedTarget.rawValue
         default:
-            return false
+            false
         }
     }
 
     private func sourceMatchesLocation(_ actual: TemplateLocationType, _ expected: MoveArgumentsValidatorWithCustomPathsTests.TestCase.LocationKind, customPath: URL) -> Bool {
         switch (actual, expected) {
         case (.global, .global):
-            return true
+            true
         case (.project, .project):
-            return true
+            true
         case let (.custom(url), .custom):
-            return url == customPath
+            url == customPath
         default:
-            return false
+            false
         }
     }
 }

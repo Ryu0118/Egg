@@ -15,7 +15,7 @@ struct NativeTemplateEngineTests {
         let context = TemplateContext(
             macros: testCase.macros,
             outputs: outputs,
-            builtInMacroContext: testCase.builtInMacroContext
+            builtInMacroContext: testCase.builtInMacroContext,
         )
 
         let result = try await engine.render(testCase.input, with: context)
@@ -36,18 +36,21 @@ struct NativeTemplateEngineTests {
         let builtInMacroContext: BuiltInMacroContext
         let expectedOutput: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let defaultContext = BuiltInMacroContext(
             outputDirectory: nil,
             workingDirectory: URL(filePath: "/tmp/work"),
             homeDirectory: URL(filePath: "/tmp/home"),
             currentDate: Date(timeIntervalSince1970: 0),
-            environment: [:]
+            environment: [:],
         )
 
         static let allCases: [TestCase] = [
             // MARK: - Macro substitution (___MACRO___)
+
             TestCase(
                 description: "substitutes string macro",
                 input: "Project: ___PROJECT_NAME___",
@@ -56,7 +59,7 @@ struct NativeTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "Project: MyApp"
+                expectedOutput: "Project: MyApp",
             ),
             TestCase(
                 description: "substitutes boolean macro",
@@ -66,7 +69,7 @@ struct NativeTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "Debug: true"
+                expectedOutput: "Debug: true",
             ),
             TestCase(
                 description: "substitutes array macro as comma-separated",
@@ -76,10 +79,11 @@ struct NativeTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "Platforms: iOS, macOS"
+                expectedOutput: "Platforms: iOS, macOS",
             ),
 
             // MARK: - Step outputs (${{ phase.step.outputs.key }})
+
             TestCase(
                 description: "substitutes step output reference",
                 input: "v${{ pre_hatch.setup.outputs.version }}",
@@ -88,7 +92,7 @@ struct NativeTemplateEngineTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "v1.0.0"
+                expectedOutput: "v1.0.0",
             ),
             TestCase(
                 description: "substitutes post_hatch output",
@@ -98,20 +102,22 @@ struct NativeTemplateEngineTests {
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["url": "https://example.com"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "URL: https://example.com"
+                expectedOutput: "URL: https://example.com",
             ),
 
             // MARK: - Built-in macros
+
             TestCase(
                 description: "substitutes built-in DATE macro",
                 input: "Created: ___DATE___",
                 macros: [],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "Created: " + BuiltInMacros.formatDate(Date(timeIntervalSince1970: 0), format: nil)
+                expectedOutput: "Created: " + BuiltInMacros.formatDate(Date(timeIntervalSince1970: 0), format: nil),
             ),
 
             // MARK: - Stencil syntax behavior
+
             // Note: Native engine still substitutes ___MACRO___ patterns even inside {{ }} and {% %}
             // This documents current behavior; the macros are replaced regardless of surrounding syntax
             TestCase(
@@ -122,7 +128,7 @@ struct NativeTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "Name: {{ MyApp }}"
+                expectedOutput: "Name: {{ MyApp }}",
             ),
             TestCase(
                 description: "substitutes macros inside Stencil control syntax (current behavior)",
@@ -132,7 +138,7 @@ struct NativeTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "{% if true %}debug{% endif %}"
+                expectedOutput: "{% if true %}debug{% endif %}",
             ),
             TestCase(
                 description: "does not process Stencil step output syntax",
@@ -142,7 +148,7 @@ struct NativeTemplateEngineTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectedOutput: "{{ pre_hatch.setup.outputs.version }}"
+                expectedOutput: "{{ pre_hatch.setup.outputs.version }}",
             ),
         ]
     }

@@ -18,7 +18,7 @@ package struct DetailArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templateName = templateName
         self.location = location
@@ -32,7 +32,7 @@ package struct DetailArgumentsValidator {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -48,12 +48,12 @@ package struct DetailArgumentsValidator {
                 templatePath: template.path,
                 additionalSearchPaths: additionalSearchPaths,
                 projectDirectory: projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             )
 
         return .direct(
             template: template,
-            location: templateLocation
+            location: templateLocation,
         )
     }
 

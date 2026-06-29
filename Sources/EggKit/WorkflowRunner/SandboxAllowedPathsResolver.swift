@@ -28,7 +28,7 @@ struct SandboxAllowedPathsResolver {
     func expandAllowedPaths(
         _ allowedPaths: [String]?,
         macros: [ResolvedMacro],
-        workingDirectory: URL
+        workingDirectory: URL,
     ) async throws -> [URL] {
         guard let paths = allowedPaths, !paths.isEmpty else {
             return []
@@ -39,12 +39,12 @@ struct SandboxAllowedPathsResolver {
         let outputs = StepOutputsStorage()
         let builtInContext = BuiltInMacroContext(
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         let resolver = VariableResolver(
             macros: macros,
             outputs: outputs,
-            builtInMacroContext: builtInContext
+            builtInMacroContext: builtInContext,
         )
 
         var expandedPaths: [URL] = []
@@ -78,7 +78,7 @@ struct SandboxAllowedPathsResolver {
 
         return noora.yesOrNoChoicePrompt(
             title: "Sandbox Permission",
-            question: "Allow writing to these paths?"
+            question: "Allow writing to these paths?",
         )
     }
 
@@ -96,10 +96,9 @@ struct SandboxAllowedPathsResolver {
         // Expand $HOME
         result = result.replacingOccurrences(
             of: "$HOME",
-            with: homeDirectory.path(percentEncoded: false)
+            with: homeDirectory.path(percentEncoded: false),
         )
 
         return result
     }
-
 }

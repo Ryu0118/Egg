@@ -9,7 +9,7 @@ import Subprocess
 #endif
 
 /// Checks if a directory is inside a git repository.
-struct GitRepositoryChecker: Sendable {
+struct GitRepositoryChecker {
     private let processRunner: any ProcessRunning
 
     init(processRunner: some ProcessRunning = ProcessRunner()) {
@@ -32,7 +32,7 @@ struct GitRepositoryChecker: Sendable {
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: 1024),
-            error: .bytes(limit: 1024)
+            error: .bytes(limit: 1024),
         )
 
         guard let result else { return false }

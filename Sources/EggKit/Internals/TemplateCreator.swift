@@ -12,7 +12,7 @@ struct TemplateCreator {
     init(
         skipConfig: Bool,
         templateLocating: some TemplateLocating,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.fileManager = fileManager
         self.skipConfig = skipConfig
@@ -51,7 +51,7 @@ struct TemplateCreator {
     private func createDefaultConfig(
         _ templateDir: URL,
         name: String,
-        description: String
+        description: String,
     ) async throws -> URL {
         let defaultConfigPath = templateDir.appendingPathComponent("config.yml")
         let yamlContent = """

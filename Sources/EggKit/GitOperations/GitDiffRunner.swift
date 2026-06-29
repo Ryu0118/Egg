@@ -23,7 +23,7 @@ struct GitDiffRunner {
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -42,7 +42,7 @@ struct GitDiffRunner {
     func computeChanges(
         workspaceRoot: URL,
         workingDirectory: URL,
-        targetPaths: Set<String>
+        targetPaths: Set<String>,
     ) async throws -> ChangeSummary {
         guard !targetPaths.isEmpty else {
             return .none
@@ -59,7 +59,7 @@ struct GitDiffRunner {
             workingDirectory: workingDirectory,
             workspaceRoot: workspaceRoot,
             workingTemp: workingTemp,
-            workspaceTemp: workspaceTemp
+            workspaceTemp: workspaceTemp,
         )
 
         guard hasCopiedFiles else {
@@ -82,7 +82,7 @@ struct GitDiffRunner {
         workingDirectory: URL,
         workspaceRoot: URL,
         workingTemp: URL,
-        workspaceTemp: URL
+        workspaceTemp: URL,
     ) throws -> Bool {
         try fileManager.createDirectory(at: workingTemp, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: workspaceTemp, withIntermediateDirectories: true)
@@ -105,11 +105,11 @@ struct GitDiffRunner {
 
             let copiedWorking = try fileManager.copyIfExists(
                 from: workingPath,
-                to: workingTemp.appending(path: relativePath)
+                to: workingTemp.appending(path: relativePath),
             )
             let copiedWorkspace = try fileManager.copyIfExists(
                 from: workspacePath,
-                to: workspaceTemp.appending(path: relativePath)
+                to: workspaceTemp.appending(path: relativePath),
             )
 
             if copiedWorking || copiedWorkspace {
@@ -122,7 +122,7 @@ struct GitDiffRunner {
 
     private func runGitDiff(
         workingRoot: URL,
-        workspaceRoot: URL
+        workspaceRoot: URL,
     ) async throws -> ChangeSummary {
         let arguments = [
             "diff",
@@ -141,7 +141,7 @@ struct GitDiffRunner {
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: 10 * 1024 * 1024),
-            error: .bytes(limit: 1024)
+            error: .bytes(limit: 1024),
         )
 
         switch result.terminationStatus {
@@ -162,18 +162,18 @@ struct GitDiffRunner {
         return parseNameStatusOutput(
             outputString,
             workingRoot: workingRoot,
-            workspaceRoot: workspaceRoot
+            workspaceRoot: workspaceRoot,
         )
     }
 
     private func parseNameStatusOutput(
         _ output: String,
         workingRoot: URL,
-        workspaceRoot: URL
+        workspaceRoot: URL,
     ) -> ChangeSummary {
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,
-            workspaceRoot: workspaceRoot
+            workspaceRoot: workspaceRoot,
         )
         return parser.parse(components: output.split(separator: "\0", omittingEmptySubsequences: false))
     }

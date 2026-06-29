@@ -2,7 +2,7 @@
 ///
 /// This structure holds all the data needed to render a template,
 /// including user-defined macros, step outputs, and built-in macro context.
-struct TemplateContext: Sendable {
+struct TemplateContext {
     /// User-defined macros resolved from config.yml.
     let macros: [ResolvedMacro]
 
@@ -11,14 +11,4 @@ struct TemplateContext: Sendable {
 
     /// Context for resolving built-in macros (___DATE___, ___UUID___, etc.).
     let builtInMacroContext: BuiltInMacroContext
-
-    init(
-        macros: [ResolvedMacro],
-        outputs: StepOutputsStorage,
-        builtInMacroContext: BuiltInMacroContext
-    ) {
-        self.macros = macros
-        self.outputs = outputs
-        self.builtInMacroContext = builtInMacroContext
-    }
 }

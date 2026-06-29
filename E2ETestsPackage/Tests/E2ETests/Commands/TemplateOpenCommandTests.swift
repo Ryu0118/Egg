@@ -3,8 +3,8 @@ import Testing
 
 @Suite(.buildBinary, .serialized)
 struct TemplateOpenCommandTests {
-    @Test("--help shows open command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows open command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "open", "--help")
 

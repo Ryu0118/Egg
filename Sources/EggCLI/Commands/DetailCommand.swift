@@ -22,7 +22,7 @@ package extension EggCommand.TemplateCommand {
             Direct Mode:
               Provide the template name as an argument.
               Example: egg template detail MyTemplate
-            """
+            """,
         )
 
         @Argument(help: "The name of the template to show details for (optional for interactive mode).")
@@ -48,11 +48,11 @@ package extension EggCommand.TemplateCommand {
                 let homeDirectory = resolveHomeDirectory()
                 try await DetailRunner(
                     mode: mode,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -67,14 +67,14 @@ package extension EggCommand.TemplateCommand {
                 return try await DetailArgumentsValidator(
                     templateName: templateName,
                     location: location?.toConcreteType(
-                        await resolveProjectDirectory(),
-                        workingDirectory: workingDirectory
+                        resolveProjectDirectory(),
+                        workingDirectory: workingDirectory,
                     ),
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: workingDirectory,
                     homeDirectory: homeDirectory,
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

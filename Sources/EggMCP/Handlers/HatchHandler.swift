@@ -19,7 +19,7 @@ struct HatchHandler: ToolHandler {
         let service = MCPService(
             workingDirectory: outputDir,
             projectDirectory: projectDir,
-            additionalSearchPaths: searchPaths
+            additionalSearchPaths: searchPaths,
         )
 
         let result = try await service.hatchTemplate(
@@ -28,7 +28,7 @@ struct HatchHandler: ToolHandler {
             outputDirectory: outputDir,
             useStaging: useStaging,
             applyChanges: applyChanges,
-            stagingRoot: stagingRoot
+            stagingRoot: stagingRoot,
         )
 
         return try JSONEncoderHelper.encode(result)

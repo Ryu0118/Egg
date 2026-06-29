@@ -20,9 +20,9 @@ package struct ListRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
-        self.mode = .display
+        mode = .display
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
@@ -33,7 +33,7 @@ package struct ListRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -46,7 +46,7 @@ package struct ListRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory
@@ -59,7 +59,7 @@ package struct ListRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -100,8 +100,8 @@ package struct ListRunner {
                 for: list.project,
                 in: .project(
                     projectDirectory,
-                    workingDirectory: workingDirectory
-                )
+                    workingDirectory: workingDirectory,
+                ),
             )
         }
     }
@@ -118,7 +118,7 @@ package struct ListRunner {
                     description: template.config.description,
                     version: template.config.version,
                     location: location.name,
-                    path: template.path.path(percentEncoded: false)
+                    path: template.path.path(percentEncoded: false),
                 )
             }
         } else {
@@ -131,7 +131,7 @@ package struct ListRunner {
                     description: template.config.description,
                     version: template.config.version,
                     location: "global",
-                    path: template.path.path(percentEncoded: false)
+                    path: template.path.path(percentEncoded: false),
                 ))
             }
 
@@ -142,7 +142,7 @@ package struct ListRunner {
                     description: template.config.description,
                     version: template.config.version,
                     location: "project",
-                    path: template.path.path(percentEncoded: false)
+                    path: template.path.path(percentEncoded: false),
                 ))
             }
 
@@ -153,7 +153,7 @@ package struct ListRunner {
                     description: template.config.description,
                     version: template.config.version,
                     location: "custom",
-                    path: template.path.path(percentEncoded: false)
+                    path: template.path.path(percentEncoded: false),
                 ))
             }
         }
@@ -173,14 +173,14 @@ package struct ListRunner {
                 headers: ["name"],
                 rows: list.reduce(into: [[String]]()) { partialResult, template in
                     partialResult.append([template.config.name])
-                }
+                },
             )
         } else {
             noora.table(
                 headers: ["name", "description"],
                 rows: list.reduce(into: [[String]]()) { partialResult, template in
                     partialResult.append([template.config.name, template.config.description])
-                }
+                },
             )
         }
     }

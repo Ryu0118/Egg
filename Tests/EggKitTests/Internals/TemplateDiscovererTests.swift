@@ -7,7 +7,7 @@ struct TemplateDiscovererTests {
     private let fileManager: any FileManagerProtocol = FileManager.default
 
     @Test(arguments: TestCase.allCases)
-    func discoverTemplates(_ testCase: TestCase) async throws {
+    func `discover templates`(_ testCase: TestCase) async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "template-discoverer-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -37,7 +37,9 @@ struct TemplateDiscovererTests {
         let expectedNames: [String]
         let excludedNames: [String]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func setup(in baseDir: URL, fileManager: any FileManagerProtocol) throws {
             for dir in directories {
@@ -64,7 +66,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["my-template"],
-                excludedNames: []
+                excludedNames: [],
             ),
             TestCase(
                 description: "finds multiple valid templates",
@@ -75,7 +77,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 3,
                 expectedNames: ["swift-module", "swift-package", "swiftui-view"],
-                excludedNames: []
+                excludedNames: [],
             ),
             TestCase(
                 description: "skips directory without config.yml",
@@ -85,7 +87,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["valid-template"],
-                excludedNames: ["no-config"]
+                excludedNames: ["no-config"],
             ),
             TestCase(
                 description: "skips directory with invalid YAML",
@@ -95,7 +97,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["valid-template"],
-                excludedNames: ["invalid-yaml"]
+                excludedNames: ["invalid-yaml"],
             ),
             TestCase(
                 description: "skips directory with validation error (empty output)",
@@ -105,7 +107,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["valid-template"],
-                excludedNames: ["invalid-config"]
+                excludedNames: ["invalid-config"],
             ),
             TestCase(
                 description: "skips hidden directories",
@@ -115,7 +117,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["visible-template"],
-                excludedNames: [".hidden-template"]
+                excludedNames: [".hidden-template"],
             ),
             TestCase(
                 description: "skips .git directory",
@@ -125,7 +127,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["real-template"],
-                excludedNames: [".git"]
+                excludedNames: [".git"],
             ),
             TestCase(
                 description: "skips .github directory",
@@ -135,7 +137,7 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["real-template"],
-                excludedNames: [".github"]
+                excludedNames: [".github"],
             ),
             TestCase(
                 description: "skips node_modules directory",
@@ -145,14 +147,14 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 1,
                 expectedNames: ["real-template"],
-                excludedNames: ["node_modules"]
+                excludedNames: ["node_modules"],
             ),
             TestCase(
                 description: "returns empty list for empty repository",
                 directories: [],
                 expectedCount: 0,
                 expectedNames: [],
-                excludedNames: []
+                excludedNames: [],
             ),
             TestCase(
                 description: "returns empty list when all templates are invalid",
@@ -163,11 +165,11 @@ struct TemplateDiscovererTests {
                 ],
                 expectedCount: 0,
                 expectedNames: [],
-                excludedNames: ["invalid1", "invalid2", "no-config"]
+                excludedNames: ["invalid1", "invalid2", "no-config"],
             ),
         ]
 
-        // Helper functions for config content
+        /// Helper functions for config content
         private static func validConfig(_ name: String) -> String {
             """
             name: "\(name)"

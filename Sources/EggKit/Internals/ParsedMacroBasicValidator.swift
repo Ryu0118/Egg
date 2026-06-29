@@ -38,7 +38,7 @@ struct ParsedMacroBasicValidator {
         if !errors.isEmpty {
             throw CombinedError(
                 errors: errors,
-                errorMessageModifier: { "⛔️ \($0)" }
+                errorMessageModifier: { "⛔️ \($0)" },
             )
         }
     }
@@ -84,7 +84,7 @@ struct ParsedMacroBasicValidator {
                 return .nonArrayRequiresSingleValue(
                     macro: macroName,
                     type: configMacro.type,
-                    actualCount: values.count
+                    actualCount: values.count,
                 )
             }
         }

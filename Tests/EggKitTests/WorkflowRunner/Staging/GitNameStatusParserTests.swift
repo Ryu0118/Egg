@@ -4,13 +4,13 @@ import Testing
 
 struct GitNameStatusParserTests {
     @Test(arguments: TestCase.allCases)
-    func parse(_ testCase: TestCase) throws {
+    func parse(_ testCase: TestCase) {
         let workingRoot = URL(filePath: testCase.workingRoot)
         let workspaceRoot = URL(filePath: testCase.workspaceRoot)
 
         let parser = GitNameStatusParser(
             workingRoot: workingRoot,
-            workspaceRoot: workspaceRoot
+            workspaceRoot: workspaceRoot,
         )
 
         let result = parser.parse(components: testCase.components.map { Substring($0) })
@@ -32,7 +32,9 @@ struct GitNameStatusParserTests {
         let expectedModified: [String]
         let expectedDeleted: [String]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -42,7 +44,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: [],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "parses single added file",
@@ -51,7 +53,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["newfile.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "parses single modified file",
@@ -60,7 +62,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: [],
                 expectedModified: ["existing.txt"],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "parses single deleted file",
@@ -69,7 +71,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: [],
                 expectedModified: [],
-                expectedDeleted: ["removed.txt"]
+                expectedDeleted: ["removed.txt"],
             ),
             TestCase(
                 description: "parses multiple changes of same type",
@@ -78,7 +80,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["file1.txt", "file2.txt", "file3.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "parses mixed changes",
@@ -87,7 +89,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["new.txt"],
                 expectedModified: ["changed.txt"],
-                expectedDeleted: ["gone.txt"]
+                expectedDeleted: ["gone.txt"],
             ),
             TestCase(
                 description: "parses rename as delete and add",
@@ -96,7 +98,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["new.txt"],
                 expectedModified: [],
-                expectedDeleted: ["old.txt"]
+                expectedDeleted: ["old.txt"],
             ),
             TestCase(
                 description: "parses rename with similarity score",
@@ -105,7 +107,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["renamed.txt"],
                 expectedModified: [],
-                expectedDeleted: ["original.txt"]
+                expectedDeleted: ["original.txt"],
             ),
             TestCase(
                 description: "strips working root prefix from path",
@@ -114,7 +116,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["src/file.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "strips staging root prefix from path",
@@ -123,7 +125,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: [],
                 expectedModified: ["lib/module.swift"],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "handles paths with nested directories",
@@ -132,7 +134,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["src/components/Button.swift"],
                 expectedModified: ["tests/unit/ButtonTests.swift"],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "handles unknown status by skipping",
@@ -141,7 +143,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["valid.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "handles copy status by skipping",
@@ -150,7 +152,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["new.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "sorts output paths alphabetically",
@@ -159,7 +161,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["apple.txt", "mango.txt", "zebra.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "handles empty status line gracefully",
@@ -168,7 +170,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["file.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "handles file paths with spaces",
@@ -177,7 +179,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["path with spaces/file name.txt"],
                 expectedModified: [],
-                expectedDeleted: []
+                expectedDeleted: [],
             ),
             TestCase(
                 description: "handles mixed root prefixes",
@@ -186,7 +188,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["from-work.txt"],
                 expectedModified: ["from-staging.txt"],
-                expectedDeleted: ["no-prefix.txt"]
+                expectedDeleted: ["no-prefix.txt"],
             ),
             TestCase(
                 description: "handles rename across directories",
@@ -195,7 +197,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["new/file.txt"],
                 expectedModified: [],
-                expectedDeleted: ["old/file.txt"]
+                expectedDeleted: ["old/file.txt"],
             ),
             TestCase(
                 description: "handles multiple renames",
@@ -204,7 +206,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["b.txt", "y.txt"],
                 expectedModified: [],
-                expectedDeleted: ["a.txt", "x.txt"]
+                expectedDeleted: ["a.txt", "x.txt"],
             ),
             TestCase(
                 description: "handles complex realistic scenario",
@@ -218,7 +220,7 @@ struct GitNameStatusParserTests {
                 workspaceRoot: "/staging",
                 expectedAdded: ["Sources/NewFeature.swift", "Tests/NewTest.swift"],
                 expectedModified: ["Sources/Existing.swift"],
-                expectedDeleted: ["Sources/Deprecated.swift", "Tests/OldTest.swift"]
+                expectedDeleted: ["Sources/Deprecated.swift", "Tests/OldTest.swift"],
             ),
         ]
     }

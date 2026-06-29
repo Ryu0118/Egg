@@ -20,7 +20,7 @@ struct TemplatesFinder {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         self.fileManager = fileManager
         self.projectDirectory = projectDirectory
@@ -28,7 +28,7 @@ struct TemplatesFinder {
         self.additionalSearchPaths = additionalSearchPaths
         self.noora = noora
         location = TemplateLocation(
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
     }
 
@@ -69,28 +69,28 @@ struct TemplatesFinder {
         for path in additionalSearchPaths {
             let templates = try await list(
                 for: .custom(path),
-                emitValidationErrorLog: emitValidationErrorLog
+                emitValidationErrorLog: emitValidationErrorLog,
             )
             customTemplates.append(contentsOf: templates)
         }
 
         let global = try await list(
             for: .global,
-            emitValidationErrorLog: emitValidationErrorLog
+            emitValidationErrorLog: emitValidationErrorLog,
         )
         let project = try await list(
             for: .project(
                 projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             ),
-            emitValidationErrorLog: emitValidationErrorLog
+            emitValidationErrorLog: emitValidationErrorLog,
         )
         return Templates(custom: customTemplates, global: global, project: project)
     }
 
     func list(
         for locationType: TemplateLocationType,
-        emitValidationErrorLog: Bool = true
+        emitValidationErrorLog: Bool = true,
     ) async throws -> [Template] {
         let templateDir = location.templateDir(for: locationType)
 
@@ -113,7 +113,7 @@ struct TemplatesFinder {
                     config,
                     templateDir: templateDirURL,
                     configPath: configPath,
-                    emitValidationErrorLog: emitValidationErrorLog
+                    emitValidationErrorLog: emitValidationErrorLog,
                 )
                 templates.append(template)
             } catch {
@@ -139,7 +139,7 @@ struct TemplatesFinder {
         if let entries = try? fileManager.contentsOfDirectory(
             at: locationDirectory,
             includingPropertiesForKeys: nil,
-            options: []
+            options: [],
         ) {
             for entry in entries where fileManager.isDirectory(at: entry) {
                 directories.append(entry)
@@ -163,8 +163,8 @@ struct TemplatesFinder {
             name,
             type: .project(
                 projectDirectory,
-                workingDirectory: workingDirectory
-            )
+                workingDirectory: workingDirectory,
+            ),
         )
 
         let existsInGlobal = fileManager.exists(templateInGlobal)
@@ -228,9 +228,9 @@ struct TemplatesFinder {
         let projectTemplates = try await list(
             for: .project(
                 projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             ),
-            emitValidationErrorLog: emitValidationErrorLog
+            emitValidationErrorLog: emitValidationErrorLog,
         )
 
         let globalOptions = globalTemplates.map { TemplateWithLocation(template: $0, location: .global) }
@@ -239,8 +239,8 @@ struct TemplatesFinder {
                 template: $0,
                 location: .project(
                     projectDirectory,
-                    workingDirectory: workingDirectory
-                )
+                    workingDirectory: workingDirectory,
+                ),
             )
         }
 
@@ -248,7 +248,7 @@ struct TemplatesFinder {
     }
 
     private func fetchTemplate(
-        templateDir: URL
+        templateDir: URL,
     ) async throws -> Template {
         let configPath = templateDir.appendingPathComponent("config.yml")
 
@@ -262,7 +262,7 @@ struct TemplatesFinder {
         _ config: Config,
         templateDir: URL,
         configPath: URL,
-        emitValidationErrorLog: Bool
+        emitValidationErrorLog: Bool,
     ) async -> Template {
         do {
             try await validator.validate(config)
@@ -272,7 +272,7 @@ struct TemplatesFinder {
             validationErrorLog(
                 configPath: configPath,
                 error: error,
-                emitValidationErrorLog: emitValidationErrorLog
+                emitValidationErrorLog: emitValidationErrorLog,
             )
             return Template(path: templateDir, config: config, isValid: false)
         }
@@ -281,7 +281,7 @@ struct TemplatesFinder {
     private func validationErrorLog(
         configPath: URL,
         error: any Swift.Error,
-        emitValidationErrorLog: Bool
+        emitValidationErrorLog: Bool,
     ) {
         guard emitValidationErrorLog else {
             return
@@ -291,7 +291,7 @@ struct TemplatesFinder {
             """
             \(configPath.path) is not a valid configuration.
             \(error.localizedDescription)
-            """
+            """,
         )
     }
 

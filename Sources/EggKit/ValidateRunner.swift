@@ -11,7 +11,7 @@ package struct ValidateRunner {
     package init(
         mode: ValidateRunnerMode,
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         self.mode = mode
         self.fileManager = fileManager
@@ -31,7 +31,7 @@ package struct ValidateRunner {
     /// Run in MCP mode and return structured result
     package func runMcp(
         config: Config,
-        templatePath: URL
+        templatePath: URL,
     ) async -> ValidateResult {
         do {
             try await validator.validate(config)
@@ -39,7 +39,7 @@ package struct ValidateRunner {
                 templateName: config.name,
                 templatePath: templatePath.path(percentEncoded: false),
                 isValid: true,
-                errors: nil
+                errors: nil,
             )
         } catch {
             let errors = extractValidationErrors(from: error)
@@ -47,21 +47,21 @@ package struct ValidateRunner {
                 templateName: config.name,
                 templatePath: templatePath.path(percentEncoded: false),
                 isValid: false,
-                errors: errors
+                errors: errors,
             )
         }
     }
 
     private func extractValidationErrors(from error: Swift.Error) -> [String] {
         if let combinedError = error as? CombinedError {
-            return combinedError.errors.map { $0.localizedDescription }
+            return combinedError.errors.map(\.localizedDescription)
         }
         return [error.localizedDescription]
     }
 
     private func validateConfig(
         config: Config,
-        templatePath: URL
+        templatePath: URL,
     ) async throws {
         do {
             try await validator.validate(config)

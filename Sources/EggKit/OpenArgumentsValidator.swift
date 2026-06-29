@@ -16,7 +16,7 @@ package struct OpenArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templateName = templateName
         self.homeDirectory = homeDirectory
@@ -29,7 +29,7 @@ package struct OpenArgumentsValidator {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -48,13 +48,13 @@ package struct OpenArgumentsValidator {
                 templatePath: templatePath,
                 additionalSearchPaths: additionalSearchPaths,
                 projectDirectory: projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             )
 
         return .direct(
             templateName: templateName,
             templatePath: templatePath,
-            location: templateLocation
+            location: templateLocation,
         )
     }
 
@@ -64,7 +64,7 @@ package struct OpenArgumentsValidator {
         var errorDescription: String? {
             switch self {
             case let .templateNotFound(name):
-                return "Template '\(name)' not found"
+                "Template '\(name)' not found"
             }
         }
     }

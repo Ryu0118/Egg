@@ -10,7 +10,7 @@ public enum JSONEncoderHelper {
         return encoder
     }()
 
-    public static func encode<T: Encodable>(_ value: T) throws -> String {
+    public static func encode(_ value: some Encodable) throws -> String {
         let data = try encoder.encode(value)
         return String(data: data, encoding: .utf8) ?? "{}"
     }

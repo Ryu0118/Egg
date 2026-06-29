@@ -18,7 +18,7 @@ public struct ValidateResult: Codable, Sendable {
         templateName: String,
         templatePath: String,
         isValid: Bool,
-        errors: [String]? = nil
+        errors: [String]? = nil,
     ) {
         self.templateName = templateName
         self.templatePath = templatePath

@@ -6,8 +6,8 @@ import Testing
 struct TemplateDuplicateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows duplicate command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows duplicate command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "duplicate", "--help")
 
@@ -22,7 +22,7 @@ struct TemplateDuplicateCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func duplicateTemplate(_ testCase: TestCase) async throws {
+    func `duplicate template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-duplicate")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -36,7 +36,7 @@ struct TemplateDuplicateCommandTests {
         try setupTemplates(
             testCase.templates,
             homeDir: homeDir,
-            projectDir: projectDir
+            projectDir: projectDir,
         )
 
         let arguments = testCase.buildArguments(projectDir: projectDir)
@@ -44,7 +44,7 @@ struct TemplateDuplicateCommandTests {
 
         let result = try await runner.run(
             arguments: arguments,
-            environment: environment
+            environment: environment,
         )
 
         switch testCase.expected {
@@ -53,7 +53,7 @@ struct TemplateDuplicateCommandTests {
             try verifyDuplication(
                 testCase: testCase,
                 homeDir: homeDir,
-                projectDir: projectDir
+                projectDir: projectDir,
             )
         case let .failure(errorContains):
             #expect(!result.succeeded, "Expected failure but command succeeded")
@@ -65,15 +65,14 @@ struct TemplateDuplicateCommandTests {
     private func setupTemplates(
         _ templates: [TestCase.TemplateSetup],
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         for template in templates {
-            let templateDir: URL
-            switch template.location {
+            let templateDir: URL = switch template.location {
             case .global:
-                templateDir = homeDir.appending(path: ".eggs/\(template.name)")
+                homeDir.appending(path: ".eggs/\(template.name)")
             case .project:
-                templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+                projectDir.appending(path: ".eggs/\(template.name)")
             }
 
             try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -99,28 +98,26 @@ struct TemplateDuplicateCommandTests {
     private func verifyDuplication(
         testCase: TestCase,
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         guard let verification = testCase.verification else { return }
 
         // Verify original still exists
-        let originalDir: URL
-        switch verification.originalLocation {
+        let originalDir: URL = switch verification.originalLocation {
         case .global:
-            originalDir = homeDir.appending(path: ".eggs/\(verification.originalName)")
+            homeDir.appending(path: ".eggs/\(verification.originalName)")
         case .project:
-            originalDir = projectDir.appending(path: ".eggs/\(verification.originalName)")
+            projectDir.appending(path: ".eggs/\(verification.originalName)")
         }
         #expect(fileManager.fileExists(atPath: originalDir.path(percentEncoded: false)),
                 "Original template should still exist at \(originalDir.path)")
 
         // Verify duplicate was created
-        let duplicateDir: URL
-        switch verification.duplicateLocation {
+        let duplicateDir: URL = switch verification.duplicateLocation {
         case .global:
-            duplicateDir = homeDir.appending(path: ".eggs/\(verification.duplicateName)")
+            homeDir.appending(path: ".eggs/\(verification.duplicateName)")
         case .project:
-            duplicateDir = projectDir.appending(path: ".eggs/\(verification.duplicateName)")
+            projectDir.appending(path: ".eggs/\(verification.duplicateName)")
         }
         #expect(fileManager.fileExists(atPath: duplicateDir.path(percentEncoded: false)),
                 "Duplicate template should exist at \(duplicateDir.path)")
@@ -145,7 +142,9 @@ struct TemplateDuplicateCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func buildArguments(projectDir: URL) -> [String] {
             [
@@ -194,8 +193,8 @@ struct TemplateDuplicateCommandTests {
                     originalName: "OriginalTemplate",
                     originalLocation: .global,
                     duplicateName: "DuplicatedTemplate",
-                    duplicateLocation: .global
-                )
+                    duplicateLocation: .global,
+                ),
             ),
             TestCase(
                 description: "duplicates project template",
@@ -210,8 +209,8 @@ struct TemplateDuplicateCommandTests {
                     originalName: "ProjectOriginal",
                     originalLocation: .project,
                     duplicateName: "ProjectDuplicate",
-                    duplicateLocation: .project
-                )
+                    duplicateLocation: .project,
+                ),
             ),
 
             // Error cases
@@ -222,7 +221,7 @@ struct TemplateDuplicateCommandTests {
                 newName: "NewTemplate",
                 newDescription: "New description",
                 expected: .failure(errorContains: "not found"),
-                verification: nil
+                verification: nil,
             ),
             TestCase(
                 description: "fails when target name already exists",
@@ -234,7 +233,7 @@ struct TemplateDuplicateCommandTests {
                 newName: "ExistingTemplate",
                 newDescription: "Trying to overwrite",
                 expected: .failure(errorContains: "already exists"),
-                verification: nil
+                verification: nil,
             ),
         ]
     }

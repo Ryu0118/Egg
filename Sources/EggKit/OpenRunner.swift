@@ -25,7 +25,7 @@ package struct OpenRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         self.mode = mode
         self.processRunner = processRunner
@@ -37,7 +37,7 @@ package struct OpenRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -49,7 +49,7 @@ package struct OpenRunner {
             try await openTemplateDirectory(
                 templateName: templateName,
                 templatePath: templatePath,
-                location: location
+                location: location,
             )
         }
     }
@@ -65,25 +65,25 @@ package struct OpenRunner {
             title: "Select Template to Open",
             question: "Which template would you like to open?",
             options: options,
-            description: "Select a template to open in Finder."
+            description: "Select a template to open in Finder.",
         )
 
         try await openTemplateDirectory(
             templateName: selectedOption.template.config.name,
             templatePath: selectedOption.template.path,
-            location: selectedOption.location
+            location: selectedOption.location,
         )
     }
 
     private func openTemplateDirectory(
         templateName: String,
         templatePath: URL,
-        location _: TemplateLocationType
+        location _: TemplateLocationType,
     ) async throws {
         do {
             _ = try await processRunner.run(
                 .path("/usr/bin/open"),
-                arguments: [templatePath.path]
+                arguments: [templatePath.path],
             )
 
             noora.success("Opened template '\(templateName)' at \(templatePath.path)")
@@ -91,7 +91,7 @@ package struct OpenRunner {
             throw Error.failedToOpen(
                 templateName: templateName,
                 path: templatePath,
-                underlying: error
+                underlying: error,
             )
         }
     }
@@ -116,6 +116,6 @@ package enum OpenRunnerMode: Codable {
     case direct(
         templateName: String,
         templatePath: URL,
-        location: TemplateLocationType
+        location: TemplateLocationType,
     )
 }

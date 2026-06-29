@@ -17,19 +17,19 @@ package struct DetailRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
-        self.displayer = TemplateDetailDisplayer(noora: noora)
+        displayer = TemplateDetailDisplayer(noora: noora)
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -58,7 +58,7 @@ package struct DetailRunner {
                 description: macro.description,
                 defaultValue: macro.defaultValue,
                 choices: macro.choices,
-                validation: macro.validation
+                validation: macro.validation,
             )
         }
 
@@ -73,14 +73,14 @@ package struct DetailRunner {
                 version: formatted.basicInfo.version,
                 locationName: formatted.basicInfo.locationName,
                 locationDir: formatted.basicInfo.locationDir,
-                path: formatted.basicInfo.path
+                path: formatted.basicInfo.path,
             ),
             macros: macros,
             exampleCliCommand: formatted.exampleCommand,
             exampleMcpArguments: DetailResult.ExampleMcpArguments(
                 templateName: template.config.name,
-                macros: exampleMcpMacros
-            )
+                macros: exampleMcpMacros,
+            ),
         )
     }
 
@@ -102,12 +102,12 @@ package struct DetailRunner {
             title: "Select Template",
             question: "Which template would you like to view?",
             options: options,
-            description: "Select a template to view its details."
+            description: "Select a template to view its details.",
         )
 
         displayer.display(
             template: selectedOption.template,
-            location: selectedOption.location
+            location: selectedOption.location,
         )
     }
 

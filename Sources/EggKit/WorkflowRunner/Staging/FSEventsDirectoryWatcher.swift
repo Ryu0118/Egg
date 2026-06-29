@@ -49,8 +49,8 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
             UInt32(
                 kFSEventStreamCreateFlagFileEvents |
                     kFSEventStreamCreateFlagNoDefer |
-                    kFSEventStreamCreateFlagUseCFTypes
-            )
+                    kFSEventStreamCreateFlagUseCFTypes,
+            ),
         ) else {
             cleanupStreamResources()
             throw DirectoryWatcherError.failedToStart(reason: "Failed to create FSEvents stream")
@@ -107,7 +107,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
             info: Unmanaged.passUnretained(eventBuffer).toOpaque(),
             retain: nil,
             release: nil,
-            copyDescription: nil
+            copyDescription: nil,
         )
         return context
     }
@@ -188,9 +188,9 @@ private func fsEventsCallback(
     numEvents _: Int,
     eventPaths: UnsafeMutableRawPointer,
     _: UnsafePointer<FSEventStreamEventFlags>,
-    _: UnsafePointer<FSEventStreamEventId>
+    _: UnsafePointer<FSEventStreamEventId>,
 ) {
-    guard let info = info else { return }
+    guard let info else { return }
 
     // Get the event buffer
     let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()

@@ -22,7 +22,7 @@ struct TemplateDetailDisplayer {
 
     private func displayHeader(
         detail: TemplateDetailFormatter.FormattedDetail,
-        separator: String
+        separator: String,
     ) {
         noora.passthrough("\(.muted(separator))\n", tab: 0)
         noora.passthrough("\(.accent(detail.basicInfo.name))\n", tab: 1)
@@ -43,7 +43,7 @@ struct TemplateDetailDisplayer {
 
     private func displayMacros(
         detail: TemplateDetailFormatter.FormattedDetail,
-        separator: String
+        separator: String,
     ) {
         if detail.macros.isEmpty {
             noora.passthrough("Macros: None\n", tab: 1)
@@ -63,7 +63,7 @@ struct TemplateDetailDisplayer {
 
     private func displayMacro(
         macro: TemplateDetailFormatter.FormattedMacro,
-        index: Int
+        index: Int,
     ) {
         noora.passthrough("\(index). \(.command(macro.flag))\n", tab: 1)
         noora.passthrough("Name:        \(macro.name)\n", tab: 2)
@@ -90,7 +90,7 @@ struct TemplateDetailDisplayer {
 
     private func displayExampleCommand(
         detail: TemplateDetailFormatter.FormattedDetail,
-        separator: String
+        separator: String,
     ) {
         noora.passthrough("\(.muted(separator))\n", tab: 0)
         noora.passthrough("\(.accent("Example Command"))\n", tab: 1)

@@ -51,7 +51,7 @@ struct TemplateDiscoverer: TemplateDiscovering {
         let contents = try fileManager.contentsOfDirectory(
             at: repositoryDirectory,
             includingPropertiesForKeys: [.isDirectoryKey],
-            options: []
+            options: [],
         )
 
         for itemURL in contents {
@@ -82,7 +82,7 @@ struct TemplateDiscoverer: TemplateDiscovering {
             if let template = await parseAndValidateTemplate(
                 directory: itemURL,
                 configPath: configPath,
-                name: directoryName
+                name: directoryName,
             ) {
                 templates.append(template)
             }
@@ -99,7 +99,7 @@ struct TemplateDiscoverer: TemplateDiscovering {
     private func parseAndValidateTemplate(
         directory: URL,
         configPath: URL,
-        name: String
+        name: String,
     ) async -> DiscoveredTemplate? {
         do {
             let data = try fileManager.readFile(at: configPath)
@@ -109,7 +109,7 @@ struct TemplateDiscoverer: TemplateDiscovering {
             return DiscoveredTemplate(
                 name: name,
                 sourceDirectory: directory,
-                config: config
+                config: config,
             )
         } catch {
             // Invalid template, skip silently

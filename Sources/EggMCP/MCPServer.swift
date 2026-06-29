@@ -27,7 +27,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_detail",
@@ -50,16 +50,16 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["template_name"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_hatch",
             description: """
-                Hatches (instantiates) a template with the provided macro values. Creates files and directories based on the template.
+            Hatches (instantiates) a template with the provided macro values. Creates files and directories based on the template.
 
-                IMPORTANT: Before calling this tool, ALWAYS call egg_template_detail first to get the required macros.
-                The detail response includes exampleMcpArguments showing the exact format to use for the macros parameter.
-                """,
+            IMPORTANT: Before calling this tool, ALWAYS call egg_template_detail first to get the required macros.
+            The detail response includes exampleMcpArguments showing the exact format to use for the macros parameter.
+            """,
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -70,11 +70,11 @@ public struct EggMCPServer {
                     "macros": .object([
                         "type": "object",
                         "description": """
-                            Object containing macro name-value pairs.
-                            IMPORTANT: Keys MUST use the ___UPPER_SNAKE_CASE___ format with triple underscores.
-                            Example: {"___MODULE_NAME___": "MyModule", "___INCLUDE_TESTS___": "true"}
-                            Get the exact macro names from egg_template_detail's exampleMcpArguments.
-                            """,
+                        Object containing macro name-value pairs.
+                        IMPORTANT: Keys MUST use the ___UPPER_SNAKE_CASE___ format with triple underscores.
+                        Example: {"___MODULE_NAME___": "MyModule", "___INCLUDE_TESTS___": "true"}
+                        Get the exact macro names from egg_template_detail's exampleMcpArguments.
+                        """,
                         "additionalProperties": .object(["type": "string"]),
                     ]),
                     "output_directory": .object([
@@ -104,7 +104,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["template_name"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_create",
@@ -130,7 +130,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["name", "description", "location"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_delete",
@@ -153,7 +153,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["template_name"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_duplicate",
@@ -184,7 +184,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["source_template_name", "new_name"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_move",
@@ -211,7 +211,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["template_name", "target_location"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_validate",
@@ -225,7 +225,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["template_path"]),
-            ])
+            ]),
         ),
         Tool(
             name: "egg_template_install",
@@ -261,7 +261,7 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["source", "location"]),
-            ])
+            ]),
         ),
     ]
 
@@ -274,8 +274,8 @@ public struct EggMCPServer {
             name: "egg",
             version: "1.0.0",
             capabilities: .init(
-                tools: .init(listChanged: false)
-            )
+                tools: .init(listChanged: false),
+            ),
         )
         transport = StdioTransport()
     }
@@ -294,13 +294,13 @@ public struct EggMCPServer {
             do {
                 let result = try await ToolHandlerRegistry.shared.execute(
                     toolName: params.name,
-                    arguments: params.arguments ?? [:]
+                    arguments: params.arguments ?? [:],
                 )
                 return CallTool.Result(content: [.text(result)])
             } catch {
                 return CallTool.Result(
                     content: [.text("Error: \(error.localizedDescription)")],
-                    isError: true
+                    isError: true,
                 )
             }
         }

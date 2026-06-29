@@ -17,7 +17,7 @@ let package = Package(
             dependencies: [
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
-            ]
+            ],
         ),
-    ]
+    ],
 )

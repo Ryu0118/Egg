@@ -33,7 +33,9 @@ struct ConfigValidatorMacroFieldTests {
         let config: Config
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success
@@ -42,6 +44,7 @@ struct ConfigValidatorMacroFieldTests {
 
         static let allCases: [TestCase] = [
             // MARK: - Array type
+
             TestCase(
                 description: "passes with array type",
                 config: makeConfig(
@@ -50,11 +53,11 @@ struct ConfigValidatorMacroFieldTests {
                             name: "___TAGS___",
                             description: "Tags",
                             type: .array,
-                            default: #"["swift"]"#
+                            default: #"["swift"]"#,
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with array without choices (free input)",
@@ -64,14 +67,15 @@ struct ConfigValidatorMacroFieldTests {
                             name: "___DEPENDENCIES___",
                             description: "Dependencies",
                             type: .array,
-                            default: "[]"
+                            default: "[]",
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
 
             // MARK: - choices field compatibility
+
             TestCase(
                 description: "fails with choices on string type",
                 config: makeConfig(
@@ -80,13 +84,13 @@ struct ConfigValidatorMacroFieldTests {
                             name: "___NAME___",
                             description: "Name",
                             type: .string,
-                            choices: ["a", "b", "c"]
+                            choices: ["a", "b", "c"],
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___NAME___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "fails with choices on boolean type",
@@ -97,13 +101,13 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Enabled",
                             type: .boolean,
                             default: "true",
-                            choices: ["true", "false"]
+                            choices: ["true", "false"],
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___ENABLED___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "fails with choices on path type",
@@ -113,13 +117,13 @@ struct ConfigValidatorMacroFieldTests {
                             name: "___PATH___",
                             description: "Path",
                             type: .path,
-                            choices: ["/a", "/b"]
+                            choices: ["/a", "/b"],
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___PATH___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "passes with choices on choice type",
@@ -130,11 +134,11 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Type",
                             type: .choice,
                             default: "a",
-                            choices: ["a", "b"]
+                            choices: ["a", "b"],
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with choices on choices type",
@@ -145,11 +149,11 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Types",
                             type: .choices,
                             default: #"["a"]"#,
-                            choices: ["a", "b", "c"]
+                            choices: ["a", "b", "c"],
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "fails with choices on array type",
@@ -160,16 +164,17 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Platforms",
                             type: .array,
                             default: #"["iOS"]"#,
-                            choices: ["iOS", "macOS", "watchOS"]
+                            choices: ["iOS", "macOS", "watchOS"],
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___PLATFORMS___"),
-                ])
+                ]),
             ),
 
             // MARK: - validate field compatibility
+
             TestCase(
                 description: "fails with validate on boolean type",
                 config: makeConfig(
@@ -179,13 +184,13 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Enabled",
                             type: .boolean,
                             default: "true",
-                            validate: "^(true|false)$"
+                            validate: "^(true|false)$",
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___ENABLED___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "fails with validate on choice type",
@@ -197,13 +202,13 @@ struct ConfigValidatorMacroFieldTests {
                             type: .choice,
                             default: "a",
                             validate: "^[a-z]$",
-                            choices: ["a", "b"]
+                            choices: ["a", "b"],
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___TYPE___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "passes with validate on array type",
@@ -214,11 +219,11 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Platforms",
                             type: .array,
                             default: #"["iOS"]"#,
-                            validate: ".*"
+                            validate: ".*",
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "fails with validate on path type",
@@ -228,13 +233,13 @@ struct ConfigValidatorMacroFieldTests {
                             name: "___PATH___",
                             description: "Path",
                             type: .path,
-                            validate: "^/.*$"
+                            validate: "^/.*$",
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___PATH___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "passes with validate on string type",
@@ -245,11 +250,11 @@ struct ConfigValidatorMacroFieldTests {
                             description: "Name",
                             type: .string,
                             default: "test",
-                            validate: "^[a-z]+$"
+                            validate: "^[a-z]+$",
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with validate on array type without default",
@@ -259,14 +264,15 @@ struct ConfigValidatorMacroFieldTests {
                             name: "___MODULES___",
                             description: "Modules",
                             type: .array,
-                            validate: "^[A-Z][a-zA-Z0-9]*$"
+                            validate: "^[A-Z][a-zA-Z0-9]*$",
                         ),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
 
             // MARK: - Aggregation
+
             TestCase(
                 description: "aggregates multiple field compatibility errors",
                 config: makeConfig(
@@ -277,14 +283,14 @@ struct ConfigValidatorMacroFieldTests {
                             type: .boolean,
                             default: "true",
                             validate: ".*",
-                            choices: ["true", "false"]
+                            choices: ["true", "false"],
                         ),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___BAD___"),
                     .validateOnlyValidForStringAndArrayTypes(context: "macros[0]", name: "___BAD___"),
-                ])
+                ]),
             ),
         ]
     }
@@ -292,7 +298,7 @@ struct ConfigValidatorMacroFieldTests {
     private static func makeConfig(
         name: String = "TestTemplate",
         description: String = "Test",
-        macros: [Config.Macro] = []
+        macros: [Config.Macro] = [],
     ) -> Config {
         Config(
             name: name,
@@ -300,7 +306,7 @@ struct ConfigValidatorMacroFieldTests {
             macros: macros,
             preHatch: nil,
             hatch: Config.HatchConfig(output: "output"),
-            postHatch: nil
+            postHatch: nil,
         )
     }
 }

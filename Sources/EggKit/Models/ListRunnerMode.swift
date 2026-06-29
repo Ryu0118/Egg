@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents the mode of operation for the list runner.
-package enum ListRunnerMode: Sendable {
+package enum ListRunnerMode {
     /// Display mode - shows templates in a table format using Noora
     case display
 

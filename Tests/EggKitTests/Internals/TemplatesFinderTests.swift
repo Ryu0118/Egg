@@ -7,7 +7,7 @@ struct TemplatesFinderTests {
     // MARK: - fetchTemplate Tests
 
     @Test(arguments: FetchTemplateTestCase.allCases)
-    func fetchTemplate(_ testCase: FetchTemplateTestCase) async throws {
+    func `fetch template`(_ testCase: FetchTemplateTestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-test")
 
@@ -23,12 +23,11 @@ struct TemplatesFinderTests {
 
         // Create templates
         for template in testCase.templates {
-            let templateDir: URL
-            switch template.location {
+            let templateDir: URL = switch template.location {
             case .global:
-                templateDir = homeDirectory.appending(path: ".eggs").appending(path: template.dirName)
+                homeDirectory.appending(path: ".eggs").appending(path: template.dirName)
             case .project:
-                templateDir = projectDirectory.appending(path: ".eggs").appending(path: template.dirName)
+                projectDirectory.appending(path: ".eggs").appending(path: template.dirName)
             }
 
             try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -47,7 +46,7 @@ struct TemplatesFinderTests {
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
 
         switch testCase.expected {
@@ -67,7 +66,9 @@ struct TemplatesFinderTests {
         let searchName: String
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         struct TemplateSetup {
             let dirName: String
@@ -93,7 +94,7 @@ struct TemplatesFinderTests {
                     TemplateSetup(dirName: "my-template-dir", configName: "MyTemplate", location: .global),
                 ],
                 searchName: "MyTemplate",
-                expected: .success(configName: "MyTemplate")
+                expected: .success(configName: "MyTemplate"),
             ),
             FetchTemplateTestCase(
                 description: "finds template by config.yml name in project location",
@@ -101,7 +102,7 @@ struct TemplatesFinderTests {
                     TemplateSetup(dirName: "project-template-dir", configName: "ProjectTemplate", location: .project),
                 ],
                 searchName: "ProjectTemplate",
-                expected: .success(configName: "ProjectTemplate")
+                expected: .success(configName: "ProjectTemplate"),
             ),
 
             // Search by directory name (backwards compatibility)
@@ -111,7 +112,7 @@ struct TemplatesFinderTests {
                     TemplateSetup(dirName: "my-template-dir", configName: "MyTemplate", location: .global),
                 ],
                 searchName: "my-template-dir",
-                expected: .success(configName: "MyTemplate")
+                expected: .success(configName: "MyTemplate"),
             ),
 
             // Config name takes priority
@@ -122,7 +123,7 @@ struct TemplatesFinderTests {
                     TemplateSetup(dirName: "ConfigNameTemplate", configName: "OtherTemplate", location: .global),
                 ],
                 searchName: "ConfigNameTemplate",
-                expected: .success(configName: "ConfigNameTemplate")
+                expected: .success(configName: "ConfigNameTemplate"),
             ),
 
             // Not found
@@ -132,7 +133,7 @@ struct TemplatesFinderTests {
                     TemplateSetup(dirName: "existing-template", configName: "ExistingTemplate", location: .global),
                 ],
                 searchName: "NonExistentTemplate",
-                expected: .failure
+                expected: .failure,
             ),
 
             // Same name in config and directory
@@ -142,7 +143,7 @@ struct TemplatesFinderTests {
                     TemplateSetup(dirName: "MyTemplate", configName: "MyTemplate", location: .global),
                 ],
                 searchName: "MyTemplate",
-                expected: .success(configName: "MyTemplate")
+                expected: .success(configName: "MyTemplate"),
             ),
         ]
     }
@@ -150,7 +151,7 @@ struct TemplatesFinderTests {
     // MARK: - fetchTemplate with Custom Search Paths Tests
 
     @Test(arguments: FetchTemplateWithCustomPathsTestCase.allCases)
-    func fetchTemplateWithCustomPaths(_ testCase: FetchTemplateWithCustomPathsTestCase) async throws {
+    func `fetch template with custom paths`(_ testCase: FetchTemplateWithCustomPathsTestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-custom-test")
 
@@ -170,16 +171,15 @@ struct TemplatesFinderTests {
 
         // Create templates
         for template in testCase.templates {
-            let templateDir: URL
-            switch template.location {
+            let templateDir: URL = switch template.location {
             case .global:
-                templateDir = homeDirectory.appending(path: ".eggs").appending(path: template.dirName)
+                homeDirectory.appending(path: ".eggs").appending(path: template.dirName)
             case .project:
-                templateDir = projectDirectory.appending(path: ".eggs").appending(path: template.dirName)
+                projectDirectory.appending(path: ".eggs").appending(path: template.dirName)
             case .custom1:
-                templateDir = customPath1.appending(path: template.dirName)
+                customPath1.appending(path: template.dirName)
             case .custom2:
-                templateDir = customPath2.appending(path: template.dirName)
+                customPath2.appending(path: template.dirName)
             }
 
             try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -200,7 +200,7 @@ struct TemplatesFinderTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: customSearchPaths
+            additionalSearchPaths: customSearchPaths,
         )
 
         switch testCase.expected {
@@ -221,7 +221,9 @@ struct TemplatesFinderTests {
         let useCustomPaths: Bool
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         struct TemplateSetup {
             let dirName: String
@@ -250,7 +252,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "CustomTemplate",
                 useCustomPaths: true,
-                expected: .success(configName: "CustomTemplate")
+                expected: .success(configName: "CustomTemplate"),
             ),
 
             // Custom path priority over global
@@ -262,7 +264,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "MyTemplate",
                 useCustomPaths: true,
-                expected: .success(configName: "MyTemplate")
+                expected: .success(configName: "MyTemplate"),
             ),
 
             // Custom path priority over project
@@ -274,7 +276,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "MyTemplate",
                 useCustomPaths: true,
-                expected: .success(configName: "MyTemplate")
+                expected: .success(configName: "MyTemplate"),
             ),
 
             // First custom path takes priority over second
@@ -286,7 +288,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "MyTemplate",
                 useCustomPaths: true,
-                expected: .success(configName: "FirstCustomTemplate")
+                expected: .success(configName: "FirstCustomTemplate"),
             ),
 
             // Template only in custom path (not in global/project)
@@ -298,7 +300,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "OnlyCustomTemplate",
                 useCustomPaths: true,
-                expected: .success(configName: "OnlyCustomTemplate")
+                expected: .success(configName: "OnlyCustomTemplate"),
             ),
 
             // Custom path template not found when custom paths not enabled
@@ -309,7 +311,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "CustomOnly",
                 useCustomPaths: false,
-                expected: .failure
+                expected: .failure,
             ),
 
             // Falls back to global when not in custom paths
@@ -320,7 +322,7 @@ struct TemplatesFinderTests {
                 ],
                 searchName: "GlobalTemplate",
                 useCustomPaths: true,
-                expected: .success(configName: "GlobalTemplate")
+                expected: .success(configName: "GlobalTemplate"),
             ),
         ]
     }
@@ -328,7 +330,7 @@ struct TemplatesFinderTests {
     // MARK: - listAll with Custom Search Paths Tests
 
     @Test
-    func listAllIncludesCustomPathTemplates() async throws {
+    func `list all includes custom path templates`() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-list-test")
 
@@ -365,7 +367,7 @@ struct TemplatesFinderTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: [customPath]
+            additionalSearchPaths: [customPath],
         )
 
         let templates = try await finder.listAll(emitValidationErrorLog: false)
@@ -380,7 +382,7 @@ struct TemplatesFinderTests {
     }
 
     @Test
-    func listAllIncludesTemplateWhenCustomPathIsTemplateRoot() async throws {
+    func `list all includes template when custom path is template root`() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-list-test")
 
@@ -409,7 +411,7 @@ struct TemplatesFinderTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: [customTemplateDir]
+            additionalSearchPaths: [customTemplateDir],
         )
 
         let templates = try await finder.listAll(emitValidationErrorLog: false)
@@ -424,7 +426,7 @@ struct TemplatesFinderTests {
     }
 
     @Test
-    func existsReturnsTrueForCustomPathTemplate() async throws {
+    func `exists returns true for custom path template`() throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-exists-test")
 
@@ -456,7 +458,7 @@ struct TemplatesFinderTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: [customPath]
+            additionalSearchPaths: [customPath],
         )
 
         #expect(finder.exists("CustomOnlyTemplate") == true)
@@ -464,7 +466,7 @@ struct TemplatesFinderTests {
     }
 
     @Test
-    func validTemplateDirectoryResolvesCustomRootTemplateByConfigName() throws {
+    func `valid template directory resolves custom root template by config name`() throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-valid-test")
 
@@ -493,7 +495,7 @@ struct TemplatesFinderTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: [customTemplateDir]
+            additionalSearchPaths: [customTemplateDir],
         )
 
         let resolved = try finder.validTemplateDirectory("DirectTemplate")
@@ -501,7 +503,7 @@ struct TemplatesFinderTests {
     }
 
     @Test
-    func listWithLocationsIncludesCustomLocation() async throws {
+    func `list with locations includes custom location`() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-locations-test")
 
@@ -533,7 +535,7 @@ struct TemplatesFinderTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: [customPath]
+            additionalSearchPaths: [customPath],
         )
 
         let templatesWithLocations = try await finder.listWithLocations(emitValidationErrorLog: false)
@@ -541,7 +543,7 @@ struct TemplatesFinderTests {
         #expect(templatesWithLocations.count == 1)
         let first = templatesWithLocations.first
         #expect(first?.template.config.name == "CustomTemplate")
-        if case .custom(let url) = first?.location {
+        if case let .custom(url) = first?.location {
             #expect(url == customPath)
         } else {
             Issue.record("Expected .custom location but got \(String(describing: first?.location))")

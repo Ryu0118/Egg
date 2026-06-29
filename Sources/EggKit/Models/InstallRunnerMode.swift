@@ -4,7 +4,7 @@ import Foundation
 ///
 /// - `interactive`: The user will be prompted for input through the CLI.
 /// - `direct`: All required parameters are provided via command-line arguments.
-package enum InstallRunnerMode: Sendable {
+package enum InstallRunnerMode {
     /// Interactive mode where the user will be prompted for:
     /// - Git repository URL or local path
     /// - Branch, tag, or commit (optional, for Git sources only)

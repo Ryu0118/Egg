@@ -4,7 +4,7 @@ import Testing
 
 struct URLRelativePathTests {
     @Test(arguments: RelativePathTestCase.allCases)
-    func relativePath(_ testCase: RelativePathTestCase) {
+    func `relative path`(_ testCase: RelativePathTestCase) {
         let target = URL(filePath: testCase.targetPath)
         let base = URL(filePath: testCase.basePath)
 
@@ -14,7 +14,7 @@ struct URLRelativePathTests {
     }
 
     @Test(arguments: IsUnderTestCase.allCases)
-    func isUnder(_ testCase: IsUnderTestCase) {
+    func `is under`(_ testCase: IsUnderTestCase) {
         let target = URL(filePath: testCase.targetPath)
         let base = URL(filePath: testCase.basePath)
 
@@ -24,7 +24,7 @@ struct URLRelativePathTests {
     }
 
     @Test
-    func appendingRelativePath() {
+    func `appending relative path`() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath("MyApp/Sources")
 
@@ -32,7 +32,7 @@ struct URLRelativePathTests {
     }
 
     @Test
-    func appendingRelativePathWithEmptyString() {
+    func `appending relative path with empty string`() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath("")
 
@@ -40,7 +40,7 @@ struct URLRelativePathTests {
     }
 
     @Test
-    func appendingRelativePathWithDot() {
+    func `appending relative path with dot`() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath(".")
 
@@ -49,13 +49,15 @@ struct URLRelativePathTests {
 }
 
 extension URLRelativePathTests {
-    struct RelativePathTestCase: CustomTestStringConvertible, Sendable {
+    struct RelativePathTestCase: CustomTestStringConvertible {
         let description: String
         let targetPath: String
         let basePath: String
         let expected: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [RelativePathTestCase] = [
             // Basic cases
@@ -63,19 +65,19 @@ extension URLRelativePathTests {
                 description: "returns relative path for subdirectory",
                 targetPath: "/Users/user/Projects/MyApp",
                 basePath: "/Users/user/Projects",
-                expected: "MyApp"
+                expected: "MyApp",
             ),
             RelativePathTestCase(
                 description: "returns relative path for deeply nested subdirectory",
                 targetPath: "/Users/user/Projects/MyApp/Sources/Models",
                 basePath: "/Users/user/Projects",
-                expected: "MyApp/Sources/Models"
+                expected: "MyApp/Sources/Models",
             ),
             RelativePathTestCase(
                 description: "returns dot for same path",
                 targetPath: "/Users/user/Projects",
                 basePath: "/Users/user/Projects",
-                expected: "."
+                expected: ".",
             ),
 
             // Trailing slash handling
@@ -83,25 +85,25 @@ extension URLRelativePathTests {
                 description: "handles base path with trailing slash",
                 targetPath: "/Users/user/Projects/MyApp",
                 basePath: "/Users/user/Projects/",
-                expected: "MyApp"
+                expected: "MyApp",
             ),
             RelativePathTestCase(
                 description: "handles target path with trailing slash",
                 targetPath: "/Users/user/Projects/MyApp/",
                 basePath: "/Users/user/Projects",
-                expected: "MyApp"
+                expected: "MyApp",
             ),
             RelativePathTestCase(
                 description: "handles both paths with trailing slash",
                 targetPath: "/Users/user/Projects/MyApp/",
                 basePath: "/Users/user/Projects/",
-                expected: "MyApp"
+                expected: "MyApp",
             ),
             RelativePathTestCase(
                 description: "returns dot for same path with trailing slashes",
                 targetPath: "/Users/user/Projects/",
                 basePath: "/Users/user/Projects/",
-                expected: "."
+                expected: ".",
             ),
 
             // Not under base - returns absolute path
@@ -109,19 +111,19 @@ extension URLRelativePathTests {
                 description: "returns absolute path when target is not under base",
                 targetPath: "/var/tmp/file",
                 basePath: "/Users/user/Projects",
-                expected: "/var/tmp/file"
+                expected: "/var/tmp/file",
             ),
             RelativePathTestCase(
                 description: "returns absolute path when paths are siblings",
                 targetPath: "/Users/user/Documents",
                 basePath: "/Users/user/Projects",
-                expected: "/Users/user/Documents"
+                expected: "/Users/user/Documents",
             ),
             RelativePathTestCase(
                 description: "returns absolute path when target is parent of base",
                 targetPath: "/Users/user",
                 basePath: "/Users/user/Projects",
-                expected: "/Users/user"
+                expected: "/Users/user",
             ),
 
             // Edge case: partial prefix match (not a real subdirectory)
@@ -129,7 +131,7 @@ extension URLRelativePathTests {
                 description: "returns absolute path when target has similar prefix but is not subdirectory",
                 targetPath: "/Users/user/ProjectsBackup",
                 basePath: "/Users/user/Projects",
-                expected: "/Users/user/ProjectsBackup"
+                expected: "/Users/user/ProjectsBackup",
             ),
 
             // Root paths
@@ -137,13 +139,13 @@ extension URLRelativePathTests {
                 description: "handles root as base",
                 targetPath: "/Users/user",
                 basePath: "/",
-                expected: "/Users/user"
+                expected: "/Users/user",
             ),
             RelativePathTestCase(
                 description: "returns dot for root to root",
                 targetPath: "/",
                 basePath: "/",
-                expected: "."
+                expected: ".",
             ),
 
             // Single component
@@ -151,18 +153,20 @@ extension URLRelativePathTests {
                 description: "returns single component for immediate child",
                 targetPath: "/Users/user/Projects/file.txt",
                 basePath: "/Users/user/Projects",
-                expected: "file.txt"
+                expected: "file.txt",
             ),
         ]
     }
 
-    struct IsUnderTestCase: CustomTestStringConvertible, Sendable {
+    struct IsUnderTestCase: CustomTestStringConvertible {
         let description: String
         let targetPath: String
         let basePath: String
         let expected: Bool
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [IsUnderTestCase] = [
             // Under base
@@ -170,19 +174,19 @@ extension URLRelativePathTests {
                 description: "returns true for subdirectory",
                 targetPath: "/Users/user/Projects/MyApp",
                 basePath: "/Users/user/Projects",
-                expected: true
+                expected: true,
             ),
             IsUnderTestCase(
                 description: "returns true for deeply nested subdirectory",
                 targetPath: "/Users/user/Projects/MyApp/Sources/Models",
                 basePath: "/Users/user/Projects",
-                expected: true
+                expected: true,
             ),
             IsUnderTestCase(
                 description: "returns true for same path",
                 targetPath: "/Users/user/Projects",
                 basePath: "/Users/user/Projects",
-                expected: true
+                expected: true,
             ),
 
             // Trailing slash handling
@@ -190,19 +194,19 @@ extension URLRelativePathTests {
                 description: "returns true with base trailing slash",
                 targetPath: "/Users/user/Projects/MyApp",
                 basePath: "/Users/user/Projects/",
-                expected: true
+                expected: true,
             ),
             IsUnderTestCase(
                 description: "returns true with target trailing slash",
                 targetPath: "/Users/user/Projects/MyApp/",
                 basePath: "/Users/user/Projects",
-                expected: true
+                expected: true,
             ),
             IsUnderTestCase(
                 description: "returns true for same path with trailing slashes",
                 targetPath: "/Users/user/Projects/",
                 basePath: "/Users/user/Projects/",
-                expected: true
+                expected: true,
             ),
 
             // Not under base
@@ -210,19 +214,19 @@ extension URLRelativePathTests {
                 description: "returns false for unrelated path",
                 targetPath: "/var/tmp/file",
                 basePath: "/Users/user/Projects",
-                expected: false
+                expected: false,
             ),
             IsUnderTestCase(
                 description: "returns false for sibling path",
                 targetPath: "/Users/user/Documents",
                 basePath: "/Users/user/Projects",
-                expected: false
+                expected: false,
             ),
             IsUnderTestCase(
                 description: "returns false when target is parent of base",
                 targetPath: "/Users/user",
                 basePath: "/Users/user/Projects",
-                expected: false
+                expected: false,
             ),
 
             // Critical edge case: partial prefix match
@@ -230,13 +234,13 @@ extension URLRelativePathTests {
                 description: "returns false when target has similar prefix but is not subdirectory",
                 targetPath: "/Users/user/ProjectsBackup",
                 basePath: "/Users/user/Projects",
-                expected: false
+                expected: false,
             ),
             IsUnderTestCase(
                 description: "returns false for prefix match without path separator",
                 targetPath: "/foo/barbaz",
                 basePath: "/foo/bar",
-                expected: false
+                expected: false,
             ),
 
             // Root handling
@@ -244,13 +248,13 @@ extension URLRelativePathTests {
                 description: "returns false when base is root",
                 targetPath: "/Users/user",
                 basePath: "/",
-                expected: false
+                expected: false,
             ),
             IsUnderTestCase(
                 description: "returns true for root under root",
                 targetPath: "/",
                 basePath: "/",
-                expected: true
+                expected: true,
             ),
         ]
     }

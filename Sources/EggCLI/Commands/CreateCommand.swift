@@ -21,7 +21,7 @@ package extension EggCommand.TemplateCommand {
             Direct Mode:
               Provide all required information via command-line arguments.
               Example: egg template create --name MyTemplate --description "My template" --location global
-            """
+            """,
         )
 
         @Option(name: .long, help: "Directory to create the template in.", completion: .directory)
@@ -36,7 +36,7 @@ package extension EggCommand.TemplateCommand {
         @Option(
             name: .long,
             help: "Where to store the template: 'global' or 'project' (current directory).",
-            completion: .list(["global", "project"])
+            completion: .list(["global", "project"]),
         )
         package var location: TemplateLocationType.Kind?
 
@@ -53,10 +53,10 @@ package extension EggCommand.TemplateCommand {
                 try await CreateRunner(
                     mode: mode,
                     skipConfig: skipConfig,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -74,7 +74,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
                     homeDirectory: resolveHomeDirectory(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

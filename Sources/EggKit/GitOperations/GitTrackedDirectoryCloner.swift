@@ -34,7 +34,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         processRunner: some ProcessRunning = ProcessRunner(),
         fileManager: some FileManagerProtocol = FileManager.default,
         apfsCloner: some DirectoryCloning = APFSDirectoryCloner(),
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -62,7 +62,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
             // No files to clone, just create the destination directory
             try fileManager.createDirectory(
                 at: destination,
-                withIntermediateDirectories: true
+                withIntermediateDirectories: true,
             )
             return
         }
@@ -70,7 +70,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         // Create destination directory
         try fileManager.createDirectory(
             at: destination,
-            withIntermediateDirectories: true
+            withIntermediateDirectories: true,
         )
 
         // Clone each file using APFS clonefile
@@ -88,13 +88,13 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
             // Create parent directories if needed
             let destParent = destFile.deletingLastPathComponent()
             if destParent != destination {
-                try self.fileManager.createDirectory(
+                try fileManager.createDirectory(
                     at: destParent,
-                    withIntermediateDirectories: true
+                    withIntermediateDirectories: true,
                 )
             }
 
-            try await self.apfsCloner.clone(from: sourceFile, to: destFile)
+            try await apfsCloner.clone(from: sourceFile, to: destFile)
         }
     }
 
@@ -121,7 +121,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
             platformOptions: PlatformOptions(),
             input: .none,
             output: .bytes(limit: 50 * 1024 * 1024), // 50MB limit for large repos
-            error: .bytes(limit: 1024)
+            error: .bytes(limit: 1024),
         )
 
         switch result.terminationStatus {
@@ -150,7 +150,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
 }
 
 /// Errors specific to GitTrackedDirectoryCloner.
-enum GitTrackedClonerError: Error, Sendable, LocalizedError {
+enum GitTrackedClonerError: Error, LocalizedError {
     case gitCommandFailed(exitCode: Int32)
     case gitCommandCrashed
     case notAGitRepository

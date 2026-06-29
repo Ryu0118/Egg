@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Built-in macros are automatically available without explicit definition in config.yaml.
 /// Each macro has a name pattern and a resolver that computes its value at runtime.
-struct BuiltInMacro: Sendable {
+struct BuiltInMacro {
     /// The macro name (e.g., `___DATE___`).
     let name: String
 
@@ -17,7 +17,7 @@ struct BuiltInMacro: Sendable {
     private init(
         name: String,
         acceptsArgument: Bool = false,
-        resolve: @escaping @Sendable (String, BuiltInMacroContext) -> String
+        resolve: @escaping @Sendable (String, BuiltInMacroContext) -> String,
     ) {
         self.name = name
         self.acceptsArgument = acceptsArgument
@@ -29,7 +29,7 @@ extension BuiltInMacro {
     /// Declares a simple built-in macro with a static value resolver.
     static func declare(
         _ name: String,
-        resolve: @escaping @Sendable (BuiltInMacroContext) -> String
+        resolve: @escaping @Sendable (BuiltInMacroContext) -> String,
     ) -> BuiltInMacro {
         BuiltInMacro(name: name) { _, context in
             resolve(context)
@@ -43,7 +43,7 @@ extension BuiltInMacro {
     /// - `___ENV(PATH)___` where `PATH` is the argument
     static func declareWithArgument(
         _ name: String,
-        resolve: @escaping @Sendable (String?, BuiltInMacroContext) -> String
+        resolve: @escaping @Sendable (String?, BuiltInMacroContext) -> String,
     ) -> BuiltInMacro {
         BuiltInMacro(name: name, acceptsArgument: true) { matchedString, context in
             let argument = extractArgument(from: matchedString, macroName: name)

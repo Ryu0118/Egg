@@ -14,7 +14,7 @@ struct NativeTemplateEngine: TemplateEngine {
         let resolver = VariableResolver(
             macros: context.macros,
             outputs: context.outputs,
-            builtInMacroContext: context.builtInMacroContext
+            builtInMacroContext: context.builtInMacroContext,
         )
         return try await resolver.resolve(content)
     }

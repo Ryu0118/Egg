@@ -34,11 +34,11 @@ enum DirectoryWatcherError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case let .failedToStart(reason):
-            return "Failed to start directory watcher: \(reason)"
+            "Failed to start directory watcher: \(reason)"
         case .notStarted:
-            return "Directory watcher has not been started"
+            "Directory watcher has not been started"
         case .alreadyStarted:
-            return "Directory watcher is already started"
+            "Directory watcher is already started"
         }
     }
 }

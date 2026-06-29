@@ -41,15 +41,15 @@ package struct ConfigLoader {
 }
 
 /// Errors that can occur when loading a config file.
-package enum ConfigLoaderError: Error, LocalizedError, Sendable {
+package enum ConfigLoaderError: Error, LocalizedError {
     case configNotFound(path: String)
     case decodingFailed(path: String, underlying: Error)
 
     package var errorDescription: String? {
         switch self {
-        case .configNotFound(let path):
+        case let .configNotFound(path):
             "config.yml not found at path: \(path)"
-        case .decodingFailed(let path, let underlying):
+        case let .decodingFailed(path, underlying):
             "Failed to decode config.yml at \(path): \(underlying.localizedDescription)"
         }
     }

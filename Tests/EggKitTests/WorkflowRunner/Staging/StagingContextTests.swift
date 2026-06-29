@@ -7,7 +7,7 @@ import Testing
 
 struct StagingContextTests {
     @Test(.serialized, arguments: TestCase.allCases)
-    func stagingContext(_ testCase: TestCase) async throws {
+    func `staging context`(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-test")
 
@@ -18,7 +18,7 @@ struct StagingContextTests {
         let workingDir = try setupWorkingDirectory(
             in: tempDir,
             initialFiles: testCase.initialFiles,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         let staging = try await StagingContext.create(
@@ -28,7 +28,7 @@ struct StagingContextTests {
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             processRunner: ProcessRunner(),
             requireGitRepository: false,
-            noora: NooraMock()
+            noora: NooraMock(),
         )
 
         defer {
@@ -45,7 +45,7 @@ struct StagingContextTests {
             try await assertPathValidationFails(
                 absolutePath: absolutePath,
                 expectedErrorPath: expectedErrorPath,
-                staging: staging
+                staging: staging,
             )
 
         case .pathValidationFailsOutsideWorkspace:
@@ -72,7 +72,9 @@ struct StagingContextTests {
         let initialFiles: [InitialFile]
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum SuccessCheck {
             case workspaceExists
@@ -109,7 +111,7 @@ struct StagingContextTests {
                     .fileCloned(relativePath: "file2.txt"),
                     .fileCloned(relativePath: "subdir/nested.txt"),
                     .fileContent(relativePath: "file1.txt", expectedContent: "content1"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -117,7 +119,7 @@ struct StagingContextTests {
                 initialFiles: [],
                 expectation: .success(checks: [
                     .workspaceExists,
-                ])
+                ]),
             ),
 
             TestCase(
@@ -125,7 +127,7 @@ struct StagingContextTests {
                 initialFiles: [],
                 expectation: .success(checks: [
                     .originalWorkingDirectoryStored,
-                ])
+                ]),
             ),
 
             // Path validation tests
@@ -135,7 +137,7 @@ struct StagingContextTests {
                 expectation: .success(checks: [
                     .pathValidationSucceeds(relativePath: "file.txt"),
                     .pathValidationSucceeds(relativePath: "deep/nested/path"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -143,20 +145,20 @@ struct StagingContextTests {
                 initialFiles: [],
                 expectation: .pathValidationFails(
                     absolutePath: "/etc/passwd",
-                    expectedErrorPath: "/etc/passwd"
-                )
+                    expectedErrorPath: "/etc/passwd",
+                ),
             ),
 
             TestCase(
                 description: "rejects path escaping via parent directory",
                 initialFiles: [],
-                expectation: .pathValidationFailsOutsideWorkspace
+                expectation: .pathValidationFailsOutsideWorkspace,
             ),
 
             TestCase(
                 description: "throws alreadyDiscarded when validating after discard",
                 initialFiles: [],
-                expectation: .validationFailsAfterDiscard
+                expectation: .validationFailsAfterDiscard,
             ),
 
             // Discard tests
@@ -167,7 +169,7 @@ struct StagingContextTests {
                 ],
                 expectation: .success(checks: [
                     .discardRemovesWorkspace,
-                ])
+                ]),
             ),
 
             TestCase(
@@ -175,7 +177,7 @@ struct StagingContextTests {
                 initialFiles: [],
                 expectation: .success(checks: [
                     .discardIsIdempotent,
-                ])
+                ]),
             ),
 
             TestCase(
@@ -183,29 +185,28 @@ struct StagingContextTests {
                 initialFiles: [],
                 expectation: .success(checks: [
                     .discardedState(false),
-                ])
+                ]),
             ),
 
             // computeChangeSummary and applyChanges guard tests
             TestCase(
                 description: "computeChangeSummary throws after discard",
                 initialFiles: [],
-                expectation: .computeChangeSummaryFailsAfterDiscard
+                expectation: .computeChangeSummaryFailsAfterDiscard,
             ),
 
             TestCase(
                 description: "applyChanges throws after discard",
                 initialFiles: [],
-                expectation: .applyChangesFailsAfterDiscard
+                expectation: .applyChangesFailsAfterDiscard,
             ),
-
         ]
     }
 
     private func setupWorkingDirectory(
         in tempDir: URL,
         initialFiles: [InitialFile],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) throws -> URL {
         let workingDir = tempDir.appending(path: "working")
         try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
@@ -251,7 +252,7 @@ struct StagingContextTests {
         _ check: TestCase.SuccessCheck,
         staging: StagingContext,
         workingDir: URL,
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) async throws {
         switch check {
         case .workspaceExists:
@@ -309,7 +310,7 @@ struct StagingContextTests {
     private func assertPathValidationFails(
         absolutePath: String,
         expectedErrorPath: String,
-        staging: StagingContext
+        staging: StagingContext,
     ) async throws {
         let path = URL(filePath: absolutePath)
         let error = await #expect(throws: StagingContext.Error.self) {

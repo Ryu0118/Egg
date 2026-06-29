@@ -13,16 +13,6 @@ struct VariableResolver {
     let outputs: StepOutputsStorage
     let builtInMacroContext: BuiltInMacroContext
 
-    init(
-        macros: [ResolvedMacro],
-        outputs: StepOutputsStorage,
-        builtInMacroContext: BuiltInMacroContext
-    ) {
-        self.macros = macros
-        self.outputs = outputs
-        self.builtInMacroContext = builtInMacroContext
-    }
-
     /// Resolves all variables in the given text.
     ///
     /// - Parameter text: Text containing variable references to resolve
@@ -49,7 +39,7 @@ struct VariableResolver {
             let stringValue = MacroStringConverter.toShellString(
                 macro.value,
                 workingDirectory: builtInMacroContext.workingDirectory,
-                homeDirectory: builtInMacroContext.homeDirectory
+                homeDirectory: builtInMacroContext.homeDirectory,
             )
             return result.replacingOccurrences(of: macro.name, with: stringValue)
         }
@@ -92,13 +82,13 @@ struct VariableResolver {
         from outputs: StepOutputsStorage,
         phase: String,
         stepId: String,
-        key: String
+        key: String,
     ) async throws -> String {
         guard let phaseEnum = LifecyclePhase(rawValue: phase) else {
             throw LifecycleStepError.undefinedOutputReference(
                 phase: .preHatch,
                 stepId: stepId,
-                key: key
+                key: key,
             )
         }
 
@@ -106,7 +96,7 @@ struct VariableResolver {
             throw LifecycleStepError.undefinedOutputReference(
                 phase: phaseEnum,
                 stepId: stepId,
-                key: key
+                key: key,
             )
         }
 

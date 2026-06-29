@@ -21,7 +21,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTempl
         Direct Mode:
           Provide the template name and macro values via command-line arguments.
           Example: egg hatch MyTemplate --name value --enabled true
-        """
+        """,
     )
 
     @Argument(help: "The name of the template to use (optional, will prompt if not provided).")
@@ -51,8 +51,8 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTempl
     @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
     package var templateSearchPaths: [String] = []
 
-    // Use .allUnrecognized to capture only unrecognized options/flags as macros
-    // This allows recognized flags like --no-staging to be parsed correctly
+    /// Use .allUnrecognized to capture only unrecognized options/flags as macros
+    /// This allows recognized flags like --no-staging to be parsed correctly
     @Argument(parsing: .allUnrecognized, help: "User-defined macro values format (e.g., --user-defined value).")
     package var macros: [String] = []
 
@@ -67,7 +67,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTempl
             mode: mode,
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
             homeDirectory: resolveHomeDirectory(),
-            projectDirectory: await resolveProjectDirectory(),
+            projectDirectory: resolveProjectDirectory(),
             additionalSearchPaths: resolveTemplateSearchPaths(),
             fileManager: Self.fileManager,
             useStaging: !noStaging,
@@ -75,7 +75,7 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTempl
             sandboxDisabled: noSandbox,
             applyChanges: applyChanges,
             stagingRoot: resolveStagingRoot(),
-            pickerStyle: picker
+            pickerStyle: picker,
         ).run()
     }
 
@@ -90,11 +90,11 @@ package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTempl
             return try await HatchArgumentsValidator(
                 templateName: templateName,
                 macros: macros,
-                projectDirectory: await resolveProjectDirectory(),
+                projectDirectory: resolveProjectDirectory(),
                 workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                 homeDirectory: resolveHomeDirectory(),
                 additionalSearchPaths: resolveTemplateSearchPaths(),
-                fileManager: Self.fileManager
+                fileManager: Self.fileManager,
             ).validate()
         } catch {
             throw ValidationError(error.localizedDescription)

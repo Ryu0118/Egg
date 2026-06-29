@@ -32,7 +32,7 @@ struct LifecycleWorkflowRunnerTests {
             macros: testCase.macroDefinitions.isEmpty ? nil : testCase.macroDefinitions,
             preHatch: testCase.preHatchSteps,
             hatch: testCase.hatchConfig,
-            postHatch: testCase.postHatchSteps
+            postHatch: testCase.postHatchSteps,
         )
 
         let nooraMock = NooraMock()
@@ -42,13 +42,13 @@ struct LifecycleWorkflowRunnerTests {
             workingDirectory: workingDir,
             homeDirectory: homeDir,
             noora: nooraMock,
-            sandboxDisabled: true
+            sandboxDisabled: true,
         )
 
         let outputDir = try await runner.run(
             config: config,
             macroInputs: .parsed(testCase.macros),
-            templateDirectory: templateDir
+            templateDirectory: templateDir,
         )
 
         // Verify expectations using helper
@@ -65,9 +65,11 @@ struct LifecycleWorkflowRunnerTests {
         let postHatchSteps: [Config.LifecycleStep]?
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
-        // Convenience initializer with defaults
+        /// Convenience initializer with defaults
         init(
             _ description: String,
             templateSetup: [TemplateSetup],
@@ -76,7 +78,7 @@ struct LifecycleWorkflowRunnerTests {
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig,
             postHatchSteps: [Config.LifecycleStep]? = nil,
-            expectation: Expectation
+            expectation: Expectation,
         ) {
             self.description = description
             self.templateSetup = templateSetup
@@ -88,7 +90,7 @@ struct LifecycleWorkflowRunnerTests {
             self.expectation = expectation
         }
 
-        // Convenience method for simple success cases
+        /// Convenience method for simple success cases
         static func success(
             _ description: String,
             templateSetup: [TemplateSetup],
@@ -97,7 +99,7 @@ struct LifecycleWorkflowRunnerTests {
             preHatchSteps: [Config.LifecycleStep]? = nil,
             hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
             postHatchSteps: [Config.LifecycleStep]? = nil,
-            verifications: [Verification]
+            verifications: [Verification],
         ) -> TestCase {
             TestCase(
                 description,
@@ -107,7 +109,7 @@ struct LifecycleWorkflowRunnerTests {
                 preHatchSteps: preHatchSteps,
                 hatchConfig: hatchConfig,
                 postHatchSteps: postHatchSteps,
-                expectation: .success(verifications: verifications)
+                expectation: .success(verifications: verifications),
             )
         }
 
@@ -122,7 +124,7 @@ struct LifecycleWorkflowRunnerTests {
             var verifications: [Verification] {
                 switch self {
                 case let .success(verifications):
-                    return verifications
+                    verifications
                 }
             }
         }
@@ -145,7 +147,7 @@ struct LifecycleWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "README.md"),
                     .fileContent(path: "README.md", expectedContent: "Hello World"),
-                ]
+                ],
             ),
 
             // Pre-hatch + Hatch workflow
@@ -161,7 +163,7 @@ struct LifecycleWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "VERSION"),
                     .fileContent(path: "VERSION", expectedContent: "1.0.0"),
-                ]
+                ],
             ),
 
             // Hatch + Post-hatch workflow
@@ -178,7 +180,7 @@ struct LifecycleWorkflowRunnerTests {
                     .fileExists(path: "app.swift"),
                     .fileExists(path: "formatted.txt"),
                     .fileContent(path: "formatted.txt", expectedContent: "Formatted\n"),
-                ]
+                ],
             ),
 
             // Complete workflow: Pre-hatch + Hatch + Post-hatch
@@ -205,7 +207,7 @@ struct LifecycleWorkflowRunnerTests {
                     .fileContent(path: "PROJECT", expectedContent: "MyApp v2.0.0"),
                     .fileExists(path: "done.txt"),
                     .fileContent(path: "done.txt", expectedContent: "Done\n"),
-                ]
+                ],
             ),
 
             // Post-hatch can access pre-hatch outputs
@@ -224,7 +226,7 @@ struct LifecycleWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "info.txt"),
                     .fileContent(path: "info.txt", expectedContent: "Project: TestProject\n"),
-                ]
+                ],
             ),
 
             // Hatch with exclusion rules
@@ -236,12 +238,12 @@ struct LifecycleWorkflowRunnerTests {
                 ],
                 hatchConfig: Config.HatchConfig(
                     output: ".",
-                    exclude: [.path("exclude.txt")]
+                    exclude: [.path("exclude.txt")],
                 ),
                 verifications: [
                     .fileExists(path: "keep.txt"),
                     .fileNotExists(path: "exclude.txt"),
-                ]
+                ],
             ),
 
             // Conditional exclusion in hatch
@@ -262,14 +264,14 @@ struct LifecycleWorkflowRunnerTests {
                     exclude: [
                         .conditional(Config.ConditionalExclude(
                             if: "___DEBUG___ === true",
-                            paths: ["debug.txt"]
+                            paths: ["debug.txt"],
                         )),
-                    ]
+                    ],
                 ),
                 verifications: [
                     .fileExists(path: "keep.txt"),
                     .fileNotExists(path: "debug.txt"),
-                ]
+                ],
             ),
 
             // Multiple pre-hatch steps with chaining
@@ -285,7 +287,7 @@ struct LifecycleWorkflowRunnerTests {
                 hatchConfig: Config.HatchConfig(output: "."),
                 verifications: [
                     .fileContent(path: "info.txt", expectedContent: "A,B"),
-                ]
+                ],
             ),
 
             // Multiple post-hatch steps
@@ -304,7 +306,7 @@ struct LifecycleWorkflowRunnerTests {
                     .fileExists(path: "step2.txt"),
                     .fileContent(path: "step1.txt", expectedContent: "Step 1\n"),
                     .fileContent(path: "step2.txt", expectedContent: "Step 2\n"),
-                ]
+                ],
             ),
 
             // Conditional step execution in pre-hatch
@@ -322,13 +324,13 @@ struct LifecycleWorkflowRunnerTests {
                 preHatchSteps: [
                     Config.LifecycleStep(
                         if: "___ENABLE___ === true",
-                        run: "echo enabled=yes"
+                        run: "echo enabled=yes",
                     ),
                 ],
                 hatchConfig: Config.HatchConfig(output: "."),
                 verifications: [
                     .fileExists(path: "README.md"),
-                ]
+                ],
             ),
 
             // Directory structure creation
@@ -346,7 +348,7 @@ struct LifecycleWorkflowRunnerTests {
                     .fileExists(path: "src/main.swift"),
                     .directoryExists(path: "tests"),
                     .fileExists(path: "tests/test.swift"),
-                ]
+                ],
             ),
 
             // Macro substitution in hatch.output
@@ -365,7 +367,7 @@ struct LifecycleWorkflowRunnerTests {
                 verifications: [
                     .fileExists(path: "README.md"),
                     .fileContent(path: "README.md", expectedContent: "Hello"),
-                ]
+                ],
             ),
         ]
     }

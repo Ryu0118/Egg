@@ -31,7 +31,7 @@ package extension EggCommand.TemplateCommand {
                 egg template install /path/to/templates
 
             Note: --branch, --tag, and --revision options are only valid for Git sources.
-            """
+            """,
         )
 
         @Argument(help: "Git repository URL or local directory path.")
@@ -71,10 +71,10 @@ package extension EggCommand.TemplateCommand {
                 let result = try await InstallRunner(
                     mode: mode,
                     force: force,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
 
                 // Display summary
@@ -107,7 +107,7 @@ package extension EggCommand.TemplateCommand {
                     global: global,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: resolveHomeDirectory()
+                    homeDirectory: resolveHomeDirectory(),
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

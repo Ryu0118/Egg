@@ -20,7 +20,7 @@ package extension EggCommand.TemplateCommand {
               Provide the template name as an argument.
               Example: egg template delete MyTemplate
               Use --force to skip confirmation prompt.
-            """
+            """,
         )
 
         @Argument(help: "The name of the template to delete (optional for interactive mode).")
@@ -45,11 +45,11 @@ package extension EggCommand.TemplateCommand {
                 try await DeleteRunner(
                     mode: mode,
                     force: force,
-                    projectDirectory: await resolveProjectDirectory(),
+                    projectDirectory: resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
                     homeDirectory: resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
@@ -66,7 +66,7 @@ package extension EggCommand.TemplateCommand {
                     workingDirectory: workingDirectory,
                     homeDirectory: resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                    fileManager: Self.fileManager
+                    fileManager: Self.fileManager,
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)

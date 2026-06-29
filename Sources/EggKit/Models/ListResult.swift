@@ -6,7 +6,9 @@ public struct ListResult: Codable, Sendable {
     public let templates: [TemplateInfo]
 
     /// Total count of templates
-    public var total: Int { templates.count }
+    public var total: Int {
+        templates.count
+    }
 
     public init(templates: [TemplateInfo]) {
         self.templates = templates
@@ -34,7 +36,7 @@ public struct ListResult: Codable, Sendable {
             description: String,
             version: String?,
             location: String,
-            path: String
+            path: String,
         ) {
             self.name = name
             self.description = description

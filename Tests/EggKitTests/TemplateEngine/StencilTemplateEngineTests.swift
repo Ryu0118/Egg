@@ -15,7 +15,7 @@ struct StencilTemplateEngineTests {
         let context = TemplateContext(
             macros: testCase.macros,
             outputs: outputs,
-            builtInMacroContext: testCase.builtInMacroContext
+            builtInMacroContext: testCase.builtInMacroContext,
         )
 
         switch testCase.expectation {
@@ -43,7 +43,9 @@ struct StencilTemplateEngineTests {
         let builtInMacroContext: BuiltInMacroContext
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Expectation {
             case success(String)
@@ -55,11 +57,12 @@ struct StencilTemplateEngineTests {
             workingDirectory: URL(filePath: "/tmp/work"),
             homeDirectory: URL(filePath: "/tmp/home"),
             currentDate: Date(timeIntervalSince1970: 0),
-            environment: [:]
+            environment: [:],
         )
 
         static let allCases: [TestCase] = [
             // MARK: - Basic variable output
+
             TestCase(
                 description: "renders string macro",
                 input: "Project: {{ ___PROJECT_NAME___ }}",
@@ -68,7 +71,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("Project: MyApp")
+                expectation: .success("Project: MyApp"),
             ),
             TestCase(
                 description: "renders boolean macro as value",
@@ -78,7 +81,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("Debug: true")
+                expectation: .success("Debug: true"),
             ),
             TestCase(
                 description: "renders choice macro",
@@ -88,7 +91,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("Type: release")
+                expectation: .success("Type: release"),
             ),
             TestCase(
                 description: "renders path macro as string",
@@ -98,10 +101,11 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("Output: /tmp/output")
+                expectation: .success("Output: /tmp/output"),
             ),
 
             // MARK: - Conditional blocks
+
             TestCase(
                 description: "renders if block when true",
                 input: "{% if ___USE_ASYNC___ %}async{% endif %}",
@@ -110,7 +114,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("async")
+                expectation: .success("async"),
             ),
             TestCase(
                 description: "skips if block when false",
@@ -120,7 +124,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("")
+                expectation: .success(""),
             ),
             TestCase(
                 description: "renders if-else block",
@@ -130,7 +134,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("release")
+                expectation: .success("release"),
             ),
             TestCase(
                 description: "compares choice value",
@@ -140,10 +144,11 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("App")
+                expectation: .success("App"),
             ),
 
             // MARK: - Loop blocks
+
             TestCase(
                 description: "iterates over array macro",
                 input: "{% for m in ___MODULES___ %}import {{ m }}\n{% endfor %}",
@@ -152,7 +157,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("import Foundation\nimport UIKit\n")
+                expectation: .success("import Foundation\nimport UIKit\n"),
             ),
             TestCase(
                 description: "iterates over choices macro",
@@ -162,7 +167,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success(".iOS, .macOS")
+                expectation: .success(".iOS, .macOS"),
             ),
             TestCase(
                 description: "handles empty array",
@@ -172,10 +177,11 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("[]")
+                expectation: .success("[]"),
             ),
 
             // MARK: - Step outputs
+
             TestCase(
                 description: "accesses step output with dot notation",
                 input: "v{{ pre_hatch.setup.outputs.version }}",
@@ -184,7 +190,7 @@ struct StencilTemplateEngineTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectation: .success("v1.0.0")
+                expectation: .success("v1.0.0"),
             ),
             TestCase(
                 description: "accesses post_hatch output",
@@ -194,10 +200,11 @@ struct StencilTemplateEngineTests {
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["url": "https://example.com"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectation: .success("URL: https://example.com")
+                expectation: .success("URL: https://example.com"),
             ),
 
             // MARK: - Built-in macros (resolved before Stencil, using native egg syntax)
+
             TestCase(
                 description: "resolves built-in DATE macro",
                 input: "Created: ___DATE___",
@@ -208,25 +215,26 @@ struct StencilTemplateEngineTests {
                     workingDirectory: URL(filePath: "/tmp"),
                     homeDirectory: URL(filePath: "/home"),
                     currentDate: Date(timeIntervalSince1970: 0),
-                    environment: [:]
+                    environment: [:],
                 ),
-                expectation: .success("Created: " + BuiltInMacros.formatDate(Date(timeIntervalSince1970: 0), format: nil))
+                expectation: .success("Created: " + BuiltInMacros.formatDate(Date(timeIntervalSince1970: 0), format: nil)),
             ),
 
             // MARK: - Compound usage
+
             TestCase(
                 description: "uses conditional inside loop",
                 input: """
-                    {% for m in ___MODULES___ %}{% if m == "UIKit" %}// iOS only
-                    {% endif %}import {{ m }}
-                    {% endfor %}
-                    """,
+                {% for m in ___MODULES___ %}{% if m == "UIKit" %}// iOS only
+                {% endif %}import {{ m }}
+                {% endfor %}
+                """,
                 macros: [
                     ResolvedMacro(name: "___MODULES___", description: "", value: .array(["Foundation", "UIKit"])),
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("import Foundation\n// iOS only\nimport UIKit\n")
+                expectation: .success("import Foundation\n// iOS only\nimport UIKit\n"),
             ),
             TestCase(
                 description: "combines macros and outputs",
@@ -238,10 +246,11 @@ struct StencilTemplateEngineTests {
                     TestOutput(phase: .preHatch, stepId: "version", values: ["number": "2.0.0"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectation: .success("MyApp v2.0.0")
+                expectation: .success("MyApp v2.0.0"),
             ),
 
             // MARK: - Native syntax is NOT processed (passed through as-is)
+
             TestCase(
                 description: "does not process native macro syntax",
                 input: "Name: ___PROJECT_NAME___",
@@ -250,7 +259,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .success("Name: ___PROJECT_NAME___")
+                expectation: .success("Name: ___PROJECT_NAME___"),
             ),
             // Note: Native ${{ }} syntax is partially processed - the '$' remains but inner content is resolved
             // This documents current behavior; ideally these would pass through unchanged
@@ -262,10 +271,11 @@ struct StencilTemplateEngineTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 builtInMacroContext: defaultContext,
-                expectation: .success("v$1.0.0")
+                expectation: .success("v$1.0.0"),
             ),
 
             // MARK: - Error handling
+
             TestCase(
                 description: "fails on syntax error",
                 input: "{% if ___VAR___ %}unclosed",
@@ -274,7 +284,7 @@ struct StencilTemplateEngineTests {
                 ],
                 stepOutputs: [],
                 builtInMacroContext: defaultContext,
-                expectation: .syntaxError
+                expectation: .syntaxError,
             ),
         ]
     }

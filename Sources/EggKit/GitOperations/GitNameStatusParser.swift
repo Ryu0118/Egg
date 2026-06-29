@@ -50,7 +50,7 @@ struct GitNameStatusParser {
         return ChangeSummary(
             added: added.sorted { $0 < $1 },
             modified: modified.sorted { $0 < $1 },
-            deleted: deleted.sorted { $0 < $1 }
+            deleted: deleted.sorted { $0 < $1 },
         )
     }
 

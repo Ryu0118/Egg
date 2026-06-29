@@ -8,7 +8,7 @@ struct TemplateDetailFormatterTests {
     // MARK: - generateExampleValue Tests
 
     @Test(arguments: GenerateExampleValueTestCase.allCases)
-    func generateExampleValue(_ testCase: GenerateExampleValueTestCase) {
+    func `generate example value`(_ testCase: GenerateExampleValueTestCase) {
         let result = formatter.generateExampleValue(for: testCase.macro)
         #expect(result == testCase.expected)
     }
@@ -18,7 +18,9 @@ struct TemplateDetailFormatterTests {
         let macro: Config.Macro
         let expected: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [GenerateExampleValueTestCase] = [
             // String type
@@ -28,18 +30,18 @@ struct TemplateDetailFormatterTests {
                     name: "___NAME___",
                     description: "A name",
                     type: .string,
-                    default: "DefaultValue"
+                    default: "DefaultValue",
                 ),
-                expected: "DefaultValue"
+                expected: "DefaultValue",
             ),
             GenerateExampleValueTestCase(
                 description: "string without default returns placeholder",
                 macro: Config.Macro(
                     name: "___NAME___",
                     description: "A name",
-                    type: .string
+                    type: .string,
                 ),
-                expected: "value"
+                expected: "value",
             ),
             // Boolean type
             GenerateExampleValueTestCase(
@@ -48,18 +50,18 @@ struct TemplateDetailFormatterTests {
                     name: "___ENABLED___",
                     description: "Enable feature",
                     type: .boolean,
-                    default: "false"
+                    default: "false",
                 ),
-                expected: "false"
+                expected: "false",
             ),
             GenerateExampleValueTestCase(
                 description: "boolean without default returns true",
                 macro: Config.Macro(
                     name: "___ENABLED___",
                     description: "Enable feature",
-                    type: .boolean
+                    type: .boolean,
                 ),
-                expected: "true"
+                expected: "true",
             ),
             // Choice type
             GenerateExampleValueTestCase(
@@ -68,18 +70,18 @@ struct TemplateDetailFormatterTests {
                     name: "___PLATFORM___",
                     description: "Target platform",
                     type: .choice,
-                    choices: ["iOS", "macOS", "tvOS"]
+                    choices: ["iOS", "macOS", "tvOS"],
                 ),
-                expected: "iOS"
+                expected: "iOS",
             ),
             GenerateExampleValueTestCase(
                 description: "choice without choices returns placeholder",
                 macro: Config.Macro(
                     name: "___PLATFORM___",
                     description: "Target platform",
-                    type: .choice
+                    type: .choice,
                 ),
-                expected: "option"
+                expected: "option",
             ),
             // Choices type
             GenerateExampleValueTestCase(
@@ -88,9 +90,9 @@ struct TemplateDetailFormatterTests {
                     name: "___PLATFORMS___",
                     description: "Target platforms",
                     type: .choices,
-                    choices: ["iOS", "macOS", "tvOS"]
+                    choices: ["iOS", "macOS", "tvOS"],
                 ),
-                expected: "iOS macOS"
+                expected: "iOS macOS",
             ),
             GenerateExampleValueTestCase(
                 description: "choices with single choice returns it",
@@ -98,18 +100,18 @@ struct TemplateDetailFormatterTests {
                     name: "___PLATFORMS___",
                     description: "Target platforms",
                     type: .choices,
-                    choices: ["iOS"]
+                    choices: ["iOS"],
                 ),
-                expected: "iOS"
+                expected: "iOS",
             ),
             GenerateExampleValueTestCase(
                 description: "choices without choices returns placeholder",
                 macro: Config.Macro(
                     name: "___PLATFORMS___",
                     description: "Target platforms",
-                    type: .choices
+                    type: .choices,
                 ),
-                expected: "option1 option2"
+                expected: "option1 option2",
             ),
             GenerateExampleValueTestCase(
                 description: "choices with JSON array default returns space-separated",
@@ -117,9 +119,9 @@ struct TemplateDetailFormatterTests {
                     name: "___PLATFORMS___",
                     description: "Target platforms",
                     type: .choices,
-                    default: "[\"iOS\",\"macOS\"]"
+                    default: "[\"iOS\",\"macOS\"]",
                 ),
-                expected: "iOS macOS"
+                expected: "iOS macOS",
             ),
             // Array type
             GenerateExampleValueTestCase(
@@ -128,9 +130,9 @@ struct TemplateDetailFormatterTests {
                     name: "___PLATFORMS___",
                     description: "Target platforms",
                     type: .array,
-                    default: "[\"iOS18\",\"iPadOS18\",\"macOS15\"]"
+                    default: "[\"iOS18\",\"iPadOS18\",\"macOS15\"]",
                 ),
-                expected: "iOS18 iPadOS18 macOS15"
+                expected: "iOS18 iPadOS18 macOS15",
             ),
             GenerateExampleValueTestCase(
                 description: "array with space-separated default returns as-is",
@@ -138,18 +140,18 @@ struct TemplateDetailFormatterTests {
                     name: "___MODULES___",
                     description: "Module names",
                     type: .array,
-                    default: "Core UI Network"
+                    default: "Core UI Network",
                 ),
-                expected: "Core UI Network"
+                expected: "Core UI Network",
             ),
             GenerateExampleValueTestCase(
                 description: "array without default returns placeholder",
                 macro: Config.Macro(
                     name: "___MODULES___",
                     description: "Module names",
-                    type: .array
+                    type: .array,
                 ),
-                expected: "item1 item2"
+                expected: "item1 item2",
             ),
             // Path type
             GenerateExampleValueTestCase(
@@ -158,18 +160,18 @@ struct TemplateDetailFormatterTests {
                     name: "___OUTPUT___",
                     description: "Output path",
                     type: .path,
-                    default: "~/Projects"
+                    default: "~/Projects",
                 ),
-                expected: "~/Projects"
+                expected: "~/Projects",
             ),
             GenerateExampleValueTestCase(
                 description: "path without default returns placeholder",
                 macro: Config.Macro(
                     name: "___OUTPUT___",
                     description: "Output path",
-                    type: .path
+                    type: .path,
                 ),
-                expected: "./path/to/file"
+                expected: "./path/to/file",
             ),
         ]
     }
@@ -177,10 +179,10 @@ struct TemplateDetailFormatterTests {
     // MARK: - generateExampleCommand Tests
 
     @Test(arguments: GenerateExampleCommandTestCase.allCases)
-    func generateExampleCommand(_ testCase: GenerateExampleCommandTestCase) {
+    func `generate example command`(_ testCase: GenerateExampleCommandTestCase) {
         let result = formatter.generateExampleCommand(
             templateName: testCase.templateName,
-            macros: testCase.macros
+            macros: testCase.macros,
         )
         #expect(result == testCase.expected)
     }
@@ -191,26 +193,28 @@ struct TemplateDetailFormatterTests {
         let macros: [Config.Macro]?
         let expected: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [GenerateExampleCommandTestCase] = [
             GenerateExampleCommandTestCase(
                 description: "no macros returns basic command",
                 templateName: "MyTemplate",
                 macros: nil,
-                expected: "egg hatch MyTemplate"
+                expected: "egg hatch MyTemplate",
             ),
             GenerateExampleCommandTestCase(
                 description: "empty macros returns basic command",
                 templateName: "MyTemplate",
                 macros: [],
-                expected: "egg hatch MyTemplate"
+                expected: "egg hatch MyTemplate",
             ),
             GenerateExampleCommandTestCase(
                 description: "template name with spaces is quoted",
                 templateName: "My Template Name",
                 macros: nil,
-                expected: "egg hatch \"My Template Name\""
+                expected: "egg hatch \"My Template Name\"",
             ),
             GenerateExampleCommandTestCase(
                 description: "template name with spaces and macros",
@@ -220,10 +224,10 @@ struct TemplateDetailFormatterTests {
                         name: "___NAME___",
                         description: "App name",
                         type: .string,
-                        default: "MyApp"
+                        default: "MyApp",
                     ),
                 ],
-                expected: "egg hatch \"iOS App Template\" --name \"MyApp\""
+                expected: "egg hatch \"iOS App Template\" --name \"MyApp\"",
             ),
             GenerateExampleCommandTestCase(
                 description: "single string macro with default",
@@ -233,10 +237,10 @@ struct TemplateDetailFormatterTests {
                         name: "___APP_NAME___",
                         description: "Application name",
                         type: .string,
-                        default: "MyApp"
+                        default: "MyApp",
                     ),
                 ],
-                expected: "egg hatch iOSTemplate --app-name \"MyApp\""
+                expected: "egg hatch iOSTemplate --app-name \"MyApp\"",
             ),
             GenerateExampleCommandTestCase(
                 description: "boolean macro true",
@@ -246,10 +250,10 @@ struct TemplateDetailFormatterTests {
                         name: "___USE_SWIFT_UI___",
                         description: "Use SwiftUI",
                         type: .boolean,
-                        default: "true"
+                        default: "true",
                     ),
                 ],
-                expected: "egg hatch iOSTemplate --use-swift-ui"
+                expected: "egg hatch iOSTemplate --use-swift-ui",
             ),
             GenerateExampleCommandTestCase(
                 description: "boolean macro false",
@@ -259,10 +263,10 @@ struct TemplateDetailFormatterTests {
                         name: "___USE_SWIFT_UI___",
                         description: "Use SwiftUI",
                         type: .boolean,
-                        default: "false"
+                        default: "false",
                     ),
                 ],
-                expected: "egg hatch iOSTemplate --no-use-swift-ui"
+                expected: "egg hatch iOSTemplate --no-use-swift-ui",
             ),
             GenerateExampleCommandTestCase(
                 description: "choice macro",
@@ -272,10 +276,10 @@ struct TemplateDetailFormatterTests {
                         name: "___PLATFORM___",
                         description: "Platform",
                         type: .choice,
-                        choices: ["iOS", "macOS"]
+                        choices: ["iOS", "macOS"],
                     ),
                 ],
-                expected: "egg hatch Template --platform \"iOS\""
+                expected: "egg hatch Template --platform \"iOS\"",
             ),
             GenerateExampleCommandTestCase(
                 description: "choices macro",
@@ -285,10 +289,10 @@ struct TemplateDetailFormatterTests {
                         name: "___PLATFORMS___",
                         description: "Platforms",
                         type: .choices,
-                        choices: ["iOS", "macOS", "tvOS"]
+                        choices: ["iOS", "macOS", "tvOS"],
                     ),
                 ],
-                expected: "egg hatch Template --platforms iOS macOS"
+                expected: "egg hatch Template --platforms iOS macOS",
             ),
             GenerateExampleCommandTestCase(
                 description: "multiple macros",
@@ -298,22 +302,22 @@ struct TemplateDetailFormatterTests {
                         name: "___APP_NAME___",
                         description: "App name",
                         type: .string,
-                        default: "MyApp"
+                        default: "MyApp",
                     ),
                     Config.Macro(
                         name: "___USE_SWIFT_UI___",
                         description: "Use SwiftUI",
                         type: .boolean,
-                        default: "true"
+                        default: "true",
                     ),
                     Config.Macro(
                         name: "___PLATFORM___",
                         description: "Platform",
                         type: .choice,
-                        choices: ["iOS", "macOS"]
+                        choices: ["iOS", "macOS"],
                     ),
                 ],
-                expected: "egg hatch iOSTemplate --app-name \"MyApp\" --use-swift-ui --platform \"iOS\""
+                expected: "egg hatch iOSTemplate --app-name \"MyApp\" --use-swift-ui --platform \"iOS\"",
             ),
         ]
     }
@@ -339,7 +343,9 @@ struct TemplateDetailFormatterTests {
         let expectedMacroCount: Int
         let expectedExampleCommand: String
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [FormatTestCase] = [
             FormatTestCase(
@@ -356,22 +362,22 @@ struct TemplateDetailFormatterTests {
                                 description: "Project name",
                                 type: .string,
                                 default: "MyProject",
-                                validate: "^[A-Za-z]+$"
+                                validate: "^[A-Za-z]+$",
                             ),
                         ],
-                        hatch: .init(output: "./output")
+                        hatch: .init(output: "./output"),
                     ),
-                    isValid: true
+                    isValid: true,
                 ),
                 location: .global,
                 expectedBasicInfo: (
                     name: "TestTemplate",
                     description: "A test template",
                     version: "1.0.0",
-                    locationName: "global"
+                    locationName: "global",
                 ),
                 expectedMacroCount: 1,
-                expectedExampleCommand: "egg hatch TestTemplate --name \"MyProject\""
+                expectedExampleCommand: "egg hatch TestTemplate --name \"MyProject\"",
             ),
             FormatTestCase(
                 description: "template without macros",
@@ -380,19 +386,19 @@ struct TemplateDetailFormatterTests {
                     config: Config(
                         name: "SimpleTemplate",
                         description: "A simple template",
-                        hatch: .init(output: "./output")
+                        hatch: .init(output: "./output"),
                     ),
-                    isValid: true
+                    isValid: true,
                 ),
                 location: .global,
                 expectedBasicInfo: (
                     name: "SimpleTemplate",
                     description: "A simple template",
                     version: nil,
-                    locationName: "global"
+                    locationName: "global",
                 ),
                 expectedMacroCount: 0,
-                expectedExampleCommand: "egg hatch SimpleTemplate"
+                expectedExampleCommand: "egg hatch SimpleTemplate",
             ),
             FormatTestCase(
                 description: "template with choice macro",
@@ -406,22 +412,22 @@ struct TemplateDetailFormatterTests {
                                 name: "___STYLE___",
                                 description: "UI Style",
                                 type: .choice,
-                                choices: ["UIKit", "SwiftUI", "AppKit"]
+                                choices: ["UIKit", "SwiftUI", "AppKit"],
                             ),
                         ],
-                        hatch: .init(output: "./output")
+                        hatch: .init(output: "./output"),
                     ),
-                    isValid: true
+                    isValid: true,
                 ),
                 location: .global,
                 expectedBasicInfo: (
                     name: "ChoiceTemplate",
                     description: "Template with choice",
                     version: nil,
-                    locationName: "global"
+                    locationName: "global",
                 ),
                 expectedMacroCount: 1,
-                expectedExampleCommand: "egg hatch ChoiceTemplate --style \"UIKit\""
+                expectedExampleCommand: "egg hatch ChoiceTemplate --style \"UIKit\"",
             ),
         ]
     }

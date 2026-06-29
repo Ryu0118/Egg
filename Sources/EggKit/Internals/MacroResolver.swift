@@ -23,7 +23,7 @@ package struct MacroResolver {
         config: Config,
         workingDirectory: URL,
         homeDirectory: URL,
-        noora: some Noorable
+        noora: some Noorable,
     ) {
         self.config = config
         self.workingDirectory = workingDirectory
@@ -50,17 +50,17 @@ package struct MacroResolver {
     private func promptForMacro(_ macro: Config.Macro) -> ResolvedMacro {
         switch macro.type {
         case .string:
-            return promptForString(macro)
+            promptForString(macro)
         case .boolean:
-            return promptForBoolean(macro)
+            promptForBoolean(macro)
         case .choice:
-            return promptForChoice(macro)
+            promptForChoice(macro)
         case .choices:
-            return promptForChoices(macro)
+            promptForChoices(macro)
         case .array:
-            return promptForArray(macro)
+            promptForArray(macro)
         case .path:
-            return promptForPath(macro)
+            promptForPath(macro)
         }
     }
 
@@ -70,7 +70,7 @@ package struct MacroResolver {
         // Only require non-empty if there's no default value
         if macro.default == nil {
             validationRules.append(
-                NonEmptyValidationRule(error: "\(macro.name) cannot be empty.")
+                NonEmptyValidationRule(error: "\(macro.name) cannot be empty."),
             )
         }
 
@@ -78,56 +78,54 @@ package struct MacroResolver {
             validationRules.append(
                 RegexPatternValidationRule(
                     pattern: validatePattern,
-                    error: "Value does not match the required pattern: '\(validatePattern)'"
-                )
+                    error: "Value does not match the required pattern: '\(validatePattern)'",
+                ),
             )
         }
 
         // Build prompt message with default value hint
-        let promptMessage: String
-        if let defaultValue = macro.default?.stringValue {
-            promptMessage = "\(macro.description) [default: '\(defaultValue)'] (Type '\"\"' for empty string)"
+        let promptMessage: String = if let defaultValue = macro.default?.stringValue {
+            "\(macro.description) [default: '\(defaultValue)'] (Type '\"\"' for empty string)"
         } else {
-            promptMessage = macro.description
+            macro.description
         }
 
         let value = noora.textPrompt(
             title: "\(macro.name)",
             prompt: TerminalText(stringLiteral: promptMessage),
             collapseOnAnswer: true,
-            validationRules: validationRules
+            validationRules: validationRules,
         )
 
         // Resolve final value
-        let finalValue: String
-        if value == "\"\"" {
+        let finalValue: String = if value == "\"\"" {
             // User explicitly wants empty string
-            finalValue = ""
+            ""
         } else if value.isEmpty, let defaultValue = macro.default?.stringValue {
             // User pressed Enter with default available
-            finalValue = defaultValue
+            defaultValue
         } else {
             // User provided a value
-            finalValue = value
+            value
         }
 
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .string(finalValue)
+            value: .string(finalValue),
         )
     }
 
     private func promptForBoolean(_ macro: Config.Macro) -> ResolvedMacro {
         let value = noora.yesOrNoChoicePrompt(
             title: "\(macro.name)",
-            question: "\(macro.description)"
+            question: "\(macro.description)",
         )
 
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .boolean(value)
+            value: .boolean(value),
         )
     }
 
@@ -139,13 +137,13 @@ package struct MacroResolver {
         let value = noora.singleChoicePrompt(
             title: "\(macro.name)",
             question: "\(macro.description)",
-            options: choices
+            options: choices,
         )
 
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .choice(value)
+            value: .choice(value),
         )
     }
 
@@ -157,13 +155,13 @@ package struct MacroResolver {
         let values = noora.multipleChoicePrompt(
             title: "\(macro.name)",
             question: "\(macro.description)",
-            options: choices
+            options: choices,
         )
 
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .choices(values)
+            value: .choices(values),
         )
     }
 
@@ -176,43 +174,41 @@ package struct MacroResolver {
             validationRules.append(
                 ArrayElementValidationRule(
                     elementPattern: validatePattern,
-                    error: "One or more values do not match the required pattern: '\(validatePattern)'"
-                )
+                    error: "One or more values do not match the required pattern: '\(validatePattern)'",
+                ),
             )
         }
 
         // Build prompt message with default value hint
-        let promptMessage: String
-        if let defaultValue = macro.default {
-            promptMessage = "\(macro.description) (comma-separated) [default: '\(defaultValue.stringValue)'] (Type '\"\"' for empty array)"
+        let promptMessage = if let defaultValue = macro.default {
+            "\(macro.description) (comma-separated) [default: '\(defaultValue.stringValue)'] (Type '\"\"' for empty array)"
         } else {
-            promptMessage = "\(macro.description) (comma-separated)"
+            "\(macro.description) (comma-separated)"
         }
 
         let input = noora.textPrompt(
             title: "\(macro.name)",
             prompt: TerminalText(stringLiteral: promptMessage),
             collapseOnAnswer: true,
-            validationRules: validationRules
+            validationRules: validationRules,
         )
 
         // Resolve final values
-        let values: [String]
-        if input == "\"\"" {
+        let values: [String] = if input == "\"\"" {
             // User explicitly wants empty array
-            values = []
+            []
         } else if input.isEmpty, let defaultValue = macro.default {
             // User pressed Enter with default available - use arrayValue directly
-            values = defaultValue.arrayValue
+            defaultValue.arrayValue
         } else {
             // User provided values
-            values = ArrayInputParser().parseFromInteractive(input)
+            ArrayInputParser().parseFromInteractive(input)
         }
 
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .array(values)
+            value: .array(values),
         )
     }
 
@@ -220,7 +216,7 @@ package struct MacroResolver {
         let pathValidationRule = PathValidationRule(
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            error: "Invalid path for \(macro.name)"
+            error: "Invalid path for \(macro.name)",
         )
 
         var validationRules: [any ValidatableRule] = []
@@ -228,25 +224,24 @@ package struct MacroResolver {
         // Only require non-empty if there's no default value
         if macro.default == nil {
             validationRules.append(
-                NonEmptyValidationRule(error: "\(macro.name) cannot be empty.")
+                NonEmptyValidationRule(error: "\(macro.name) cannot be empty."),
             )
         }
 
         validationRules.append(pathValidationRule)
 
         // Build prompt message with default value hint
-        let promptMessage: String
-        if let defaultValue = macro.default?.stringValue {
-            promptMessage = "\(macro.description) [default: '\(defaultValue)']"
+        let promptMessage: String = if let defaultValue = macro.default?.stringValue {
+            "\(macro.description) [default: '\(defaultValue)']"
         } else {
-            promptMessage = macro.description
+            macro.description
         }
 
         let pathString = noora.textPrompt(
             title: "\(macro.name)",
             prompt: TerminalText(stringLiteral: promptMessage),
             collapseOnAnswer: true,
-            validationRules: validationRules
+            validationRules: validationRules,
         )
 
         // Resolve final path
@@ -256,13 +251,13 @@ package struct MacroResolver {
         let absolutePath = try! resolveToAbsoluteURL(
             finalPathString,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
 
         return ResolvedMacro(
             name: macro.name,
             description: macro.description,
-            value: .path(absolutePath)
+            value: .path(absolutePath),
         )
     }
 }

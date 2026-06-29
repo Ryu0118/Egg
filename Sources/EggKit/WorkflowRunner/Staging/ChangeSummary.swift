@@ -1,7 +1,7 @@
 import Foundation
 
 /// Summary of changes to be applied from staging to working directory.
-struct ChangeSummary: Equatable, Sendable {
+struct ChangeSummary: Equatable {
     let added: [String]
     let modified: [String]
     let deleted: [String]

@@ -29,7 +29,7 @@ let package = Package(
             name: "egg",
             dependencies: [
                 "EggCLI",
-            ]
+            ],
         ),
         .target(
             name: "EggCLI",
@@ -41,7 +41,7 @@ let package = Package(
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "AsyncOperations", package: "swift-async-operations"),
-            ]
+            ],
         ),
         .target(
             name: "EggKit",
@@ -53,14 +53,14 @@ let package = Package(
                 .product(name: "Glob", package: "FileSystem"),
                 .product(name: "AsyncOperations", package: "swift-async-operations"),
                 .product(name: "Stencil", package: "Stencil"),
-            ]
+            ],
         ),
         .target(
             name: "EggMCP",
             dependencies: [
                 "EggKit",
                 .product(name: "MCP", package: "swift-sdk"),
-            ]
+            ],
         ),
         .testTarget(
             name: "EggKitTests",
@@ -71,14 +71,14 @@ let package = Package(
             ],
             exclude: [
                 "Fixtures",
-            ]
+            ],
         ),
         .testTarget(
             name: "EggMCPTests",
             dependencies: [
                 "EggMCP",
                 "EggKit",
-            ]
+            ],
         ),
-    ]
+    ],
 )

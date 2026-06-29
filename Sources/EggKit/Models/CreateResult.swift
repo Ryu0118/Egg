@@ -18,7 +18,7 @@ public struct CreateResult: Codable, Sendable {
         name: String,
         description: String,
         location: String,
-        path: String
+        path: String,
     ) {
         self.name = name
         self.description = description

@@ -9,7 +9,7 @@ import Subprocess
 #endif
 
 /// Helper for running CLI commands in tests
-struct CLIRunner: Sendable {
+struct CLIRunner {
     private let binaryPath: URL
     private let processRunner: ProcessRunner
 
@@ -28,12 +28,12 @@ struct CLIRunner: Sendable {
     func run(
         _ arguments: String...,
         workingDirectory: URL? = nil,
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
     ) async throws -> CLIResult {
         try await run(
             arguments: arguments,
             workingDirectory: workingDirectory,
-            environment: environment
+            environment: environment,
         )
     }
 
@@ -46,7 +46,7 @@ struct CLIRunner: Sendable {
     func run(
         arguments: [String],
         workingDirectory: URL? = nil,
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
     ) async throws -> CLIResult {
         let executablePath = FilePath(binaryPath.path(percentEncoded: false))
         let env: Environment
@@ -69,21 +69,20 @@ struct CLIRunner: Sendable {
             environment: env,
             workingDirectory: workingDir,
             output: outputConfig,
-            error: errorConfig
+            error: errorConfig,
         )
 
-        let exitCode: Int32
-        switch result.terminationStatus {
+        let exitCode: Int32 = switch result.terminationStatus {
         case let .exited(code):
-            exitCode = code
+            code
         case let .unhandledException(code):
-            exitCode = code
+            code
         }
 
         return CLIResult(
             exitCode: exitCode,
             stdout: result.standardOutput ?? "",
-            stderr: result.standardError ?? ""
+            stderr: result.standardError ?? "",
         )
     }
 }

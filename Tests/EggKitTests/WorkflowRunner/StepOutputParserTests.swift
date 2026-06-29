@@ -14,7 +14,9 @@ struct StepOutputParserTests {
         let stdout: String
         let expected: [String: String]
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -23,17 +25,17 @@ struct StepOutputParserTests {
                 version=1.0.0
                 name=MyApp
                 """,
-                expected: ["version": "1.0.0", "name": "MyApp"]
+                expected: ["version": "1.0.0", "name": "MyApp"],
             ),
             TestCase(
                 description: "parses single key=value",
                 stdout: "version=1.0.0",
-                expected: ["version": "1.0.0"]
+                expected: ["version": "1.0.0"],
             ),
             TestCase(
                 description: "parses value containing equals sign",
                 stdout: "equation=x=y+z",
-                expected: ["equation": "x=y+z"]
+                expected: ["equation": "x=y+z"],
             ),
             TestCase(
                 description: "parses with whitespace trimming",
@@ -41,7 +43,7 @@ struct StepOutputParserTests {
                   version  =  1.0.0
                 name=MyApp
                 """,
-                expected: ["version": "1.0.0", "name": "MyApp"]
+                expected: ["version": "1.0.0", "name": "MyApp"],
             ),
             TestCase(
                 description: "skips empty lines",
@@ -51,7 +53,7 @@ struct StepOutputParserTests {
                 name=MyApp
 
                 """,
-                expected: ["version": "1.0.0", "name": "MyApp"]
+                expected: ["version": "1.0.0", "name": "MyApp"],
             ),
             TestCase(
                 description: "skips lines without equals sign",
@@ -60,7 +62,7 @@ struct StepOutputParserTests {
                 This is not a key-value pair
                 name=MyApp
                 """,
-                expected: ["version": "1.0.0", "name": "MyApp"]
+                expected: ["version": "1.0.0", "name": "MyApp"],
             ),
             TestCase(
                 description: "skips lines with empty key",
@@ -69,12 +71,12 @@ struct StepOutputParserTests {
                 =value
                 name=MyApp
                 """,
-                expected: ["version": "1.0.0", "name": "MyApp"]
+                expected: ["version": "1.0.0", "name": "MyApp"],
             ),
             TestCase(
                 description: "parses empty value",
                 stdout: "key=",
-                expected: ["key": ""]
+                expected: ["key": ""],
             ),
             TestCase(
                 description: "parses multi-line stdout with mixed content",
@@ -90,7 +92,7 @@ struct StepOutputParserTests {
                     "version": "1.0.0",
                     "src-dir": "/tmp/src",
                     "files": "3",
-                ]
+                ],
             ),
             TestCase(
                 description: "parses special characters in keys",
@@ -103,7 +105,7 @@ struct StepOutputParserTests {
                     "src-dir": "/tmp/src",
                     "app.name": "MyApp",
                     "BUILD_TYPE": "DEBUG",
-                ]
+                ],
             ),
             TestCase(
                 description: "parses special characters in values",
@@ -116,22 +118,22 @@ struct StepOutputParserTests {
                     "path": "/usr/local/bin",
                     "url": "https://example.com/api?key=value&foo=bar",
                     "message": "Hello, World!",
-                ]
+                ],
             ),
             TestCase(
                 description: "parses empty stdout",
                 stdout: "",
-                expected: [:]
+                expected: [:],
             ),
             TestCase(
                 description: "parses whitespace-only stdout",
                 stdout: "   \n  \n   ",
-                expected: [:]
+                expected: [:],
             ),
             TestCase(
                 description: "parses with Windows-style line endings",
                 stdout: "version=1.0.0\r\nname=MyApp",
-                expected: ["version": "1.0.0\r\nname=MyApp"]
+                expected: ["version": "1.0.0\r\nname=MyApp"],
             ),
             TestCase(
                 description: "overwrites duplicate keys with last value",
@@ -139,7 +141,7 @@ struct StepOutputParserTests {
                 version=1.0.0
                 version=2.0.0
                 """,
-                expected: ["version": "2.0.0"]
+                expected: ["version": "2.0.0"],
             ),
             TestCase(
                 description: "parses realistic shell script output",
@@ -157,7 +159,7 @@ struct StepOutputParserTests {
                     "build-dir": "/var/tmp/build",
                     "dependency-count": "5",
                     "installed": "true",
-                ]
+                ],
             ),
         ]
     }

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Used to specify which version of a repository to clone when installing templates.
 /// When `nil` is used instead of a `GitRef`, Git will automatically select the default branch.
-package enum GitRef: Equatable, Sendable, Codable {
+package enum GitRef: Equatable, Codable {
     /// A branch reference (e.g., "main", "develop")
     case branch(String)
     /// A tag reference (e.g., "v1.0.0")

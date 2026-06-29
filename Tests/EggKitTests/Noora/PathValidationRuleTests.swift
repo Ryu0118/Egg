@@ -11,7 +11,7 @@ struct PathValidationRuleTests {
         let rule = PathValidationRule(
             workingDirectory: Self.workingDirectory,
             homeDirectory: Self.homeDirectory,
-            error: "Invalid path"
+            error: "Invalid path",
         )
         let result = rule.validate(input: testCase.input)
         #expect(result == testCase.expected)
@@ -22,51 +22,53 @@ struct PathValidationRuleTests {
         let input: String
         let expected: Bool
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [TestCase] = [
             // Valid paths
             TestCase(
                 description: "validates absolute path",
                 input: "/usr/local/bin",
-                expected: true
+                expected: true,
             ),
             TestCase(
                 description: "validates relative path",
                 input: "subdir/file.txt",
-                expected: true
+                expected: true,
             ),
             TestCase(
                 description: "validates current directory",
                 input: ".",
-                expected: true
+                expected: true,
             ),
             TestCase(
                 description: "validates tilde expansion",
                 input: "~/Documents",
-                expected: true
+                expected: true,
             ),
             TestCase(
                 description: "validates tilde only",
                 input: "~",
-                expected: true
+                expected: true,
             ),
             TestCase(
                 description: "validates path with spaces",
                 input: "/path/with spaces/file",
-                expected: true
+                expected: true,
             ),
 
             // Edge cases
             TestCase(
                 description: "rejects empty input",
                 input: "",
-                expected: false
+                expected: false,
             ),
             TestCase(
                 description: "whitespace only resolves to working directory",
                 input: "   ",
-                expected: true
+                expected: true,
             ),
         ]
     }

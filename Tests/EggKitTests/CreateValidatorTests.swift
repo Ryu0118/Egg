@@ -37,7 +37,7 @@ struct CreateArgumentsValidatorTests {
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         )
 
         switch testCase.expected {
@@ -59,7 +59,9 @@ struct CreateArgumentsValidatorTests {
         let existingTemplates: Set<String>
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let allCases: [TestCase] = [
             // Success cases
@@ -69,7 +71,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: nil,
                 location: nil,
                 existingTemplates: [],
-                expected: .success(.interactive)
+                expected: .success(.interactive),
             ),
             TestCase(
                 description: "returns direct mode when all fields are provided and template does not exist",
@@ -77,7 +79,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "A test template",
                 location: .global,
                 existingTemplates: [],
-                expected: .success(.direct(name: "MyTemplate", description: "A test template", location: .global))
+                expected: .success(.direct(name: "MyTemplate", description: "A test template", location: .global)),
             ),
             TestCase(
                 description: "returns direct mode with project location",
@@ -85,7 +87,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "Project template",
                 location: .project,
                 existingTemplates: [],
-                expected: .success(.direct(name: "ProjectTemplate", description: "Project template", location: .project))
+                expected: .success(.direct(name: "ProjectTemplate", description: "Project template", location: .project)),
             ),
 
             // Error cases - missing fields
@@ -95,7 +97,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: nil,
                 location: nil,
                 existingTemplates: [],
-                expected: .failure(.missingFields(missing: [.description, .location], provided: [.name]))
+                expected: .failure(.missingFields(missing: [.description, .location], provided: [.name])),
             ),
             TestCase(
                 description: "throws error when only description is provided",
@@ -103,7 +105,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "A description",
                 location: nil,
                 existingTemplates: [],
-                expected: .failure(.missingFields(missing: [.name, .location], provided: [.description]))
+                expected: .failure(.missingFields(missing: [.name, .location], provided: [.description])),
             ),
             TestCase(
                 description: "throws error when only location is provided",
@@ -111,7 +113,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: nil,
                 location: .global,
                 existingTemplates: [],
-                expected: .failure(.missingFields(missing: [.name, .description], provided: [.location]))
+                expected: .failure(.missingFields(missing: [.name, .description], provided: [.location])),
             ),
             TestCase(
                 description: "throws error when name and description are provided but location is missing",
@@ -119,7 +121,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "A description",
                 location: nil,
                 existingTemplates: [],
-                expected: .failure(.missingFields(missing: [.location], provided: [.name, .description]))
+                expected: .failure(.missingFields(missing: [.location], provided: [.name, .description])),
             ),
             TestCase(
                 description: "throws error when name and location are provided but description is missing",
@@ -127,7 +129,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: nil,
                 location: .global,
                 existingTemplates: [],
-                expected: .failure(.missingFields(missing: [.description], provided: [.name, .location]))
+                expected: .failure(.missingFields(missing: [.description], provided: [.name, .location])),
             ),
             TestCase(
                 description: "throws error when description and location are provided but name is missing",
@@ -135,7 +137,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "A description",
                 location: .global,
                 existingTemplates: [],
-                expected: .failure(.missingFields(missing: [.name], provided: [.description, .location]))
+                expected: .failure(.missingFields(missing: [.name], provided: [.description, .location])),
             ),
 
             // Error cases - template already exists
@@ -145,7 +147,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "A description",
                 location: .global,
                 existingTemplates: ["ExistingTemplate"],
-                expected: .failure(.templateAlreadyExists)
+                expected: .failure(.templateAlreadyExists),
             ),
             TestCase(
                 description: "throws error when template already exists in project location",
@@ -153,7 +155,7 @@ struct CreateArgumentsValidatorTests {
                 templateDescription: "A description",
                 location: .project,
                 existingTemplates: ["ExistingTemplate"],
-                expected: .failure(.templateAlreadyExists)
+                expected: .failure(.templateAlreadyExists),
             ),
         ]
 
@@ -172,12 +174,12 @@ extension CreateRunnerMode: Equatable {
     public static func == (lhs: CreateRunnerMode, rhs: CreateRunnerMode) -> Bool {
         switch (lhs, rhs) {
         case (.interactive, .interactive):
-            return true
+            true
         case let (.direct(lhsName, lhsDescription, lhsLocation),
                   .direct(rhsName, rhsDescription, rhsLocation)):
-            return lhsName == rhsName && lhsDescription == rhsDescription && lhsLocation == rhsLocation
+            lhsName == rhsName && lhsDescription == rhsDescription && lhsLocation == rhsLocation
         default:
-            return false
+            false
         }
     }
 }
@@ -187,11 +189,11 @@ extension CreateArgumentsValidator.Error: Equatable {
         switch (lhs, rhs) {
         case let (.missingFields(lhsMissing, lhsProvided),
                   .missingFields(rhsMissing, rhsProvided)):
-            return lhsMissing == rhsMissing && lhsProvided == rhsProvided
+            lhsMissing == rhsMissing && lhsProvided == rhsProvided
         case (.templateAlreadyExists, .templateAlreadyExists):
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 }

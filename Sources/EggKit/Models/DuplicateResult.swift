@@ -22,7 +22,7 @@ public struct DuplicateResult: Codable, Sendable {
         newName: String,
         newDescription: String,
         location: String,
-        path: String
+        path: String,
     ) {
         self.sourceName = sourceName
         self.newName = newName

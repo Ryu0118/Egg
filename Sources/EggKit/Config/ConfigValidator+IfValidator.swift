@@ -131,7 +131,7 @@ extension ConfigValidator {
         }
 
         private func escapeStringForJS(_ value: String) -> String {
-            return value
+            value
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
                 .replacingOccurrences(of: "\n", with: "\\n")

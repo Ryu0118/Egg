@@ -15,16 +15,6 @@ struct ConditionEvaluator {
     let outputs: StepOutputsStorage
     let builtInMacroContext: BuiltInMacroContext
 
-    init(
-        macros: [ResolvedMacro],
-        outputs: StepOutputsStorage,
-        builtInMacroContext: BuiltInMacroContext
-    ) {
-        self.macros = macros
-        self.outputs = outputs
-        self.builtInMacroContext = builtInMacroContext
-    }
-
     /// Evaluates a conditional expression.
     ///
     /// The evaluation process:
@@ -61,7 +51,7 @@ struct ConditionEvaluator {
             let stringValue = MacroStringConverter.toJavaScriptLiteral(
                 macro.value,
                 workingDirectory: builtInMacroContext.workingDirectory,
-                homeDirectory: builtInMacroContext.homeDirectory
+                homeDirectory: builtInMacroContext.homeDirectory,
             )
             result = result.replacingOccurrences(of: macro.name, with: stringValue)
         }
@@ -111,7 +101,7 @@ struct ConditionEvaluator {
             throw LifecycleStepError.undefinedOutputReference(
                 phase: .preHatch,
                 stepId: stepId,
-                key: key
+                key: key,
             )
         }
 
@@ -119,7 +109,7 @@ struct ConditionEvaluator {
             throw LifecycleStepError.undefinedOutputReference(
                 phase: phaseEnum,
                 stepId: stepId,
-                key: key
+                key: key,
             )
         }
 
@@ -137,14 +127,14 @@ struct ConditionEvaluator {
         guard let result = evaluator.evaluate(expression) else {
             throw LifecycleStepError.conditionEvaluationError(
                 condition: expression,
-                reason: "JavaScript evaluation failed or returned null/undefined"
+                reason: "JavaScript evaluation failed or returned null/undefined",
             )
         }
 
         guard result.isBoolean else {
             throw LifecycleStepError.conditionEvaluationError(
                 condition: expression,
-                reason: "Condition must evaluate to a boolean, got: \(result)"
+                reason: "Condition must evaluate to a boolean, got: \(result)",
             )
         }
 

@@ -14,7 +14,7 @@ struct ListHandler: ToolHandler {
         let service = MCPService(
             workingDirectory: nil,
             projectDirectory: projectDir,
-            additionalSearchPaths: searchPaths
+            additionalSearchPaths: searchPaths,
         )
 
         let result = try await service.listTemplates(location: location)

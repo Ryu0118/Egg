@@ -79,7 +79,7 @@ extension FileManagerProtocol {
     func withAtomicCopyAndWrite(
         from source: URL,
         to destination: URL,
-        perform transform: (URL) async throws -> Void
+        perform transform: (URL) async throws -> Void,
     ) async throws {
         let tempDirectory = try makeTemporaryDirectory(prefix: "egg-atomic")
         let workingDirectory = tempDirectory.appendingPathComponent("work")
@@ -116,7 +116,7 @@ extension FileManagerProtocol {
     /// This preserves existing files in destination directories that don't exist in source.
     private func mergeDirectory(
         from source: URL,
-        to destination: URL
+        to destination: URL,
     ) throws {
         let items = try contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
 
@@ -156,7 +156,7 @@ extension FileManagerProtocol {
     func writeAsYAML(
         _ item: some Encodable,
         at url: URL,
-        encoder: YAMLEncoder
+        encoder: YAMLEncoder,
     ) throws {
         let yaml = try encoder.encode(item)
         if exists(url) {

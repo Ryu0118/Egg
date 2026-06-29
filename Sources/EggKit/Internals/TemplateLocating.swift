@@ -59,7 +59,7 @@ extension TemplateLocating {
         templatePath: URL,
         additionalSearchPaths: [URL],
         projectDirectory: URL,
-        workingDirectory: URL
+        workingDirectory: URL,
     ) -> TemplateLocationType {
         // Check custom paths first (highest priority)
         for customPath in additionalSearchPaths {

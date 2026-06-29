@@ -23,10 +23,10 @@ package struct DuplicateRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         let templateLocation = TemplateLocation(
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         self.mode = mode
         self.templateLocation = templateLocation
@@ -39,7 +39,7 @@ package struct DuplicateRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -52,7 +52,7 @@ package struct DuplicateRunner {
                 sourcePath: URL(filePath: sourcePath),
                 sourceLocation: sourceLocation,
                 newName: newName,
-                newDescription: newDescription
+                newDescription: newDescription,
             )
         case .mcp:
             // MCP mode returns result, use runMcp() instead
@@ -66,7 +66,7 @@ package struct DuplicateRunner {
         sourcePath: String,
         sourceLocation: TemplateLocationType,
         newName: String,
-        newDescription: String
+        newDescription: String,
     ) async throws -> DuplicateResult {
         let sourcePathURL = URL(filePath: sourcePath)
 
@@ -86,7 +86,7 @@ package struct DuplicateRunner {
         try await updateConfig(
             at: configPath,
             newName: newName,
-            newDescription: newDescription
+            newDescription: newDescription,
         )
 
         return DuplicateResult(
@@ -94,7 +94,7 @@ package struct DuplicateRunner {
             newName: newName,
             newDescription: newDescription,
             location: sourceLocation.name,
-            path: targetPath.path(percentEncoded: false)
+            path: targetPath.path(percentEncoded: false),
         )
     }
 
@@ -103,14 +103,14 @@ package struct DuplicateRunner {
         let selectedOption = selectSourceTemplate(options: options)
         let (newName, newDescription) = try await promptForNewTemplateInfo(
             sourceTemplate: selectedOption.template,
-            sourceLocation: selectedOption.location
+            sourceLocation: selectedOption.location,
         )
 
         try await duplicateTemplate(
             sourcePath: selectedOption.template.path,
             sourceLocation: selectedOption.location,
             newName: newName,
-            newDescription: newDescription
+            newDescription: newDescription,
         )
     }
 
@@ -125,39 +125,39 @@ package struct DuplicateRunner {
     }
 
     private func selectSourceTemplate(
-        options: [TemplateWithLocation]
+        options: [TemplateWithLocation],
     ) -> TemplateWithLocation {
         noora.singleChoicePrompt(
             title: "Select Template to Duplicate",
             question: "Which template would you like to duplicate?",
             options: options,
-            description: "Select a template to duplicate."
+            description: "Select a template to duplicate.",
         )
     }
 
     private func promptForNewTemplateInfo(
         sourceTemplate: Template,
-        sourceLocation: TemplateLocationType
+        sourceLocation: TemplateLocationType,
     ) async throws -> (name: String, description: String) {
         let defaultNewName = await generateDefaultName(
             baseName: sourceTemplate.config.name,
-            sourceLocation: sourceLocation
+            sourceLocation: sourceLocation,
         )
         let defaultNewDescription = sourceTemplate.config.description
 
         let newName = try await promptForNewName(
-            defaultName: defaultNewName
+            defaultName: defaultNewName,
         )
 
         let newDescription = promptForNewDescription(
-            defaultDescription: defaultNewDescription
+            defaultDescription: defaultNewDescription,
         )
 
         return (newName, newDescription)
     }
 
     private func promptForNewName(
-        defaultName: String
+        defaultName: String,
     ) async throws -> String {
         let newName = noora.textPrompt(
             title: "New Template Name",
@@ -167,7 +167,7 @@ package struct DuplicateRunner {
                 NonEmptyValidationRule(error: "Template name cannot be empty."),
                 DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
                 LengthValidationRule.templateName,
-            ]
+            ],
         )
 
         let finalNewName = if newName.isEmpty {
@@ -184,7 +184,7 @@ package struct DuplicateRunner {
     }
 
     private func promptForNewDescription(
-        defaultDescription: String
+        defaultDescription: String,
     ) -> String {
         let newDescription = noora.textPrompt(
             title: "New Template Description",
@@ -193,7 +193,7 @@ package struct DuplicateRunner {
             validationRules: [
                 NonEmptyValidationRule(error: "Description cannot be empty."),
                 LengthValidationRule.description,
-            ]
+            ],
         )
 
         return if newDescription.isEmpty {
@@ -207,7 +207,7 @@ package struct DuplicateRunner {
         sourcePath: URL,
         sourceLocation: TemplateLocationType,
         newName: String,
-        newDescription: String
+        newDescription: String,
     ) async throws {
         // Determine target location (same as source)
         let targetPath = templateLocation.template(newName, type: sourceLocation)
@@ -225,7 +225,7 @@ package struct DuplicateRunner {
         try await updateConfig(
             at: configPath,
             newName: newName,
-            newDescription: newDescription
+            newDescription: newDescription,
         )
 
         noora.success("Successfully duplicated template '\(newName)' at \(targetPath.path(percentEncoded: false))")
@@ -234,7 +234,7 @@ package struct DuplicateRunner {
     private func updateConfig(
         at configPath: URL,
         newName: String,
-        newDescription: String
+        newDescription: String,
     ) async throws {
         // Read existing config
         let configData = try fileManager.readFile(at: configPath)
@@ -248,7 +248,7 @@ package struct DuplicateRunner {
             macros: config.macros,
             preHatch: config.preHatch,
             hatch: config.hatch,
-            postHatch: config.postHatch
+            postHatch: config.postHatch,
         )
 
         // Validate updated config
@@ -260,13 +260,13 @@ package struct DuplicateRunner {
 
     private func generateDefaultName(
         baseName: String,
-        sourceLocation: TemplateLocationType
+        sourceLocation: TemplateLocationType,
     ) async -> String {
         await DuplicateTemplateNameGenerator.generateDefaultName(
             baseName: baseName,
             sourceLocation: sourceLocation,
             templatesFinder: templatesFinder,
-            emitValidationErrorLog: false
+            emitValidationErrorLog: false,
         )
     }
 
@@ -295,13 +295,13 @@ package enum DuplicateRunnerMode: Codable {
         sourcePath: String,
         sourceLocation: TemplateLocationType,
         newName: String,
-        newDescription: String
+        newDescription: String,
     )
     case mcp(
         sourceName: String,
         sourcePath: String,
         sourceLocation: TemplateLocationType,
         newName: String,
-        newDescription: String
+        newDescription: String,
     )
 }

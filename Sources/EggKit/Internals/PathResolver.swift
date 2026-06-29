@@ -3,7 +3,7 @@ import Foundation
 package func resolveToAbsoluteURL(
     _ input: String,
     workingDirectory: URL,
-    homeDirectory: URL
+    homeDirectory: URL,
 ) throws -> URL {
     // Trim leading/trailing whitespace (trailing spaces are usually typos)
     let trimmedInput = input.trimmingCharacters(in: .whitespaces)

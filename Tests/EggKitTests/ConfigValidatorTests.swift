@@ -35,7 +35,9 @@ struct ConfigValidatorTests {
         let config: Config
         let expected: Result
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success
@@ -47,7 +49,7 @@ struct ConfigValidatorTests {
             TestCase(
                 description: "passes with a fully valid config",
                 config: makeValidConfig(),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with boolean macro and condition",
@@ -61,9 +63,9 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(if: "___CREATE_TESTS___", run: "echo test"),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with choice macro and comparison condition",
@@ -77,9 +79,9 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(if: "___MODULE_TYPE___ === \"library\"", run: "echo library"),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with array macro and indexOf condition",
@@ -93,9 +95,9 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(if: "___PLATFORMS___.indexOf(\"iOS\") !== -1", run: "echo iOS"),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with path macro",
@@ -109,9 +111,9 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(run: "cd ___PACKAGE_PATH___"),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with string macro and regex validation",
@@ -123,9 +125,9 @@ struct ConfigValidatorTests {
                     ],
                     preHatch: nil,
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with conditional exclude",
@@ -141,11 +143,11 @@ struct ConfigValidatorTests {
                         exclude: [
                             .path("*.md"),
                             .conditional(Config.ConditionalExclude(if: "!___CREATE_TESTS___", paths: ["Tests/**"])),
-                        ]
+                        ],
                     ),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with multiple exclude rules",
@@ -162,11 +164,11 @@ struct ConfigValidatorTests {
                             .path("*.md"),
                             .path(".DS_Store"),
                             .conditional(Config.ConditionalExclude(if: "___MODULE_TYPE___ !== \"executable\"", paths: ["main.swift"])),
-                        ]
+                        ],
                     ),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with post_hatch conditions",
@@ -182,9 +184,9 @@ struct ConfigValidatorTests {
                     postHatch: [
                         Config.LifecycleStep(if: "___CREATE_TESTS___", run: "swift test"),
                         Config.LifecycleStep(if: "___MODULE_TYPE___ === \"executable\"", run: "swift build"),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with step outputs in condition",
@@ -200,9 +202,9 @@ struct ConfigValidatorTests {
                     hatch: Config.HatchConfig(output: "output"),
                     postHatch: [
                         Config.LifecycleStep(if: "${{ pre_hatch.setup.outputs.ready }} === \"true\"", run: "echo done"),
-                    ]
+                    ],
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with logical operators in condition",
@@ -218,9 +220,9 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(if: "___A___ || ___B___", run: "echo either"),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with empty macros array",
@@ -230,9 +232,9 @@ struct ConfigValidatorTests {
                     macros: [],
                     preHatch: nil,
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with no pre_hatch or post_hatch",
@@ -242,9 +244,9 @@ struct ConfigValidatorTests {
                     macros: nil,
                     preHatch: nil,
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "passes with built-in macros referenced in run command",
@@ -256,16 +258,16 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(run: "echo ___DATE___ ___YEAR___ ___SYSTEM_USER___ ___UUID___"),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
-                expected: .success
+                expected: .success,
             ),
             TestCase(
                 description: "fails when template name violates validation rules",
                 config: makeValidConfig(name: "/invalid"),
                 expected: .failure([
                     .validatableRulesError(testValidatableError("Invalid directory name. Cannot contain '/' or start with whitespace.")),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty macro name",
@@ -274,7 +276,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .macroNameEmpty(context: "macros[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty macro description",
@@ -283,7 +285,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .macroDescriptionEmpty(context: "macros[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid macro name format",
@@ -292,7 +294,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .invalidMacroNameFormat(context: "macros[0]", name: "___lower___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects duplicate macro names",
@@ -302,7 +304,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .duplicateMacroName(context: "macros[1]", name: "___DUP___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects reserved macro name ___DATE___",
@@ -311,7 +313,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .reservedMacroName(context: "macros[0]", name: "___DATE___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects reserved macro name ___YEAR___",
@@ -320,7 +322,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .reservedMacroName(context: "macros[0]", name: "___YEAR___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects reserved macro name ___SYSTEM_USER___",
@@ -329,7 +331,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .reservedMacroName(context: "macros[0]", name: "___SYSTEM_USER___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects reserved macro name ___UUID___",
@@ -338,7 +340,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .reservedMacroName(context: "macros[0]", name: "___UUID___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects missing choices for choice macro",
@@ -347,7 +349,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .choiceTypeMissingChoices(context: "macros[0]", name: "___CHOICE___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty choices for choice macro",
@@ -356,7 +358,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .choiceTypeEmptyChoices(context: "macros[0]", name: "___CHOICE___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects default value not in choices for choice macro",
@@ -365,7 +367,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .choiceDefaultValueNotInChoices(context: "macros[0]", name: "___CHOICE___", defaultValue: "c", choices: ["a", "b"]),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects choices specified for array macro",
@@ -374,7 +376,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .choicesOnlyValidForChoiceTypes(context: "macros[0]", name: "___ARRAY___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects choices default values outside options for choices macro",
@@ -383,7 +385,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .arrayDefaultValueNotInChoices(context: "macros[0]", name: "___CHOICES___", value: "c", choices: ["a", "b"]),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid boolean default value",
@@ -392,7 +394,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .booleanDefaultValueInvalid(context: "macros[0]", name: "___BOOL___", defaultValue: "maybe"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid characters in path default value",
@@ -401,7 +403,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .pathDefaultValueInvalidCharacters(context: "macros[0]", name: "___PATH___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid regex pattern in macro validation",
@@ -410,7 +412,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .invalidRegexPattern(context: "macros[0]", name: "___REGEX___", pattern: "("),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects default value not matching validation regex",
@@ -419,7 +421,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .defaultValueDoesNotMatchRegex(context: "macros[0]", name: "___REGEX___", defaultValue: "123", pattern: "^[a-z]+$"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects missing run or hatch in pre_hatch step",
@@ -428,7 +430,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .lifecycleStepMissingRunOrHatch(context: "pre_hatch[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty lifecycle step id",
@@ -437,7 +439,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .lifecycleStepIdEmpty(context: "pre_hatch[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid characters in lifecycle step id",
@@ -446,7 +448,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .lifecycleStepIdInvalidCharacters(context: "pre_hatch[0]", id: "invalid id"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty lifecycle step condition",
@@ -455,7 +457,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .lifecycleStepConditionEmpty(context: "pre_hatch[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty run command",
@@ -465,54 +467,54 @@ struct ConfigValidatorTests {
                 expected: .failure([
                     .lifecycleStepMissingRunOrHatch(context: "pre_hatch[0]"),
                     .lifecycleStepRunEmpty(context: "pre_hatch[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty hatch output",
                 config: makeValidConfig(hatch: Config.HatchConfig(output: "")),
                 expected: .failure([
                     .hatchOutputEmpty,
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty exclude path",
                 config: makeValidConfig(hatch: Config.HatchConfig(
                     output: "output",
-                    exclude: [.path("")]
+                    exclude: [.path("")],
                 )),
                 expected: .failure([
                     .excludePathEmpty(context: "hatch.exclude[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty condition in conditional exclude",
                 config: makeValidConfig(hatch: Config.HatchConfig(
                     output: "output",
-                    exclude: [.conditional(Config.ConditionalExclude(if: "", paths: ["path"]))]
+                    exclude: [.conditional(Config.ConditionalExclude(if: "", paths: ["path"]))],
                 )),
                 expected: .failure([
                     .excludeConditionEmpty(context: "hatch.exclude[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects missing paths in conditional exclude",
                 config: makeValidConfig(hatch: Config.HatchConfig(
                     output: "output",
-                    exclude: [.conditional(Config.ConditionalExclude(if: "true", paths: []))]
+                    exclude: [.conditional(Config.ConditionalExclude(if: "true", paths: []))],
                 )),
                 expected: .failure([
                     .excludePathsEmpty(context: "hatch.exclude[0]"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects empty path entry in conditional exclude",
                 config: makeValidConfig(hatch: Config.HatchConfig(
                     output: "output",
-                    exclude: [.conditional(Config.ConditionalExclude(if: "true", paths: ["", "valid"]))]
+                    exclude: [.conditional(Config.ConditionalExclude(if: "true", paths: ["", "valid"]))],
                 )),
                 expected: .failure([
                     .excludeConditionalPathEmpty(context: "hatch.exclude[0]", pathIndex: 0),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects undefined macro references in lifecycle steps",
@@ -522,11 +524,11 @@ struct ConfigValidatorTests {
                     ],
                     preHatch: [
                         Config.LifecycleStep(run: "echo ___UNDEFINED___"),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .undefinedMacroReferenced(context: "pre_hatch[0].run", macroName: "___UNDEFINED___"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects duplicate lifecycle step ids",
@@ -534,11 +536,11 @@ struct ConfigValidatorTests {
                     preHatch: [
                         Config.LifecycleStep(id: "step", run: "echo 1"),
                         Config.LifecycleStep(id: "step", run: "echo 2"),
-                    ]
+                    ],
                 ),
                 expected: .failure([
                     .duplicateStepId(context: "pre_hatch", index: 1, id: "step"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid condition expression",
@@ -547,7 +549,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .invalidConditionExpression(context: "pre_hatch[0]", expression: "notDefinedFunction()"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "detects invalid condition expression",
@@ -556,7 +558,7 @@ struct ConfigValidatorTests {
                 ]),
                 expected: .failure([
                     .invalidConditionExpression(context: "pre_hatch[0]", expression: "process.exit(1)"),
-                ])
+                ]),
             ),
             TestCase(
                 description: "aggregates multiple failures across sections",
@@ -570,7 +572,7 @@ struct ConfigValidatorTests {
                         Config.LifecycleStep(run: ""),
                     ],
                     hatch: Config.HatchConfig(output: "output"),
-                    postHatch: nil
+                    postHatch: nil,
                 ),
                 expected: .failure([
                     .validatableRulesError(testValidatableError("Invalid directory name. Cannot contain '/' or start with whitespace.")),
@@ -578,7 +580,7 @@ struct ConfigValidatorTests {
                     .macroDescriptionEmpty(context: "macros[0]"),
                     .lifecycleStepMissingRunOrHatch(context: "pre_hatch[0]"),
                     .lifecycleStepRunEmpty(context: "pre_hatch[0]"),
-                ])
+                ]),
             ),
         ]
     }
@@ -596,7 +598,7 @@ struct ConfigValidatorTests {
         hatch: Config.HatchConfig = Config.HatchConfig(output: "output"),
         postHatch: [Config.LifecycleStep] = [
             Config.LifecycleStep(id: "post", run: "echo post"),
-        ]
+        ],
     ) -> Config {
         Config(
             name: name,
@@ -604,7 +606,7 @@ struct ConfigValidatorTests {
             macros: macros,
             preHatch: preHatch,
             hatch: hatch,
-            postHatch: postHatch
+            postHatch: postHatch,
         )
     }
 

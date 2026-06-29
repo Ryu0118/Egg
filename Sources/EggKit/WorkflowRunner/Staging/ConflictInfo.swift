@@ -1,12 +1,12 @@
 import Foundation
 
 /// Information about a conflict detected during staging apply.
-struct ConflictInfo: Equatable, Sendable {
+struct ConflictInfo: Equatable {
     let pathString: String
     let type: ConflictType
 
     /// Type of conflict detected.
-    enum ConflictType: Equatable, Sendable {
+    enum ConflictType: Equatable {
         /// File was modified in staging but also modified in working directory.
         case bothModified
         /// File was deleted in staging but modified in working directory.
@@ -15,9 +15,9 @@ struct ConflictInfo: Equatable, Sendable {
         var description: String {
             switch self {
             case .bothModified:
-                return "modified in both staging and working directory"
+                "modified in both staging and working directory"
             case .deletedButModified:
-                return "deleted in staging but modified in working directory"
+                "deleted in staging but modified in working directory"
             }
         }
     }

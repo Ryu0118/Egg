@@ -20,10 +20,10 @@ package struct DeleteRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         let templateLocation = TemplateLocation(
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         self.mode = mode
         self.templateLocation = templateLocation
@@ -37,7 +37,7 @@ package struct DeleteRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -56,7 +56,7 @@ package struct DeleteRunner {
                 title: "Select Template to Delete",
                 question: "Which template would you like to delete?",
                 options: options,
-                description: "Select a template to delete."
+                description: "Select a template to delete.",
             )
 
             let templateName = selectedOption.template.config.name
@@ -66,14 +66,14 @@ package struct DeleteRunner {
             try confirmAndDelete(
                 templateName: templateName,
                 path: templatePath,
-                location: templateLocationType
+                location: templateLocationType,
             )
 
         case let .direct(name, pathString, location):
             try confirmAndDelete(
                 templateName: name,
                 path: URL(filePath: pathString),
-                location: location
+                location: location,
             )
 
         case .mcp:
@@ -87,7 +87,7 @@ package struct DeleteRunner {
     package func runMcp(
         name: String,
         path: String,
-        location: TemplateLocationType
+        location: TemplateLocationType,
     ) throws -> DeleteResult {
         let pathURL = URL(filePath: path)
 
@@ -96,7 +96,7 @@ package struct DeleteRunner {
             return DeleteResult(
                 name: name,
                 location: location.name,
-                path: path
+                path: path,
             )
         } catch {
             throw Error.deletionFailed(name: name, underlying: error)
@@ -106,13 +106,13 @@ package struct DeleteRunner {
     private func confirmAndDelete(
         templateName: String,
         path: URL,
-        location: TemplateLocationType
+        location: TemplateLocationType,
     ) throws {
         // Confirmation (skip if force is true)
         if !force {
             let confirm = noora.yesOrNoChoicePrompt(
                 title: "Confirm Deletion",
-                question: "Are you sure you want to delete template '\(templateName)'?"
+                question: "Are you sure you want to delete template '\(templateName)'?",
             )
 
             guard confirm else {

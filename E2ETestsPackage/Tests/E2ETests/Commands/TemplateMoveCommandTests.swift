@@ -6,8 +6,8 @@ import Testing
 struct TemplateMoveCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows move command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows move command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "move", "--help")
 
@@ -22,7 +22,7 @@ struct TemplateMoveCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func moveTemplate(_ testCase: TestCase) async throws {
+    func `move template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-move")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -36,7 +36,7 @@ struct TemplateMoveCommandTests {
         try setupTemplates(
             testCase.templates,
             homeDir: homeDir,
-            projectDir: projectDir
+            projectDir: projectDir,
         )
 
         let arguments = testCase.buildArguments(projectDir: projectDir)
@@ -44,7 +44,7 @@ struct TemplateMoveCommandTests {
 
         let result = try await runner.run(
             arguments: arguments,
-            environment: environment
+            environment: environment,
         )
 
         switch testCase.expected {
@@ -53,7 +53,7 @@ struct TemplateMoveCommandTests {
             try verifyMove(
                 testCase: testCase,
                 homeDir: homeDir,
-                projectDir: projectDir
+                projectDir: projectDir,
             )
         case let .failure(errorContains):
             #expect(!result.succeeded, "Expected failure but command succeeded")
@@ -65,15 +65,14 @@ struct TemplateMoveCommandTests {
     private func setupTemplates(
         _ templates: [TestCase.TemplateSetup],
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         for template in templates {
-            let templateDir: URL
-            switch template.location {
+            let templateDir: URL = switch template.location {
             case .global:
-                templateDir = homeDir.appending(path: ".eggs/\(template.name)")
+                homeDir.appending(path: ".eggs/\(template.name)")
             case .project:
-                templateDir = projectDir.appending(path: ".eggs/\(template.name)")
+                projectDir.appending(path: ".eggs/\(template.name)")
             }
 
             try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
@@ -99,28 +98,26 @@ struct TemplateMoveCommandTests {
     private func verifyMove(
         testCase: TestCase,
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         guard let verification = testCase.verification else { return }
 
         // Verify source no longer exists
-        let sourceDir: URL
-        switch verification.sourceLocation {
+        let sourceDir: URL = switch verification.sourceLocation {
         case .global:
-            sourceDir = homeDir.appending(path: ".eggs/\(verification.templateName)")
+            homeDir.appending(path: ".eggs/\(verification.templateName)")
         case .project:
-            sourceDir = projectDir.appending(path: ".eggs/\(verification.templateName)")
+            projectDir.appending(path: ".eggs/\(verification.templateName)")
         }
         #expect(!fileManager.fileExists(atPath: sourceDir.path(percentEncoded: false)),
                 "Source template should no longer exist at \(sourceDir.path)")
 
         // Verify target exists
-        let targetDir: URL
-        switch verification.targetLocation {
+        let targetDir: URL = switch verification.targetLocation {
         case .global:
-            targetDir = homeDir.appending(path: ".eggs/\(verification.templateName)")
+            homeDir.appending(path: ".eggs/\(verification.templateName)")
         case .project:
-            targetDir = projectDir.appending(path: ".eggs/\(verification.templateName)")
+            projectDir.appending(path: ".eggs/\(verification.templateName)")
         }
         #expect(fileManager.fileExists(atPath: targetDir.path(percentEncoded: false)),
                 "Target template should exist at \(targetDir.path)")
@@ -145,7 +142,9 @@ struct TemplateMoveCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func buildArguments(projectDir: URL) -> [String] {
             var args = [
@@ -195,8 +194,8 @@ struct TemplateMoveCommandTests {
                 verification: Verification(
                     templateName: "GlobalTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
-                )
+                    targetLocation: .project,
+                ),
             ),
             TestCase(
                 description: "moves template from project to global",
@@ -210,8 +209,8 @@ struct TemplateMoveCommandTests {
                 verification: Verification(
                     templateName: "ProjectTemplate",
                     sourceLocation: .project,
-                    targetLocation: .global
-                )
+                    targetLocation: .global,
+                ),
             ),
             TestCase(
                 description: "overwrites target when --force is used",
@@ -226,8 +225,8 @@ struct TemplateMoveCommandTests {
                 verification: Verification(
                     templateName: "MyTemplate",
                     sourceLocation: .global,
-                    targetLocation: .project
-                )
+                    targetLocation: .project,
+                ),
             ),
 
             // Error cases
@@ -238,7 +237,7 @@ struct TemplateMoveCommandTests {
                 targetLocation: .project,
                 force: false,
                 expected: .failure(errorContains: "not found"),
-                verification: nil
+                verification: nil,
             ),
             TestCase(
                 description: "fails when target already exists without --force",
@@ -250,7 +249,7 @@ struct TemplateMoveCommandTests {
                 targetLocation: .project,
                 force: false,
                 expected: .failure(errorContains: "already exists"),
-                verification: nil
+                verification: nil,
             ),
         ]
     }

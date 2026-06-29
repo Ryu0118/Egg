@@ -20,10 +20,10 @@ package struct MoveRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) {
         let templateLocation = TemplateLocation(
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
         self.mode = mode
         self.force = force
@@ -37,7 +37,7 @@ package struct MoveRunner {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -49,14 +49,14 @@ package struct MoveRunner {
             try await runSelectTargetMode(
                 name: name,
                 path: URL(filePath: pathString),
-                sourceLocation: sourceLocation
+                sourceLocation: sourceLocation,
             )
         case let .direct(name, pathString, sourceLocation, targetLocation):
             try await moveTemplate(
                 name: name,
                 sourcePath: URL(filePath: pathString),
                 sourceLocation: sourceLocation,
-                targetLocation: targetLocation
+                targetLocation: targetLocation,
             )
         case .mcp:
             // MCP mode returns result, use runMcp() instead
@@ -70,7 +70,7 @@ package struct MoveRunner {
         name: String,
         path: String,
         sourceLocation: TemplateLocationType,
-        targetLocation: TemplateLocationType
+        targetLocation: TemplateLocationType,
     ) async throws -> MoveResult {
         let sourcePath = URL(filePath: path)
 
@@ -85,7 +85,7 @@ package struct MoveRunner {
         if !fileManager.fileExists(atPath: targetDir.path(percentEncoded: false)) {
             try fileManager.createDirectory(
                 at: targetDir,
-                withIntermediateDirectories: true
+                withIntermediateDirectories: true,
             )
         }
 
@@ -105,7 +105,7 @@ package struct MoveRunner {
                 name: name,
                 sourceLocation: sourceLocation.name,
                 targetLocation: targetLocation.name,
-                newPath: targetPath.path(percentEncoded: false)
+                newPath: targetPath.path(percentEncoded: false),
             )
         } catch {
             throw Error.moveFailed(name: name, underlying: error)
@@ -124,7 +124,7 @@ package struct MoveRunner {
             title: "Select Template to Move",
             question: "Which template would you like to move?",
             options: options,
-            description: "Select a template to move."
+            description: "Select a template to move.",
         )
 
         let templateName = selectedOption.template.config.name
@@ -134,7 +134,7 @@ package struct MoveRunner {
         // Select target location
         let targetLocation = try selectTargetLocation(
             templateName: templateName,
-            sourceLocation: sourceLocation
+            sourceLocation: sourceLocation,
         )
 
         // Move the template
@@ -142,19 +142,19 @@ package struct MoveRunner {
             name: templateName,
             sourcePath: sourcePath,
             sourceLocation: sourceLocation,
-            targetLocation: targetLocation
+            targetLocation: targetLocation,
         )
     }
 
     private func runSelectTargetMode(
         name: String,
         path: URL,
-        sourceLocation: TemplateLocationType
+        sourceLocation: TemplateLocationType,
     ) async throws {
         // Select target location
         let targetLocation = try selectTargetLocation(
             templateName: name,
-            sourceLocation: sourceLocation
+            sourceLocation: sourceLocation,
         )
 
         // Move the template
@@ -162,18 +162,18 @@ package struct MoveRunner {
             name: name,
             sourcePath: path,
             sourceLocation: sourceLocation,
-            targetLocation: targetLocation
+            targetLocation: targetLocation,
         )
     }
 
     private func selectTargetLocation(
         templateName: String,
-        sourceLocation: TemplateLocationType
+        sourceLocation: TemplateLocationType,
     ) throws -> TemplateLocationType {
         let globalOption = TemplateLocationType.global
         let projectOption = TemplateLocationType.project(
             projectDirectory,
-            workingDirectory: workingDirectory
+            workingDirectory: workingDirectory,
         )
 
         // Filter out the source location
@@ -197,7 +197,7 @@ package struct MoveRunner {
             title: "Select Target Location",
             question: "Where would you like to move '\(templateName)'?",
             options: targetOptions,
-            description: "Select the target location."
+            description: "Select the target location.",
         )
     }
 
@@ -205,7 +205,7 @@ package struct MoveRunner {
         name: String,
         sourcePath: URL,
         sourceLocation: TemplateLocationType,
-        targetLocation: TemplateLocationType
+        targetLocation: TemplateLocationType,
     ) async throws {
         // Determine target path
         let targetPath = templateLocation.template(name, type: targetLocation)
@@ -222,7 +222,7 @@ package struct MoveRunner {
         if !fileManager.fileExists(atPath: targetDir.path(percentEncoded: false)) {
             try fileManager.createDirectory(
                 at: targetDir,
-                withIntermediateDirectories: true
+                withIntermediateDirectories: true,
             )
         }
 
@@ -272,12 +272,12 @@ package enum MoveRunnerMode: Codable {
         name: String,
         path: String,
         sourceLocation: TemplateLocationType,
-        targetLocation: TemplateLocationType
+        targetLocation: TemplateLocationType,
     )
     case mcp(
         name: String,
         path: String,
         sourceLocation: TemplateLocationType,
-        targetLocation: TemplateLocationType
+        targetLocation: TemplateLocationType,
     )
 }

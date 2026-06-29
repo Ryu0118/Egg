@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: b6028c355fa406687bd79c274b18c73fdc0a8b76b4eef51760a129883e899b56
+  checksum: 80632086d4808f6476b6b3d3ffa6fad616d20a7d105afa635ead798a6ca96f3b
 - name: specs-config
   sources:
   - Sources/EggKit/Config/Config.swift
@@ -33,7 +33,7 @@ rules:
   doc: SPECS.md
   message: Template config, lifecycle, or expansion behavior changed - update SPECS.md
     if the spec changed.
-  checksum: 4990bb0bc0178477ec99c8fea4c80a711a2396d89207ae91f2f7a4055ecc44c0
+  checksum: c4c0ffc12d4b5e4f42dfff71ca934ae699859c076901c97b79ac521ca5a0d3b4
 - name: agents-project
   sources:
   - Package.swift
@@ -44,4 +44,4 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 27918e7a63f0eda0f50e88e5792dea761988767fef247590d6ef4091f42ed8c7
+  checksum: 1cb34431a4f5a349029284602f9e2816a72bbecc39438d9fd52b1e94de8b746d

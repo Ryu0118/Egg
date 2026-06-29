@@ -6,8 +6,8 @@ import Testing
 struct TemplateCreateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("--help shows create command help")
-    func helpFlag() async throws {
+    @Test
+    func `--help shows create command help`() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "create", "--help")
 
@@ -21,7 +21,7 @@ struct TemplateCreateCommandTests {
     }
 
     @Test(arguments: TestCase.allCases)
-    func createTemplate(_ testCase: TestCase) async throws {
+    func `create template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-create")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -42,7 +42,7 @@ struct TemplateCreateCommandTests {
 
         let result = try await runner.run(
             arguments: arguments,
-            environment: environment
+            environment: environment,
         )
 
         switch testCase.expected {
@@ -51,7 +51,7 @@ struct TemplateCreateCommandTests {
             try verifySuccess(
                 testCase: testCase,
                 homeDir: homeDir,
-                projectDir: projectDir
+                projectDir: projectDir,
             )
         case let .failure(errorContains):
             #expect(!result.succeeded, "Expected failure but command succeeded")
@@ -63,16 +63,15 @@ struct TemplateCreateCommandTests {
     private func verifySuccess(
         testCase: TestCase,
         homeDir: URL,
-        projectDir: URL
+        projectDir: URL,
     ) throws {
         guard let verification = testCase.verification else { return }
 
-        let templateDir: URL
-        switch verification.location {
+        let templateDir: URL = switch verification.location {
         case .global:
-            templateDir = homeDir.appending(path: ".eggs/\(verification.templateName)")
+            homeDir.appending(path: ".eggs/\(verification.templateName)")
         case .project:
-            templateDir = projectDir.appending(path: ".eggs/\(verification.templateName)")
+            projectDir.appending(path: ".eggs/\(verification.templateName)")
         }
 
         #expect(fileManager.fileExists(atPath: templateDir.path(percentEncoded: false)),
@@ -109,7 +108,9 @@ struct TemplateCreateCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         func buildArguments(projectDir: URL) -> [String] {
             var args = [
@@ -149,7 +150,7 @@ struct TemplateCreateCommandTests {
                 location: Location,
                 expectConfig: Bool = true,
                 expectNoConfig: Bool = false,
-                expectTemplateDir: Bool = true
+                expectTemplateDir: Bool = true,
             ) {
                 self.templateName = templateName
                 self.location = location
@@ -171,8 +172,8 @@ struct TemplateCreateCommandTests {
                 expected: .success,
                 verification: Verification(
                     templateName: "GlobalTemplate",
-                    location: .global
-                )
+                    location: .global,
+                ),
             ),
             TestCase(
                 description: "creates template in project location",
@@ -184,8 +185,8 @@ struct TemplateCreateCommandTests {
                 expected: .success,
                 verification: Verification(
                     templateName: "ProjectTemplate",
-                    location: .project
-                )
+                    location: .project,
+                ),
             ),
             TestCase(
                 description: "creates template without config.yml when --skip-config is used",
@@ -199,8 +200,8 @@ struct TemplateCreateCommandTests {
                     templateName: "NoConfigTemplate",
                     location: .global,
                     expectConfig: false,
-                    expectNoConfig: true
-                )
+                    expectNoConfig: true,
+                ),
             ),
 
             // Error cases
@@ -212,7 +213,7 @@ struct TemplateCreateCommandTests {
                 skipConfig: false,
                 existingTemplates: ["ExistingTemplate"],
                 expected: .failure(errorContains: "already exists"),
-                verification: nil
+                verification: nil,
             ),
         ]
     }

@@ -20,7 +20,7 @@ package struct MoveArgumentsValidator {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        fileManager: some FileManagerProtocol
+        fileManager: some FileManagerProtocol,
     ) {
         self.templateName = templateName
         self.to = to
@@ -35,7 +35,7 @@ package struct MoveArgumentsValidator {
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
-            additionalSearchPaths: additionalSearchPaths
+            additionalSearchPaths: additionalSearchPaths,
         )
     }
 
@@ -57,7 +57,7 @@ package struct MoveArgumentsValidator {
                 templatePath: sourcePath,
                 additionalSearchPaths: additionalSearchPaths,
                 projectDirectory: projectDirectory,
-                workingDirectory: workingDirectory
+                workingDirectory: workingDirectory,
             )
 
         // No target -> select target only
@@ -65,7 +65,7 @@ package struct MoveArgumentsValidator {
             return .selectTarget(
                 name: templateName,
                 path: sourcePath.path(percentEncoded: false),
-                sourceLocation: sourceLocation
+                sourceLocation: sourceLocation,
             )
         }
 
@@ -76,21 +76,21 @@ package struct MoveArgumentsValidator {
         try validateMove(
             templateName: templateName,
             sourceLocation: sourceLocation,
-            targetLocation: targetLocation
+            targetLocation: targetLocation,
         )
 
         return .direct(
             name: templateName,
             path: sourcePath.path(percentEncoded: false),
             sourceLocation: sourceLocation,
-            targetLocation: targetLocation
+            targetLocation: targetLocation,
         )
     }
 
     private func validateMove(
         templateName: String,
         sourceLocation: TemplateLocationType,
-        targetLocation: TemplateLocationType
+        targetLocation: TemplateLocationType,
     ) throws {
         // Check if source and target are the same
         if sourceLocation.name == targetLocation.name {
@@ -115,11 +115,11 @@ package struct MoveArgumentsValidator {
         var errorDescription: String? {
             switch self {
             case let .templateNotFound(name):
-                return "Template '\(name)' not found"
+                "Template '\(name)' not found"
             case let .sameLocation(name, location):
-                return "Template '\(name)' is already in \(location)"
+                "Template '\(name)' is already in \(location)"
             case let .targetAlreadyExists(name, location):
-                return "Template '\(name)' already exists in \(location). Use --force to overwrite"
+                "Template '\(name)' already exists in \(location). Use --force to overwrite"
             }
         }
     }

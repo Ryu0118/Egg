@@ -34,7 +34,7 @@ package struct Config: Codable, Equatable {
         sandbox: SandboxConfig? = nil,
         preHatch: [LifecycleStep]? = nil,
         hatch: HatchConfig,
-        postHatch: [LifecycleStep]? = nil
+        postHatch: [LifecycleStep]? = nil,
     ) {
         self.name = name
         self.description = description
@@ -105,8 +105,8 @@ package struct Config: Codable, Equatable {
                 MacroDefaultValue.self,
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Expected String or [String] for macro default value"
-                )
+                    debugDescription: "Expected String or [String] for macro default value",
+                ),
             )
         }
 
@@ -182,7 +182,7 @@ package struct Config: Codable, Equatable {
             type: MacroType = .string,
             default: MacroDefaultValue? = nil,
             validate: String? = nil,
-            choices: [String]? = nil
+            choices: [String]? = nil,
         ) {
             self.name = name
             self.description = description
@@ -220,7 +220,7 @@ package struct Config: Codable, Equatable {
         package init(
             id: String? = nil,
             if: String? = nil,
-            run: String? = nil
+            run: String? = nil,
         ) {
             self.id = id
             self.if = `if`
@@ -238,7 +238,7 @@ package struct Config: Codable, Equatable {
 
         package init(
             output: String,
-            exclude: [ExcludeRule]? = nil
+            exclude: [ExcludeRule]? = nil,
         ) {
             self.output = output
             self.exclude = exclude
@@ -270,7 +270,7 @@ package struct Config: Codable, Equatable {
 
             throw DecodingError.dataCorruptedError(
                 in: container,
-                debugDescription: "ExcludeRule must be either a String or a ConditionalExclude object"
+                debugDescription: "ExcludeRule must be either a String or a ConditionalExclude object",
             )
         }
 

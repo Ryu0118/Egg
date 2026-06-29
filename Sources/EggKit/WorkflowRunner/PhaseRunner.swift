@@ -45,7 +45,7 @@ struct PhaseRunner {
         isInteractive: Bool,
         override: Bool,
         processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
-        builtInMacroDate: Date = Date()
+        builtInMacroDate: Date = Date(),
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -75,13 +75,13 @@ struct PhaseRunner {
         outputs: StepOutputsStorage,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .unsandboxed
+        executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) async throws {
         noora.passthrough("🥚 Pre-hatch script executing...\n")
 
         let builtInContext = makeBuiltInMacroContext(
             workingDirectory: workingDirectory,
-            additionalEnvironment: additionalEnvironment
+            additionalEnvironment: additionalEnvironment,
         )
 
         let stepRunner = LifecycleStepRunner(
@@ -90,14 +90,14 @@ struct PhaseRunner {
             noora: noora,
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
-            builtInMacroContext: builtInContext
+            builtInMacroContext: builtInContext,
         )
 
         _ = try await stepRunner.execute(
             .preHatch,
             steps: steps,
             substituting: macros,
-            merging: outputs
+            merging: outputs,
         )
     }
 
@@ -120,7 +120,7 @@ struct PhaseRunner {
         outputs: StepOutputsStorage,
         templateDirectory: URL,
         workingDirectory: URL,
-        pathValidator: ((URL) async throws -> Void)? = nil
+        pathValidator: ((URL) async throws -> Void)? = nil,
     ) async throws -> URL {
         noora.passthrough("🐣 Hatching \(config.name)...\n")
 
@@ -128,14 +128,14 @@ struct PhaseRunner {
         let resolver = VariableResolver(
             macros: macros,
             outputs: outputs,
-            builtInMacroContext: makeBuiltInMacroContext(workingDirectory: workingDirectory)
+            builtInMacroContext: makeBuiltInMacroContext(workingDirectory: workingDirectory),
         )
         let resolvedOutput = try await resolver.resolve(config.hatch.output)
 
         let outputDirectory = try resolveToAbsoluteURL(
             resolvedOutput,
             workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory
+            homeDirectory: homeDirectory,
         )
 
         // Optional path validation (used by staging to ensure path is within bounds)
@@ -146,7 +146,7 @@ struct PhaseRunner {
         // Safety check: output cannot be same as template
         if outputDirectory == templateDirectory {
             throw LifecycleStepError.invalidOutputDirectory(
-                "Output directory cannot be the same as template directory: \(outputDirectory.path(percentEncoded: false))"
+                "Output directory cannot be the same as template directory: \(outputDirectory.path(percentEncoded: false))",
             )
         }
 
@@ -156,17 +156,17 @@ struct PhaseRunner {
             outputDirectory: outputDirectory,
             builtInMacroContext: makeBuiltInMacroContext(
                 workingDirectory: workingDirectory,
-                outputDirectory: outputDirectory
+                outputDirectory: outputDirectory,
             ),
             noora: noora,
             isInteractive: isInteractive,
-            override: override
+            override: override,
         )
 
         try await expander.expand(
             substituting: macros,
             with: outputs,
-            excluding: config.hatch.exclude
+            excluding: config.hatch.exclude,
         )
 
         noora.passthrough("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
@@ -192,13 +192,13 @@ struct PhaseRunner {
         outputs: StepOutputsStorage,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
-        executionEnvironment: ExecutionEnvironment = .unsandboxed
+        executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) async throws {
         noora.passthrough("🐥 Post-hatch script executing...\n")
 
         let builtInContext = makeBuiltInMacroContext(
             workingDirectory: workingDirectory,
-            additionalEnvironment: additionalEnvironment
+            additionalEnvironment: additionalEnvironment,
         )
 
         let stepRunner = LifecycleStepRunner(
@@ -207,21 +207,21 @@ struct PhaseRunner {
             noora: noora,
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
-            builtInMacroContext: builtInContext
+            builtInMacroContext: builtInContext,
         )
 
         _ = try await stepRunner.execute(
             .postHatch,
             steps: steps,
             substituting: macros,
-            merging: outputs
+            merging: outputs,
         )
     }
 
     private func makeBuiltInMacroContext(
         workingDirectory: URL,
         outputDirectory: URL? = nil,
-        additionalEnvironment: [String: String] = [:]
+        additionalEnvironment: [String: String] = [:],
     ) -> BuiltInMacroContext {
         var environment = processEnvironment
 
@@ -234,7 +234,7 @@ struct PhaseRunner {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             currentDate: builtInMacroDate,
-            environment: environment
+            environment: environment,
         )
     }
 }

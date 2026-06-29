@@ -71,7 +71,7 @@ actor StagingContext {
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
         directoryCloner: any DirectoryCloning,
-        noora: any Noorable
+        noora: any Noorable,
     ) {
         self.root = root
         self.reference = reference
@@ -111,7 +111,7 @@ actor StagingContext {
         processRunner: some ProcessRunning,
         directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
         requireGitRepository: Bool = true,
-        noora: some Noorable = Noora()
+        noora: some Noorable = Noora(),
     ) async throws -> StagingContext {
         do {
             // Create staging base directory in a temporary location
@@ -122,12 +122,12 @@ actor StagingContext {
             let readyToCopyToStaging: Bool =
                 if !requireGitRepository {
                     true
-                } else if !(await GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
+                } else if await !(GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
                     // If not under git management, copying all directories may take a very long time.
                     // Proceed anyway? Or consider using --no-staging mode instead.
                     noora.yesOrNoChoicePrompt(
                         title: "Copying All Files May Take Time",
-                        question: "The working directory is not under git management. Copying all directories may take a very long time. Proceed anyway? (Consider using --no-staging mode instead)"
+                        question: "The working directory is not under git management. Copying all directories may take a very long time. Proceed anyway? (Consider using --no-staging mode instead)",
                     )
                 } else {
                     true
@@ -158,7 +158,7 @@ actor StagingContext {
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
                 directoryCloner: directoryCloner,
-                noora: noora
+                noora: noora,
             )
         } catch let error as StagingContext.Error {
             throw error
@@ -272,7 +272,7 @@ actor StagingContext {
         try ApplyStagingArea.withStaging(
             workspaceRoot: root,
             workingDirectory: originalWorkingDirectory,
-            fileManager: fileManager
+            fileManager: fileManager,
         ) { staging, fileManager in
             let manifest = try staging.stage(changes: changes, fileManager: fileManager)
             try staging.apply(manifest: manifest, fileManager: fileManager)
@@ -306,7 +306,7 @@ actor StagingContext {
 }
 
 extension StagingContext {
-    private struct WatcherEvents: Sendable {
+    private struct WatcherEvents {
         let workspace: Set<String>
         let working: Set<String>
 
@@ -361,7 +361,7 @@ extension StagingContext {
         return try await diffRunner.computeChanges(
             workspaceRoot: root,
             workingDirectory: reference,
-            targetPaths: expandedPaths
+            targetPaths: expandedPaths,
         )
     }
 
@@ -395,7 +395,7 @@ extension StagingContext {
         return try await diffRunner.computeChanges(
             workspaceRoot: originalWorkingDirectory,
             workingDirectory: reference,
-            targetPaths: expandedPaths
+            targetPaths: expandedPaths,
         )
     }
 
@@ -411,7 +411,7 @@ extension StagingContext {
     /// - Returns: Expanded set of relative paths including all files within directories
     private nonisolated func expandDirectories(
         _ paths: Set<String>,
-        relativeTo baseDirectory: URL
+        relativeTo baseDirectory: URL,
     ) async throws -> Set<String> {
         var expandedPaths = Set<String>()
 
@@ -440,7 +440,7 @@ extension StagingContext {
     /// - Returns: Set of relative paths for all items within the directory
     private nonisolated func enumerateDirectoryRecursively(
         _ directory: URL,
-        relativeTo baseDirectory: URL
+        relativeTo baseDirectory: URL,
     ) throws -> Set<String> {
         var result = Set<String>()
 
@@ -448,7 +448,7 @@ extension StagingContext {
             at: directory,
             includingPropertiesForKeys: [.isDirectoryKey],
             options: [],
-            errorHandler: nil
+            errorHandler: nil,
         ) else {
             return result
         }
@@ -475,7 +475,7 @@ extension StagingContext {
     private func detectConflicts(
         using _: WatcherEvents,
         changeSummary: ChangeSummary,
-        workingDirectoryChanges: ChangeSummary
+        workingDirectoryChanges: ChangeSummary,
     ) -> [ConflictInfo] {
         // Get paths that were actually modified in working directory
         let actualWorkingChanges = Set(workingDirectoryChanges.allPaths)

@@ -14,7 +14,7 @@ import Testing
 @Suite(.serialized)
 struct StagingApplyIntegrationTests {
     @Test(arguments: TestCase.allCases)
-    func applyChanges(_ testCase: TestCase) async throws {
+    func `apply changes`(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-apply-test")
 
@@ -51,7 +51,7 @@ struct StagingApplyIntegrationTests {
             workingDirectoryWatcher: workingDirWatcher,
             processRunner: ProcessRunner(),
             requireGitRepository: false,
-            noora: NooraMock()
+            noora: NooraMock(),
         )
 
         let workspaceRoot = await staging.root
@@ -152,7 +152,7 @@ struct StagingApplyIntegrationTests {
                 return
             }
 
-            let conflictPaths = conflicts.map { $0.pathString }.sorted()
+            let conflictPaths = conflicts.map(\.pathString).sorted()
             #expect(conflictPaths == expectedConflictPaths.sorted(), "Expected conflicts at \(expectedConflictPaths), got \(conflictPaths)")
 
         case .emptyChangeSummary:
@@ -190,7 +190,9 @@ struct StagingApplyIntegrationTests {
         let forceApply: Bool
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         init(
             description: String,
@@ -198,7 +200,7 @@ struct StagingApplyIntegrationTests {
             workspaceModifications: [Modification] = [],
             workingDirModifications: [Modification] = [],
             forceApply: Bool = false,
-            expectation: Expectation
+            expectation: Expectation,
         ) {
             self.description = description
             self.initialFiles = initialFiles
@@ -221,7 +223,7 @@ struct StagingApplyIntegrationTests {
                 initialFiles: [
                     InitialFile(path: "file.txt", content: "original"),
                 ],
-                expectation: .emptyChangeSummary
+                expectation: .emptyChangeSummary,
             ),
 
             // Add file
@@ -233,7 +235,7 @@ struct StagingApplyIntegrationTests {
                 ],
                 expectation: .successfulApply(expectedFiles: [
                     ExpectedFile(path: "new.txt", expectedContent: "new content"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -244,7 +246,7 @@ struct StagingApplyIntegrationTests {
                 ],
                 expectation: .successfulApply(expectedFiles: [
                     ExpectedFile(path: "subdir/nested/new.txt", expectedContent: "nested content"),
-                ])
+                ]),
             ),
 
             // Modify file
@@ -258,7 +260,7 @@ struct StagingApplyIntegrationTests {
                 ],
                 expectation: .successfulApply(expectedFiles: [
                     ExpectedFile(path: "file.txt", expectedContent: "modified"),
-                ])
+                ]),
             ),
 
             // Delete file
@@ -272,7 +274,7 @@ struct StagingApplyIntegrationTests {
                 ],
                 expectation: .successfulApply(expectedFiles: [
                     ExpectedFile(path: "delete-me.txt", expectedContent: nil),
-                ])
+                ]),
             ),
 
             // Multiple operations
@@ -293,7 +295,7 @@ struct StagingApplyIntegrationTests {
                     ExpectedFile(path: "modify.txt", expectedContent: "modified"),
                     ExpectedFile(path: "delete.txt", expectedContent: nil),
                     ExpectedFile(path: "new.txt", expectedContent: "new"),
-                ])
+                ]),
             ),
 
             // Conflict detection
@@ -308,7 +310,7 @@ struct StagingApplyIntegrationTests {
                 workingDirModifications: [
                     Modification(path: "conflict.txt", operation: .modify(content: "working dir version")),
                 ],
-                expectation: .conflictsDetected(conflictPaths: ["conflict.txt"])
+                expectation: .conflictsDetected(conflictPaths: ["conflict.txt"]),
             ),
 
             // Override apply with conflicts
@@ -326,7 +328,7 @@ struct StagingApplyIntegrationTests {
                 forceApply: true,
                 expectation: .successfulApply(expectedFiles: [
                     ExpectedFile(path: "conflict.txt", expectedContent: "workspace wins"),
-                ])
+                ]),
             ),
         ]
     }

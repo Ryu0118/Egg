@@ -18,7 +18,7 @@ enum MacroStringConverter {
     static func toShellString(
         _ value: ResolvedMacro.Value,
         workingDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) -> String {
         switch value {
         case let .string(s):
@@ -50,7 +50,7 @@ enum MacroStringConverter {
     static func toJavaScriptLiteral(
         _ value: ResolvedMacro.Value,
         workingDirectory: URL,
-        homeDirectory: URL
+        homeDirectory: URL,
     ) -> String {
         switch value {
         case let .string(s):
@@ -104,7 +104,7 @@ enum MacroStringConverter {
         guard path != "/" else { return path }
 
         var result = path
-        while result.hasSuffix("/") && result.count > 1 {
+        while result.hasSuffix("/"), result.count > 1 {
             result.removeLast()
         }
         return result
@@ -122,7 +122,7 @@ enum MacroStringConverter {
     /// - Returns: An absolute, standardized URL
     private static func resolvePath(_ path: URL, workingDirectory: URL, homeDirectory: URL) -> URL {
         // Check if URL is already absolute
-        if path.isFileURL && path.path(percentEncoded: false).hasPrefix("/") {
+        if path.isFileURL, path.path(percentEncoded: false).hasPrefix("/") {
             return path.standardizedFileURL
         }
 

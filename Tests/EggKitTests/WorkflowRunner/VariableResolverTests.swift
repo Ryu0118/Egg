@@ -16,7 +16,7 @@ struct VariableResolverTests {
         let resolver = VariableResolver(
             macros: testCase.macros,
             outputs: outputs,
-            builtInMacroContext: context
+            builtInMacroContext: context,
         )
 
         switch testCase.expectation {
@@ -52,14 +52,16 @@ struct VariableResolverTests {
         let expectation: Expectation
         let builtInMacroContext: BuiltInMacroContext?
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
         static let defaultBuiltInMacroContext = BuiltInMacroContext(
             outputDirectory: nil,
             workingDirectory: URL(filePath: "/tmp/work"),
             homeDirectory: URL(filePath: "/tmp/home"),
             currentDate: Date(timeIntervalSince1970: 0),
-            environment: [:]
+            environment: [:],
         )
 
         enum Expectation {
@@ -76,7 +78,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "App name is MyApp"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves boolean macro true",
@@ -86,7 +88,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Debug: true"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves boolean macro false",
@@ -96,7 +98,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Debug: false"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves choice macro",
@@ -106,7 +108,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Build: release"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves array macro with comma-separated values",
@@ -116,7 +118,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Platforms: iOS, macOS, watchOS"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves path macro",
@@ -126,7 +128,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "Output: /tmp/test"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves multiple macros in single string",
@@ -138,7 +140,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "MyApp v1.0.0 (debug: true)"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "does not replace when macro pattern doesn't match exactly",
@@ -148,7 +150,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "__NAME__ and _MyApp_"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "macro resolution is case-sensitive",
@@ -158,7 +160,7 @@ struct VariableResolverTests {
                 ],
                 outputs: [],
                 expectation: .success(expectedResult: "___name___ and ___Name___ should not be replaced"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves single step output reference",
@@ -168,7 +170,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 expectation: .success(expectedResult: "Version: 1.0.0"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves multiple step output references",
@@ -178,7 +180,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0", "name": "MyApp"]),
                 ],
                 expectation: .success(expectedResult: "MyApp v1.0.0"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves step ID with hyphens",
@@ -188,7 +190,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "my-step-1", values: ["result": "ok"]),
                 ],
                 expectation: .success(expectedResult: "Result: ok"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves output key with hyphens",
@@ -198,7 +200,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["src-dir": "/tmp/src"]),
                 ],
                 expectation: .success(expectedResult: "Source: /tmp/src"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves output key with dots",
@@ -208,7 +210,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["app.name": "MyApp"]),
                 ],
                 expectation: .success(expectedResult: "App: MyApp"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "handles whitespace in step output reference",
@@ -218,7 +220,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 expectation: .success(expectedResult: "Version: 1.0.0"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "throws when output key does not exist",
@@ -230,9 +232,9 @@ struct VariableResolverTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch,
                     stepId: "setup",
-                    key: "unknown"
+                    key: "unknown",
                 )),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "throws when step ID does not exist",
@@ -244,9 +246,9 @@ struct VariableResolverTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch,
                     stepId: "unknown",
-                    key: "version"
+                    key: "version",
                 )),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "throws when phase does not exist",
@@ -256,9 +258,9 @@ struct VariableResolverTests {
                 expectation: .failure(expectedError: .undefinedOutputReference(
                     phase: .preHatch, // Fallback to .preHatch for invalid phase
                     stepId: "setup",
-                    key: "version"
+                    key: "version",
                 )),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "supports cross-phase output access",
@@ -269,7 +271,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["url": "https://example.com"]),
                 ],
                 expectation: .success(expectedResult: "Deployed to https://example.com"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "post_hatch can reference pre_hatch outputs",
@@ -279,7 +281,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 expectation: .success(expectedResult: "Built version 1.0.0"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves macros and step outputs together",
@@ -291,7 +293,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 expectation: .success(expectedResult: "MyApp v1.0.0"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves multiple macros and multiple outputs",
@@ -304,7 +306,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0", "build": "42"]),
                 ],
                 expectation: .success(expectedResult: "MyApp v1.0.0 build 42 (debug: true)"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "two-pass order prevents ambiguity",
@@ -316,7 +318,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
                 ],
                 expectation: .success(expectedResult: "Version: 1.0.0"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "returns empty string unchanged",
@@ -324,7 +326,7 @@ struct VariableResolverTests {
                 macros: [],
                 outputs: [],
                 expectation: .success(expectedResult: ""),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "returns string with no variables unchanged",
@@ -332,7 +334,7 @@ struct VariableResolverTests {
                 macros: [],
                 outputs: [],
                 expectation: .success(expectedResult: "This is a plain string with no variables"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "handles output value containing special characters",
@@ -345,7 +347,7 @@ struct VariableResolverTests {
                     ]),
                 ],
                 expectation: .success(expectedResult: "URL: https://example.com/path?query=value&foo=bar, PATH: /usr/local/bin:/usr/bin:/bin"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "handles output value containing equals sign",
@@ -355,7 +357,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["equation": "x=y+z"]),
                 ],
                 expectation: .success(expectedResult: "Equation: x=y+z"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "handles unicode characters in values",
@@ -367,7 +369,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["emoji": "🚀"]),
                 ],
                 expectation: .success(expectedResult: "こんにちは 🚀"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "handles empty output value",
@@ -377,7 +379,7 @@ struct VariableResolverTests {
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["empty": ""]),
                 ],
                 expectation: .success(expectedResult: "Value: []"),
-                builtInMacroContext: nil
+                builtInMacroContext: nil,
             ),
             TestCase(
                 description: "resolves built-in date macro with default format",
@@ -390,8 +392,8 @@ struct VariableResolverTests {
                     workingDirectory: URL(filePath: "/work"),
                     homeDirectory: URL(filePath: "/home"),
                     currentDate: Date(timeIntervalSince1970: 0),
-                    environment: [:]
-                )
+                    environment: [:],
+                ),
             ),
             TestCase(
                 description: "resolves built-in date macro with custom format",
@@ -404,8 +406,8 @@ struct VariableResolverTests {
                     workingDirectory: URL(filePath: "/work"),
                     homeDirectory: URL(filePath: "/home"),
                     currentDate: Date(timeIntervalSince1970: 0),
-                    environment: [:]
-                )
+                    environment: [:],
+                ),
             ),
             TestCase(
                 description: "resolves built-in system user macro from environment",
@@ -418,8 +420,8 @@ struct VariableResolverTests {
                     workingDirectory: URL(filePath: "/work"),
                     homeDirectory: URL(filePath: "/home"),
                     currentDate: Date(timeIntervalSince1970: 0),
-                    environment: ["USER": "egg"]
-                )
+                    environment: ["USER": "egg"],
+                ),
             ),
         ]
     }

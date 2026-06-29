@@ -21,7 +21,7 @@ struct DirectoryCloningTests {
         case let .success(verifications):
             try await cloner.clone(
                 from: sourceDir,
-                to: destDir
+                to: destDir,
             )
             try verify(verifications, in: destDir, using: fileManager)
 
@@ -29,16 +29,16 @@ struct DirectoryCloningTests {
             await #expect(throws: expectedError) {
                 try await cloner.clone(
                     from: sourceDir,
-                    to: destDir
+                    to: destDir,
                 )
             }
         }
     }
 
     @Test
-    func cloneFailsWithNonFileURL() async throws {
+    func `clone fails with non file URL`() async throws {
         let cloner = APFSDirectoryCloner()
-        let httpURL = URL(string: "https://example.com")!
+        let httpURL = try #require(URL(string: "https://example.com"))
         let fileURL = URL(filePath: "/tmp/test")
 
         await #expect(throws: CloningError.invalidURL) {
@@ -51,7 +51,7 @@ struct DirectoryCloningTests {
     }
 
     @Test
-    func cloneFailsWhenDestinationExists() async throws {
+    func `clone fails when destination exists`() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
         let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
@@ -70,13 +70,13 @@ struct DirectoryCloningTests {
         await #expect(throws: CloningError.self) {
             try await cloner.clone(
                 from: sourceDir,
-                to: destDir
+                to: destDir,
             )
         }
     }
 
     @Test
-    func cloningErrorDescriptions() {
+    func `cloning error descriptions`() {
         let invalidURLError = CloningError.invalidURL
         #expect(invalidURLError.errorDescription == "The provided URL is not a valid file URL")
 
@@ -89,7 +89,7 @@ extension DirectoryCloningTests {
     private func setupSource(
         _ items: [TestCase.Setup],
         in directory: URL,
-        using fileManager: some FileManagerProtocol
+        using fileManager: some FileManagerProtocol,
     ) throws {
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         for item in items {
@@ -100,7 +100,7 @@ extension DirectoryCloningTests {
     private func createItem(
         _ item: TestCase.Setup,
         in baseDir: URL,
-        using fileManager: some FileManagerProtocol
+        using fileManager: some FileManagerProtocol,
     ) throws {
         switch item {
         case let .file(path, content):
@@ -126,14 +126,14 @@ extension DirectoryCloningTests {
             try createParentDirectoryIfNeeded(for: fullPath, using: fileManager)
             try FileManager.default.createSymbolicLink(
                 atPath: fullPath.path(percentEncoded: false),
-                withDestinationPath: target
+                withDestinationPath: target,
             )
         }
     }
 
     private func createParentDirectoryIfNeeded(
         for path: URL,
-        using fileManager: some FileManagerProtocol
+        using fileManager: some FileManagerProtocol,
     ) throws {
         let parent = path.deletingLastPathComponent()
         if !fileManager.exists(parent) {
@@ -146,7 +146,7 @@ extension DirectoryCloningTests {
     private func verify(
         _ verifications: [TestCase.Verification],
         in directory: URL,
-        using fileManager: some FileManagerProtocol
+        using fileManager: some FileManagerProtocol,
     ) throws {
         for verification in verifications {
             try verifyItem(verification, in: directory, using: fileManager)
@@ -156,7 +156,7 @@ extension DirectoryCloningTests {
     private func verifyItem(
         _ verification: TestCase.Verification,
         in baseDir: URL,
-        using fileManager: some FileManagerProtocol
+        using fileManager: some FileManagerProtocol,
     ) throws {
         switch verification {
         case let .fileExists(path):
@@ -207,27 +207,29 @@ extension DirectoryCloningTests {
 }
 
 extension DirectoryCloningTests {
-    struct TestCase: CustomTestStringConvertible, Sendable {
+    struct TestCase: CustomTestStringConvertible {
         let description: String
         let sourceSetup: [Setup]
         let expectation: Expectation
 
-        var testDescription: String { description }
+        var testDescription: String {
+            description
+        }
 
-        enum Setup: Sendable {
+        enum Setup {
             case file(path: String, content: String)
             case directory(path: String)
             case symlink(path: String, target: String)
         }
 
-        enum Verification: Sendable {
+        enum Verification {
             case fileExists(path: String)
             case fileContent(path: String, expected: String)
             case directoryExists(path: String)
             case symlinkExists(path: String, target: String)
         }
 
-        enum Expectation: Sendable {
+        enum Expectation {
             case success(verifications: [Verification])
             case failure(CloningError)
         }
@@ -241,7 +243,7 @@ extension DirectoryCloningTests {
                 expectation: .success(verifications: [
                     .fileExists(path: "file.txt"),
                     .fileContent(path: "file.txt", expected: "hello"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -255,7 +257,7 @@ extension DirectoryCloningTests {
                     .fileContent(path: "a.txt", expected: "content a"),
                     .fileContent(path: "b.txt", expected: "content b"),
                     .fileContent(path: "c.txt", expected: "content c"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -269,7 +271,7 @@ extension DirectoryCloningTests {
                     .directoryExists(path: "dir/subdir"),
                     .fileContent(path: "dir/subdir/file.txt", expected: "nested content"),
                     .fileContent(path: "dir/another.txt", expected: "another"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -279,7 +281,7 @@ extension DirectoryCloningTests {
                 ],
                 expectation: .success(verifications: [
                     .directoryExists(path: "empty"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -290,7 +292,7 @@ extension DirectoryCloningTests {
                 expectation: .success(verifications: [
                     .directoryExists(path: "a/b/c/d/e"),
                     .fileContent(path: "a/b/c/d/e/deep.txt", expected: "deep"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -304,7 +306,7 @@ extension DirectoryCloningTests {
                     .fileContent(path: "root.txt", expected: "root"),
                     .directoryExists(path: "empty_dir"),
                     .fileContent(path: "subdir/file.txt", expected: "subdir file"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -316,7 +318,7 @@ extension DirectoryCloningTests {
                 expectation: .success(verifications: [
                     .fileContent(path: "target.txt", expected: "target content"),
                     .symlinkExists(path: "link.txt", target: "target.txt"),
-                ])
+                ]),
             ),
 
             TestCase(
@@ -328,7 +330,7 @@ extension DirectoryCloningTests {
                 expectation: .success(verifications: [
                     .fileContent(path: "dir/target.txt", expected: "nested target"),
                     .symlinkExists(path: "dir/link.txt", target: "target.txt"),
-                ])
+                ]),
             ),
         ]
     }
