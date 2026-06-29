@@ -1,0 +1,38 @@
+excluded_paths:
+  - ".build/**"
+  - ".swiftpm/**"
+  - ".nest/**"
+  - "E2ETestsPackage/.build/**"
+  - "**/.build/**"
+  - "**/.swiftpm/**"
+
+# Start with an explicit baseline instead of my-swift-linter defaults.
+# Move rules from the disabled include to real paths incrementally.
+rules:
+  missing-docs:
+    include:
+      - "__disabled__/**"
+  property-declaration-ordering:
+    include:
+      - "__disabled__/**"
+  test-function-naming:
+    include:
+      - "__disabled__/**"
+  branch-assignment-to-tuple:
+    include:
+      - "__disabled__/**"
+  deep-nesting:
+    include:
+      - "__disabled__/**"
+  return-switch-expression:
+    include:
+      - "__disabled__/**"
+  function-access-modifier-grouping:
+    include:
+      - "__disabled__/**"
+  use-url-file-path:
+    include:
+      - "__disabled__/**"
+  no-top-level-function:
+    include:
+      - "__disabled__/**"

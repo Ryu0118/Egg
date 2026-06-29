@@ -10,6 +10,7 @@ on:
       - 'Package.swift'
       - 'Package.resolved'
       - '.swiftlint.yml'
+      - '.swift-ast-lint.yml'
       - 'nestfile.yaml'
       - 'scripts/nest.sh'
       - '.github/workflows/test.yml'
@@ -22,6 +23,7 @@ on:
       - 'Package.swift'
       - 'Package.resolved'
       - '.swiftlint.yml'
+      - '.swift-ast-lint.yml'
       - 'nestfile.yaml'
       - 'scripts/nest.sh'
       - '.github/workflows/test.yml'
@@ -48,6 +50,9 @@ jobs:
 
       - name: SwiftLint
         run: .nest/bin/swiftlint lint --config .swiftlint.yml --strict --no-cache
+
+      - name: My Swift Linter
+        run: .nest/bin/my-swift-linter --config .swift-ast-lint.yml --no-cache Sources Tests E2ETestsPackage/Tests Package.swift E2ETestsPackage/Package.swift
 
   unit-tests:
     name: Unit Tests

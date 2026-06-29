@@ -18,7 +18,7 @@ lint:
 
 my-lint:
 	@test -f "$(MY_SWIFT_LINTER)" || (echo "Run: make install-commands" && exit 1)
-	"$(MY_SWIFT_LINTER)"
+	"$(MY_SWIFT_LINTER)" --config .swift-ast-lint.yml --no-cache Sources Tests E2ETestsPackage/Tests Package.swift E2ETestsPackage/Package.swift
 
 format-lint: format lint
 
