@@ -41,3 +41,17 @@ package func resolveHomeDirectory() -> URL {
     }
     return FileManager.default.homeDirectoryForCurrentUser
 }
+
+/// Prints a value as stable, pretty-printed JSON to stdout.
+///
+/// The agent-facing hatch transaction commands emit JSON by default so an agent
+/// can parse the result directly. Keys are sorted so the output is stable across
+/// runs.
+package func printJSON(_ value: some Encodable) throws {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+    let data = try encoder.encode(value)
+    if let string = String(data: data, encoding: .utf8) {
+        print(string)
+    }
+}

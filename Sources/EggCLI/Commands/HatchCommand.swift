@@ -5,23 +5,49 @@ import Foundation
 
 extension TemplatePickerStyle: ExpressibleByArgument {}
 
-package struct HatchCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
+/// `egg hatch` — the scaffolding entry point.
+///
+/// Everything is a subcommand so there is no positional/subcommand ambiguity:
+/// `run` is the human/inline flow (and the default when no subcommand is given,
+/// so a bare `egg hatch` still drops into interactive mode), while
+/// `preview`/`apply`/`rollback`/`discard` form the agent-first transaction flow
+/// that emits JSON.
+package struct HatchCommand: AsyncParsableCommand {
     package static let configuration = CommandConfiguration(
         commandName: "hatch",
         abstract: "Use a template to generate files with macro substitution.",
         discussion: """
-        This command supports two modes:
+        Agent-first transaction flow (emits JSON):
+          egg hatch preview <Template> [--macro value ...]   # propose changes + apply token
+          egg hatch apply <token>                            # commit changes, record rollback
+          egg hatch rollback <id>                            # undo a prior apply
+          egg hatch discard <token>                          # drop a preview
 
-        Interactive Mode:
-          When no arguments are provided, the command runs in interactive mode.
-          You will be prompted to:
-          1. Enter the template name
-          2. Answer questions for each macro defined in the template's config
-
-        Direct Mode:
-          Provide the template name and macro values via command-line arguments.
-          Example: egg hatch MyTemplate --name value --enabled true
+        Human / inline flow:
+          egg hatch                       # interactive: prompts for template and macros
+          egg hatch run <Template> ...    # direct: applies inline
         """,
+        subcommands: [
+            HatchRunCommand.self,
+            HatchPreviewCommand.self,
+            HatchApplyCommand.self,
+            HatchRollbackCommand.self,
+            HatchDiscardCommand.self,
+        ],
+        defaultSubcommand: HatchRunCommand.self,
+    )
+
+    package init() {}
+}
+
+/// `egg hatch run` — the inline (non-transaction) flow.
+///
+/// With a template name it applies directly; with none it prompts interactively.
+/// This is the default subcommand, so a bare `egg hatch` resolves here.
+package struct HatchRunCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
+    package static let configuration = CommandConfiguration(
+        commandName: "run",
+        abstract: "Generate files inline (interactive when no template is given).",
     )
 
     @Argument(help: "The name of the template to use (optional, will prompt if not provided).")

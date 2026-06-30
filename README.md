@@ -1,78 +1,90 @@
 # egg
 
-egg is a template scaffolding CLI. Templates define macros in `config.yml`, use
-`___MACRO_NAME___` placeholders in files and directories, and egg expands them
-with provided values.
+egg is a template scaffolding CLI built for AI agents. Templates define macros
+in `config.yml`, use `___MACRO_NAME___` placeholders in files and directories,
+and egg expands them with provided values.
+
+The hatch flow is a transaction: an agent **previews** the changes a template
+would make (in an isolated, git-backed staging clone), **applies** them only
+after approval, and can **roll back** an applied scaffold. Every transaction
+command emits JSON so an agent can parse the result directly.
 
 ## Template Locations
 
-- Global templates: `~/.eggs/<TemplateName>/`
-- Project templates: `./.egg/<TemplateName>/`
+- Global templates: `~/.egg/<TemplateName>/`
+- Project templates: `./.eggs/<TemplateName>/`
 
 Each template directory contains `config.yml` and template files.
 
-## Human CLI
+## Requirements
+
+The working directory **must be a git repository**. egg uses the project's own
+`.gitignore` as the single source of truth for what counts as a change: the
+staging clone carries your tracked `.gitignore`, so artifacts a lifecycle script
+generates (e.g. `node_modules`, `.build`) are suppressed by the same rules git
+already applies. There is no hardcoded list of excluded directories. If the
+working directory is not a git repository, hatch fails and asks you to run
+`git init` first.
+
+## Agent transaction flow
+
+Every command below emits JSON and never prompts.
+
+Inspect exact macro names, flags, MCP tool names, and a recommended flow:
 
 ```sh
-egg template list
 egg template detail MyTemplate
-egg hatch MyTemplate --name MyApp --enabled
 ```
 
-`egg hatch` may run lifecycle scripts from the template. By default it uses a
-staging workflow for preview/apply behavior.
-
-## Agent CLI
-
-Agent commands never prompt and always print JSON.
-
-Inspect exact macro names, CLI flags, MCP tool names, and examples:
+Preview a hatch without writing anything to the working directory:
 
 ```sh
-egg agent template-usage MyTemplate
+egg hatch preview MyTemplate --___NAME___ MyApp --___ENABLED___ true
 ```
 
-Create a hatch transaction without applying it:
+The preview response includes `applyToken`, `changes`, `warnings`, and
+`nextCommands`. Useful options:
+
+- `--include <pathspec>` — force a normally-ignored path into the change set
+- `--exclude <pathspec>` — drop paths from the change set
+- `--output <dir>` — directory the generated output targets
+
+Apply a previewed transaction (records a rollback bundle):
 
 ```sh
-egg agent hatch-preview MyTemplate --name MyApp --enabled
+egg hatch apply <applyToken>
 ```
 
-The preview response includes:
-
-- `applyToken`
-- `changes`
-- `warnings`
-- `nextCommands.apply`
-- `nextCommands.discard`
-
-Apply a previewed transaction:
+Roll back an applied transaction:
 
 ```sh
-egg agent hatch-apply <applyToken>
+egg hatch rollback <rollbackId>
 ```
 
-Rollback an applied transaction:
+Discard a preview without applying it:
 
 ```sh
-egg agent hatch-rollback <rollbackId>
+egg hatch discard <applyToken>
 ```
 
-Discard a previewed transaction:
+## Human / inline flow
 
 ```sh
-egg agent hatch-discard <applyToken>
+egg hatch                     # interactive: prompts for template and macros
+egg hatch run MyTemplate ...  # direct: applies inline
 ```
 
-## MCP Flow
+`egg hatch` with no subcommand drops into interactive mode.
+
+## MCP flow
 
 Agents should use the transaction tools instead of one-shot hatch:
 
-1. `egg_template_detail`
-2. `egg_hatch_preview`
+1. `egg_template_detail` — read required macros and the recommended flow
+2. `egg_hatch_preview` — create a transaction without applying
 3. inspect `changes` and `warnings`
-4. `egg_hatch_apply`
-5. optionally `egg_hatch_rollback`
+4. `egg_hatch_apply` — apply only after approval
+5. `egg_hatch_rollback` — optionally undo
 
 Macro keys for MCP must use the exact config names:
 
@@ -86,16 +98,12 @@ Macro keys for MCP must use the exact config names:
 }
 ```
 
-`egg_hatch` remains available for compatibility, but defaults to preview mode
+`egg_hatch` remains available for compatibility but defaults to preview mode
 unless `apply_changes: true` is passed.
 
-## Rollback Scope
+## Rollback scope
 
 Rollback restores managed workspace file changes only. It does not undo network
 calls, writes outside the project, package-manager global caches, or other
-external side effects from lifecycle scripts.
-
-Generated artifact/cache directories such as `node_modules`, `.build`,
-`.swiftpm`, `.venv`, `.next`, and `.turbo` are excluded from transaction change
-detection.
-
+external side effects from lifecycle scripts. The preview/apply response carries
+a `rollback_scope` warning to make this explicit.

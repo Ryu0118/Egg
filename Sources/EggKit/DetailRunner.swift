@@ -83,17 +83,15 @@ package struct DetailRunner {
             ),
             agentUsage: DetailResult.AgentUsage(
                 recommendedFlow: [
-                    "Call egg_template_detail or egg agent template-usage to read required macros.",
-                    "Call egg_hatch_preview or egg agent hatch-preview to create a transaction without applying changes.",
-                    "Inspect changes and warnings.",
-                    "Call egg_hatch_apply or egg agent hatch-apply with applyToken only after approval.",
-                    "Use egg_hatch_rollback or egg agent hatch-rollback with rollbackId if the applied scaffold must be undone.",
+                    "Read required macros via the egg_template_detail MCP tool (or 'egg template detail <name>').",
+                    "Create a transaction without applying changes: egg_hatch_preview MCP tool, or 'egg hatch preview <name> --macro value'.",
+                    "Inspect the returned changes and warnings.",
+                    "Only after approval, apply with the applyToken: egg_hatch_apply, or 'egg hatch apply <applyToken>'.",
+                    "If the applied scaffold must be undone, use the rollbackId: egg_hatch_rollback, or 'egg hatch rollback <rollbackId>'.",
                 ],
                 previewCliCommand: formatted.exampleCommand.replacingOccurrences(
                     of: "egg hatch",
-                    with: "egg agent hatch-preview",
-                    options: [],
-                    range: formatted.exampleCommand.startIndex ..< formatted.exampleCommand.endIndex,
+                    with: "egg hatch preview",
                 ),
                 previewMcpTool: "egg_hatch_preview",
                 applyMcpTool: "egg_hatch_apply",

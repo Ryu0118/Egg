@@ -115,6 +115,8 @@ public struct MCPService: Sendable {
         macros: [String: Any],
         outputDirectory: URL? = nil,
         stagingRoot _: URL? = nil,
+        include: [String] = [],
+        exclude: [String] = [],
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -127,6 +129,8 @@ public struct MCPService: Sendable {
             templateDirectory: template.path,
             config: template.config,
             parsedMacros: parsedMacros,
+            include: include,
+            exclude: exclude,
         )
 
         return try await runner.preview()

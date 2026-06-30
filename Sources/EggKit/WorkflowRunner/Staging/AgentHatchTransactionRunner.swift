@@ -20,6 +20,7 @@ package struct AgentHatchTransactionRunner {
     private let templateDirectory: URL
     private let config: Config
     private let parsedMacros: [ParsedMacroDefinition]
+    private let pathFilter: GitStagingChangeDetector.PathFilter
     private let store: HatchTransactionStore
     private let phaseRunner: PhaseRunner
 
@@ -32,6 +33,8 @@ package struct AgentHatchTransactionRunner {
         templateDirectory: URL,
         config: Config,
         parsedMacros: [ParsedMacroDefinition],
+        include: [String] = [],
+        exclude: [String] = [],
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -41,6 +44,7 @@ package struct AgentHatchTransactionRunner {
         self.templateDirectory = templateDirectory
         self.config = config
         self.parsedMacros = parsedMacros
+        pathFilter = GitStagingChangeDetector.PathFilter(include: include, exclude: exclude)
         store = HatchTransactionStore(fileManager: fileManager, workingDirectory: workingDirectory)
         phaseRunner = PhaseRunner(
             processRunner: processRunner,
@@ -57,6 +61,15 @@ package struct AgentHatchTransactionRunner {
     package func preview() async throws -> AgentHatchPreviewResult {
         if let allowedPaths = config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
             throw LifecycleStepError.sandboxPermissionRequired(paths: allowedPaths)
+        }
+
+        // git is required. The whole change model — staging snapshot, .gitignore
+        // suppression, change detection — is built on the working directory being
+        // a git repository. There is no full-copy fallback: an agent cannot answer
+        // an interactive "this may be slow, proceed?" prompt, and copying an
+        // un-scoped directory (node_modules, .build, …) is exactly what we avoid.
+        guard await GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory) else {
+            throw Error.notAGitRepository(path: workingDirectory.path(percentEncoded: false))
         }
 
         let token = makeToken(templateName: config.name)
@@ -78,11 +91,12 @@ package struct AgentHatchTransactionRunner {
         // git what changed. The clone carries the project's tracked .gitignore,
         // so script-generated artifacts are suppressed without any hardcoded list.
         let detector = GitStagingChangeDetector(processRunner: processRunner, fileManager: fileManager)
-        try await detector.recordBaseline(in: tempWork)
+        try await detector.recordBaseline(in: tempWork, filter: pathFilter)
+        let snapshotWarnings = snapshotSizeWarnings(for: tempWork)
         let outputPath = try await runWorkflow(in: tempWork)
-        let summary = try await detector.changes(in: tempWork)
+        let summary = try await detector.changes(in: tempWork, filter: pathFilter)
         let changes = makeAgentChanges(summary)
-        let warnings = makeWarnings()
+        let warnings = makeWarnings() + snapshotWarnings
 
         let transactionDirectory = try store.createDirectory(for: token)
         let workDestination = transactionDirectory.appending(path: "work")
@@ -115,8 +129,8 @@ package struct AgentHatchTransactionRunner {
             changes: changes,
             warnings: warnings,
             nextCommands: AgentTransactionCommands(
-                apply: "egg agent hatch-apply \(token)",
-                discard: "egg agent hatch-discard \(token)",
+                apply: "egg hatch apply \(token)",
+                discard: "egg hatch discard \(token)",
             ),
         )
     }
@@ -293,6 +307,41 @@ package struct AgentHatchTransactionRunner {
         return output.path(percentEncoded: false)
     }
 
+    /// Warns (without failing) when the staging clone is unexpectedly large.
+    ///
+    /// A scoped git repo should never produce a huge snapshot, so crossing these
+    /// limits usually means the project's `.gitignore` is missing entries. The
+    /// warning names the limit that fired and how to narrow the snapshot, rather
+    /// than silently proceeding.
+    private func snapshotSizeWarnings(for workspace: URL) -> [AgentTransactionWarning] {
+        var fileCount = 0
+        var byteCount = 0
+        if let enumerator = fileManager.enumerator(
+            at: workspace,
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+            options: [],
+            errorHandler: nil,
+        ) {
+            while let item = enumerator.nextObject() as? URL {
+                let values = try? item.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+                guard values?.isRegularFile == true else { continue }
+                fileCount += 1
+                byteCount += values?.fileSize ?? 0
+            }
+        }
+
+        guard fileCount > Self.snapshotFileLimit || byteCount > Self.snapshotByteLimit else {
+            return []
+        }
+        let megabytes = byteCount / (1024 * 1024)
+        return [
+            AgentTransactionWarning(
+                code: "large_snapshot",
+                message: "Staging snapshot is large (\(fileCount) files, \(megabytes) MB). This usually means .gitignore is missing entries. Add them, or narrow the snapshot with --exclude.",
+            ),
+        ]
+    }
+
     private func makeAgentChanges(_ summary: ChangeSummary) -> [AgentChangeEntry] {
         summary.added.map { AgentChangeEntry(path: $0, kind: "add") }
             + summary.modified.map { AgentChangeEntry(path: $0, kind: "modify") }
@@ -355,12 +404,16 @@ package struct AgentHatchTransactionRunner {
         return formatter.string(from: Date())
             .replacingOccurrences(of: ":", with: "")
     }
+
+    private static let snapshotFileLimit = 10000
+    private static let snapshotByteLimit = 100 * 1024 * 1024
 }
 
 extension AgentHatchTransactionRunner {
     enum Error: LocalizedError, Equatable {
         case transactionNotPreview(token: String, status: String)
         case conflictingWorkingDirectoryChanges([String])
+        case notAGitRepository(path: String)
 
         var errorDescription: String? {
             switch self {
@@ -368,6 +421,8 @@ extension AgentHatchTransactionRunner {
                 "Transaction '\(token)' cannot be applied because its status is '\(status)'."
             case let .conflictingWorkingDirectoryChanges(paths):
                 "Working directory changed since preview: \(paths.joined(separator: ", ")). Re-run preview or pass --force."
+            case let .notAGitRepository(path):
+                "'\(path)' is not a git repository. egg hatch needs git to scope and track changes safely. Run 'git init' first."
             }
         }
     }
