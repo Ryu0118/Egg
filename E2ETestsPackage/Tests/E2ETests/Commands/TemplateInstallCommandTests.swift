@@ -114,7 +114,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         for template in Self.knownTemplates {
@@ -133,7 +133,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         for template in Self.knownTemplates {
             let path = projectDir.appending(path: ".eggs/\(template)")
@@ -151,7 +151,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
@@ -168,7 +168,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
@@ -185,7 +185,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
@@ -201,7 +201,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
@@ -223,7 +223,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
         #expect(!fileManager.fileExists(atPath: markerFile.path(percentEncoded: false)), "Marker should be gone after overwrite")
     }
 
@@ -288,7 +288,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/LocalTemplate1").path(percentEncoded: false)))
@@ -305,11 +305,11 @@ struct TemplateInstallCommandTests {
 
         let result = try await runner.run(
             arguments: ["template", "install", "./my-templates", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
-            environment: env,
             workingDirectory: projectDir,
+            environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/RelativePathTemplate").path(percentEncoded: false)))
@@ -325,11 +325,11 @@ struct TemplateInstallCommandTests {
 
         let result = try await runner.run(
             arguments: ["template", "install", ".claude/plugins/my-plugin", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
-            environment: env,
             workingDirectory: projectDir,
+            environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/PluginTemplate").path(percentEncoded: false)))
@@ -348,7 +348,7 @@ struct TemplateInstallCommandTests {
             environment: env,
         )
 
-        #expect(result.succeeded, "Expected success: \(result.stderr)")
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/IncludedTemplate").path(percentEncoded: false)))
@@ -384,7 +384,7 @@ struct TemplateInstallCommandTests {
         try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
 
         let env = ["HOME": homeDir.path(percentEncoded: false)]
-        let cleanup = { [fileManager] in
+        let cleanup: () -> Void = { [fileManager] in
             try? fileManager.removeItem(at: tempDir)
         }
 
