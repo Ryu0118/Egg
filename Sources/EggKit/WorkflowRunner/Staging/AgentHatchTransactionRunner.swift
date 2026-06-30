@@ -3,6 +3,14 @@ import Foundation
 import Noora
 import ProcessRunning
 
+/// Runs `egg hatch` as a non-interactive, machine-readable transaction.
+///
+/// Instead of applying changes inline, a transaction is split into discrete
+/// steps an agent can drive: ``preview()`` runs the template in a staging clone
+/// and returns the proposed changes plus an apply token; ``apply(token:force:)``
+/// commits them to the real working directory and records a rollback bundle;
+/// ``rollback(id:force:)`` undoes a prior apply; and ``discard(token:)`` drops a
+/// preview without applying it.
 package struct AgentHatchTransactionRunner {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
@@ -44,6 +52,8 @@ package struct AgentHatchTransactionRunner {
         )
     }
 
+    /// Runs the template in a staging clone and returns the proposed changes
+    /// plus an apply token, without touching the real working directory.
     package func preview() async throws -> AgentHatchPreviewResult {
         if let allowedPaths = config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
             throw LifecycleStepError.sandboxPermissionRequired(paths: allowedPaths)
@@ -64,9 +74,13 @@ package struct AgentHatchTransactionRunner {
         async let cloneReference: () = try cloner.clone(from: workingDirectory, to: tempReference)
         _ = try await (cloneWork, cloneReference)
 
+        // Record a git baseline on the cloned tree, run the workflow, then ask
+        // git what changed. The clone carries the project's tracked .gitignore,
+        // so script-generated artifacts are suppressed without any hardcoded list.
+        let detector = GitStagingChangeDetector(processRunner: processRunner, fileManager: fileManager)
+        try await detector.recordBaseline(in: tempWork)
         let outputPath = try await runWorkflow(in: tempWork)
-        let detector = FileSystemChangeDetector(fileManager: fileManager)
-        let summary = try detector.computeChanges(referenceRoot: tempReference, changedRoot: tempWork)
+        let summary = try await detector.changes(in: tempWork)
         let changes = makeAgentChanges(summary)
         let warnings = makeWarnings()
 
@@ -107,6 +121,10 @@ package struct AgentHatchTransactionRunner {
         )
     }
 
+    /// Applies a previewed transaction to the real working directory.
+    ///
+    /// Fails if the working directory drifted from the preview baseline unless
+    /// `force` is set. Records a rollback bundle before applying.
     package func apply(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
         let metadata = try store.load(token: token)
         guard metadata.status == .preview else {
@@ -117,14 +135,14 @@ package struct AgentHatchTransactionRunner {
         let work = URL(filePath: metadata.workDirectory)
         let working = URL(filePath: metadata.workingDirectory)
 
-        let detector = FileSystemChangeDetector(fileManager: fileManager)
-        let workingChanges = try detector.computeChanges(
+        let conflictDetector = WorkingDirectoryConflictDetector(fileManager: fileManager)
+        let conflicts = try conflictDetector.conflictingPaths(
             referenceRoot: reference,
-            changedRoot: working,
-            limitingTo: metadata.changes.map(\.path),
+            workingRoot: working,
+            paths: metadata.changes.map(\.path),
         )
-        if !workingChanges.isEmpty, !force {
-            throw Error.conflictingWorkingDirectoryChanges(workingChanges.allPaths.sorted())
+        if !conflicts.isEmpty, !force {
+            throw Error.conflictingWorkingDirectoryChanges(conflicts)
         }
 
         let rollbackId = try createRollbackBundle(metadata: metadata)
@@ -147,6 +165,7 @@ package struct AgentHatchTransactionRunner {
         )
     }
 
+    /// Drops a previewed transaction and its staging area without applying it.
     package func discard(token: String) throws -> AgentHatchApplyResult {
         let metadata = try store.load(token: token)
         try store.discard(token: token)
@@ -159,6 +178,7 @@ package struct AgentHatchTransactionRunner {
         )
     }
 
+    /// Restores files captured in a rollback bundle from a prior ``apply(token:force:)``.
     package func rollback(id rollbackId: String, force _: Bool = false) throws -> AgentHatchRollbackResult {
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
@@ -286,9 +306,8 @@ package struct AgentHatchTransactionRunner {
                 message: "Rollback can restore files inside the managed workspace only. External writes and network side effects from lifecycle scripts are not reversible.",
             ),
             AgentTransactionWarning(
-                code: "excluded_artifacts",
-                message: "Generated artifact/cache directories are excluded from change detection.",
-                paths: Array(FileSystemChangeDetector.defaultExcludedDirectoryNames).sorted(),
+                code: "gitignore_scoped",
+                message: "Change detection follows the project's own .gitignore. Files ignored by git (build caches, node_modules, etc.) are not tracked as changes. Add a path to --include to force it in.",
             ),
         ]
     }

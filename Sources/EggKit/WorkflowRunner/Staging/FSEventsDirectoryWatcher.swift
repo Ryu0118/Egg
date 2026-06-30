@@ -39,9 +39,18 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
 
         let pathsToWatch = [directory.path(percentEncoded: false)] as CFArray
 
+        // The callback is an inline non-capturing literal closure: Swift 6.3
+        // forms a C function pointer from such a closure (state rides through
+        // the `info` context pointer), which avoids both a top-level function
+        // and an un-pointer-able static member.
         guard let stream = FSEventStreamCreate(
             nil,
-            fsEventsCallbackHandle,
+            { _, info, _, eventPaths, _, _ in
+                guard let info else { return }
+                let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
+                guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
+                buffer.append(pathArray)
+            },
             context,
             pathsToWatch,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
@@ -179,30 +188,4 @@ private final class EventBuffer: @unchecked Sendable {
         paths = []
         return result
     }
-}
-
-/// C-style callback function for FSEvents.
-///
-/// Declared as a top-level function so it can be passed as a C function
-/// pointer: Swift 6.3 only forms `@convention(c)` pointers from references
-/// to top-level `func` declarations or non-capturing literal closures, not
-/// from static members.
-private func fsEventsCallbackHandle(
-    _: ConstFSEventStreamRef,
-    info: UnsafeMutableRawPointer?,
-    numEvents _: Int,
-    eventPaths: UnsafeMutableRawPointer,
-    _: UnsafePointer<FSEventStreamEventFlags>,
-    _: UnsafePointer<FSEventStreamEventId>,
-) {
-    guard let info else { return }
-
-    // Get the event buffer
-    let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
-
-    // Convert paths
-    guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
-
-    // Add to buffer
-    buffer.append(pathArray)
 }
