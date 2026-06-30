@@ -77,7 +77,7 @@ struct PhaseRunner {
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) async throws {
-        noora.passthrough("🥚 Pre-hatch script executing...\n")
+        progress("🥚 Pre-hatch script executing...\n")
 
         let builtInContext = makeBuiltInMacroContext(
             workingDirectory: workingDirectory,
@@ -122,7 +122,7 @@ struct PhaseRunner {
         workingDirectory: URL,
         pathValidator: ((URL) async throws -> Void)? = nil,
     ) async throws -> URL {
-        noora.passthrough("🐣 Hatching \(config.name)...\n")
+        progress("🐣 Hatching \(config.name)...\n")
 
         // Resolve macros in the output path first
         let resolver = VariableResolver(
@@ -169,7 +169,7 @@ struct PhaseRunner {
             excluding: config.hatch.exclude,
         )
 
-        noora.passthrough("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
+        progress("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
 
         return outputDirectory
     }
@@ -194,7 +194,7 @@ struct PhaseRunner {
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) async throws {
-        noora.passthrough("🐥 Post-hatch script executing...\n")
+        progress("🐥 Post-hatch script executing...\n")
 
         let builtInContext = makeBuiltInMacroContext(
             workingDirectory: workingDirectory,
@@ -216,6 +216,15 @@ struct PhaseRunner {
             substituting: macros,
             merging: outputs,
         )
+    }
+
+    /// Emits a human-facing progress line, but only in interactive mode.
+    ///
+    /// Non-interactive (agent transaction) runs keep stdout clean so the JSON
+    /// result is the only thing on stdout and stays machine-parseable.
+    private func progress(_ message: TerminalText, tab: UInt = 0) {
+        guard isInteractive else { return }
+        noora.passthrough(message, tab: tab)
     }
 
     private func makeBuiltInMacroContext(
