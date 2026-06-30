@@ -10,6 +10,8 @@ struct HatchPreviewHandler: ToolHandler {
         let searchPaths = context.arguments.optionalStringArray("template_search_paths")?.map { URL(filePath: $0) } ?? []
         let projectDir = context.arguments.optionalString("project_directory").map { URL(filePath: $0) }
         let outputDir = context.arguments.optionalString("output_directory").map { URL(filePath: $0) }
+        let include = context.arguments.optionalStringArray("include") ?? []
+        let exclude = context.arguments.optionalStringArray("exclude") ?? []
 
         let service = MCPService(
             workingDirectory: outputDir,
@@ -21,6 +23,8 @@ struct HatchPreviewHandler: ToolHandler {
             templateName: templateName,
             macros: macros,
             outputDirectory: outputDir,
+            include: include,
+            exclude: exclude,
         )
 
         return try JSONEncoderHelper.encode(result)

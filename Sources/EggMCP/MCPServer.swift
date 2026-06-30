@@ -143,6 +143,16 @@ public struct EggMCPServer {
                         "items": .object(["type": "string"]),
                         "description": "Additional paths to search for templates.",
                     ]),
+                    "include": .object([
+                        "type": "array",
+                        "items": .object(["type": "string"]),
+                        "description": "Git pathspecs to force into the change set even if .gitignore would exclude them (e.g. dist/bundle.js).",
+                    ]),
+                    "exclude": .object([
+                        "type": "array",
+                        "items": .object(["type": "string"]),
+                        "description": "Git pathspecs to exclude from the change set (e.g. docs/**).",
+                    ]),
                 ]),
                 "required": .array(["template_name"]),
             ]),
