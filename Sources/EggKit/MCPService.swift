@@ -121,19 +121,27 @@ public struct MCPService: Sendable {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
         let parsedMacros = parseMacros(macros, for: template)
+        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude)
+    }
 
-        let runner = AgentHatchTransactionRunner(
-            fileManager: fileManager,
-            workingDirectory: outputDir,
-            homeDirectory: homeDirectory,
-            templateDirectory: template.path,
-            config: template.config,
-            parsedMacros: parsedMacros,
-            include: include,
-            exclude: exclude,
-        )
-
-        return try await runner.preview()
+    /// Previews a hatch from raw CLI macro arguments (e.g. `["--name", "App"]`).
+    ///
+    /// Routes the arguments through the same `MacrosParser` the human flow uses,
+    /// so CLI flags like `--module-name` normalize to `___MODULE_NAME___` exactly
+    /// as the usage contract's example command advertises — there is a single
+    /// macro-parsing path, not a transaction-specific reimplementation.
+    public func previewHatchTemplate(
+        templateName: String,
+        macroArguments: [String],
+        outputDirectory: URL? = nil,
+        include: [String] = [],
+        exclude: [String] = [],
+    ) async throws -> AgentHatchPreviewResult {
+        let outputDir = outputDirectory ?? workingDirectory
+        let template = try await findTemplate(templateName, workingDirectory: outputDir)
+        let parsedMacros = try MacrosParser(macroDefinitions: template.config.macros ?? [])
+            .parseCommandLineArguments(macroArguments)
+        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude)
     }
 
     public func applyHatchTransaction(
@@ -356,6 +364,27 @@ public struct MCPService: Sendable {
     // MARK: - Private Helpers
 
     /// Creates a TemplatesFinder with the service's configuration.
+    private func preview(
+        template: Template,
+        parsedMacros: [ParsedMacroDefinition],
+        outputDir: URL,
+        include: [String],
+        exclude: [String],
+    ) async throws -> AgentHatchPreviewResult {
+        let runner = AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: outputDir,
+            homeDirectory: homeDirectory,
+            templateDirectory: template.path,
+            config: template.config,
+            parsedMacros: parsedMacros,
+            include: include,
+            exclude: exclude,
+        )
+
+        return try await runner.preview()
+    }
+
     private func makeTemplatesFinder(workingDirectory: URL? = nil) -> TemplatesFinder {
         TemplatesFinder(
             fileManager: fileManager,

@@ -69,7 +69,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
         let outputDirectory = output.map { URL(filePath: $0, relativeTo: URL(filePath: HatchTransactionOptions.fileManager.currentDirectoryPath)).standardizedFileURL }
         let result = try await service.previewHatchTemplate(
             templateName: templateName,
-            macros: parseMacroPairs(macros),
+            macroArguments: macros,
             outputDirectory: outputDirectory,
             include: include,
             exclude: exclude,
@@ -140,26 +140,4 @@ struct HatchDiscardCommand: AsyncParsableCommand {
         let result = try service.discardHatchTransaction(applyToken: token)
         try printJSON(result)
     }
-}
-
-/// Parses `["--name", "value", "--flag", "true"]` macro pairs into a dictionary.
-private func parseMacroPairs(_ raw: [String]) -> [String: Any] {
-    var result: [String: Any] = [:]
-    var index = 0
-    while index < raw.count {
-        let token = raw[index]
-        guard token.hasPrefix("--") else {
-            index += 1
-            continue
-        }
-        let key = String(token.dropFirst(2))
-        if index + 1 < raw.count, !raw[index + 1].hasPrefix("--") {
-            result[key] = raw[index + 1]
-            index += 2
-        } else {
-            result[key] = "true"
-            index += 1
-        }
-    }
-    return result
 }
