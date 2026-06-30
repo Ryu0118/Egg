@@ -48,6 +48,7 @@ The preview response includes `applyToken`, `changes`, `warnings`, and
 - `--include <pathspec>` — force a normally-ignored path into the change set
 - `--exclude <pathspec>` — drop paths from the change set
 - `--output <dir>` — directory the generated output targets
+- `--diff` — include each change's unified diff in the output (off by default)
 
 Apply a previewed transaction (records a rollback bundle):
 

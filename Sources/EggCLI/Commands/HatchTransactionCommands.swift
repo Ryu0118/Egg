@@ -60,6 +60,9 @@ struct HatchPreviewCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Directory the generated output targets (defaults to current directory).", completion: .directory)
     var output: String?
 
+    @Flag(name: .long, help: "Include the unified diff of each change in the output.")
+    var diff = false
+
     /// User-defined macro values, captured as unrecognized options (e.g. --name value).
     @Argument(parsing: .allUnrecognized, help: "User-defined macro values (e.g. --macro value).")
     var macros: [String] = []
@@ -73,6 +76,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
             outputDirectory: outputDirectory,
             include: include,
             exclude: exclude,
+            includeDiff: diff,
         )
         try printJSON(result)
     }

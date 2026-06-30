@@ -58,7 +58,10 @@ package struct AgentHatchTransactionRunner {
 
     /// Runs the template in a staging clone and returns the proposed changes
     /// plus an apply token, without touching the real working directory.
-    package func preview() async throws -> AgentHatchPreviewResult {
+    ///
+    /// When `includeDiff` is set, each change carries its unified diff so a
+    /// caller can review the exact content before applying.
+    package func preview(includeDiff: Bool = false) async throws -> AgentHatchPreviewResult {
         if let allowedPaths = config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
             throw LifecycleStepError.sandboxPermissionRequired(paths: allowedPaths)
         }
@@ -95,7 +98,10 @@ package struct AgentHatchTransactionRunner {
         let snapshotWarnings = snapshotSizeWarnings(for: tempWork)
         let outputPath = try await runWorkflow(in: tempWork)
         let summary = try await detector.changes(in: tempWork, filter: pathFilter)
-        let changes = makeAgentChanges(summary)
+        var changes = makeAgentChanges(summary)
+        if includeDiff {
+            changes = try await attachDiffs(to: changes, detector: detector, workspace: tempWork)
+        }
         let warnings = makeWarnings() + snapshotWarnings
 
         let transactionDirectory = try store.createDirectory(for: token)
@@ -346,6 +352,20 @@ package struct AgentHatchTransactionRunner {
         summary.added.map { AgentChangeEntry(path: $0, kind: "add") }
             + summary.modified.map { AgentChangeEntry(path: $0, kind: "modify") }
             + summary.deleted.map { AgentChangeEntry(path: $0, kind: "delete") }
+    }
+
+    private func attachDiffs(
+        to changes: [AgentChangeEntry],
+        detector: GitStagingChangeDetector,
+        workspace: URL,
+    ) async throws -> [AgentChangeEntry] {
+        var enriched: [AgentChangeEntry] = []
+        enriched.reserveCapacity(changes.count)
+        for change in changes {
+            let diff = try await detector.unifiedDiff(for: change.path, in: workspace)
+            enriched.append(AgentChangeEntry(path: change.path, kind: change.kind, diff: diff.isEmpty ? nil : diff))
+        }
+        return enriched
     }
 
     private func makeWarnings() -> [AgentTransactionWarning] {

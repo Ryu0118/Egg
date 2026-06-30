@@ -153,6 +153,10 @@ public struct EggMCPServer {
                         "items": .object(["type": "string"]),
                         "description": "Git pathspecs to exclude from the change set (e.g. docs/**).",
                     ]),
+                    "include_diff": .object([
+                        "type": "boolean",
+                        "description": "When true, each change carries its unified diff so you can review the exact content before applying. Default: false.",
+                    ]),
                 ]),
                 "required": .array(["template_name"]),
             ]),

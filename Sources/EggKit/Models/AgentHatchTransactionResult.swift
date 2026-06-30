@@ -78,10 +78,13 @@ public struct AgentHatchRollbackResult: Codable, Sendable, Equatable {
 public struct AgentChangeEntry: Codable, Sendable, Equatable {
     public let path: String
     public let kind: String
+    /// Unified diff for this change, present only when previewed with `--diff`.
+    public let diff: String?
 
-    public init(path: String, kind: String) {
+    public init(path: String, kind: String, diff: String? = nil) {
         self.path = path
         self.kind = kind
+        self.diff = diff
     }
 }
 

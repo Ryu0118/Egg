@@ -117,11 +117,12 @@ public struct MCPService: Sendable {
         stagingRoot _: URL? = nil,
         include: [String] = [],
         exclude: [String] = [],
+        includeDiff: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
         let parsedMacros = parseMacros(macros, for: template)
-        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude)
+        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude, includeDiff: includeDiff)
     }
 
     /// Previews a hatch from raw CLI macro arguments (e.g. `["--name", "App"]`).
@@ -136,12 +137,13 @@ public struct MCPService: Sendable {
         outputDirectory: URL? = nil,
         include: [String] = [],
         exclude: [String] = [],
+        includeDiff: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
         let parsedMacros = try MacrosParser(macroDefinitions: template.config.macros ?? [])
             .parseCommandLineArguments(macroArguments)
-        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude)
+        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude, includeDiff: includeDiff)
     }
 
     public func applyHatchTransaction(
@@ -370,6 +372,7 @@ public struct MCPService: Sendable {
         outputDir: URL,
         include: [String],
         exclude: [String],
+        includeDiff: Bool,
     ) async throws -> AgentHatchPreviewResult {
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -382,7 +385,7 @@ public struct MCPService: Sendable {
             exclude: exclude,
         )
 
-        return try await runner.preview()
+        return try await runner.preview(includeDiff: includeDiff)
     }
 
     private func makeTemplatesFinder(workingDirectory: URL? = nil) -> TemplatesFinder {

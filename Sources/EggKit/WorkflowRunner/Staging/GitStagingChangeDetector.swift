@@ -82,6 +82,17 @@ struct GitStagingChangeDetector {
         return parser.parse(components: components)
     }
 
+    /// Returns the unified diff for a single changed path, relative to the baseline.
+    ///
+    /// Used to enrich a preview when the caller asks for `--diff`: the staged
+    /// patch shows exactly what content the workflow would add or modify.
+    func unifiedDiff(for path: String, in workspace: URL) async throws -> String {
+        try await git(
+            ["diff", "--cached", "-p", "--no-renames", "HEAD", "--", path],
+            in: workspace,
+        )
+    }
+
     private func stageAll(in workspace: URL, filter: PathFilter) async throws {
         var arguments = ["add", "-A"]
         if !filter.exclude.isEmpty {

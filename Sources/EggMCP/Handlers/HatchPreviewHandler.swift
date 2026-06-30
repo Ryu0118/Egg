@@ -12,6 +12,7 @@ struct HatchPreviewHandler: ToolHandler {
         let outputDir = context.arguments.optionalString("output_directory").map { URL(filePath: $0) }
         let include = context.arguments.optionalStringArray("include") ?? []
         let exclude = context.arguments.optionalStringArray("exclude") ?? []
+        let includeDiff = context.arguments.bool("include_diff", default: false)
 
         let service = MCPService(
             workingDirectory: outputDir,
@@ -25,6 +26,7 @@ struct HatchPreviewHandler: ToolHandler {
             outputDirectory: outputDir,
             include: include,
             exclude: exclude,
+            includeDiff: includeDiff,
         )
 
         return try JSONEncoderHelper.encode(result)
