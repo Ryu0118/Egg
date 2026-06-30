@@ -8,8 +8,8 @@ extension TemplatePickerStyle: ExpressibleByArgument {}
 /// `egg hatch` — the scaffolding entry point.
 ///
 /// Everything is a subcommand so there is no positional/subcommand ambiguity:
-/// `run` is the human/inline flow (and the default when no subcommand is given,
-/// so a bare `egg hatch` still drops into interactive mode), while
+/// `direct` is the human/inline flow (and the default when no subcommand is
+/// given, so a bare `egg hatch` still drops into interactive mode), while
 /// `preview`/`apply`/`rollback`/`discard` form the agent-first transaction flow
 /// that emits JSON.
 package struct HatchCommand: AsyncParsableCommand {
@@ -24,30 +24,30 @@ package struct HatchCommand: AsyncParsableCommand {
           egg hatch discard <token>                          # drop a preview
 
         Human / inline flow:
-          egg hatch                       # interactive: prompts for template and macros
-          egg hatch run <Template> ...    # direct: applies inline
+          egg hatch                         # interactive: prompts for template and macros
+          egg hatch direct <Template> ...   # applies inline, no preview/token step
         """,
         subcommands: [
-            HatchRunCommand.self,
+            HatchDirectCommand.self,
             HatchPreviewCommand.self,
             HatchApplyCommand.self,
             HatchRollbackCommand.self,
             HatchDiscardCommand.self,
         ],
-        defaultSubcommand: HatchRunCommand.self,
+        defaultSubcommand: HatchDirectCommand.self,
     )
 
     package init() {}
 }
 
-/// `egg hatch run` — the inline (non-transaction) flow.
+/// `egg hatch direct` — the inline (non-transaction) flow.
 ///
 /// With a template name it applies directly; with none it prompts interactively.
 /// This is the default subcommand, so a bare `egg hatch` resolves here.
-package struct HatchRunCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
+package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
     package static let configuration = CommandConfiguration(
-        commandName: "run",
-        abstract: "Generate files inline (interactive when no template is given).",
+        commandName: "direct",
+        abstract: "Generate files inline without the preview/apply step (interactive when no template is given).",
     )
 
     @Argument(help: "The name of the template to use (optional, will prompt if not provided).")

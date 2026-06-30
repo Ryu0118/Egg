@@ -70,8 +70,8 @@ egg hatch discard <applyToken>
 ## Human / inline flow
 
 ```sh
-egg hatch                     # interactive: prompts for template and macros
-egg hatch run MyTemplate ...  # direct: applies inline
+egg hatch                        # interactive: prompts for template and macros
+egg hatch direct MyTemplate ...  # applies inline, no preview/token step
 ```
 
 `egg hatch` with no subcommand drops into interactive mode.
