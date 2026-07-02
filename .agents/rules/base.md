@@ -37,8 +37,8 @@ When working on egg templates or CLI usage, read these skills for detailed refer
 
 | Skill | When to use |
 |-------|-------------|
-| `egg-config-spec` | Creating/editing `config.yml` (macro types, lifecycle hooks) |
-| `egg-cli-guide` | CLI commands, argument ordering, interactive vs direct mode |
+| `egg-template` | Creating/updating templates (`config.yml`, macro types, lifecycle hooks) |
+| `egg-cli-guide` | CLI commands, agent transaction flow (preview/apply/rollback/discard), argument ordering |
 
 ## Notes
 
