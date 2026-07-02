@@ -14,14 +14,20 @@ struct HatchTransactionStore {
         workingDirectory.appending(path: ".egg/transactions")
     }
 
+    /// The directory for a given transaction token, e.g. for
+    /// ``TransactionLock`` to lock without duplicating path-joining logic.
+    func directory(for token: String) -> URL {
+        root.appending(path: token)
+    }
+
     func createDirectory(for token: String) throws -> URL {
-        let directory = root.appending(path: token)
+        let directory = directory(for: token)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
 
     func metadataURL(for token: String) -> URL {
-        root.appending(path: token).appending(path: "metadata.json")
+        directory(for: token).appending(path: "metadata.json")
     }
 
     func save(_ metadata: HatchTransactionMetadata) throws {
@@ -31,7 +37,9 @@ struct HatchTransactionStore {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(metadata)
-        try data.write(to: metadataURL)
+        // Atomic (temp-file-then-rename): a reader's load() must never observe
+        // a torn/partial write, even outside the lock (e.g. a status check).
+        try data.write(to: metadataURL, options: .atomic)
     }
 
     func load(token: String) throws -> HatchTransactionMetadata {

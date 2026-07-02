@@ -105,26 +105,36 @@ package struct AgentHatchTransactionRunner {
         }
         let warnings = makeWarnings() + snapshotWarnings
 
-        let transactionDirectory = try store.createDirectory(for: token)
-        let workDestination = transactionDirectory.appending(path: "work")
-        let referenceDestination = transactionDirectory.appending(path: "reference")
-        try fileManager.moveItem(at: tempWork, to: workDestination)
-        try fileManager.moveItem(at: tempReference, to: referenceDestination)
-        try? fileManager.removeItem(at: tempBase)
+        // Only the final directory-materialization step is locked — cheap
+        // insurance against a concurrent discard()/apply() enumerating or
+        // cleaning up .egg/transactions/ at the same moment. The expensive
+        // clone + workflow run above stays unlocked so concurrent previews
+        // (of the same or different templates) don't serialize against each
+        // other; each gets its own uniquely-tokened transaction directory, so
+        // there's no shared mutable state until this point.
+        let metadata = try TransactionLock.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+            let transactionDirectory = try store.createDirectory(for: token)
+            let workDestination = transactionDirectory.appending(path: "work")
+            let referenceDestination = transactionDirectory.appending(path: "reference")
+            try fileManager.moveItem(at: tempWork, to: workDestination)
+            try fileManager.moveItem(at: tempReference, to: referenceDestination)
+            try? fileManager.removeItem(at: tempBase)
 
-        let metadata = HatchTransactionMetadata(
-            applyToken: token,
-            status: .preview,
-            templateName: config.name,
-            workingDirectory: workingDirectory.path(percentEncoded: false),
-            outputDirectory: remapOutputPath(outputPath, from: workDestination),
-            workDirectory: workDestination.path(percentEncoded: false),
-            referenceDirectory: referenceDestination.path(percentEncoded: false),
-            changes: changes.map(StoredChangeEntry.init),
-            warnings: warnings,
-            rollbackId: nil,
-        )
-        try store.save(metadata)
+            let metadata = HatchTransactionMetadata(
+                applyToken: token,
+                status: .preview,
+                templateName: config.name,
+                workingDirectory: workingDirectory.path(percentEncoded: false),
+                outputDirectory: remapOutputPath(outputPath, from: workDestination),
+                workDirectory: workDestination.path(percentEncoded: false),
+                referenceDirectory: referenceDestination.path(percentEncoded: false),
+                changes: changes.map(StoredChangeEntry.init),
+                warnings: warnings,
+                rollbackId: nil,
+            )
+            try store.save(metadata)
+            return metadata
+        }
 
         return AgentHatchPreviewResult(
             applyToken: token,
@@ -152,65 +162,67 @@ package struct AgentHatchTransactionRunner {
     /// an apply that didn't actually complete.
     package func apply(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
         try Self.validateIdentifier(token, kind: "apply token")
-        let metadata = try store.load(token: token)
-        guard metadata.status == .preview else {
-            throw Error.transactionNotPreview(token: token, status: metadata.status.rawValue)
-        }
-
-        let reference = URL(filePath: metadata.referenceDirectory)
-        let work = URL(filePath: metadata.workDirectory)
-        let working = URL(filePath: metadata.workingDirectory)
-
-        let conflictDetector = WorkingDirectoryConflictDetector(fileManager: fileManager)
-        let conflicts = try conflictDetector.conflictingPaths(
-            referenceRoot: reference,
-            workingRoot: working,
-            paths: metadata.changes.map(\.path),
-        )
-        if !conflicts.isEmpty, !force {
-            throw Error.conflictingWorkingDirectoryChanges(conflicts)
-        }
-
-        let pendingBundle = try prepareRollbackBundle(metadata: metadata, workRoot: work)
-        do {
-            try ApplyStagingArea.withStaging(
-                workspaceRoot: work,
-                workingDirectory: working,
-                fileManager: fileManager,
-            ) { staging, fs in
-                let manifest = try staging.stage(changes: metadata.changeSummary, fileManager: fs)
-                try staging.apply(manifest: manifest, fileManager: fs)
+        // The whole read-check-mutate sequence is one critical section: two
+        // concurrent applies of the same token both observing status ==
+        // .preview before either writes anything is a lost-update race
+        // (whichever finishes last wins, silently corrupting the other's
+        // rollback bundle and working-directory writes). Locking per-token
+        // means unrelated transactions never serialize against each other.
+        return try await TransactionLock.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+            let metadata = try store.load(token: token)
+            guard metadata.status == .preview else {
+                throw Error.transactionNotPreview(token: token, status: metadata.status.rawValue)
             }
-        } catch {
-            // The apply didn't complete: discard the bundle rather than leave an
-            // orphaned rollback id that claims to back a completed apply.
-            try? fileManager.removeItem(at: pendingBundle.rollbackRoot)
-            throw error
-        }
-        try commitRollbackBundle(pendingBundle)
 
-        let applied = try store.markApplied(token: token, rollbackId: pendingBundle.rollbackId)
-        return AgentHatchApplyResult(
-            status: "applied",
-            applyToken: token,
-            rollbackId: pendingBundle.rollbackId,
-            appliedChanges: applied.changes.map(\.agentEntry),
-            warnings: applied.warnings,
-        )
+            let reference = URL(filePath: metadata.referenceDirectory)
+            let work = URL(filePath: metadata.workDirectory)
+            let working = URL(filePath: metadata.workingDirectory)
+
+            let conflictDetector = WorkingDirectoryConflictDetector(fileManager: fileManager)
+            let conflicts = try conflictDetector.conflictingPaths(
+                referenceRoot: reference,
+                workingRoot: working,
+                paths: metadata.changes.map(\.path),
+            )
+            if !conflicts.isEmpty, !force {
+                throw Error.conflictingWorkingDirectoryChanges(conflicts)
+            }
+
+            let pendingBundle = try prepareRollbackBundle(metadata: metadata, workRoot: work)
+            do {
+                try ApplyStagingArea.withStaging(
+                    workspaceRoot: work,
+                    workingDirectory: working,
+                    fileManager: fileManager,
+                ) { staging, fs in
+                    let manifest = try staging.stage(changes: metadata.changeSummary, fileManager: fs)
+                    try staging.apply(manifest: manifest, fileManager: fs)
+                }
+            } catch {
+                // The apply didn't complete: discard the bundle rather than leave an
+                // orphaned rollback id that claims to back a completed apply.
+                try? fileManager.removeItem(at: pendingBundle.rollbackRoot)
+                throw error
+            }
+            try commitRollbackBundle(pendingBundle)
+
+            let applied = try store.markApplied(token: token, rollbackId: pendingBundle.rollbackId)
+            return AgentHatchApplyResult(
+                status: "applied",
+                applyToken: token,
+                rollbackId: pendingBundle.rollbackId,
+                appliedChanges: applied.changes.map(\.agentEntry),
+                warnings: applied.warnings,
+            )
+        }
     }
 
     /// Drops a previewed transaction and its staging area without applying it.
     package func discard(token: String) throws -> AgentHatchApplyResult {
         try Self.validateIdentifier(token, kind: "apply token")
-        let metadata = try store.load(token: token)
-        try store.discard(token: token)
-        return AgentHatchApplyResult(
-            status: "discarded",
-            applyToken: token,
-            rollbackId: nil,
-            appliedChanges: metadata.changes.map(\.agentEntry),
-            warnings: metadata.warnings,
-        )
+        return try TransactionLock.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+            try discardLocked(token: token)
+        }
     }
 
     /// Restores files captured in a rollback bundle from a prior ``apply(token:force:)``.
@@ -228,75 +240,97 @@ package struct AgentHatchTransactionRunner {
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
             .appending(path: rollbackId)
-        let manifestURL = rollbackRoot.appending(path: "manifest.json")
-        let data = try fileManager.readFile(at: manifestURL)
-        var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
-        let beforeRoot = rollbackRoot.appending(path: "before")
+        // The whole read-check-restore-rewrite sequence is one critical
+        // section: two concurrent rollbacks of the same id both read
+        // status == "applied" before either writes, so without a lock both
+        // proceed to restore (harmless-ish for idempotent copies, but a
+        // racing pruneEmptyDirectories can throw, and the final manifest
+        // write — last writer wins — risks a reader observing torn JSON).
+        return try TransactionLock.withLock(directory: rollbackRoot, fileManager: fileManager) {
+            let manifestURL = rollbackRoot.appending(path: "manifest.json")
+            let data = try fileManager.readFile(at: manifestURL)
+            var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
+            let beforeRoot = rollbackRoot.appending(path: "before")
 
-        guard manifest.status != "rolledBack" else {
-            throw Error.alreadyRolledBack(id: rollbackId)
-        }
-
-        if !force {
-            let conflicts = rollbackConflicts(in: manifest)
-            if !conflicts.isEmpty {
-                throw Error.conflictingRollbackChanges(conflicts)
+            guard manifest.status != "rolledBack" else {
+                throw Error.alreadyRolledBack(id: rollbackId)
             }
-        }
 
-        let missingBackups = manifest.changes
-            .filter { $0.kind == "modify" || $0.kind == "delete" }
-            // existsAsLink, not exists: a backed-up symlink is often relative
-            // and won't resolve from its new location under .egg/rollback, so
-            // exists() would follow it, find nothing, and wrongly call a
-            // present backup "missing".
-            .filter { !fileManager.existsAsLink(beforeRoot.appending(path: $0.path)) }
-            .map(\.path)
-            .sorted()
-        guard missingBackups.isEmpty else {
-            throw Error.missingRollbackBackup(id: rollbackId, paths: missingBackups)
-        }
-
-        for change in manifest.changes.reversed() {
-            let target = workingDirectory.appending(path: change.path)
-            switch change.kind {
-            case "add":
-                // A forced apply may have overwritten a pre-existing file at an
-                // "add" path; if the bundle backed it up, restore it instead of
-                // just deleting.
-                let source = beforeRoot.appending(path: change.path)
-                if try !fileManager.copyIfExists(from: source, to: target) {
-                    try fileManager.removeIfExists(target)
-                    pruneEmptyDirectories(from: target.deletingLastPathComponent())
+            if !force {
+                let conflicts = rollbackConflicts(in: manifest)
+                if !conflicts.isEmpty {
+                    throw Error.conflictingRollbackChanges(conflicts)
                 }
-            case "modify", "delete":
-                let source = beforeRoot.appending(path: change.path)
-                // The pre-flight check above already confirmed this exists; guard
-                // again here as a defense against a TOCTOU race (backup removed
-                // between the check and this copy) rather than trusting silently.
-                guard try fileManager.copyIfExists(from: source, to: target) else {
-                    throw Error.missingRollbackBackup(id: rollbackId, paths: [change.path])
-                }
-            default:
-                break
             }
+
+            let missingBackups = manifest.changes
+                .filter { $0.kind == "modify" || $0.kind == "delete" }
+                // existsAsLink, not exists: a backed-up symlink is often relative
+                // and won't resolve from its new location under .egg/rollback, so
+                // exists() would follow it, find nothing, and wrongly call a
+                // present backup "missing".
+                .filter { !fileManager.existsAsLink(beforeRoot.appending(path: $0.path)) }
+                .map(\.path)
+                .sorted()
+            guard missingBackups.isEmpty else {
+                throw Error.missingRollbackBackup(id: rollbackId, paths: missingBackups)
+            }
+
+            for change in manifest.changes.reversed() {
+                let target = workingDirectory.appending(path: change.path)
+                switch change.kind {
+                case "add":
+                    // A forced apply may have overwritten a pre-existing file at an
+                    // "add" path; if the bundle backed it up, restore it instead of
+                    // just deleting.
+                    let source = beforeRoot.appending(path: change.path)
+                    if try !fileManager.copyIfExists(from: source, to: target) {
+                        try fileManager.removeIfExists(target)
+                        pruneEmptyDirectories(from: target.deletingLastPathComponent())
+                    }
+                case "modify", "delete":
+                    let source = beforeRoot.appending(path: change.path)
+                    // The pre-flight check above already confirmed this exists; guard
+                    // again here as a defense against a TOCTOU race (backup removed
+                    // between the check and this copy) rather than trusting silently.
+                    guard try fileManager.copyIfExists(from: source, to: target) else {
+                        throw Error.missingRollbackBackup(id: rollbackId, paths: [change.path])
+                    }
+                default:
+                    break
+                }
+            }
+
+            manifest.status = "rolledBack"
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            // Atomic: a reader outside the lock (e.g. a status inspection)
+            // must never observe a torn write.
+            try (encoder.encode(manifest)).write(to: manifestURL, options: .atomic)
+
+            return AgentHatchRollbackResult(
+                status: "rolledBack",
+                rollbackId: rollbackId,
+                restoredChanges: manifest.changes.map(\.agentEntry),
+            )
         }
-
-        manifest.status = "rolledBack"
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try (encoder.encode(manifest)).write(to: manifestURL)
-
-        return AgentHatchRollbackResult(
-            status: "rolledBack",
-            rollbackId: rollbackId,
-            restoredChanges: manifest.changes.map(\.agentEntry),
-        )
     }
 
     /// SHA-256 hex digest used to fingerprint applied file content.
     static func sha256(of data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func discardLocked(token: String) throws -> AgentHatchApplyResult {
+        let metadata = try store.load(token: token)
+        try store.discard(token: token)
+        return AgentHatchApplyResult(
+            status: "discarded",
+            applyToken: token,
+            rollbackId: nil,
+            appliedChanges: metadata.changes.map(\.agentEntry),
+            warnings: metadata.warnings,
+        )
     }
 
     /// Paths whose current content no longer matches what the apply left behind.
