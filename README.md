@@ -39,8 +39,8 @@ tool.
   - [Macro Types](#macro-types)
   - [Lifecycle Hooks](#lifecycle-hooks)
 - [CLI Reference](#cli-reference)
-  - [Agent Transaction Flow (egg hatch)](#agent-transaction-flow-egg-hatch)
   - [Human and Inline Flow (egg hatch)](#human-and-inline-flow-egg-hatch)
+  - [Agent Transaction Flow (egg hatch)](#agent-transaction-flow-egg-hatch)
   - [Managing Templates (egg template)](#managing-templates-egg-template)
 - [Using egg with AI Agents](#using-egg-with-ai-agents)
   - [Claude Code Plugin](#claude-code-plugin)
@@ -63,25 +63,22 @@ egg template create --name SwiftPackage --description "A minimal Swift package" 
 #    template files using ___MACRO_NAME___ placeholders. See "Writing a
 #    Template" below for a full example.
 
-# 3. Preview what hatching it would generate (writes nothing yet)
-egg hatch preview SwiftPackage --module-name NetworkClient
+# 3. Hatch it. With no template name, egg prompts you interactively for
+#    which template to use and a value for each macro.
+egg hatch
 
-# {
-#   "applyToken": "2026-07-02T...-swiftpackage-...",
-#   "changes": [{ "kind": "add", "path": "Sources/NetworkClient/NetworkClient.swift" }],
-#   "nextCommands": { "apply": "egg hatch apply <token>", "discard": "..." },
-#   ...
-# }
-
-# 4. Happy with the plan? Apply it.
-egg hatch apply 2026-07-02T...-swiftpackage-...
-
-# 5. Changed your mind? Roll it back.
-egg hatch rollback 2026-07-02T...-swiftpackage-...
+# Prefer to skip the picker and pass everything on one line instead?
+egg hatch direct SwiftPackage --module-name NetworkClient
 ```
 
-Prefer a human, no-JSON workflow? `egg hatch` alone drops into an interactive
-prompt; see [Human and Inline Flow](#human-and-inline-flow-egg-hatch).
+Either form stages the change first and shows you a summary before writing
+anything, so you get a chance to bail out. See
+[Human and Inline Flow](#human-and-inline-flow-egg-hatch) for the full
+walkthrough and every flag.
+
+Driving egg from an AI agent instead? It also has a non-interactive,
+JSON-in/JSON-out transaction flow (`preview` → `apply` → `rollback`); see the
+[Agent Transaction Flow](#agent-transaction-flow-egg-hatch).
 
 ## Why egg?
 
@@ -252,9 +249,73 @@ egg <subcommand>
   mcp        Start the MCP server for AI assistant integration.
 ```
 
+### Human and Inline Flow (egg hatch)
+
+This is the everyday, terminal-first way to run egg. Both forms stage the
+template in an isolated clone, show you a summary of what would change, and
+wait for a yes/no before touching your real working directory, unless you
+opt out with a flag below.
+
+```sh
+egg hatch                        # interactive: prompts for template and macros
+egg hatch direct MyTemplate ...  # applies inline, macros passed as flags
+```
+
+#### Interactive mode
+
+Run `egg hatch` with nothing else and it walks you through the whole thing.
+
+```
+$ egg hatch
+? Which template would you like to use? › SwiftPackage
+? ___MODULE_NAME___ (The name of the Swift module) › NetworkClient
+? ___INCLUDE_TESTS___ (Whether to generate a test target) › Yes
+
+Staged changes:
+  + Sources/NetworkClient/NetworkClient.swift
+  + Tests/NetworkClientTests/NetworkClientTests.swift
+
+? Apply these changes? › Yes
+✔ Hatched SwiftPackage
+```
+
+Each macro's own `description` from `config.yml` becomes the prompt text, so
+a well-documented template doubles as a self-explanatory wizard. Pass
+`--picker text` if you'd rather type the template name than pick from a list.
+
+#### Inline mode
+
+`egg hatch direct <template> --macro-name value ...` skips the picker and
+per-macro prompts, so it is the form to reach for once you already know what
+you're generating (in a script, a Makefile target, or just muscle memory).
+Macro flags are kebab-case versions of the macro's name in `config.yml`, so a
+macro named `___MODULE_NAME___` becomes `--module-name`.
+
+```sh
+egg hatch direct SwiftPackage --module-name NetworkClient --include-tests true
+```
+
+This still shows the staged change summary and asks for confirmation unless
+you pass `--apply-changes` (skip the prompt) or `--no-staging` (skip staging
+entirely and write files immediately, forgoing rollback).
+
+| Flag | Description |
+| --- | --- |
+| `--no-staging` | Apply directly, skipping the preview/rollback staging step. |
+| `--override-conflicts` | Overwrite existing files without prompting. |
+| `--no-sandbox` | Disable the `sandbox-exec` guard around lifecycle scripts. |
+| `--apply-changes` | Skip the confirmation prompt and apply immediately. |
+| `--staging-root <dir>` | Use a different staging root (when output targets another directory). |
+| `--picker <list\|text>` | Interactive template picker style. |
+
+Run `egg template detail <name>` first if you want to see every macro a
+template needs (and its type/default) before hatching it.
+
 ### Agent Transaction Flow (egg hatch)
 
-Every command below is non-interactive and emits JSON on stdout.
+Driving egg from an LLM tool call instead of a terminal? Every command below
+is non-interactive and emits JSON on stdout, so there is nothing to prompt
+and nothing to parse from human-readable text.
 
 ```sh
 egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff]
@@ -279,26 +340,6 @@ egg hatch discard <applyToken>
 
 `egg template detail <name>` tells you exactly which flags a given template
 needs before you preview it.
-
-### Human and Inline Flow (egg hatch)
-
-```sh
-egg hatch                        # interactive: prompts for template and macros
-egg hatch direct MyTemplate ...  # applies inline, no preview/apply/token step
-```
-
-`egg hatch` with no subcommand drops straight into an interactive prompt
-(pick a template, answer for each macro). `egg hatch direct` accepts the same
-flags as `preview`/`apply` combined, plus these.
-
-| Flag | Description |
-| --- | --- |
-| `--no-staging` | Apply directly, skipping the preview/rollback staging step. |
-| `--override-conflicts` | Overwrite existing files without prompting. |
-| `--no-sandbox` | Disable the `sandbox-exec` guard around lifecycle scripts. |
-| `--apply-changes` | Skip the confirmation prompt and apply immediately. |
-| `--staging-root <dir>` | Use a different staging root (when output targets another directory). |
-| `--picker <list\|text>` | Interactive template picker style. |
 
 ### Managing Templates (egg template)
 
