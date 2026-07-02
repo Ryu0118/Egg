@@ -27,7 +27,7 @@ A CLI tool for generating projects from templates. Define macros in `config.yml`
 ## Template Locations
 
 - Global: `~/.eggs/<TemplateName>/`
-- Project-local: `./.egg/<TemplateName>/`
+- Project-local: `./.eggs/<TemplateName>/`
 
 Each template contains `config.yml` and template files with `___MACRO_NAME___` placeholders.
 

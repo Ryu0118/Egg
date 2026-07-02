@@ -8,16 +8,16 @@ package extension EggCommand.TemplateCommand {
     struct ValidateCommand: AsyncParsableCommand, HasProjectDirectory {
         package static let configuration = CommandConfiguration(
             commandName: "validate",
-            abstract: "Validate a template's config.yaml file.",
+            abstract: "Validate a template's config.yml file.",
             discussion: """
-            This command validates a template's config.yaml file to ensure it is properly formatted
+            This command validates a template's config.yml file to ensure it is properly formatted
             and meets all requirements.
 
             Example: egg template validate path/to/template
             """,
         )
 
-        @Argument(help: "Path to the template directory containing config.yaml.")
+        @Argument(help: "Path to the template directory containing config.yml.")
         package var templatePath: String
 
         @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)

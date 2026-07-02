@@ -11,7 +11,7 @@ command emits JSON so an agent can parse the result directly.
 
 ## Template Locations
 
-- Global templates: `~/.egg/<TemplateName>/`
+- Global templates: `~/.eggs/<TemplateName>/`
 - Project templates: `./.eggs/<TemplateName>/`
 
 Each template directory contains `config.yml` and template files.
@@ -39,7 +39,7 @@ egg template detail MyTemplate
 Preview a hatch without writing anything to the working directory:
 
 ```sh
-egg hatch preview MyTemplate --___NAME___ MyApp --___ENABLED___ true
+egg hatch preview MyTemplate --name MyApp --enabled true
 ```
 
 The preview response includes `applyToken`, `changes`, `warnings`, and
