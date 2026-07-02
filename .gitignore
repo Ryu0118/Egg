@@ -11,3 +11,5 @@ DerivedData/
 .nest/
 .tmp-home/
 .serena
+.plan/
+remove_marks.py
