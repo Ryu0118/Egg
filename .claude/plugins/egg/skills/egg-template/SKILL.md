@@ -41,7 +41,7 @@ description: |
 
 2. **Analyze**: Read config.yml, list files
 
-3. **Check dependencies** → See [references/update-operations.md](references/update-operations.md)
+3. **Check dependencies** → See [references/update.md](references/update.md)
 
 4. **Apply changes**
 
@@ -53,7 +53,8 @@ description: |
 egg template detail <name>    # Show info
 egg template open <name>      # Open in Finder
 egg template validate <path>  # Validate
-egg hatch <name>              # Test
+egg hatch preview <name> --macro-name value ...   # Test as a transaction (no writes yet)
+egg hatch apply <applyToken>                      # Commit the test run
 ```
 
 ## References
@@ -62,4 +63,5 @@ egg hatch <name>              # Test
 - [references/lifecycle.md](references/lifecycle.md) - pre_hatch/post_hatch hooks, step outputs
 - [references/template-files.md](references/template-files.md) - Native vs Stencil syntax
 - [references/create.md](references/create.md) - initial questions, location, scaffolding, repository structure
+- [references/update.md](references/update.md) - dependency checks before modifying an existing template
 - [references/update.md](references/update.md) - dependency checking, rename/remove operations
