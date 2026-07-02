@@ -9,6 +9,28 @@ would make (in an isolated, git-backed staging clone), **applies** them only
 after approval, and can **roll back** an applied scaffold. Every transaction
 command emits JSON so an agent can parse the result directly.
 
+## Installation
+
+egg is a Swift Package Manager executable. It requires **macOS 26+** and the
+**Swift 6.2** toolchain.
+
+```sh
+git clone https://github.com/Ryu0118/egg.git
+cd egg
+swift build -c release
+# the binary is at .build/release/egg — copy it onto your PATH, e.g.:
+cp .build/release/egg /usr/local/bin/egg
+```
+
+Or run it directly without installing:
+
+```sh
+swift run egg -- --help
+```
+
+Prebuilt universal binaries are also attached to each
+[GitHub Release](https://github.com/Ryu0118/egg/releases).
+
 ## Template Locations
 
 - Global templates: `~/.eggs/<TemplateName>/`
@@ -108,3 +130,7 @@ Rollback restores managed workspace file changes only. It does not undo network
 calls, writes outside the project, package-manager global caches, or other
 external side effects from lifecycle scripts. The preview/apply response carries
 a `rollback_scope` warning to make this explicit.
+
+## License
+
+egg is available under the MIT License. See [LICENSE](LICENSE) for details.
