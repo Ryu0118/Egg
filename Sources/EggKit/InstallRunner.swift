@@ -283,13 +283,17 @@ package struct InstallRunner {
 
         // Ensure destination directory exists
         let destinationDir = templateLocation.templateDir(for: location)
-        if !fileManager.fileExists(atPath: destinationDir.path(percentEncoded: false)) {
+        if !fileManager.existsAsLink(destinationDir) {
             try fileManager.createDirectory(at: destinationDir, withIntermediateDirectories: true)
         }
 
         for template in templates {
             let destinationPath = templateLocation.template(template.name, type: location)
-            let destinationExists = fileManager.fileExists(atPath: destinationPath.path(percentEncoded: false))
+            // existsAsLink, not fileExists: a dangling symlink already sitting
+            // at the destination must be recognized so it's cleared (with
+            // --force) rather than making clonefile fail with EEXIST while
+            // --force silently has no effect.
+            let destinationExists = fileManager.existsAsLink(destinationPath)
 
             if destinationExists {
                 if force {

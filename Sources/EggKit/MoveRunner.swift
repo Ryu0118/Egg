@@ -78,11 +78,11 @@ package struct MoveRunner {
         let targetPath = templateLocation.template(name, type: targetLocation)
 
         // Check if target exists - in MCP mode, we allow overwriting
-        let targetExists = fileManager.fileExists(atPath: targetPath.path(percentEncoded: false))
+        let targetExists = fileManager.existsAsLink(targetPath)
 
         // Create target directory if needed
         let targetDir = templateLocation.templateDir(for: targetLocation)
-        if !fileManager.fileExists(atPath: targetDir.path(percentEncoded: false)) {
+        if !fileManager.existsAsLink(targetDir) {
             try fileManager.createDirectory(
                 at: targetDir,
                 withIntermediateDirectories: true,
@@ -211,7 +211,7 @@ package struct MoveRunner {
         let targetPath = templateLocation.template(name, type: targetLocation)
 
         // Check if target exists
-        let targetExists = fileManager.fileExists(atPath: targetPath.path(percentEncoded: false))
+        let targetExists = fileManager.existsAsLink(targetPath)
 
         if targetExists, !force {
             throw Error.targetAlreadyExists(name: name, location: targetLocation.name)
@@ -219,7 +219,7 @@ package struct MoveRunner {
 
         // Create target directory if needed
         let targetDir = templateLocation.templateDir(for: targetLocation)
-        if !fileManager.fileExists(atPath: targetDir.path(percentEncoded: false)) {
+        if !fileManager.existsAsLink(targetDir) {
             try fileManager.createDirectory(
                 at: targetDir,
                 withIntermediateDirectories: true,

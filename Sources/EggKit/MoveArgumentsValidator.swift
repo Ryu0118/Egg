@@ -97,11 +97,14 @@ package struct MoveArgumentsValidator {
             throw Error.sameLocation(name: templateName, location: sourceLocation.name)
         }
 
-        // Check if target already exists (unless force is true)
+        // Check if target already exists (unless force is true). existsAsLink,
+        // not fileExists: a dangling symlink at the target path must still be
+        // detected here, or this check silently passes and the real failure
+        // only surfaces later as a raw copyItem error deep inside moveTemplate.
         if !force {
             let templateLocationInstance = TemplateLocation(homeDirectory: homeDirectory)
             let targetPath = templateLocationInstance.template(templateName, type: targetLocation)
-            if fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)) {
+            if fileManager.existsAsLink(targetPath) {
                 throw Error.targetAlreadyExists(name: templateName, location: targetLocation.name)
             }
         }
