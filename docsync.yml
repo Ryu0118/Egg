@@ -27,4 +27,4 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 260c0f890a048a87fabbca9ef32167eae630765b184a314e83f291e05075ac5b
+  checksum: 527536cf95ccd3563caabc5354a91abdf2dc417723b0c71191ee3e99071b5a76

@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 import ProcessRunning
 
@@ -36,6 +37,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     private let homeDirectory: URL
     private let phaseRunner: PhaseRunner
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let sandboxDisabled: Bool
     private let isInteractive: Bool
 
@@ -45,6 +47,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         workingDirectory: URL,
         homeDirectory: URL,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = true,
@@ -55,6 +58,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.noora = noora
+        self.interaction = interaction
         self.sandboxDisabled = sandboxDisabled
         self.isInteractive = isInteractive
         phaseRunner = PhaseRunner(
@@ -62,6 +66,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             fileManager: fileManager,
             homeDirectory: homeDirectory,
             noora: noora,
+            interaction: interaction,
             isInteractive: isInteractive,
             override: overrideConflicts,
         )
@@ -84,7 +89,11 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         let macros = try resolveMacros(macroInputs, config: config)
 
         // Expand and validate sandbox.allowed_paths
-        let sandboxResolver = SandboxAllowedPathsResolver(homeDirectory: homeDirectory, noora: noora)
+        let sandboxResolver = SandboxAllowedPathsResolver(
+            homeDirectory: homeDirectory,
+            noora: noora,
+            interaction: interaction,
+        )
         let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
             config.sandbox?.allowedPaths,
             macros: macros,
@@ -102,7 +111,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                     expandedAllowedPaths.map { $0.path(percentEncoded: false) },
                 )
                 if !sandboxPermissionConfirmed {
-                    noora.passthrough("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).\n")
+                    interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
                 }
             } else {
                 // Non-interactive mode: reject with error

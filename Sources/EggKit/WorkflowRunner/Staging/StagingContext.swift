@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 import ProcessRunning
 
@@ -59,7 +60,10 @@ actor StagingContext {
     /// Directory cloner for creating staging copies.
     private let directoryCloner: any DirectoryCloning
 
-    /// Noora instance for logging output.
+    /// Interaction instance for logging output.
+    private let interaction: any InteractionProviding
+
+    /// Noora instance for prompts.
     private let noora: any Noorable
 
     private init(
@@ -72,6 +76,7 @@ actor StagingContext {
         processRunner: any ProcessRunning,
         directoryCloner: any DirectoryCloning,
         noora: any Noorable,
+        interaction: any InteractionProviding,
     ) {
         self.root = root
         self.reference = reference
@@ -82,6 +87,7 @@ actor StagingContext {
         self.processRunner = processRunner
         self.directoryCloner = directoryCloner
         self.noora = noora
+        self.interaction = interaction
     }
 
     /// Creates a new staging context by cloning the working directory.
@@ -112,6 +118,7 @@ actor StagingContext {
         directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
         requireGitRepository: Bool = true,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) async throws -> StagingContext {
         do {
             // Create staging base directory in a temporary location
@@ -159,6 +166,7 @@ actor StagingContext {
                 processRunner: processRunner,
                 directoryCloner: directoryCloner,
                 noora: noora,
+                interaction: interaction,
             )
         } catch let error as StagingContext.Error {
             throw error
@@ -290,7 +298,7 @@ actor StagingContext {
     func discard() async {
         guard !isDiscarded else { return }
 
-        noora.passthrough("🗑️ Discarding staging workspace...\n")
+        interaction.writeLine("🗑️ Discarding staging workspace...")
 
         // Stop watchers
         await workspaceWatcher.stop()

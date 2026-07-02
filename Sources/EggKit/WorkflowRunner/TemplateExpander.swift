@@ -1,6 +1,7 @@
 import FileManagerProtocol
 import Foundation
 import Glob
+import Interaction
 import Noora
 
 /// Expands template files by substituting macros and copying to output directory.
@@ -17,6 +18,7 @@ struct TemplateExpander {
     private let outputDirectory: URL
     private let builtInMacroContext: BuiltInMacroContext
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let isInteractive: Bool
     private let override: Bool
 
@@ -26,6 +28,7 @@ struct TemplateExpander {
         outputDirectory: URL,
         builtInMacroContext: BuiltInMacroContext,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool = true,
         override: Bool = false,
     ) {
@@ -34,6 +37,7 @@ struct TemplateExpander {
         self.outputDirectory = outputDirectory
         self.builtInMacroContext = builtInMacroContext
         self.noora = noora
+        self.interaction = interaction
         self.isInteractive = isInteractive
         self.override = override
     }
@@ -170,9 +174,9 @@ struct TemplateExpander {
 
         // If interactive, prompt user
         if isInteractive {
-            noora.passthrough("⚠️ The following files already exist and will be overwritten:\n", tab: 1)
+            interaction.writeLine("⚠️ The following files already exist and will be overwritten:", tab: 1)
             for file in existingFiles {
-                noora.passthrough("  - \(file)\n", tab: 2)
+                interaction.writeLine("- \(file)", tab: 3)
             }
             return noora.yesOrNoChoicePrompt(
                 title: "Overwrite",

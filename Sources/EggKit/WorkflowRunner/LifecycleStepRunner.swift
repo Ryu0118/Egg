@@ -1,5 +1,5 @@
 import Foundation
-import Noora
+import Interaction
 import ProcessRunning
 
 /// Orchestrates the execution of lifecycle steps for pre_hatch and post_hatch phases.
@@ -27,7 +27,7 @@ import ProcessRunning
 struct LifecycleStepRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
     private let builtInMacroContext: BuiltInMacroContext
@@ -36,7 +36,7 @@ struct LifecycleStepRunner {
     init(
         processRunner: any ProcessRunning,
         workingDirectory: URL,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
         builtInMacroContext: BuiltInMacroContext,
@@ -44,7 +44,7 @@ struct LifecycleStepRunner {
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
-        self.noora = noora
+        self.interaction = interaction
         self.additionalEnvironment = additionalEnvironment
         self.executionEnvironment = executionEnvironment
         self.builtInMacroContext = builtInMacroContext
@@ -79,9 +79,9 @@ struct LifecycleStepRunner {
     ///
     /// Non-interactive (agent transaction) runs keep stdout clean so the JSON
     /// result is the only thing on stdout and stays machine-parseable.
-    private func progress(_ message: TerminalText, tab: UInt) {
+    private func progress(_ message: StyledText, tab: UInt) {
         guard isInteractive else { return }
-        noora.passthrough(message, tab: tab)
+        interaction.writeLine(message, tab: tab)
     }
 
     /// Executes a single lifecycle step.
@@ -104,7 +104,7 @@ struct LifecycleStepRunner {
         let stepLabel = formatStepLabel(phase: phase, index: index, stepId: step.id)
 
         guard try await shouldExecute(step, given: macros, and: outputs) else {
-            progress("⏭️ \(stepLabel): Skipped (condition not met)\n", tab: 1)
+            progress("⏭️ \(stepLabel): Skipped (condition not met)", tab: 1)
             return
         }
 
@@ -112,7 +112,7 @@ struct LifecycleStepRunner {
             return
         }
 
-        progress("🦆 \(stepLabel): Running script...\n", tab: 1)
+        progress("🦆 \(stepLabel): Running script...", tab: 1)
 
         let shellRunner = ShellScriptRunner(
             processRunner: processRunner,
@@ -121,7 +121,7 @@ struct LifecycleStepRunner {
             executionEnvironment: executionEnvironment,
         )
         let lineStreamer = LineStreamer { line in
-            progress("\(line)\n", tab: 2)
+            progress("\(line)", tab: 2)
         }
         let stdout = try await shellRunner.executeStreaming(resolvedCommand) { chunk in
             lineStreamer.append(chunk)
