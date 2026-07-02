@@ -12,7 +12,7 @@ struct TemplateValidateCommandTests {
         let result = try await runner.run("template", "validate", "--help")
 
         #expect(result.succeeded)
-        #expect(result.stdout.contains("OVERVIEW: Validate a template's config.yaml"))
+        #expect(result.stdout.contains("OVERVIEW: Validate a template's config.yml"))
         #expect(result.stdout.contains("USAGE: egg template validate"))
         #expect(result.stdout.contains("<template-path>"))
     }
