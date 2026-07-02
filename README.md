@@ -1,6 +1,6 @@
 # 🥚 egg
 
-**Hatch your templates: scaffolding built for AI agents, and humans too.**
+**Hatch your templates, scaffolding built for AI agents, and humans too.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](https://swift.org)
@@ -11,7 +11,8 @@ a `config.yml`, use `___MACRO_NAME___` placeholders anywhere in your template's
 files and directories, and egg expands them into a real project, safely and
 repeatably, with a full paper trail.
 
-What makes egg different from a plain "copy files and find-and-replace" tool:
+Here's what makes egg different from a plain "copy files and find-and-replace"
+tool.
 
 - **Transactional hatching.** Every scaffold goes through `preview → apply →
   rollback`. Nothing touches your working directory until you say so, and
@@ -37,9 +38,9 @@ What makes egg different from a plain "copy files and find-and-replace" tool:
   - [Macro Types](#macro-types)
   - [Lifecycle Hooks](#lifecycle-hooks)
 - [CLI Reference](#cli-reference)
-  - [egg hatch: Agent Transaction Flow](#egg-hatch-agent-transaction-flow)
-  - [egg hatch: Human / Inline Flow](#egg-hatch-human--inline-flow)
-  - [egg template: Managing Templates](#egg-template-managing-templates)
+  - [Agent Transaction Flow (egg hatch)](#agent-transaction-flow-egg-hatch)
+  - [Human and Inline Flow (egg hatch)](#human-and-inline-flow-egg-hatch)
+  - [Managing Templates (egg template)](#managing-templates-egg-template)
 - [Using egg with AI Agents (MCP)](#using-egg-with-ai-agents-mcp)
 - [How Rollback Works](#how-rollback-works)
 - [Requirements](#requirements)
@@ -55,7 +56,7 @@ What makes egg different from a plain "copy files and find-and-replace" tool:
 egg template create --name SwiftPackage --description "A minimal Swift package" --location project
 
 # 2. Edit .eggs/SwiftPackage/config.yml to declare a macro, and drop in your
-#    template files using ___MACRO_NAME___ placeholders: see "Writing a
+#    template files using ___MACRO_NAME___ placeholders. See "Writing a
 #    Template" below for a full example.
 
 # 3. Preview what hatching it would generate (writes nothing yet)
@@ -76,7 +77,7 @@ egg hatch rollback 2026-07-02T...-swiftpackage-...
 ```
 
 Prefer a human, no-JSON workflow? `egg hatch` alone drops into an interactive
-prompt; see [Human / Inline Flow](#egg-hatch-human--inline-flow).
+prompt; see [Human and Inline Flow](#human-and-inline-flow-egg-hatch).
 
 ## Why egg?
 
@@ -91,7 +92,7 @@ fine until:
 - The scaffold turns out to be wrong and you want your working directory back
   exactly as it was.
 
-egg treats hatching a template as a **transaction**, not a one-shot copy:
+egg treats hatching a template as a **transaction**, not a one-shot copy.
 
 1. **`preview`** clones your working directory into an isolated staging area,
    runs the template's lifecycle scripts and macro expansion there, and asks
@@ -116,7 +117,7 @@ egg is a Swift Package Manager executable. It requires **macOS 26+** and the
 git clone https://github.com/Ryu0118/egg.git
 cd egg
 swift build -c release
-# the binary is at .build/release/egg; copy it onto your PATH, e.g.:
+# the binary is at .build/release/egg. Copy it onto your PATH, e.g.:
 cp .build/release/egg /usr/local/bin/egg
 ```
 
@@ -136,10 +137,12 @@ folders you want to generate. Anywhere in a file's name, a folder's name, or
 a file's contents, `___MACRO_NAME___` is replaced with the value supplied at
 hatch time.
 
-Templates live in one of two places:
+Templates live in one of two places.
 
-- **Global**: `~/.eggs/<TemplateName>/`, available from any project.
-- **Project**: `./.eggs/<TemplateName>/`, scoped to the current repo.
+- **Global** templates live at `~/.eggs/<TemplateName>/` and are available
+  from any project.
+- **Project** templates live at `./.eggs/<TemplateName>/` and are scoped to
+  the current repo.
 
 ### Example
 
@@ -209,8 +212,8 @@ the folder name, the file name, and the file contents in one pass, producing
 | --- | --- | --- |
 | `string` | `--module-name NetworkClient` | Default type if omitted. |
 | `boolean` | `--include-tests` / `--no-include-tests` | Value-less flags; `default` applies if neither is passed. |
-| `choice` | `--platform ios` | Single selection; requires `choices:`. |
-| `choices` | `--platforms ios,macos` | Multiple selection; requires `choices:`. |
+| `choice` | `--platform ios` | Single selection; requires `choices`. |
+| `choices` | `--platforms ios,macos` | Multiple selection; requires `choices`. |
 | `array` | `--tags foo,bar` | Free-form comma-separated values. |
 | `path` | `--config-path ./foo.json` | Same as `string`, resolved/validated as a filesystem path. |
 
@@ -221,7 +224,7 @@ the fastest way to discover what a template needs, for a human or an agent.
 
 ### Lifecycle Hooks
 
-`pre_hatch` and `post_hatch` are lists of shell steps:
+`pre_hatch` and `post_hatch` are lists of shell steps.
 
 ```yaml
 post_hatch:
@@ -231,9 +234,9 @@ post_hatch:
     run: swift test
 ```
 
-- `run`: a shell command (macros and prior step outputs are substituted).
-- `if`: a JavaScript-style boolean expression gating the step.
-- `id`: lets later steps reference this step's stdout via
+- `run` runs a shell command (macros and prior step outputs are substituted).
+- `if` gates the step behind a JavaScript-style boolean expression.
+- `id` lets later steps reference this step's stdout via
   `${{ pre_hatch.<id>.outputs.<key> }}` (parsed from `key=value` lines).
 
 ## CLI Reference
@@ -245,7 +248,7 @@ egg <subcommand>
   mcp        Start the MCP server for AI assistant integration.
 ```
 
-### egg hatch: Agent Transaction Flow
+### Agent Transaction Flow (egg hatch)
 
 Every command below is non-interactive and emits JSON on stdout.
 
@@ -259,10 +262,10 @@ egg hatch discard <applyToken>
 - **`preview`** stages the template in an isolated clone and reports the
   proposed `changes`, any `warnings`, and an `applyToken`. Nothing is written
   to your working directory yet.
-  - `--include <pathspec>`: force a normally git-ignored path into the change set.
-  - `--exclude <pathspec>`: drop matching paths from the change set.
-  - `--output <dir>`: directory the generated output targets.
-  - `--diff`: include each change's unified diff in the response (off by default).
+  - `--include <pathspec>` forces a normally git-ignored path into the change set.
+  - `--exclude <pathspec>` drops matching paths from the change set.
+  - `--output <dir>` sets the directory the generated output targets.
+  - `--diff` includes each change's unified diff in the response (off by default).
 - **`apply <applyToken>`** writes the previewed changes to your real working
   directory and returns a `rollbackId`. Fails if the working directory
   drifted since the preview, unless `--force` is passed.
@@ -273,7 +276,7 @@ egg hatch discard <applyToken>
 `egg template detail <name>` tells you exactly which flags a given template
 needs before you preview it.
 
-### egg hatch: Human / Inline Flow
+### Human and Inline Flow (egg hatch)
 
 ```sh
 egg hatch                        # interactive: prompts for template and macros
@@ -282,7 +285,7 @@ egg hatch direct MyTemplate ...  # applies inline, no preview/apply/token step
 
 `egg hatch` with no subcommand drops straight into an interactive prompt
 (pick a template, answer for each macro). `egg hatch direct` accepts the same
-flags as `preview`/`apply` combined, plus:
+flags as `preview`/`apply` combined, plus these.
 
 | Flag | Description |
 | --- | --- |
@@ -293,7 +296,7 @@ flags as `preview`/`apply` combined, plus:
 | `--staging-root <dir>` | Use a different staging root (when output targets another directory). |
 | `--picker <list\|text>` | Interactive template picker style. |
 
-### egg template: Managing Templates
+### Managing Templates (egg template)
 
 | Command | What it does |
 | --- | --- |
@@ -314,23 +317,23 @@ beyond the current directory.
 ## Using egg with AI Agents (MCP)
 
 egg ships a built-in [Model Context Protocol](https://modelcontextprotocol.io)
-server:
+server.
 
 ```sh
 egg mcp
 ```
 
 Point any MCP-capable client (Claude Code, Claude Desktop, etc.) at this
-command. The recommended flow for an agent mirrors the CLI transaction flow:
+command. The recommended flow for an agent mirrors the CLI transaction flow.
 
-1. **`egg_template_detail`**: read required macros and the recommended flow.
-2. **`egg_hatch_preview`**: create a transaction without applying anything.
+1. Call `egg_template_detail` to read required macros and the recommended flow.
+2. Call `egg_hatch_preview` to create a transaction without applying anything.
 3. Inspect `changes` and `warnings` in the response.
-4. **`egg_hatch_apply`**: apply, only after approval.
-5. **`egg_hatch_rollback`**: undo, if needed.
+4. Call `egg_hatch_apply` to apply, only after approval.
+5. Call `egg_hatch_rollback` to undo, if needed.
 
-Macro keys over MCP must use the *exact* config names (not the kebab-case CLI
-flags):
+Macro keys over MCP must use the *exact* config names, not the kebab-case CLI
+flags.
 
 ```json
 {
@@ -363,8 +366,8 @@ passed.
 ## Requirements
 
 The working directory **must be a git repository**. egg uses your project's
-own `.gitignore` as the single source of truth for what counts as a change:
-the staging clone carries your tracked `.gitignore`, so artifacts a lifecycle
+own `.gitignore` as the single source of truth for what counts as a change.
+The staging clone carries your tracked `.gitignore`, so artifacts a lifecycle
 script generates (`node_modules`, `.build`, ...) are suppressed by the same
 rules git already applies. There's no separate, hardcoded exclude list to
 keep in sync. If the working directory isn't a git repository, `hatch` fails
