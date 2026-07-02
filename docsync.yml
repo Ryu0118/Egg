@@ -17,23 +17,6 @@ rules:
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
   checksum: 6e2a9a7967d3210664f7c1273335c44cc58031015770d0848566cff5885e434b
-- name: specs-config
-  sources:
-  - Sources/EggKit/Config/Config.swift
-  - Sources/EggKit/Config/ConfigValidator.swift
-  - Sources/EggKit/Config/ConfigValidator+HatchValidator.swift
-  - Sources/EggKit/Config/ConfigValidator+MacrosValidator.swift
-  - Sources/EggKit/Config/ConfigValidator+PostHatchValidator.swift
-  - Sources/EggKit/Config/ConfigValidator+PreHatchValidator.swift
-  - Sources/EggKit/WorkflowRunner/ConditionEvaluator.swift
-  - Sources/EggKit/WorkflowRunner/LifecycleWorkflowRunner.swift
-  - Sources/EggKit/WorkflowRunner/ShellScriptRunner.swift
-  - Sources/EggKit/WorkflowRunner/TemplateExpander.swift
-  - Sources/EggKit/WorkflowRunner/VariableResolver.swift
-  doc: SPECS.md
-  message: Template config, lifecycle, or expansion behavior changed - update SPECS.md
-    if the spec changed.
-  checksum: aa0d2a00752b40c23901d73283ce9b3a515bcbf52b1609c479ebfbdd00be4a4e
 - name: agents-project
   sources:
   - Package.swift
