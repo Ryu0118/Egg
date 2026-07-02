@@ -1,14 +1,14 @@
 import Foundation
-import Noora
+import Interaction
 
 /// Validates that each element in a comma-separated array matches a regex pattern.
-package struct ArrayElementValidationRule: ValidatableRule {
-    package let error: any ValidatableError
+package struct ArrayElementValidationRule: ValidationRule {
+    private let error: ValidationError
     private let elementPattern: String
 
     package init(elementPattern: String, error: String) {
         self.elementPattern = elementPattern
-        self.error = error
+        self.error = ValidationError(error)
     }
 
     package func validate(input: String) -> Bool {
@@ -27,5 +27,9 @@ package struct ArrayElementValidationRule: ValidatableRule {
         }
 
         return true
+    }
+
+    package func validate(_ input: String) -> ValidationError? {
+        validate(input: input) ? nil : error
     }
 }

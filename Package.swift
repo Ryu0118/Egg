@@ -46,6 +46,7 @@ let package = Package(
         .target(
             name: "EggKit",
             dependencies: [
+                "Interaction",
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "Yams", package: "Yams"),
@@ -76,6 +77,7 @@ let package = Package(
             name: "EggKitTests",
             dependencies: [
                 "EggKit",
+                "Interaction",
                 .product(name: "Yams", package: "Yams"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
             ],

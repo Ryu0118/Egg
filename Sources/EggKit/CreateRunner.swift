@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 
 package struct CreateRunner {
@@ -49,10 +50,10 @@ package struct CreateRunner {
                 prompt: "How would you like to name your template?",
                 collapseOnAnswer: true,
                 validationRules: [
-                    NonEmptyValidationRule(error: "Project name cannot be empty."),
+                    NonEmptyRule(message: "Project name cannot be empty."),
                     DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
                     LengthValidationRule.templateName,
-                ],
+                ].map(NooraValidationRuleAdapter.init),
             )
 
             guard !templatesFinder.exists(templateName) else {
@@ -64,9 +65,9 @@ package struct CreateRunner {
                 prompt: "Please enter a description for your template.",
                 collapseOnAnswer: true,
                 validationRules: [
-                    NonEmptyValidationRule(error: "Description cannot be empty."),
+                    NonEmptyRule(message: "Description cannot be empty."),
                     LengthValidationRule.description,
-                ],
+                ].map(NooraValidationRuleAdapter.init),
             )
 
             let locationType: TemplateLocationType = noora.singleChoicePrompt(

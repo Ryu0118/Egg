@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 import Yams
 
@@ -182,10 +183,10 @@ package struct DuplicateRunner {
             prompt: "Enter the name for the duplicated template (default: \(defaultName)):",
             collapseOnAnswer: true,
             validationRules: [
-                NonEmptyValidationRule(error: "Template name cannot be empty."),
+                NonEmptyRule(message: "Template name cannot be empty."),
                 DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
                 LengthValidationRule.templateName,
-            ],
+            ].map(NooraValidationRuleAdapter.init),
         )
 
         let finalNewName = if newName.isEmpty {
@@ -209,9 +210,9 @@ package struct DuplicateRunner {
             prompt: "Enter the description for the duplicated template (default: \(defaultDescription)):",
             collapseOnAnswer: true,
             validationRules: [
-                NonEmptyValidationRule(error: "Description cannot be empty."),
+                NonEmptyRule(message: "Description cannot be empty."),
                 LengthValidationRule.description,
-            ],
+            ].map(NooraValidationRuleAdapter.init),
         )
 
         return if newDescription.isEmpty {

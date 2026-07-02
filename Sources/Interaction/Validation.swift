@@ -1,12 +1,28 @@
+import Foundation
+
 public protocol ValidationRule: Sendable {
     func validate(_ input: String) -> ValidationError?
 }
 
-public struct ValidationError: Error, Equatable, Sendable {
+public struct ValidationError: LocalizedError, Equatable, Sendable {
     public let message: String
 
     public init(_ message: String) {
         self.message = message
+    }
+
+    public var errorDescription: String? {
+        message
+    }
+}
+
+public extension ValidationRule {
+    func isValid(_ input: String) -> Bool {
+        validate(input) == nil
+    }
+
+    func validate(input: String) -> Bool {
+        isValid(input)
     }
 }
 
@@ -39,5 +55,9 @@ public struct LengthRule: ValidationRule {
 public extension Collection<any ValidationRule> {
     func validate(_ input: String) -> [ValidationError] {
         compactMap { $0.validate(input) }
+    }
+
+    func validate(input: String) -> [ValidationError] {
+        validate(input)
     }
 }

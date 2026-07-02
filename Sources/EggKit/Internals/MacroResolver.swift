@@ -1,4 +1,5 @@
 import Foundation
+import Interaction
 import Noora
 
 /// Resolves macro definitions into concrete values.
@@ -65,12 +66,12 @@ package struct MacroResolver {
     }
 
     private func promptForString(_ macro: Config.Macro) -> ResolvedMacro {
-        var validationRules: [any ValidatableRule] = []
+        var validationRules: [any Interaction.ValidationRule] = []
 
         // Only require non-empty if there's no default value
         if macro.default == nil {
             validationRules.append(
-                NonEmptyValidationRule(error: "\(macro.name) cannot be empty."),
+                NonEmptyRule(message: "\(macro.name) cannot be empty."),
             )
         }
 
@@ -94,7 +95,7 @@ package struct MacroResolver {
             title: "\(macro.name)",
             prompt: TerminalText(stringLiteral: promptMessage),
             collapseOnAnswer: true,
-            validationRules: validationRules,
+            validationRules: validationRules.map(NooraValidationRuleAdapter.init),
         )
 
         // Resolve final value
@@ -167,7 +168,7 @@ package struct MacroResolver {
 
     private func promptForArray(_ macro: Config.Macro) -> ResolvedMacro {
         // Build validation rules for array elements
-        var validationRules: [any ValidatableRule] = []
+        var validationRules: [any Interaction.ValidationRule] = []
 
         if let validatePattern = macro.validate {
             // Create a custom validation rule that validates each comma-separated element
@@ -190,7 +191,7 @@ package struct MacroResolver {
             title: "\(macro.name)",
             prompt: TerminalText(stringLiteral: promptMessage),
             collapseOnAnswer: true,
-            validationRules: validationRules,
+            validationRules: validationRules.map(NooraValidationRuleAdapter.init),
         )
 
         // Resolve final values
@@ -219,12 +220,12 @@ package struct MacroResolver {
             error: "Invalid path for \(macro.name)",
         )
 
-        var validationRules: [any ValidatableRule] = []
+        var validationRules: [any Interaction.ValidationRule] = []
 
         // Only require non-empty if there's no default value
         if macro.default == nil {
             validationRules.append(
-                NonEmptyValidationRule(error: "\(macro.name) cannot be empty."),
+                NonEmptyRule(message: "\(macro.name) cannot be empty."),
             )
         }
 
@@ -241,7 +242,7 @@ package struct MacroResolver {
             title: "\(macro.name)",
             prompt: TerminalText(stringLiteral: promptMessage),
             collapseOnAnswer: true,
-            validationRules: validationRules,
+            validationRules: validationRules.map(NooraValidationRuleAdapter.init),
         )
 
         // Resolve final path

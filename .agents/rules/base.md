@@ -10,6 +10,7 @@ A CLI tool for generating projects from templates. Define macros in `config.yml`
 | `Sources/EggCLI/` | CLI command definitions (ArgumentParser). Thin layer, no business logic |
 | `Sources/EggKit/` | **All implementation**. Runners, validators, config parsing, template expansion |
 | `Sources/EggKit/Config/` | `config.yml` model and validation |
+| `Sources/EggKit/Validation/` | Egg domain validation rules built on Interaction validation primitives |
 | `Sources/EggKit/WorkflowRunner/` | Lifecycle execution engine (pre_hatch → hatch → post_hatch) |
 | `Sources/Interaction/` | Dependency-free terminal interaction library. Prompt, choice, table, styling, and Unicode-aware input primitives |
 | `Sources/EggMCP/` | MCP server: tool handlers exposing egg to AI agents |
