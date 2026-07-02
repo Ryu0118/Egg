@@ -11,6 +11,7 @@ on:
       - 'Package.resolved'
       - '.swiftlint.yml'
       - '.swift-ast-lint.yml'
+      - '.swiftformat'
       - 'nestfile.yaml'
       - 'scripts/nest.sh'
       - '.github/workflows/test.yml'
@@ -24,6 +25,7 @@ on:
       - 'Package.resolved'
       - '.swiftlint.yml'
       - '.swift-ast-lint.yml'
+      - '.swiftformat'
       - 'nestfile.yaml'
       - 'scripts/nest.sh'
       - '.github/workflows/test.yml'
@@ -37,7 +39,7 @@ concurrency:
 
 jobs:
   swiftlint:
-    name: SwiftLint
+    name: Lint
     runs-on: macos-26
     permissions:
       contents: read
@@ -47,6 +49,9 @@ jobs:
 
       - name: Bootstrap dev tools
         run: ./scripts/nest.sh bootstrap nestfile.yaml
+
+      - name: SwiftFormat
+        run: .nest/bin/swiftformat --lint --config .swiftformat .
 
       - name: SwiftLint
         run: .nest/bin/swiftlint lint --config .swiftlint.yml --strict --no-cache
