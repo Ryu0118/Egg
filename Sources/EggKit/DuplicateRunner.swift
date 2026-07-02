@@ -12,6 +12,7 @@ package struct DuplicateRunner {
     private let workingDirectory: URL
     private let fileManager: any FileManagerProtocol
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     let decoder = YAMLDecoder()
     let encoder = YAMLEncoder.defaultEncoder()
@@ -25,6 +26,7 @@ package struct DuplicateRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,
@@ -35,6 +37,7 @@ package struct DuplicateRunner {
         self.workingDirectory = workingDirectory
         self.fileManager = fileManager
         self.noora = noora
+        self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -247,7 +250,7 @@ package struct DuplicateRunner {
             newDescription: newDescription,
         )
 
-        noora.success("Successfully duplicated template '\(newName)' at \(targetPath.path(percentEncoded: false))")
+        interaction.writeSuccess("Successfully duplicated template '\(newName)' at \(targetPath.path(percentEncoded: false))")
     }
 
     private func updateConfig(

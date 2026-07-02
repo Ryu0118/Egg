@@ -1,11 +1,13 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 import ProcessRunning
 
 package struct HatchRunner {
     private let mode: HatchRunnerMode
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let workingDirectory: URL
     private let homeDirectory: URL
     private let fileManager: any FileManagerProtocol
@@ -28,6 +30,7 @@ package struct HatchRunner {
         fileManager: some FileManagerProtocol,
         processRunner: some ProcessRunning = ProcessRunner(),
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         useStaging: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,
@@ -42,6 +45,7 @@ package struct HatchRunner {
         self.fileManager = fileManager
         self.processRunner = processRunner
         self.noora = noora
+        self.interaction = interaction
         self.useStaging = useStaging
         self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
@@ -168,6 +172,7 @@ package struct HatchRunner {
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 noora: noora,
+                interaction: interaction,
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,
@@ -175,13 +180,14 @@ package struct HatchRunner {
                 stagingRoot: stagingRoot,
             )
         } else {
-            noora.warning("Running in direct mode. filesystem changes are permanent")
+            interaction.writeWarning("Running in direct mode. filesystem changes are permanent")
             return LifecycleWorkflowRunner(
                 processRunner: processRunner,
                 fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
                 noora: noora,
+                interaction: interaction,
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,

@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 
 /// Runs the template installation workflow.
@@ -23,6 +24,7 @@ package struct InstallRunner {
     private let templateLocation: TemplateLocation
     private let fileManager: any FileManagerProtocol
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let gitCloner: any GitCloning
     private let directoryCloner: any DirectoryCloning
     private let templateDiscoverer: any TemplateDiscovering
@@ -47,6 +49,7 @@ package struct InstallRunner {
         homeDirectory: URL,
         fileManager: some FileManagerProtocol = FileManager.default,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         gitCloner: some GitCloning = GitCloner(),
         directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
     ) {
@@ -57,6 +60,7 @@ package struct InstallRunner {
         self.homeDirectory = homeDirectory
         self.fileManager = fileManager
         self.noora = noora
+        self.interaction = interaction
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
         templateDiscoverer = TemplateDiscoverer(fileManager: fileManager)
@@ -72,6 +76,7 @@ package struct InstallRunner {
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
         noora: some Noorable,
+        interaction: some InteractionProviding = Terminal(),
         gitCloner: some GitCloning,
         directoryCloner: some DirectoryCloning,
         templateDiscoverer: some TemplateDiscovering,
@@ -83,6 +88,7 @@ package struct InstallRunner {
         self.homeDirectory = homeDirectory
         self.fileManager = fileManager
         self.noora = noora
+        self.interaction = interaction
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
         self.templateDiscoverer = templateDiscoverer
@@ -126,10 +132,10 @@ package struct InstallRunner {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "egg-install-")
         defer { try? fileManager.removeItem(at: tempDir) }
 
-        noora.info("Cloning repository...")
+        interaction.writeInfo("Cloning repository...")
         try await gitCloner.clone(url: gitURL, to: tempDir, ref: ref)
 
-        noora.info("Discovering templates...")
+        interaction.writeInfo("Discovering templates...")
         let allTemplates = try await templateDiscoverer.discoverTemplates(in: tempDir)
 
         guard !allTemplates.isEmpty else {
@@ -224,14 +230,14 @@ package struct InstallRunner {
             let tempDir = try fileManager.makeTemporaryDirectory(prefix: "egg-install-")
             cleanupDirectory = tempDir
 
-            noora.info("Cloning repository...")
+            interaction.writeInfo("Cloning repository...")
             try await gitCloner.clone(url: url, to: tempDir, ref: ref)
 
             templatesDirectory = tempDir
 
         case let .local(path):
             // Use local path directly
-            noora.info("Using local path: \(path.path(percentEncoded: false))")
+            interaction.writeInfo("Using local path: \(path.path(percentEncoded: false))")
             templatesDirectory = path
         }
 
@@ -241,7 +247,7 @@ package struct InstallRunner {
             }
         }
 
-        noora.info("Discovering templates...")
+        interaction.writeInfo("Discovering templates...")
         let allTemplates = try await templateDiscoverer.discoverTemplates(in: templatesDirectory)
 
         guard !allTemplates.isEmpty else {
@@ -302,25 +308,25 @@ package struct InstallRunner {
                         try fileManager.removeItem(at: destinationPath)
                         try await directoryCloner.clone(from: template.sourceDirectory, to: destinationPath)
                         installed.append(template.name)
-                        noora.success("Installed '\(template.name)' (overwritten)")
+                        interaction.writeSuccess("Installed '\(template.name)' (overwritten)")
                     } catch {
                         failed.append(FailedTemplate(name: template.name, error: error))
-                        noora.warning("Failed to install '\(template.name)': \(error.localizedDescription)")
+                        interaction.writeWarning("Failed to install '\(template.name)': \(error.localizedDescription)")
                     }
                 } else {
                     // Skip existing
                     skipped.append(SkippedTemplate(name: template.name, reason: .alreadyExists))
-                    noora.warning("Skipped '\(template.name)': already exists (use --force to overwrite)")
+                    interaction.writeWarning("Skipped '\(template.name)': already exists (use --force to overwrite)")
                 }
             } else {
                 // Install new template
                 do {
                     try await directoryCloner.clone(from: template.sourceDirectory, to: destinationPath)
                     installed.append(template.name)
-                    noora.success("Installed '\(template.name)'")
+                    interaction.writeSuccess("Installed '\(template.name)'")
                 } catch {
                     failed.append(FailedTemplate(name: template.name, error: error))
-                    noora.warning("Failed to install '\(template.name)': \(error.localizedDescription)")
+                    interaction.writeWarning("Failed to install '\(template.name)': \(error.localizedDescription)")
                 }
             }
         }

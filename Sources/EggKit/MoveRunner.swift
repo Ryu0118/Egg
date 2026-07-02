@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 
 package struct MoveRunner {
@@ -11,6 +12,7 @@ package struct MoveRunner {
     private let workingDirectory: URL
     private let fileManager: any FileManagerProtocol
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     package init(
         mode: MoveRunnerMode,
@@ -21,6 +23,7 @@ package struct MoveRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,
@@ -32,6 +35,7 @@ package struct MoveRunner {
         self.workingDirectory = workingDirectory
         self.fileManager = fileManager
         self.noora = noora
+        self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -238,7 +242,7 @@ package struct MoveRunner {
             // Remove source
             try fileManager.removeItem(at: sourcePath)
 
-            noora.success("Successfully moved template '\(name)' from \(sourceLocation.name) to \(targetLocation.name)")
+            interaction.writeSuccess("Successfully moved template '\(name)' from \(sourceLocation.name) to \(targetLocation.name)")
         } catch {
             throw Error.moveFailed(name: name, underlying: error)
         }
