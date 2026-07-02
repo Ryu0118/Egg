@@ -114,6 +114,18 @@ package struct CreateRunner {
         description: String,
         location: TemplateLocationType.Kind,
     ) async throws -> CreateResult {
+        // name becomes a path component (templateLocation.template below).
+        // Unlike the CLI/interactive path, MCP callers never go through
+        // Noora's interactive validation prompt, so this must be checked
+        // explicitly. TemplateCreator.create does roll back on failure today
+        // (so a traversal name can't currently leave a directory behind
+        // thanks to `name` also being validated as config.name), but that's
+        // a fragile coincidence, not a guarantee — reject it outright before
+        // any filesystem mutation is even attempted.
+        guard DirectoryNameValidationRule(error: "").validate(input: name) else {
+            throw Error.invalidName(name: name)
+        }
+
         let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
 
         guard !templatesFinder.exists(name) else {
@@ -142,11 +154,14 @@ package struct CreateRunner {
 
     enum Error: LocalizedError {
         case templateAlreadyExists
+        case invalidName(name: String)
 
         var errorDescription: String? {
             switch self {
             case .templateAlreadyExists:
                 "A template with the same name already exists"
+            case let .invalidName(name):
+                "Invalid directory name '\(name)'. Cannot contain '/' or start with whitespace."
             }
         }
     }

@@ -60,6 +60,7 @@ package extension EggCommand.TemplateCommand {
                 ).run()
             } catch {
                 Noora().error("\(error.localizedDescription)")
+                throw ExitCode.failure
             }
         }
 

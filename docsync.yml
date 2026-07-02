@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 422431c4e8166060cb9f77541db9b039d3ddabc3fb33f0c346d72782b34f2804
+  checksum: f78a946ce11fe625040e4135c9d612e2723402ee0a74f694fd012aadde42aca4
 - name: specs-config
   sources:
   - Sources/EggKit/Config/Config.swift

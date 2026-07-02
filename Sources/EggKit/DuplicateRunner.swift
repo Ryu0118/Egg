@@ -68,26 +68,44 @@ package struct DuplicateRunner {
         newName: String,
         newDescription: String,
     ) async throws -> DuplicateResult {
+        // newName becomes a path component (templateLocation.template below).
+        // Unlike the CLI/interactive path, MCP callers never go through
+        // Noora's interactive validation prompt, so this must be checked
+        // explicitly and BEFORE any filesystem mutation — otherwise a
+        // traversal name (e.g. '../../../etc/evil') would copy the whole
+        // source template tree to an arbitrary path before the config-name
+        // validation below ever runs.
+        guard DirectoryNameValidationRule(error: "").validate(input: newName) else {
+            throw Error.invalidNewName(name: newName)
+        }
+
         let sourcePathURL = URL(filePath: sourcePath)
 
         // Determine target location (same as source)
         let targetPath = templateLocation.template(newName, type: sourceLocation)
 
-        // Ensure target directory doesn't exist
-        guard !fileManager.fileExists(atPath: targetPath.path(percentEncoded: false)) else {
+        // Ensure target directory doesn't exist. existsAsLink, not fileExists:
+        // a dangling symlink sitting exactly at the target name must still be
+        // treated as "occupied," not silently copied over.
+        guard !fileManager.existsAsLink(targetPath) else {
             throw Error.targetAlreadyExists(name: newName)
         }
 
-        // Copy entire template directory
+        // Copy entire template directory, then update its config. If anything
+        // after the copy fails (e.g. config validation), roll back the copy —
+        // a failed duplicate must not leave a partial template behind.
         try fileManager.copyItem(at: sourcePathURL, to: targetPath)
-
-        // Update config.yml with new name and description
-        let configPath = targetPath.appendingPathComponent("config.yml")
-        try await updateConfig(
-            at: configPath,
-            newName: newName,
-            newDescription: newDescription,
-        )
+        do {
+            let configPath = targetPath.appendingPathComponent("config.yml")
+            try await updateConfig(
+                at: configPath,
+                newName: newName,
+                newDescription: newDescription,
+            )
+        } catch {
+            try? fileManager.removeItem(at: targetPath)
+            throw error
+        }
 
         return DuplicateResult(
             sourceName: sourceName,
@@ -274,6 +292,7 @@ package struct DuplicateRunner {
         case noTemplatesFound
         case targetAlreadyExists(name: String)
         case copyFailed(underlying: Swift.Error)
+        case invalidNewName(name: String)
 
         var errorDescription: String? {
             switch self {
@@ -283,6 +302,8 @@ package struct DuplicateRunner {
                 "A template with the name '\(name)' already exists at the target location"
             case let .copyFailed(underlying):
                 "Failed to copy template: \(underlying.localizedDescription)"
+            case let .invalidNewName(name):
+                "Invalid directory name '\(name)'. Cannot contain '/' or start with whitespace."
             }
         }
     }

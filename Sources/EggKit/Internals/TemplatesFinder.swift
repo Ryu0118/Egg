@@ -112,6 +112,18 @@ struct TemplatesFinder {
     }
 
     func validTemplateDirectory(_ name: String) throws -> URL? {
+        // A template name becomes a path component (global/.eggs/<name>,
+        // project/.eggs/<name>, or a custom search path's own <name>).
+        // URL.appending(component:) does not sanitize '/' or '..', so an
+        // unvalidated name here is a path-traversal vector — every lookup
+        // path (CLI Delete/Move/Duplicate, MCP Detail/Delete/Move/Duplicate,
+        // hatch's template resolution) funnels through this function, so
+        // this single check protects all of them. Reuses the same rule new
+        // template names are already validated against.
+        guard DirectoryNameValidationRule(error: "").validate(input: name) else {
+            throw Error.invalidTemplateName(name: name)
+        }
+
         // Check additional search paths first (in order, highest priority)
         for path in additionalSearchPaths {
             if let customTemplate = resolveCustomTemplateDirectory(name, in: path) {
@@ -129,8 +141,11 @@ struct TemplatesFinder {
             ),
         )
 
-        let existsInGlobal = fileManager.exists(templateInGlobal)
-        let existsInProject = fileManager.exists(templateInProject)
+        // existsAsLink, not exists: a dangling symlink sitting exactly at the
+        // candidate path must still be treated as "occupied" (e.g. so 'create'
+        // correctly refuses to create over it).
+        let existsInGlobal = fileManager.existsAsLink(templateInGlobal)
+        let existsInProject = fileManager.existsAsLink(templateInProject)
 
         return if existsInGlobal {
             templateInGlobal
@@ -213,7 +228,7 @@ struct TemplatesFinder {
 
     private func resolveCustomTemplateDirectory(_ name: String, in path: URL) -> URL? {
         let templateInCustom = location.template(name, type: .custom(path))
-        if fileManager.exists(templateInCustom) {
+        if fileManager.existsAsLink(templateInCustom) {
             return templateInCustom
         }
 
@@ -297,11 +312,14 @@ struct TemplatesFinder {
 
     enum Error: LocalizedError {
         case noTemplatesFound(name: String)
+        case invalidTemplateName(name: String)
 
         var errorDescription: String? {
             switch self {
             case let .noTemplatesFound(name):
                 "Template '\(name)' was not found in any search paths (custom, global, or project)."
+            case let .invalidTemplateName(name):
+                "Invalid template name '\(name)': must be a plain directory name, not a path. It cannot contain '/' and cannot be '.' or '..'."
             }
         }
     }
