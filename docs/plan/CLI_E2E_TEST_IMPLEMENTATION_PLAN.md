@@ -2,7 +2,7 @@
 
 ## Overview
 
-本ドキュメントは、`REDACTED_LOCAL_PATH/docs/design/CLI_E2E_TEST_DESIGN.md` の設計に基づいた CLI E2E テストの実装計画を記述する。
+本ドキュメントは、`docs/design/CLI_E2E_TEST_DESIGN.md` の設計に基づいた CLI E2E テストの実装計画を記述する。
 
 ## Target Directory Structure
 
