@@ -33,7 +33,7 @@ rules:
   doc: SPECS.md
   message: Template config, lifecycle, or expansion behavior changed - update SPECS.md
     if the spec changed.
-  checksum: c4c0ffc12d4b5e4f42dfff71ca934ae699859c076901c97b79ac521ca5a0d3b4
+  checksum: aa0d2a00752b40c23901d73283ce9b3a515bcbf52b1609c479ebfbdd00be4a4e
 - name: agents-project
   sources:
   - Package.swift

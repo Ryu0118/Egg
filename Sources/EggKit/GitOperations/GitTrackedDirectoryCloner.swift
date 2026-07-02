@@ -75,10 +75,16 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
 
         // Clone each file using APFS clonefile
         // Filter out files that don't exist in the working directory
-        // (git ls-files -c includes deleted files that are still in the index)
+        // (git ls-files -c includes deleted files that are still in the index).
+        //
+        // existsAsLink, not fileExists: a dangling symlink is still a
+        // git-tracked, clonable file — fileExists follows the link and
+        // reports false for it, which would silently drop it from the clone
+        // and leave git's later diff misclassifying it as "added" instead of
+        // "modified" at apply time.
         let existingFiles = files.filter { file in
             let sourceFile = source.appending(path: file)
-            return fileManager.fileExists(atPath: sourceFile.path(percentEncoded: false))
+            return fileManager.existsAsLink(sourceFile)
         }
 
         try await existingFiles.asyncForEach(numberOfConcurrentTasks: 10) { file in

@@ -246,7 +246,11 @@ package struct AgentHatchTransactionRunner {
 
         let missingBackups = manifest.changes
             .filter { $0.kind == "modify" || $0.kind == "delete" }
-            .filter { !fileManager.exists(beforeRoot.appending(path: $0.path)) }
+            // existsAsLink, not exists: a backed-up symlink is often relative
+            // and won't resolve from its new location under .egg/rollback, so
+            // exists() would follow it, find nothing, and wrongly call a
+            // present backup "missing".
+            .filter { !fileManager.existsAsLink(beforeRoot.appending(path: $0.path)) }
             .map(\.path)
             .sorted()
         guard missingBackups.isEmpty else {

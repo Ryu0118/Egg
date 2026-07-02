@@ -198,10 +198,17 @@ struct ApplyStagingArea {
         }
 
         let targetPath = targetPath(for: entry.relativePath)
+        // The staged file's content already went through macro substitution as
+        // a fresh write, which does not carry over the original target's mode
+        // bits or extended attributes. Capture them before the overwrite and
+        // reapply them to the new content, so "modify" doesn't silently
+        // downgrade a tracked file's permissions or drop its xattrs.
+        let originalAttributes = fileManager.capturedFileAttributes(at: targetPath)
         try fileManager.removeIfExists(targetPath)
 
         try ensureParentDirectory(for: targetPath, fileManager: fileManager)
         try fileManager.copyItem(at: stagedPath, to: targetPath)
+        fileManager.restore(originalAttributes, to: targetPath)
     }
 
     private func rollback(

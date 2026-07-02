@@ -289,6 +289,20 @@ struct TemplateExpander {
         let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
         for item in contents {
+            // A symlink is neither text content to substitute nor a directory
+            // to recurse into. Its target string commonly only resolves once
+            // the template lands at its final output location — not from
+            // wherever it currently sits in the template tree — so reading
+            // "through" it here (as isDirectory's fileExists-based check would
+            // implicitly do for a dangling target) can throw a spurious
+            // "file doesn't exist" error, or worse, silently write substituted
+            // content THROUGH the link into whatever it happens to point at.
+            // Leave it exactly as `withAtomicCopyAndWrite`'s initial copy
+            // placed it.
+            if fileManager.isSymbolicLink(at: item) {
+                continue
+            }
+
             let isDirectory = fileManager.isDirectory(at: item)
 
             if isDirectory {
