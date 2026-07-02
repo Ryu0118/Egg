@@ -249,4 +249,88 @@ struct AgentHatchRollbackTests {
         #expect(result.status == "rolledBack")
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "old\n")
     }
+
+    @Test
+    func `A missing modify backup refuses up front instead of a partial silent restore`() throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+
+        // Two changes, but only one has a "before" backup on disk — simulating
+        // a corrupted/incomplete bundle.
+        try fileManager.writeText("current a\n", at: root.appending(path: "a.txt"))
+        try fileManager.writeText("current b\n", at: root.appending(path: "b.txt"))
+        try writeBundle(
+            id: "rb",
+            in: root,
+            changes: [
+                ("a.txt", "modify", hash("current a\n")),
+                ("b.txt", "modify", hash("current b\n")),
+            ],
+            beforeFiles: ["a.txt": "old a\n"], // b.txt's backup is missing
+        )
+
+        #expect(throws: AgentHatchTransactionRunner.Error.missingRollbackBackup(id: "rb", paths: ["b.txt"])) {
+            try makeRunner(workingDirectory: root).rollback(id: "rb")
+        }
+        // Nothing must have been touched — not even a.txt, whose backup DID exist.
+        #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "a.txt")), as: UTF8.self) == "current a\n")
+        #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "b.txt")), as: UTF8.self) == "current b\n")
+    }
+
+    @Test
+    func `A missing delete backup also refuses up front`() throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+
+        try writeBundle(id: "rb", in: root, changes: [("deleted.txt", "delete", nil)])
+        // No beforeFiles at all — the backup is missing.
+
+        #expect(throws: AgentHatchTransactionRunner.Error.missingRollbackBackup(id: "rb", paths: ["deleted.txt"])) {
+            try makeRunner(workingDirectory: root).rollback(id: "rb")
+        }
+    }
+
+    @Test(arguments: ["../escape", "a/b", "..", "", "a\\b"])
+    func `Rejects a rollback id that is not a single safe path segment`(badId: String) throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+
+        #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try makeRunner(workingDirectory: root).rollback(id: badId)
+        }
+    }
+
+    @Test(arguments: ["../escape", "a/b", "..", ""])
+    func `Rejects an apply token that is not a single safe path segment`(badToken: String) async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+
+        await #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try await makeRunner(workingDirectory: root).apply(token: badToken)
+        }
+        #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try makeRunner(workingDirectory: root).discard(token: badToken)
+        }
+    }
+
+    @Test
+    func `A rollback id that would escape via path traversal cannot read outside .egg-rollback`() throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+
+        // Plant a real manifest OUTSIDE .egg/rollback to prove traversal would
+        // have worked if the identifier were not validated.
+        let secretRoot = root.appending(path: "secret/before")
+        try fileManager.createDirectory(at: secretRoot, withIntermediateDirectories: true)
+        try fileManager.writeText(
+            """
+            {"id": "x", "applyToken": "x", "templateName": "t", "workingDirectory": "\(root.path(percentEncoded: false))", "status": "applied", "changes": []}
+            """,
+            at: root.appending(path: "secret/manifest.json"),
+        )
+
+        #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try makeRunner(workingDirectory: root).rollback(id: "../secret")
+        }
+    }
 }

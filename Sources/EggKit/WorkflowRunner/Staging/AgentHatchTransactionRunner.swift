@@ -145,8 +145,13 @@ package struct AgentHatchTransactionRunner {
     /// Applies a previewed transaction to the real working directory.
     ///
     /// Fails if the working directory drifted from the preview baseline unless
-    /// `force` is set. Records a rollback bundle before applying.
+    /// `force` is set. Backs up pre-apply content before touching anything, but
+    /// only *publishes* the rollback bundle (making it discoverable to
+    /// ``rollback(id:force:)``) after the apply itself succeeds — so a failed or
+    /// partial apply never leaves behind a rollback bundle that looks valid for
+    /// an apply that didn't actually complete.
     package func apply(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
+        try Self.validateIdentifier(token, kind: "apply token")
         let metadata = try store.load(token: token)
         guard metadata.status == .preview else {
             throw Error.transactionNotPreview(token: token, status: metadata.status.rawValue)
@@ -166,21 +171,29 @@ package struct AgentHatchTransactionRunner {
             throw Error.conflictingWorkingDirectoryChanges(conflicts)
         }
 
-        let rollbackId = try createRollbackBundle(metadata: metadata, workRoot: work)
-        try ApplyStagingArea.withStaging(
-            workspaceRoot: work,
-            workingDirectory: working,
-            fileManager: fileManager,
-        ) { staging, fs in
-            let manifest = try staging.stage(changes: metadata.changeSummary, fileManager: fs)
-            try staging.apply(manifest: manifest, fileManager: fs)
+        let pendingBundle = try prepareRollbackBundle(metadata: metadata, workRoot: work)
+        do {
+            try ApplyStagingArea.withStaging(
+                workspaceRoot: work,
+                workingDirectory: working,
+                fileManager: fileManager,
+            ) { staging, fs in
+                let manifest = try staging.stage(changes: metadata.changeSummary, fileManager: fs)
+                try staging.apply(manifest: manifest, fileManager: fs)
+            }
+        } catch {
+            // The apply didn't complete: discard the bundle rather than leave an
+            // orphaned rollback id that claims to back a completed apply.
+            try? fileManager.removeItem(at: pendingBundle.rollbackRoot)
+            throw error
         }
+        try commitRollbackBundle(pendingBundle)
 
-        let applied = try store.markApplied(token: token, rollbackId: rollbackId)
+        let applied = try store.markApplied(token: token, rollbackId: pendingBundle.rollbackId)
         return AgentHatchApplyResult(
             status: "applied",
             applyToken: token,
-            rollbackId: rollbackId,
+            rollbackId: pendingBundle.rollbackId,
             appliedChanges: applied.changes.map(\.agentEntry),
             warnings: applied.warnings,
         )
@@ -188,6 +201,7 @@ package struct AgentHatchTransactionRunner {
 
     /// Drops a previewed transaction and its staging area without applying it.
     package func discard(token: String) throws -> AgentHatchApplyResult {
+        try Self.validateIdentifier(token, kind: "apply token")
         let metadata = try store.load(token: token)
         try store.discard(token: token)
         return AgentHatchApplyResult(
@@ -205,7 +219,12 @@ package struct AgentHatchTransactionRunner {
     /// set — when any target file no longer matches the content the apply left
     /// behind (i.e. the user edited it after applying). This prevents a blind
     /// rollback from silently destroying post-apply work.
+    ///
+    /// Also refuses up front, before touching any file, if the bundle is missing
+    /// a backup a `modify`/`delete` restore needs — a partial restore that still
+    /// reports "rolledBack" would be a worse outcome than failing loudly.
     package func rollback(id rollbackId: String, force: Bool = false) throws -> AgentHatchRollbackResult {
+        try Self.validateIdentifier(rollbackId, kind: "rollback id")
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
             .appending(path: rollbackId)
@@ -225,6 +244,15 @@ package struct AgentHatchTransactionRunner {
             }
         }
 
+        let missingBackups = manifest.changes
+            .filter { $0.kind == "modify" || $0.kind == "delete" }
+            .filter { !fileManager.exists(beforeRoot.appending(path: $0.path)) }
+            .map(\.path)
+            .sorted()
+        guard missingBackups.isEmpty else {
+            throw Error.missingRollbackBackup(id: rollbackId, paths: missingBackups)
+        }
+
         for change in manifest.changes.reversed() {
             let target = workingDirectory.appending(path: change.path)
             switch change.kind {
@@ -239,7 +267,12 @@ package struct AgentHatchTransactionRunner {
                 }
             case "modify", "delete":
                 let source = beforeRoot.appending(path: change.path)
-                _ = try fileManager.copyIfExists(from: source, to: target)
+                // The pre-flight check above already confirmed this exists; guard
+                // again here as a defense against a TOCTOU race (backup removed
+                // between the check and this copy) rather than trusting silently.
+                guard try fileManager.copyIfExists(from: source, to: target) else {
+                    throw Error.missingRollbackBackup(id: rollbackId, paths: [change.path])
+                }
             default:
                 break
             }
@@ -458,7 +491,21 @@ package struct AgentHatchTransactionRunner {
         ]
     }
 
-    private func createRollbackBundle(metadata: HatchTransactionMetadata, workRoot: URL) throws -> String {
+    /// A rollback bundle whose backups are written to disk but whose
+    /// `manifest.json` has not yet been written — so ``rollback(id:force:)``
+    /// (which requires `manifest.json` to exist) cannot see it yet. Call
+    /// ``commitRollbackBundle(_:)`` to publish it, or delete `rollbackRoot` to
+    /// discard it, once the caller knows whether the apply succeeded.
+    private struct PendingRollbackBundle {
+        let rollbackId: String
+        let rollbackRoot: URL
+        let manifestURL: URL
+        let manifestData: Data
+    }
+
+    /// Backs up pre-apply content and computes post-apply hashes, without
+    /// publishing the bundle. See ``PendingRollbackBundle``.
+    private func prepareRollbackBundle(metadata: HatchTransactionMetadata, workRoot: URL) throws -> PendingRollbackBundle {
         let rollbackId = metadata.applyToken
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
@@ -500,9 +547,20 @@ package struct AgentHatchTransactionRunner {
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(manifest)
-        try data.write(to: rollbackRoot.appending(path: "manifest.json"))
-        return rollbackId
+        let manifestURL = rollbackRoot.appending(path: "manifest.json")
+        return try PendingRollbackBundle(
+            rollbackId: rollbackId,
+            rollbackRoot: rollbackRoot,
+            manifestURL: manifestURL,
+            manifestData: encoder.encode(manifest),
+        )
+    }
+
+    /// Publishes a prepared bundle by writing its `manifest.json`, making it
+    /// discoverable to ``rollback(id:force:)``. Call only after the apply the
+    /// bundle backs has actually succeeded.
+    private func commitRollbackBundle(_ pending: PendingRollbackBundle) throws {
+        try pending.manifestData.write(to: pending.manifestURL)
     }
 
     private func makeToken(templateName: String) -> String {
@@ -521,6 +579,18 @@ package struct AgentHatchTransactionRunner {
             .replacingOccurrences(of: ":", with: "")
     }
 
+    /// Rejects identifiers that aren't a single, safe path segment.
+    ///
+    /// `applyToken`/`rollbackId` become directory names under `.egg/`. They are
+    /// normally generated by ``makeToken(templateName:)``, but `apply`/`discard`/
+    /// `rollback` accept them from a caller (CLI arg or MCP tool argument), so a
+    /// value like `"../../etc"` must be rejected before it reaches a file path.
+    private static func validateIdentifier(_ value: String, kind: String) throws {
+        guard !value.isEmpty, !value.contains("/"), !value.contains("\\"), value != ".", value != ".." else {
+            throw Error.invalidIdentifier(kind: kind, value: value)
+        }
+    }
+
     private static let snapshotFileLimit = 10000
     private static let snapshotByteLimit = 100 * 1024 * 1024
 }
@@ -532,6 +602,8 @@ extension AgentHatchTransactionRunner {
         case notAGitRepository(path: String)
         case alreadyRolledBack(id: String)
         case conflictingRollbackChanges([String])
+        case missingRollbackBackup(id: String, paths: [String])
+        case invalidIdentifier(kind: String, value: String)
 
         var errorDescription: String? {
             switch self {
@@ -545,6 +617,10 @@ extension AgentHatchTransactionRunner {
                 "Rollback '\(id)' was already rolled back."
             case let .conflictingRollbackChanges(paths):
                 "Files changed since apply: \(paths.joined(separator: ", ")). Roll back anyway with --force (this overwrites those edits)."
+            case let .missingRollbackBackup(id, paths):
+                "Rollback bundle '\(id)' is missing its backup for: \(paths.joined(separator: ", ")). Refusing to restore only some files — nothing was changed."
+            case let .invalidIdentifier(kind, value):
+                "Invalid \(kind) '\(value)': must be a single path segment, not empty, and not '.' or '..'."
             }
         }
     }
