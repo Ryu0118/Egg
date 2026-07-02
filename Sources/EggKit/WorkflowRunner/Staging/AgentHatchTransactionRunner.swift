@@ -84,7 +84,6 @@ package struct AgentHatchTransactionRunner {
         let cloner = GitTrackedDirectoryCloner(
             processRunner: processRunner,
             fileManager: fileManager,
-            noora: noora,
         )
 
         async let cloneWork: () = try cloner.clone(from: workingDirectory, to: tempWork)

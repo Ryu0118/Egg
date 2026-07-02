@@ -54,7 +54,6 @@ package struct HatchRunner {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            noora: noora,
         )
     }
 

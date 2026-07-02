@@ -1,6 +1,6 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 import Yams
 
 struct TemplatesFinder {
@@ -8,7 +8,7 @@ struct TemplatesFinder {
     private let location: any TemplateLocating
     private let projectDirectory: URL
     private let workingDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let additionalSearchPaths: [URL]
 
     private let validator = ConfigValidator()
@@ -20,13 +20,13 @@ struct TemplatesFinder {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         self.fileManager = fileManager
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
-        self.noora = noora
+        self.interaction = interaction
         location = TemplateLocation(
             homeDirectory: homeDirectory,
         )
@@ -302,7 +302,7 @@ struct TemplatesFinder {
             return
         }
 
-        noora.error(
+        interaction.writeFailure(
             """
             \(configPath.path) is not a valid configuration.
             \(error.localizedDescription)

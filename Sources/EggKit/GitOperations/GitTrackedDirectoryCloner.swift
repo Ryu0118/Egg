@@ -1,7 +1,6 @@
 import AsyncOperations
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 import Subprocess
 
@@ -28,19 +27,16 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private let fileManager: any FileManagerProtocol
     private let apfsCloner: any DirectoryCloning
     private let gitRepositoryChecker: GitRepositoryChecker
-    private let noora: any Noorable
 
     init(
         processRunner: some ProcessRunning = ProcessRunner(),
         fileManager: some FileManagerProtocol = FileManager.default,
         apfsCloner: some DirectoryCloning = APFSDirectoryCloner(),
-        noora: some Noorable = Noora(),
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
         self.apfsCloner = apfsCloner
         gitRepositoryChecker = GitRepositoryChecker(processRunner: processRunner)
-        self.noora = noora
     }
 
     func clone(from source: URL, to destination: URL) async throws {

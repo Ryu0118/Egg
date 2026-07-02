@@ -1,6 +1,5 @@
 import FileManagerProtocol
 import Foundation
-import Noora
 import Yams
 
 struct TemplateCreator {
