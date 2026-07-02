@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 
 package struct DetailRunner {
@@ -18,12 +19,13 @@ package struct DetailRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
-        displayer = TemplateDetailDisplayer(noora: noora)
+        displayer = TemplateDetailDisplayer(interaction: interaction)
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
