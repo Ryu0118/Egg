@@ -9,13 +9,8 @@
   },
   "plugins": [
     {
-      "name": "egg-template-creator",
-      "source": "./.claude/plugins/egg-template-creator",
-      "category": "productivity"
-    },
-    {
-      "name": "egg-cli",
-      "source": "./.claude/plugins/egg-cli",
+      "name": "egg",
+      "source": "./.claude/plugins/egg",
       "category": "productivity"
     }
   ]

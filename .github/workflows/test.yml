@@ -90,6 +90,10 @@ jobs:
 
       - name: Run E2E Tests
         working-directory: E2ETestsPackage
+        # Uses the auto-provisioned GITHUB_TOKEN (scoped to this repo, safe to
+        # expose to fork PRs) rather than a personal PAT. The E2E install tests
+        # clone the public Ryu0118/swift-egg-templates fixture repo, which any
+        # token — or none — can read; the token just raises the API rate limit.
         run: swift test
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

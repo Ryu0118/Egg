@@ -21,13 +21,19 @@ jobs:
           artifact_name: egg
 
       - name: Upload Artifact Bundle to Release
+        # All GitHub context values are read as environment variables, never
+        # interpolated into the shell command text. github.event.release.body /
+        # tag_name are attacker-influenceable (a release body can be
+        # auto-generated from merged PR titles), so splicing them directly into
+        # `run:` would let ``$(...)``/backticks in a release body execute as
+        # shell in this contents:write, token-carrying job.
         run: |
-          BODY="${{ github.event.release.body }}"
-          BUNDLE_PATH="${{ steps.artifactbundle.outputs.bundle_path }}"
-          SHA256="${{ steps.artifactbundle.outputs.bundle_sha256 }}"
-          TAG_NAME="${{ github.event.release.tag_name }}"
           gh release upload "${TAG_NAME}" "${BUNDLE_PATH}"
           NEW_BODY="$(printf "%s\n\n**SHA256:** %s" "$BODY" "$SHA256")"
           gh release edit "${TAG_NAME}" --notes "${NEW_BODY}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BODY: ${{ github.event.release.body }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          BUNDLE_PATH: ${{ steps.artifactbundle.outputs.bundle_path }}
+          SHA256: ${{ steps.artifactbundle.outputs.bundle_sha256 }}
