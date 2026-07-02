@@ -91,6 +91,7 @@ struct PhaseRunner {
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
             builtInMacroContext: builtInContext,
+            isInteractive: isInteractive,
         )
 
         _ = try await stepRunner.execute(
@@ -208,6 +209,7 @@ struct PhaseRunner {
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
             builtInMacroContext: builtInContext,
+            isInteractive: isInteractive,
         )
 
         _ = try await stepRunner.execute(

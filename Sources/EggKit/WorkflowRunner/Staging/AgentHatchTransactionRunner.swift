@@ -1,3 +1,4 @@
+import CryptoKit
 import FileManagerProtocol
 import Foundation
 import Noora
@@ -165,7 +166,7 @@ package struct AgentHatchTransactionRunner {
             throw Error.conflictingWorkingDirectoryChanges(conflicts)
         }
 
-        let rollbackId = try createRollbackBundle(metadata: metadata)
+        let rollbackId = try createRollbackBundle(metadata: metadata, workRoot: work)
         try ApplyStagingArea.withStaging(
             workspaceRoot: work,
             workingDirectory: working,
@@ -199,20 +200,43 @@ package struct AgentHatchTransactionRunner {
     }
 
     /// Restores files captured in a rollback bundle from a prior ``apply(token:force:)``.
-    package func rollback(id rollbackId: String, force _: Bool = false) throws -> AgentHatchRollbackResult {
+    ///
+    /// Refuses when the bundle was already rolled back, and — unless `force` is
+    /// set — when any target file no longer matches the content the apply left
+    /// behind (i.e. the user edited it after applying). This prevents a blind
+    /// rollback from silently destroying post-apply work.
+    package func rollback(id rollbackId: String, force: Bool = false) throws -> AgentHatchRollbackResult {
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
             .appending(path: rollbackId)
         let manifestURL = rollbackRoot.appending(path: "manifest.json")
         let data = try fileManager.readFile(at: manifestURL)
-        let manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
+        var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
         let beforeRoot = rollbackRoot.appending(path: "before")
+
+        guard manifest.status != "rolledBack" else {
+            throw Error.alreadyRolledBack(id: rollbackId)
+        }
+
+        if !force {
+            let conflicts = rollbackConflicts(in: manifest)
+            if !conflicts.isEmpty {
+                throw Error.conflictingRollbackChanges(conflicts)
+            }
+        }
 
         for change in manifest.changes.reversed() {
             let target = workingDirectory.appending(path: change.path)
             switch change.kind {
             case "add":
-                try fileManager.removeIfExists(target)
+                // A forced apply may have overwritten a pre-existing file at an
+                // "add" path; if the bundle backed it up, restore it instead of
+                // just deleting.
+                let source = beforeRoot.appending(path: change.path)
+                if try !fileManager.copyIfExists(from: source, to: target) {
+                    try fileManager.removeIfExists(target)
+                    pruneEmptyDirectories(from: target.deletingLastPathComponent())
+                }
             case "modify", "delete":
                 let source = beforeRoot.appending(path: change.path)
                 _ = try fileManager.copyIfExists(from: source, to: target)
@@ -221,11 +245,64 @@ package struct AgentHatchTransactionRunner {
             }
         }
 
+        manifest.status = "rolledBack"
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try (encoder.encode(manifest)).write(to: manifestURL)
+
         return AgentHatchRollbackResult(
             status: "rolledBack",
             rollbackId: rollbackId,
             restoredChanges: manifest.changes.map(\.agentEntry),
         )
+    }
+
+    /// SHA-256 hex digest used to fingerprint applied file content.
+    static func sha256(of data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Paths whose current content no longer matches what the apply left behind.
+    ///
+    /// - `add`/`modify`: current file hash must equal the recorded `afterHash`.
+    ///   A missing `add` target is not a conflict (the rollback action — remove —
+    ///   is already satisfied); a missing `modify` target is.
+    /// - `delete`: apply left the path absent, so its mere existence now means
+    ///   the user recreated it.
+    /// Legacy bundles without hashes skip the check for that entry.
+    private func rollbackConflicts(in manifest: RollbackManifest) -> [String] {
+        manifest.changes.compactMap { change in
+            let target = workingDirectory.appending(path: change.path)
+            switch change.kind {
+            case "delete":
+                return fileManager.exists(target) ? change.path : nil
+            case "add", "modify":
+                guard let afterHash = change.afterHash else { return nil }
+                guard fileManager.exists(target) else {
+                    return change.kind == "modify" ? change.path : nil
+                }
+                let currentHash = try? Self.sha256(of: fileManager.readFile(at: target))
+                return currentHash == afterHash ? nil : change.path
+            default:
+                return nil
+            }
+        }
+        .sorted()
+    }
+
+    /// Removes now-empty parent directories left behind after deleting an added
+    /// file, walking up until a non-empty directory or the working directory root.
+    private func pruneEmptyDirectories(from directory: URL) {
+        var current = directory.standardizedFileURL
+        let root = workingDirectory.standardizedFileURL
+        while current.path(percentEncoded: false).hasPrefix(root.path(percentEncoded: false)),
+              current != root,
+              fileManager.isDirectory(at: current),
+              (try? fileManager.contentsOfDirectory(atPath: current.path(percentEncoded: false)))?.isEmpty == true
+        {
+            try? fileManager.removeItem(at: current)
+            current = current.deletingLastPathComponent().standardizedFileURL
+        }
     }
 
     private func runWorkflow(in workspace: URL) async throws -> URL {
@@ -381,7 +458,7 @@ package struct AgentHatchTransactionRunner {
         ]
     }
 
-    private func createRollbackBundle(metadata: HatchTransactionMetadata) throws -> String {
+    private func createRollbackBundle(metadata: HatchTransactionMetadata, workRoot: URL) throws -> String {
         let rollbackId = metadata.applyToken
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
@@ -389,10 +466,28 @@ package struct AgentHatchTransactionRunner {
         let beforeRoot = rollbackRoot.appending(path: "before")
         try fileManager.createDirectory(at: beforeRoot, withIntermediateDirectories: true)
 
-        for change in metadata.changes where change.kind == "modify" || change.kind == "delete" {
+        // Back up whatever currently exists at every target path — including
+        // "add" paths: a forced apply can overwrite a file the user created
+        // after the preview, and rollback must be able to restore it rather
+        // than silently deleting it.
+        //
+        // Also record the hash of the content the apply will leave behind
+        // (from the staging work tree), so rollback can detect post-apply
+        // user edits instead of blindly overwriting them.
+        let entries: [RollbackChangeEntry] = try metadata.changes.map { change in
             let source = workingDirectory.appending(path: change.path)
             let destination = beforeRoot.appending(path: change.path)
             _ = try fileManager.copyIfExists(from: source, to: destination)
+
+            let appliedFile = workRoot.appending(path: change.path)
+            let afterHash: String? = if change.kind == "delete" {
+                nil
+            } else if fileManager.exists(appliedFile) {
+                try Self.sha256(of: fileManager.readFile(at: appliedFile))
+            } else {
+                nil
+            }
+            return RollbackChangeEntry(path: change.path, kind: change.kind, afterHash: afterHash)
         }
 
         let manifest = RollbackManifest(
@@ -400,7 +495,8 @@ package struct AgentHatchTransactionRunner {
             applyToken: metadata.applyToken,
             templateName: metadata.templateName,
             workingDirectory: metadata.workingDirectory,
-            changes: metadata.changes,
+            status: "applied",
+            changes: entries,
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -434,6 +530,8 @@ extension AgentHatchTransactionRunner {
         case transactionNotPreview(token: String, status: String)
         case conflictingWorkingDirectoryChanges([String])
         case notAGitRepository(path: String)
+        case alreadyRolledBack(id: String)
+        case conflictingRollbackChanges([String])
 
         var errorDescription: String? {
             switch self {
@@ -443,6 +541,10 @@ extension AgentHatchTransactionRunner {
                 "Working directory changed since preview: \(paths.joined(separator: ", ")). Re-run preview or pass --force."
             case let .notAGitRepository(path):
                 "'\(path)' is not a git repository. egg hatch needs git to scope and track changes safely. Run 'git init' first."
+            case let .alreadyRolledBack(id):
+                "Rollback '\(id)' was already rolled back."
+            case let .conflictingRollbackChanges(paths):
+                "Files changed since apply: \(paths.joined(separator: ", ")). Roll back anyway with --force (this overwrites those edits)."
             }
         }
     }
@@ -453,5 +555,20 @@ private struct RollbackManifest: Codable {
     let applyToken: String
     let templateName: String
     let workingDirectory: String
-    let changes: [StoredChangeEntry]
+    /// "applied" until rolled back, then "rolledBack". Legacy bundles without
+    /// the field decode as nil and are treated as applied.
+    var status: String?
+    let changes: [RollbackChangeEntry]
+}
+
+private struct RollbackChangeEntry: Codable {
+    let path: String
+    let kind: String
+    /// SHA-256 of the content the apply left at this path (nil for deletes and
+    /// legacy bundles). Used to detect post-apply user edits before rolling back.
+    let afterHash: String?
+
+    var agentEntry: AgentChangeEntry {
+        AgentChangeEntry(path: path, kind: kind)
+    }
 }

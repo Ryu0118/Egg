@@ -31,6 +31,7 @@ struct LifecycleStepRunner {
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
     private let builtInMacroContext: BuiltInMacroContext
+    private let isInteractive: Bool
 
     init(
         processRunner: any ProcessRunning,
@@ -39,6 +40,7 @@ struct LifecycleStepRunner {
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
         builtInMacroContext: BuiltInMacroContext,
+        isInteractive: Bool = true,
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
@@ -46,6 +48,7 @@ struct LifecycleStepRunner {
         self.additionalEnvironment = additionalEnvironment
         self.executionEnvironment = executionEnvironment
         self.builtInMacroContext = builtInMacroContext
+        self.isInteractive = isInteractive
     }
 
     /// Executes all steps in a lifecycle phase.
@@ -72,6 +75,15 @@ struct LifecycleStepRunner {
         return outputs
     }
 
+    /// Emits a human-facing progress line, but only in interactive mode.
+    ///
+    /// Non-interactive (agent transaction) runs keep stdout clean so the JSON
+    /// result is the only thing on stdout and stays machine-parseable.
+    private func progress(_ message: TerminalText, tab: UInt) {
+        guard isInteractive else { return }
+        noora.passthrough(message, tab: tab)
+    }
+
     /// Executes a single lifecycle step.
     ///
     /// Evaluates the step's condition, resolves variables in the run command,
@@ -92,7 +104,7 @@ struct LifecycleStepRunner {
         let stepLabel = formatStepLabel(phase: phase, index: index, stepId: step.id)
 
         guard try await shouldExecute(step, given: macros, and: outputs) else {
-            noora.passthrough("⏭️ \(stepLabel): Skipped (condition not met)\n", tab: 1)
+            progress("⏭️ \(stepLabel): Skipped (condition not met)\n", tab: 1)
             return
         }
 
@@ -100,7 +112,7 @@ struct LifecycleStepRunner {
             return
         }
 
-        noora.passthrough("🦆 \(stepLabel): Running script...\n", tab: 1)
+        progress("🦆 \(stepLabel): Running script...\n", tab: 1)
 
         let shellRunner = ShellScriptRunner(
             processRunner: processRunner,
@@ -109,7 +121,7 @@ struct LifecycleStepRunner {
             executionEnvironment: executionEnvironment,
         )
         let lineStreamer = LineStreamer { line in
-            noora.passthrough("\(line)\n", tab: 2)
+            progress("\(line)\n", tab: 2)
         }
         let stdout = try await shellRunner.executeStreaming(resolvedCommand) { chunk in
             lineStreamer.append(chunk)
