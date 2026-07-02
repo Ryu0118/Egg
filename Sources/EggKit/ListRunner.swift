@@ -22,7 +22,7 @@ package struct ListRunner {
         hideDescription: Bool = false,
         noora: some Noorable = Noora(),
     ) {
-        mode = .display
+        mode = .display(location: location)
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
@@ -65,8 +65,8 @@ package struct ListRunner {
 
     package func run() async throws {
         switch mode {
-        case .display:
-            try await runDisplayMode(location: nil)
+        case let .display(location):
+            try await runDisplayMode(location: location)
         case let .mcp(location):
             // MCP mode returns result, use runMcp() instead
             _ = try await runMcp(location: location)
