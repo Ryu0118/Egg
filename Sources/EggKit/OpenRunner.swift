@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 import ProcessRunning
 
@@ -16,6 +17,7 @@ package struct OpenRunner {
     private let projectDirectory: URL
     private let workingDirectory: URL
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     package init(
         mode: OpenRunnerMode,
@@ -26,12 +28,14 @@ package struct OpenRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         self.mode = mode
         self.processRunner = processRunner
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
+        self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -86,7 +90,7 @@ package struct OpenRunner {
                 arguments: [templatePath.path],
             )
 
-            noora.success("Opened template '\(templateName)' at \(templatePath.path)")
+            interaction.writeSuccess("Opened template '\(templateName)' at \(templatePath.path)")
         } catch {
             throw Error.failedToOpen(
                 templateName: templateName,

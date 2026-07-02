@@ -1,5 +1,6 @@
 import FileManagerProtocol
 import Foundation
+import Interaction
 import Noora
 
 package struct DeleteRunner {
@@ -11,6 +12,7 @@ package struct DeleteRunner {
     private let force: Bool
     private let fileManager: any FileManagerProtocol
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     package init(
         mode: DeleteRunnerMode,
@@ -21,6 +23,7 @@ package struct DeleteRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,
@@ -32,6 +35,7 @@ package struct DeleteRunner {
         self.force = force
         self.fileManager = fileManager
         self.noora = noora
+        self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -116,7 +120,7 @@ package struct DeleteRunner {
             )
 
             guard confirm else {
-                noora.info("Deletion cancelled.")
+                interaction.writeInfo("Deletion cancelled.")
                 return
             }
         }
@@ -127,7 +131,7 @@ package struct DeleteRunner {
     private func deleteTemplate(at path: URL, name: String, location: TemplateLocationType) throws {
         do {
             try fileManager.removeItem(at: path)
-            noora.success("Successfully deleted template '\(name)' from \(location.dir)")
+            interaction.writeSuccess("Successfully deleted template '\(name)' from \(location.dir)")
         } catch {
             throw Error.deletionFailed(name: name, underlying: error)
         }

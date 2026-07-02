@@ -11,6 +11,7 @@ package struct CreateRunner {
     private let projectDirectory: URL
     private let workingDirectory: URL
     private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     package init(
         mode: CreateRunnerMode,
@@ -20,6 +21,7 @@ package struct CreateRunner {
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
         noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,
@@ -29,6 +31,7 @@ package struct CreateRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.noora = noora
+        self.interaction = interaction
         templateCreator = TemplateCreator(
             skipConfig: skipConfig,
             templateLocating: templateLocation,
@@ -150,7 +153,7 @@ package struct CreateRunner {
     }
 
     private func successLog(name: String, templateDir: URL) {
-        noora.success("Successfully created template '\(name)' at \(templateDir.path)")
+        interaction.writeSuccess("Successfully created template '\(name)' at \(templateDir.path)")
     }
 
     enum Error: LocalizedError {
