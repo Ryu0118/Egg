@@ -11,6 +11,7 @@ let package = Package(
     products: [
         .executable(name: "egg", targets: ["egg"]),
         .library(name: "EggKit", targets: ["EggKit"]),
+        .library(name: "Interaction", targets: ["Interaction"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
@@ -59,6 +60,16 @@ let package = Package(
             dependencies: [
                 "EggKit",
                 .product(name: "MCP", package: "swift-sdk"),
+            ],
+        ),
+        .target(
+            name: "Interaction",
+            dependencies: [],
+        ),
+        .testTarget(
+            name: "InteractionTests",
+            dependencies: [
+                "Interaction",
             ],
         ),
         .testTarget(
