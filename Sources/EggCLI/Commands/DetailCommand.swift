@@ -2,7 +2,6 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 
 package extension EggCommand.TemplateCommand {
     struct DetailCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
@@ -55,7 +54,7 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                Noora().error("\(error.localizedDescription)")
+                printError(error.localizedDescription)
                 throw ExitCode.failure
             }
         }

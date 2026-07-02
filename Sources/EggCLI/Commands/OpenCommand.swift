@@ -2,7 +2,6 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 
 package extension EggCommand.TemplateCommand {
@@ -51,7 +50,7 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                Noora().error("\(error.localizedDescription)")
+                printError(error.localizedDescription)
             }
         }
 

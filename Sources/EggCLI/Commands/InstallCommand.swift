@@ -2,7 +2,6 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 
 package extension EggCommand.TemplateCommand {
     struct InstallCommand: AsyncParsableCommand, HasProjectDirectory {
@@ -85,10 +84,10 @@ package extension EggCommand.TemplateCommand {
                     throw InstallError.allTemplatesSkippedOrFailed
                 }
             } catch let error as InstallError {
-                Noora().error("\(error.errorDescription ?? error.localizedDescription)")
+                printError(error.errorDescription ?? error.localizedDescription)
                 throw ExitCode.failure
             } catch {
-                Noora().error("\(error.localizedDescription)")
+                printError(error.localizedDescription)
                 throw ExitCode.failure
             }
         }
@@ -115,20 +114,18 @@ package extension EggCommand.TemplateCommand {
         }
 
         private func displaySummary(_ result: InstallResult) {
-            let noora = Noora()
-
             if !result.installed.isEmpty {
-                noora.success("Successfully installed \(result.installed.count) template(s).")
+                printSuccess("Successfully installed \(result.installed.count) template(s).")
             }
 
             if !result.skipped.isEmpty {
                 let skippedCount = result.skipped.count
-                noora.warning("Skipped \(skippedCount) template(s).")
+                printWarning("Skipped \(skippedCount) template(s).")
             }
 
             if !result.failed.isEmpty {
                 let failedCount = result.failed.count
-                noora.error("Failed to install \(failedCount) template(s).")
+                printError("Failed to install \(failedCount) template(s).")
             }
         }
     }

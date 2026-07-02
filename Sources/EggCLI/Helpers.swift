@@ -2,6 +2,7 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
+import Interaction
 
 package protocol HasProjectDirectory {
     var projectDirectory: String? { get }
@@ -54,4 +55,16 @@ package func printJSON(_ value: some Encodable) throws {
     if let string = String(data: data, encoding: .utf8) {
         print(string)
     }
+}
+
+package func printError(_ message: String) {
+    Terminal().writeStatus(.failure, "\(message)")
+}
+
+package func printSuccess(_ message: String) {
+    Terminal().writeStatus(.success, "\(message)")
+}
+
+package func printWarning(_ message: String) {
+    Terminal().writeStatus(.warning, "\(message)")
 }

@@ -2,7 +2,6 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 
 package extension EggCommand.TemplateCommand {
     struct ValidateCommand: AsyncParsableCommand, HasProjectDirectory {
@@ -35,7 +34,7 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                Noora().error("\(error.localizedDescription)")
+                printError(error.localizedDescription)
                 throw ExitCode.failure
             }
         }

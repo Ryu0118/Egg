@@ -36,8 +36,8 @@ let package = Package(
             dependencies: [
                 "EggKit",
                 "EggMCP",
+                "Interaction",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "Noora", package: "Noora"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "AsyncOperations", package: "swift-async-operations"),
