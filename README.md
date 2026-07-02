@@ -42,7 +42,10 @@ tool.
   - [Agent Transaction Flow (egg hatch)](#agent-transaction-flow-egg-hatch)
   - [Human and Inline Flow (egg hatch)](#human-and-inline-flow-egg-hatch)
   - [Managing Templates (egg template)](#managing-templates-egg-template)
-- [Using egg with AI Agents (MCP)](#using-egg-with-ai-agents-mcp)
+- [Using egg with AI Agents](#using-egg-with-ai-agents)
+  - [Claude Code Plugin](#claude-code-plugin)
+  - [Model Context Protocol (MCP)](#model-context-protocol-mcp)
+  - [Skills for Codex and Other Agents](#skills-for-codex-and-other-agents)
 - [How Rollback Works](#how-rollback-works)
 - [Requirements](#requirements)
 - [Development](#development)
@@ -315,17 +318,45 @@ All `template` subcommands support an interactive mode when arguments are
 omitted, and accept `--project-directory`/`--template-search-paths` to look
 beyond the current directory.
 
-## Using egg with AI Agents (MCP)
+## Using egg with AI Agents
 
-egg ships a built-in [Model Context Protocol](https://modelcontextprotocol.io)
-server.
+egg is built for agent-driven scaffolding from the ground up, and there are a
+few ways to wire it into your agent depending on which tool you use.
+
+### Claude Code Plugin
+
+The fastest path for Claude Code. This installs both skills below
+(`egg-cli-guide`, `egg-template`) and configures the bundled MCP server in one
+step, no manual client config needed. It requires `egg` to already be on your
+`PATH` (see [Installation](#installation)).
+
+```
+/plugin marketplace add Ryu0118/Egg
+/plugin install egg@egg
+```
+
+The same install also works from the command line.
+
+```sh
+claude plugin marketplace add Ryu0118/Egg
+claude plugin install egg@egg
+```
+
+Verify what a plugin bundle contains before installing it with
+`claude plugin validate`.
+
+### Model Context Protocol (MCP)
+
+Prefer to wire the MCP server up yourself, or use a client that isn't Claude
+Code (Claude Desktop, another MCP-capable client)? egg ships a built-in
+[Model Context Protocol](https://modelcontextprotocol.io) server directly.
 
 ```sh
 egg mcp
 ```
 
-Point any MCP-capable client (Claude Code, Claude Desktop, etc.) at this
-command. The recommended flow for an agent mirrors the CLI transaction flow.
+Point your client's stdio MCP config at this command. The recommended flow
+for an agent mirrors the CLI transaction flow.
 
 1. Call `egg_template_detail` to read required macros and the recommended flow.
 2. Call `egg_hatch_preview` to create a transaction without applying anything.
@@ -349,6 +380,30 @@ flags.
 A legacy `egg_hatch` tool is also available for compatibility. It defaults to
 preview mode and only applies changes if `apply_changes: true` is explicitly
 passed.
+
+### Skills for Codex and Other Agents
+
+egg's skills (`egg-cli-guide` for CLI usage, `egg-template` for authoring and
+updating templates) are plain `SKILL.md` files following the open
+[Agent Skills standard](https://agentskills.io), so they work with any
+compatible agent, not just Claude Code.
+
+- **Working directly in a clone of this repo**, Codex discovers skills at
+  `.agents/skills/`, already populated here (`egg-cli-guide`,
+  `egg-template`), so no setup is required.
+- **From anywhere, using `gh` for cross-agent installs**, pull a single skill
+  into whichever agent you use with [`gh skill`](https://cli.github.com)
+  (`gh` v2.90.0+).
+
+  ```sh
+  gh skill install Ryu0118/Egg egg-cli-guide --agent codex
+  gh skill install Ryu0118/Egg egg-template --agent claude-code
+  ```
+
+  `--agent` also accepts `cursor`, `gemini`, and `antigravity`.
+- **Manually, in any tool**, copy or symlink
+  `.claude/plugins/egg/skills/<skill-name>` into wherever your agent reads
+  skills from since both skills are self-contained directories.
 
 ## How Rollback Works
 
