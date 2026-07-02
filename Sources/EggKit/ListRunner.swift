@@ -1,6 +1,6 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 
 package struct ListRunner {
     private let mode: ListRunnerMode
@@ -9,7 +9,7 @@ package struct ListRunner {
     private let workingDirectory: URL
     private let additionalSearchPaths: [URL]
     private let hideDescription: Bool
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     /// Initialize for display mode (backward compatible)
     package init(
@@ -20,14 +20,14 @@ package struct ListRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         mode = .display(location: location)
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
         self.hideDescription = hideDescription
-        self.noora = noora
+        self.interaction = interaction
         finder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -46,14 +46,14 @@ package struct ListRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
         self.hideDescription = hideDescription
-        self.noora = noora
+        self.interaction = interaction
         finder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -136,7 +136,7 @@ package struct ListRunner {
         } else {
             let list = try await finder.listAll()
             guard !(list.custom.isEmpty && list.global.isEmpty && list.project.isEmpty) else {
-                noora.info("No templates found.")
+                interaction.writeInfo("No templates found.")
                 return
             }
 
@@ -166,21 +166,25 @@ package struct ListRunner {
             return
         }
 
-        noora.passthrough("Templates in \(location.dir)\n")
+        interaction.writeLine("Templates in \(location.dir)")
 
         if hideDescription {
-            noora.table(
-                headers: ["name"],
-                rows: list.reduce(into: [[String]]()) { partialResult, template in
-                    partialResult.append([template.config.name])
-                },
+            interaction.writeTable(
+                Table(
+                    headers: ["name"],
+                    rows: list.reduce(into: [[String]]()) { partialResult, template in
+                        partialResult.append([template.config.name])
+                    },
+                ),
             )
         } else {
-            noora.table(
-                headers: ["name", "description"],
-                rows: list.reduce(into: [[String]]()) { partialResult, template in
-                    partialResult.append([template.config.name, template.config.description])
-                },
+            interaction.writeTable(
+                Table(
+                    headers: ["name", "description"],
+                    rows: list.reduce(into: [[String]]()) { partialResult, template in
+                        partialResult.append([template.config.name, template.config.description])
+                    },
+                ),
             )
         }
     }
