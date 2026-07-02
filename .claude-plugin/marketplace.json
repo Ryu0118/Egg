@@ -4,8 +4,8 @@
     "name": "Ryu0118"
   },
   "metadata": {
-    "description": "Official egg template tools for Claude Code",
-    "version": "0.1.0"
+    "description": "Official egg CLI skills and MCP integration for Claude Code",
+    "version": "0.2.0"
   },
   "plugins": [
     {

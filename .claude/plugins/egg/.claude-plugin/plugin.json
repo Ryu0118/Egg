@@ -1,8 +1,12 @@
 {
   "name": "egg",
-  "version": "0.1.0",
-  "description": "Tools for creating egg templates with config.yml",
+  "version": "0.2.0",
+  "description": "egg CLI usage guide, template authoring skills, and MCP integration for AI agents and humans.",
   "author": {
     "name": "Ryu0118"
-  }
+  },
+  "homepage": "https://github.com/Ryu0118/Egg",
+  "repository": "https://github.com/Ryu0118/Egg",
+  "license": "MIT",
+  "keywords": ["scaffolding", "templates", "mcp", "agent"]
 }
