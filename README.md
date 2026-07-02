@@ -1,6 +1,7 @@
 # 🥚 egg
 
-**Hatch your templates, scaffolding built for AI agents, and humans too.**
+**Hatch your templates! A transactional scaffolding CLI tool for AI agents
+and humans.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](https://swift.org)
