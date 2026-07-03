@@ -62,8 +62,6 @@ actor StagingContext {
     /// Interaction instance for logging output.
     private let interaction: any InteractionProviding
 
-    // Interaction provider for prompts.
-
     private init(
         root: URL,
         reference: URL,
