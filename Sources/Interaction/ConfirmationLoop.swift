@@ -37,16 +37,16 @@ struct ConfirmationLoop {
 
     private var questionLine: String {
         let suffix = prompt.defaultAnswer ? "[Y/n]" : "[y/N]"
-        return "\(styleRenderer.render(prompt.question)) \(styleRenderer.render("\(StyledText.Segment.muted(suffix))"))"
+        return "\(styleRenderer.questionLine(prompt: prompt.question, filter: "")) \(styleRenderer.render("\(StyledText.Segment.muted(suffix))"))"
     }
 
     private mutating func render() {
         var lines: [String] = []
         if let title = prompt.title {
-            lines.append(styleRenderer.render(title))
+            lines.append(styleRenderer.titleLine(title))
         }
         if let description = prompt.description {
-            lines.append(styleRenderer.render("\(StyledText.Segment.muted(description.plainText))"))
+            lines.append(styleRenderer.descriptionLine(description))
         }
         lines.append(questionLine)
 

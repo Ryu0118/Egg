@@ -49,22 +49,22 @@ struct TextPromptLoop {
     }
 
     private var messagePrefix: String {
-        styleRenderer.render(prompt.message) + " "
+        styleRenderer.inputLine(prompt: prompt.message, value: "")
     }
 
     private mutating func render() {
         var lines: [String] = []
         if let title = prompt.title {
-            lines.append(styleRenderer.render(title))
+            lines.append(styleRenderer.titleLine(title))
         }
         if let description = prompt.description {
-            lines.append(styleRenderer.render("\(StyledText.Segment.muted(description.plainText))"))
+            lines.append(styleRenderer.descriptionLine(description))
         }
 
         let messageLine = lines.count
         lines.append(messagePrefix + buffer.text)
         lines.append(contentsOf: errors.map { error in
-            styleRenderer.render("\(StyledText.Segment.danger(error.message))")
+            styleRenderer.errorLine(error.message)
         })
 
         let column = messagePrefix.terminalDisplayWidth + buffer.cursorDisplayColumn

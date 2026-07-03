@@ -61,23 +61,26 @@ struct TerminalInteractiveTests {
 
         #expect(answer == "second")
         #expect(output.text.contains("❯"))
-        #expect(output.text.contains("Pick one second"))
+        #expect(output.text.contains("Pick one ✓ second"))
     }
 
     @Test func `choose filters options by typed text`() {
-        let (terminal, _) = makeTerminal(keys: [.character("b"), .character("a"), .enter])
+        let (terminal, output) = makeTerminal(keys: [.character("b"), .character("a"), .enter])
 
         let answer = terminal.choose(ChoicePrompt(question: "Pick", options: ["apple", "banana"]))
 
         #expect(answer == "banana")
+        #expect(output.text.contains("Pick (filter: ba)"))
     }
 
     @Test func `chooseMany toggles options with space`() {
-        let (terminal, _) = makeTerminal(keys: [.character(" "), .down, .down, .character(" "), .enter])
+        let (terminal, output) = makeTerminal(keys: [.character(" "), .down, .down, .character(" "), .enter])
 
         let answer = terminal.chooseMany(MultipleChoicePrompt(question: "Pick", options: ["a", "b", "c"]))
 
         #expect(answer == ["a", "c"])
+        #expect(output.text.contains("● a"))
+        #expect(output.text.contains("Pick ✓ a, c"))
     }
 
     @Test func `chooseMany enforces the minimum selection count`() {
@@ -88,7 +91,7 @@ struct TerminalInteractiveTests {
         )
 
         #expect(answer == ["a"])
-        #expect(output.text.contains("Select at least 1 option(s)."))
+        #expect(output.text.contains("! Select at least 1 option(s)."))
     }
 
     @Test func `readText edits the buffer with cursor keys`() {
@@ -109,15 +112,16 @@ struct TerminalInteractiveTests {
         )
 
         #expect(answer == "x")
-        #expect(output.text.contains("Input cannot be empty."))
+        #expect(output.text.contains("! Input cannot be empty."))
     }
 
     @Test func `confirm answers with a single key`() {
-        let (yesTerminal, _) = makeTerminal(keys: [.enter])
+        let (yesTerminal, yesOutput) = makeTerminal(keys: [.enter])
         let (noTerminal, _) = makeTerminal(keys: [.character("n")])
 
         #expect(yesTerminal.confirm(ConfirmationPrompt(question: "Continue?")) == true)
         #expect(noTerminal.confirm(ConfirmationPrompt(question: "Continue?")) == false)
+        #expect(yesOutput.text.contains("Continue? ✓ yes"))
     }
 
     @Test func `non-interactive sessions fall back to numbered prompts`() {
@@ -127,5 +131,31 @@ struct TerminalInteractiveTests {
 
         #expect(answer == "second")
         #expect(output.text.contains("1. first"))
+    }
+
+    @Test func `interactive prompts render title and description hierarchy`() {
+        let (terminal, output) = makeTerminal(keys: [.enter])
+
+        _ = terminal.choose(
+            ChoicePrompt(
+                title: "Template",
+                question: "Pick one",
+                options: ["Package"],
+                description: "Choose the starter to hatch.",
+                automaticallySelectsSingleOption: false,
+            ),
+        )
+
+        #expect(output.text.contains("◆ Template"))
+        #expect(output.text.contains("  Choose the starter to hatch."))
+    }
+
+    @Test func `choice prompt renders an empty filtered state`() {
+        let (terminal, output) = makeTerminal(keys: [.character("z"), .backspace, .enter])
+
+        let answer = terminal.choose(ChoicePrompt(question: "Pick", options: ["apple", "banana"]))
+
+        #expect(answer == "apple")
+        #expect(output.text.contains("(no matches)"))
     }
 }

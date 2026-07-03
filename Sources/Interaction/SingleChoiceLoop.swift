@@ -49,11 +49,11 @@ struct SingleChoiceLoop<Option: Equatable & CustomStringConvertible & Sendable> 
     private func lines() -> [String] {
         var lines: [String] = []
         if let title = prompt.title {
-            lines.append(styleRenderer.render(title))
+            lines.append(styleRenderer.titleLine(title))
         }
         lines.append(styleRenderer.questionLine(prompt: prompt.question, filter: state.filter))
         if let description = prompt.description {
-            lines.append(styleRenderer.render("\(StyledText.Segment.muted(description.plainText))"))
+            lines.append(styleRenderer.descriptionLine(description))
         }
 
         let visible = state.visibleOptions
@@ -64,7 +64,7 @@ struct SingleChoiceLoop<Option: Equatable & CustomStringConvertible & Sendable> 
             lines.append(styleRenderer.optionLine(label: option.label, focused: index == state.cursorIndex))
         }
 
-        lines.append(styleRenderer.render("\(StyledText.Segment.muted(instructions))"))
+        lines.append(styleRenderer.instructionLine(instructions))
         return lines
     }
 
