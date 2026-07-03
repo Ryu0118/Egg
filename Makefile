@@ -1,8 +1,9 @@
 SWIFTFORMAT := .nest/bin/swiftformat
 SWIFTLINT := .nest/bin/swiftlint
 MY_SWIFT_LINTER := .nest/bin/my-swift-linter
+MY_SWIFT_LINTER_PATHS := Sources/EggKit Package.swift
 
-.PHONY: install-commands format lint my-lint format-lint hooks test e2e-test check
+.PHONY: install-commands format swiftlint lint my-lint format-lint hooks test e2e-test check
 
 install-commands:
 	mise install
@@ -12,13 +13,15 @@ format:
 	@test -f "$(SWIFTFORMAT)" || (echo "Run: make install-commands" && exit 1)
 	"$(SWIFTFORMAT)" --config .swiftformat .
 
-lint:
+swiftlint:
 	@test -f "$(SWIFTLINT)" || (echo "Run: make install-commands" && exit 1)
 	"$(SWIFTLINT)" lint --config .swiftlint.yml --strict --no-cache
 
 my-lint:
 	@test -f "$(MY_SWIFT_LINTER)" || (echo "Run: make install-commands" && exit 1)
-	"$(MY_SWIFT_LINTER)" --config .swift-ast-lint.yml --no-cache Sources/EggKit Package.swift
+	"$(MY_SWIFT_LINTER)" --config .swift-ast-lint.yml --no-cache $(MY_SWIFT_LINTER_PATHS)
+
+lint: swiftlint my-lint
 
 format-lint: format lint
 
