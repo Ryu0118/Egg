@@ -69,13 +69,19 @@ struct TransactionLockTests {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
 
+        let (holderAcquired, holderAcquiredContinuation) = AsyncStream<Void>.makeStream()
+
         // Open the lock on a background task, hold it briefly, then release.
         let holder = Task {
             try await TransactionLock.withLock(directory: root, fileManager: fileManager) {
+                holderAcquiredContinuation.yield()
+                holderAcquiredContinuation.finish()
                 try await Task.sleep(nanoseconds: 200_000_000) // 200ms
             }
         }
-        try await Task.sleep(nanoseconds: 50_000_000) // give the holder a head start
+        for await _ in holderAcquired {
+            break
+        }
 
         // Fail-fast would throw immediately; wait: 2 should succeed once the
         // holder releases (well within the 2s budget).
