@@ -1,4 +1,6 @@
+/// Text that carries lightweight semantic styling for terminal output.
 public struct StyledText: ExpressibleByStringInterpolation, Equatable, Hashable, Sendable {
+    /// A styled segment inside a terminal message.
     public enum Segment: Equatable, Hashable, Sendable {
         case plain(String)
         case command(String)
@@ -13,6 +15,7 @@ public struct StyledText: ExpressibleByStringInterpolation, Equatable, Hashable,
         case info(String)
     }
 
+    /// The ordered segments that make up the text.
     public let segments: [Segment]
 
     public init(_ value: String) {
@@ -27,10 +30,12 @@ public struct StyledText: ExpressibleByStringInterpolation, Equatable, Hashable,
         segments = stringInterpolation.segments
     }
 
+    /// The message rendered without semantic styling.
     public var plainText: String {
         segments.map(\.plainValue).joined()
     }
 
+    /// String interpolation storage for styled terminal messages.
     public struct StringInterpolation: StringInterpolationProtocol {
         var segments: [Segment] = []
 

@@ -1,5 +1,8 @@
+/// A plain terminal table with headers and rows.
 public struct Table: Equatable, Sendable {
+    /// Column headers displayed before the rows.
     public let headers: [String]
+    /// Row values displayed in table order.
     public let rows: [[String]]
 
     public init(headers: [String], rows: [[String]]) {
@@ -24,12 +27,15 @@ public struct Table: Equatable, Sendable {
     }
 }
 
+/// An element emitted by a table result builder.
 public enum TableElement: Equatable, Sendable {
     case header([String])
     case row([String])
 }
 
+/// Header cells for a result-builder table declaration.
 public struct TableHeader: Equatable, Sendable {
+    /// Header cell values.
     public let values: [String]
 
     public init(_ values: String...) {
@@ -41,7 +47,9 @@ public struct TableHeader: Equatable, Sendable {
     }
 }
 
+/// Row cells for a result-builder table declaration.
 public struct TableRow: Equatable, Sendable {
+    /// Row cell values.
     public let values: [String]
 
     public init(_ values: String...) {
@@ -53,6 +61,7 @@ public struct TableRow: Equatable, Sendable {
     }
 }
 
+/// Builds a table from header and row declarations.
 @resultBuilder
 public enum TableBuilder {
     public static func buildBlock(_ components: [TableElement]...) -> [TableElement] {
@@ -84,6 +93,7 @@ public enum TableBuilder {
     }
 }
 
+/// Builds the cells inside a table header or row.
 @resultBuilder
 public enum TableCellBuilder {
     public static func buildBlock(_ components: [String]...) -> [String] {
@@ -119,9 +129,11 @@ public enum TableCellBuilder {
     }
 }
 
+/// Renders tables using terminal display widths.
 public struct TableRenderer: Sendable {
     public init() {}
 
+    /// Returns a newline-separated terminal rendering of a table.
     public func render(_ table: Table) -> String {
         let widths = columnWidths(for: table)
         var lines: [String] = []

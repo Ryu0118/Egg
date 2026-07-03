@@ -5,6 +5,20 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct DuplicateCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
+        @Argument(help: "The name of the template to duplicate (optional for interactive mode).")
+        package var templateName: String?
+
+        @Option(name: .long, help: "The name for the duplicated template.")
+        package var name: String?
+
+        @Option(name: .long, help: "The description for the duplicated template.")
+        package var description: String?
+
+        @Option(name: .long, help: "Directory containing the template to duplicate (defaults to current directory).", completion: .directory)
+        package var projectDirectory: String?
+
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
         package static let configuration = CommandConfiguration(
             commandName: "duplicate",
             abstract: "Duplicate an existing template.",
@@ -23,21 +37,6 @@ package extension EggCommand.TemplateCommand {
             """,
         )
 
-        @Argument(help: "The name of the template to duplicate (optional for interactive mode).")
-        package var templateName: String?
-
-        @Option(name: .long, help: "The name for the duplicated template.")
-        package var name: String?
-
-        @Option(name: .long, help: "The description for the duplicated template.")
-        package var description: String?
-
-        @Option(name: .long, help: "Directory containing the template to duplicate (defaults to current directory).", completion: .directory)
-        package var projectDirectory: String?
-
-        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
-        package var templateSearchPaths: [String] = []
-
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -46,7 +45,7 @@ package extension EggCommand.TemplateCommand {
             let mode = try await validate()
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = resolveHomeDirectory()
+                let homeDirectory = CLIEnvironment.resolveHomeDirectory()
                 try await DuplicateRunner(
                     mode: mode,
                     projectDirectory: resolveProjectDirectory(),
@@ -56,14 +55,14 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                printError(error.localizedDescription)
+                CLIOutput.printError(error.localizedDescription)
             }
         }
 
         func validate() async throws -> DuplicateRunnerMode {
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = resolveHomeDirectory()
+                let homeDirectory = CLIEnvironment.resolveHomeDirectory()
                 return try await DuplicateArgumentsValidator(
                     templateName: templateName,
                     newName: name,

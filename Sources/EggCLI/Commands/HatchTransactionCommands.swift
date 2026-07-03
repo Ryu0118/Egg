@@ -21,7 +21,7 @@ struct HatchTransactionOptions: ParsableArguments {
             fileManager: Self.fileManager,
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
             projectDirectory: resolveProjectDirectory(),
-            homeDirectory: resolveHomeDirectory(),
+            homeDirectory: CLIEnvironment.resolveHomeDirectory(),
             additionalSearchPaths: resolveTemplateSearchPaths(),
         )
     }
@@ -32,6 +32,26 @@ extension HatchTransactionOptions: HasProjectDirectory, HasTemplateSearchPaths {
 /// `egg hatch preview` — run a template in a staging clone and emit the proposed
 /// changes plus an apply token as JSON, without touching the working directory.
 struct HatchPreviewCommand: AsyncParsableCommand {
+    @Argument(help: "The name of the template to preview.")
+    var templateName: String
+
+    /// User-defined macro values, captured as unrecognized options (e.g. --name value).
+    @Argument(parsing: .allUnrecognized, help: "User-defined macro values (e.g. --macro value).")
+    var macros: [String] = []
+
+    @Flag(name: .long, help: "Include the unified diff of each change in the output.")
+    var diff = false
+
+    @Option(name: .long, parsing: .upToNextOption, help: "Force normally-ignored paths into the change set (git pathspec).")
+    var include: [String] = []
+
+    @Option(name: .long, parsing: .upToNextOption, help: "Exclude paths from the change set (git pathspec).")
+    var exclude: [String] = []
+
+    @Option(name: .long, help: "Directory the generated output targets (defaults to current directory).", completion: .directory)
+    var output: String?
+
+    @OptionGroup var options: HatchTransactionOptions
     static let configuration = CommandConfiguration(
         commandName: "preview",
         abstract: "Preview a hatch as a transaction; emits JSON with an apply token.",
@@ -46,27 +66,6 @@ struct HatchPreviewCommand: AsyncParsableCommand {
         """,
     )
 
-    @OptionGroup var options: HatchTransactionOptions
-
-    @Argument(help: "The name of the template to preview.")
-    var templateName: String
-
-    @Option(name: .long, parsing: .upToNextOption, help: "Force normally-ignored paths into the change set (git pathspec).")
-    var include: [String] = []
-
-    @Option(name: .long, parsing: .upToNextOption, help: "Exclude paths from the change set (git pathspec).")
-    var exclude: [String] = []
-
-    @Option(name: .long, help: "Directory the generated output targets (defaults to current directory).", completion: .directory)
-    var output: String?
-
-    @Flag(name: .long, help: "Include the unified diff of each change in the output.")
-    var diff = false
-
-    /// User-defined macro values, captured as unrecognized options (e.g. --name value).
-    @Argument(parsing: .allUnrecognized, help: "User-defined macro values (e.g. --macro value).")
-    var macros: [String] = []
-
     func run() async throws {
         let service = try await options.makeService()
         let outputDirectory = output.map { URL(filePath: $0, relativeTo: URL(filePath: HatchTransactionOptions.fileManager.currentDirectoryPath)).standardizedFileURL }
@@ -78,7 +77,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
             exclude: exclude,
             includeDiff: diff,
         )
-        try printJSON(result)
+        try CLIOutput.printJSON(result)
     }
 }
 
@@ -101,7 +100,7 @@ struct HatchApplyCommand: AsyncParsableCommand {
     func run() async throws {
         let service = try await options.makeService()
         let result = try await service.applyHatchTransaction(applyToken: token, force: force)
-        try printJSON(result)
+        try CLIOutput.printJSON(result)
     }
 }
 
@@ -123,7 +122,7 @@ struct HatchRollbackCommand: AsyncParsableCommand {
     func run() async throws {
         let service = try await options.makeService()
         let result = try service.rollbackHatchTransaction(rollbackId: rollbackId, force: force)
-        try printJSON(result)
+        try CLIOutput.printJSON(result)
     }
 }
 
@@ -142,6 +141,6 @@ struct HatchDiscardCommand: AsyncParsableCommand {
     func run() async throws {
         let service = try await options.makeService()
         let result = try service.discardHatchTransaction(applyToken: token)
-        try printJSON(result)
+        try CLIOutput.printJSON(result)
     }
 }

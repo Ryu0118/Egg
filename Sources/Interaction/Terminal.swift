@@ -1,15 +1,24 @@
 import Foundation
 
+/// Interface for terminal interaction used by command runners.
 public protocol InteractionProviding: Sendable {
+    /// Writes styled text without adding a status prefix.
     func write(_ text: StyledText)
+    /// Writes a status-prefixed message.
     func writeStatus(_ status: Status, _ message: StyledText)
+    /// Writes a rendered table.
     func writeTable(_ table: Table)
+    /// Reads a text answer from the user.
     func readText(_ prompt: TextPrompt) -> String
+    /// Reads a yes/no answer from the user.
     func confirm(_ prompt: ConfirmationPrompt) -> Bool
+    /// Reads one choice from the user.
     func choose<Option>(_ prompt: ChoicePrompt<Option>) -> Option
+    /// Reads multiple choices from the user.
     func chooseMany<Option>(_ prompt: MultipleChoicePrompt<Option>) -> [Option]
 }
 
+/// Status categories for terminal messages.
 public enum Status: Sendable {
     case success
     case failure
@@ -17,6 +26,7 @@ public enum Status: Sendable {
     case info
 }
 
+/// Default terminal interaction implementation.
 public struct Terminal: InteractionProviding {
     private let input: any TextInput
     private let output: any TextOutput
@@ -32,18 +42,22 @@ public struct Terminal: InteractionProviding {
         self.tableRenderer = tableRenderer
     }
 
+    /// Writes styled text as plain terminal output.
     public func write(_ text: StyledText) {
         output.write(text.plainText)
     }
 
+    /// Writes a status-prefixed message.
     public func writeStatus(_ status: Status, _ message: StyledText) {
         output.write("\(status.prefix) \(message.plainText)\n")
     }
 
+    /// Writes a rendered table followed by a newline.
     public func writeTable(_ table: Table) {
         output.write(tableRenderer.render(table) + "\n")
     }
 
+    /// Prompts until the user enters text that passes validation.
     public func readText(_ prompt: TextPrompt) -> String {
         while true {
             renderTitle(prompt.title)
@@ -61,6 +75,7 @@ public struct Terminal: InteractionProviding {
         }
     }
 
+    /// Prompts for a yes/no answer.
     public func confirm(_ prompt: ConfirmationPrompt) -> Bool {
         renderTitle(prompt.title)
         let suffix = prompt.defaultAnswer ? "[Y/n]" : "[y/N]"
@@ -73,6 +88,7 @@ public struct Terminal: InteractionProviding {
         return ["y", "yes"].contains(answer.lowercased())
     }
 
+    /// Prompts for one option by number.
     public func choose<Option>(_ prompt: ChoicePrompt<Option>) -> Option {
         precondition(!prompt.options.isEmpty, "Choice prompts require at least one option.")
         if prompt.options.count == 1, prompt.autoselectSingleOption {
@@ -98,6 +114,7 @@ public struct Terminal: InteractionProviding {
         }
     }
 
+    /// Prompts for multiple options by number.
     public func chooseMany<Option>(_ prompt: MultipleChoicePrompt<Option>) -> [Option] {
         precondition(!prompt.options.isEmpty, "Multiple-choice prompts require at least one option.")
         renderTitle(prompt.title)
@@ -138,25 +155,33 @@ public struct Terminal: InteractionProviding {
     }
 }
 
+/// Reads text from an input source.
 public protocol TextInput: Sendable {
+    /// Reads one line of text.
     func readLine() -> String?
 }
 
+/// Writes text to an output sink.
 public protocol TextOutput: Sendable {
+    /// Writes text without adding extra formatting.
     func write(_ text: String)
 }
 
+/// Standard input backed by `Swift.readLine`.
 public struct StandardInput: TextInput {
     public init() {}
 
+    /// Reads one line from standard input.
     public func readLine() -> String? {
         Swift.readLine(strippingNewline: true)
     }
 }
 
+/// Standard output backed by `FileHandle.standardOutput`.
 public struct StandardOutput: TextOutput {
     public init() {}
 
+    /// Writes text to standard output.
     public func write(_ text: String) {
         FileHandle.standardOutput.write(Data(text.utf8))
     }

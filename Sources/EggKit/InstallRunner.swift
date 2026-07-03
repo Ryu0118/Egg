@@ -301,33 +301,23 @@ package struct InstallRunner {
             // --force silently has no effect.
             let destinationExists = fileManager.existsAsLink(destinationPath)
 
-            if destinationExists {
-                if force {
-                    // Remove existing and install
-                    do {
-                        try fileManager.removeItem(at: destinationPath)
-                        try await directoryCloner.clone(from: template.sourceDirectory, to: destinationPath)
-                        installed.append(template.name)
-                        interaction.writeSuccess("Installed '\(template.name)' (overwritten)")
-                    } catch {
-                        failed.append(FailedTemplate(name: template.name, error: error))
-                        interaction.writeWarning("Failed to install '\(template.name)': \(error.localizedDescription)")
-                    }
-                } else {
-                    // Skip existing
-                    skipped.append(SkippedTemplate(name: template.name, reason: .alreadyExists))
-                    interaction.writeWarning("Skipped '\(template.name)': already exists (use --force to overwrite)")
+            if destinationExists, !force {
+                skipped.append(SkippedTemplate(name: template.name, reason: .alreadyExists))
+                interaction.writeWarning("Skipped '\(template.name)': already exists (use --force to overwrite)")
+                continue
+            }
+
+            do {
+                if destinationExists {
+                    try fileManager.removeItem(at: destinationPath)
                 }
-            } else {
-                // Install new template
-                do {
-                    try await directoryCloner.clone(from: template.sourceDirectory, to: destinationPath)
-                    installed.append(template.name)
-                    interaction.writeSuccess("Installed '\(template.name)'")
-                } catch {
-                    failed.append(FailedTemplate(name: template.name, error: error))
-                    interaction.writeWarning("Failed to install '\(template.name)': \(error.localizedDescription)")
-                }
+                try await directoryCloner.clone(from: template.sourceDirectory, to: destinationPath)
+                installed.append(template.name)
+                let suffix = destinationExists ? " (overwritten)" : ""
+                interaction.writeSuccess("Installed '\(template.name)'\(suffix)")
+            } catch {
+                failed.append(FailedTemplate(name: template.name, error: error))
+                interaction.writeWarning("Failed to install '\(template.name)': \(error.localizedDescription)")
             }
         }
 

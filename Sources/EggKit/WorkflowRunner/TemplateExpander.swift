@@ -204,22 +204,36 @@ struct TemplateExpander {
                 try patterns.append(Glob.Pattern(pattern))
 
             case let .conditional(conditional):
-                let evaluator = ConditionEvaluator(
+                try await appendConditionalPatterns(
+                    conditional,
+                    to: &patterns,
                     macros: macros,
                     outputs: outputs,
                     builtInMacroContext: builtInMacroContext,
                 )
-                let shouldExclude = try await evaluator.evaluate(conditional.if)
-
-                if shouldExclude {
-                    for pattern in conditional.paths {
-                        try patterns.append(Glob.Pattern(pattern))
-                    }
-                }
             }
         }
 
         return patterns
+    }
+
+    private func appendConditionalPatterns(
+        _ conditional: Config.ConditionalExclude,
+        to patterns: inout [Glob.Pattern],
+        macros: [ResolvedMacro],
+        outputs: StepOutputsStorage,
+        builtInMacroContext: BuiltInMacroContext,
+    ) async throws {
+        let evaluator = ConditionEvaluator(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: builtInMacroContext,
+        )
+        guard try await evaluator.evaluate(conditional.if) else { return }
+
+        for pattern in conditional.paths {
+            try patterns.append(Glob.Pattern(pattern))
+        }
     }
 
     /// Removes the config.yml file from the working directory.

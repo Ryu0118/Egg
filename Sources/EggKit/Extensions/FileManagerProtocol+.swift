@@ -236,26 +236,21 @@ extension FileManagerProtocol {
             let destExists = existsAsLink(destItem)
             let destIsDirectory = destExists ? isDirectory(at: destItem) : false
 
-            if sourceIsDirectory {
-                if destIsDirectory {
-                    // Both are directories: recursively merge
-                    try mergeDirectory(from: itemURL, to: destItem)
-                } else {
-                    // Source is directory, destination is file (or doesn't exist)
-                    // Remove file if exists, create directory, and recursively merge
-                    if destExists {
-                        try removeItem(at: destItem)
-                    }
-                    try createDirectory(at: destItem, withIntermediateDirectories: false, attributes: nil)
-                    try mergeDirectory(from: itemURL, to: destItem)
-                }
-            } else {
-                // Source is a file: replace destination
+            guard sourceIsDirectory else {
                 if destExists {
                     try removeItem(at: destItem)
                 }
                 try moveItem(at: itemURL, to: destItem)
+                continue
             }
+
+            if !destIsDirectory {
+                if destExists {
+                    try removeItem(at: destItem)
+                }
+                try createDirectory(at: destItem, withIntermediateDirectories: false, attributes: nil)
+            }
+            try mergeDirectory(from: itemURL, to: destItem)
         }
     }
 }

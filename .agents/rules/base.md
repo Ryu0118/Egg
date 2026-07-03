@@ -47,3 +47,4 @@ When working on egg templates or CLI usage, read these skills for detailed refer
 
 - Swift 6.2 / macOS 26+
 - Use `package` access modifier for cross-module types
+- `make lint` runs both SwiftLint and my-swift-linter. Install hooks with `make hooks`; pre-push runs `make my-lint`.

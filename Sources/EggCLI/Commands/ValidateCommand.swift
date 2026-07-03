@@ -5,6 +5,11 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct ValidateCommand: AsyncParsableCommand, HasProjectDirectory {
+        @Argument(help: "Path to the template directory containing config.yml.")
+        package var templatePath: String
+
+        @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
+        package var projectDirectory: String?
         package static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate a template's config.yml file.",
@@ -15,12 +20,6 @@ package extension EggCommand.TemplateCommand {
             Example: egg template validate path/to/template
             """,
         )
-
-        @Argument(help: "Path to the template directory containing config.yml.")
-        package var templatePath: String
-
-        @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
-        package var projectDirectory: String?
 
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
@@ -34,7 +33,7 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                printError(error.localizedDescription)
+                CLIOutput.printError(error.localizedDescription)
                 throw ExitCode.failure
             }
         }

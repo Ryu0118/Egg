@@ -5,6 +5,32 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct InstallCommand: AsyncParsableCommand, HasProjectDirectory {
+        @Argument(help: "Git repository URL or local directory path.")
+        package var url: String?
+
+        @Flag(name: [.short, .long], help: "Install globally.")
+        package var global: Bool = false
+
+        @Flag(name: [.short, .long], help: "Overwrite existing templates.")
+        package var force: Bool = false
+
+        @Option(name: [.short, .long], help: "Install from specific branch (Git sources only).")
+        package var branch: String?
+
+        @Option(name: [.short, .long], help: "Install from specific tag (Git sources only).")
+        package var tag: String?
+
+        @Option(name: [.short, .long], help: "Install from specific commit (Git sources only).")
+        package var revision: String?
+
+        @Option(name: .long, parsing: .upToNextOption, help: "Install only specified templates (can be repeated).")
+        package var template: [String] = []
+
+        @Option(name: .long, parsing: .upToNextOption, help: "Exclude specified templates (can be repeated).")
+        package var exclude: [String] = []
+
+        @Option(name: .long, help: "Project directory.", completion: .directory)
+        package var projectDirectory: String?
         package static let configuration = CommandConfiguration(
             commandName: "install",
             abstract: "Install templates from a Git repository or local directory.",
@@ -33,33 +59,6 @@ package extension EggCommand.TemplateCommand {
             """,
         )
 
-        @Argument(help: "Git repository URL or local directory path.")
-        package var url: String?
-
-        @Option(name: [.short, .long], help: "Install from specific branch (Git sources only).")
-        package var branch: String?
-
-        @Option(name: [.short, .long], help: "Install from specific tag (Git sources only).")
-        package var tag: String?
-
-        @Option(name: [.short, .long], help: "Install from specific commit (Git sources only).")
-        package var revision: String?
-
-        @Option(name: .long, parsing: .upToNextOption, help: "Install only specified templates (can be repeated).")
-        package var template: [String] = []
-
-        @Option(name: .long, parsing: .upToNextOption, help: "Exclude specified templates (can be repeated).")
-        package var exclude: [String] = []
-
-        @Flag(name: [.short, .long], help: "Install globally.")
-        package var global: Bool = false
-
-        @Flag(name: [.short, .long], help: "Overwrite existing templates.")
-        package var force: Bool = false
-
-        @Option(name: .long, help: "Project directory.", completion: .directory)
-        package var projectDirectory: String?
-
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -72,7 +71,7 @@ package extension EggCommand.TemplateCommand {
                     force: force,
                     projectDirectory: resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                    homeDirectory: resolveHomeDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                     fileManager: Self.fileManager,
                 ).run()
 
@@ -84,10 +83,10 @@ package extension EggCommand.TemplateCommand {
                     throw InstallError.allTemplatesSkippedOrFailed
                 }
             } catch let error as InstallError {
-                printError(error.errorDescription ?? error.localizedDescription)
+                CLIOutput.printError(error.errorDescription ?? error.localizedDescription)
                 throw ExitCode.failure
             } catch {
-                printError(error.localizedDescription)
+                CLIOutput.printError(error.localizedDescription)
                 throw ExitCode.failure
             }
         }
@@ -106,7 +105,7 @@ package extension EggCommand.TemplateCommand {
                     global: global,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: resolveHomeDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                 ).validate()
             } catch {
                 throw ValidationError(error.localizedDescription)
@@ -115,17 +114,17 @@ package extension EggCommand.TemplateCommand {
 
         private func displaySummary(_ result: InstallResult) {
             if !result.installed.isEmpty {
-                printSuccess("Successfully installed \(result.installed.count) template(s).")
+                CLIOutput.printSuccess("Successfully installed \(result.installed.count) template(s).")
             }
 
             if !result.skipped.isEmpty {
                 let skippedCount = result.skipped.count
-                printWarning("Skipped \(skippedCount) template(s).")
+                CLIOutput.printWarning("Skipped \(skippedCount) template(s).")
             }
 
             if !result.failed.isEmpty {
                 let failedCount = result.failed.count
-                printError("Failed to install \(failedCount) template(s).")
+                CLIOutput.printError("Failed to install \(failedCount) template(s).")
             }
         }
     }

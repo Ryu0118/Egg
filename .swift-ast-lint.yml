@@ -1,3 +1,6 @@
+included_paths:
+  - "Sources/**/*.swift"
+
 excluded_paths:
   - ".build/**"
   - ".swiftpm/**"
@@ -10,24 +13,47 @@ excluded_paths:
 rules:
   deep-nesting:
     args:
-      warning_depth: 3
-      error_depth: 5
+      warning_depth: 4
+      error_depth: 4
     include:
-      - "Sources/EggKit/**"
+      - "Sources/**"
   single-large-type-per-file:
     args:
-      warning_lines: 80
-      error_lines: 160
+      warning_lines: 50
+      error_lines: 50
     include:
-      - "Sources/EggKit/**"
+      - "Sources/**"
     exclude:
       - "**/*Generated.swift"
+  property-declaration-ordering:
+    args:
+      severity: error
+  function-access-modifier-grouping:
+    args:
+      severity: error
+  swiftui-view-property:
+    args:
+      severity: error
+  branch-assignment-to-tuple:
+    args:
+      severity: error
+  no-top-level-function:
+    args:
+      severity: error
+  return-if-expression:
+    args:
+      severity: error
+  return-switch-expression:
+    args:
+      severity: error
+  use-url-file-path:
+    args:
+      severity: error
 
-  # Start documentation enforcement from the workflow staging surface.
-  # Expanding this across all EggKit at once turns normal legacy cleanup into noise.
-  # Keep project-wide structural rules above, and widen this include as files gain docs.
   missing-docs:
     args:
+      min_access_level: package
+      severity: error
       ignore_patterns:
         - kinds: [init]
         - kinds: [enum]
@@ -36,7 +62,10 @@ rules:
           names: [errorDescription]
         - kinds: [func]
           names: ["=="]
+        - kinds: [func]
+          name_pattern: "^(buildBlock|buildExpression|buildOptional|buildEither|buildArray|appendLiteral|appendInterpolation)$"
     include:
+      - "Sources/Interaction/**"
       - "Sources/EggKit/WorkflowRunner/Staging/**"
     exclude:
       - "**/*Generated.swift"

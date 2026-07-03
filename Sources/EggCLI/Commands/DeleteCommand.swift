@@ -5,6 +5,17 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct DeleteCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
+        @Argument(help: "The name of the template to delete (optional for interactive mode).")
+        package var templateName: String?
+
+        @Flag(name: .long, help: "Delete the template without confirmation.")
+        package var force: Bool = false
+
+        @Option(name: .long, help: "Directory containing the template to delete (defaults to current directory).", completion: .directory)
+        package var projectDirectory: String?
+
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
         package static let configuration = CommandConfiguration(
             commandName: "delete",
             abstract: "Delete a template.",
@@ -22,18 +33,6 @@ package extension EggCommand.TemplateCommand {
             """,
         )
 
-        @Argument(help: "The name of the template to delete (optional for interactive mode).")
-        package var templateName: String?
-
-        @Option(name: .long, help: "Directory containing the template to delete (defaults to current directory).", completion: .directory)
-        package var projectDirectory: String?
-
-        @Flag(name: .long, help: "Delete the template without confirmation.")
-        package var force: Bool = false
-
-        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
-        package var templateSearchPaths: [String] = []
-
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -46,12 +45,12 @@ package extension EggCommand.TemplateCommand {
                     force: force,
                     projectDirectory: resolveProjectDirectory(),
                     workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                    homeDirectory: resolveHomeDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                printError(error.localizedDescription)
+                CLIOutput.printError(error.localizedDescription)
             }
         }
 
@@ -63,7 +62,7 @@ package extension EggCommand.TemplateCommand {
                     templateName: templateName,
                     projectDirectory: projectDirectory,
                     workingDirectory: workingDirectory,
-                    homeDirectory: resolveHomeDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
                     fileManager: Self.fileManager,
                 ).validate()

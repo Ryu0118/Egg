@@ -1,12 +1,14 @@
 import Foundation
 
 public extension String {
+    /// The number of columns this string occupies in a terminal.
     var terminalDisplayWidth: Int {
         withoutANSIEscapeSequences.reduce(into: 0) { width, character in
             width += character.terminalDisplayWidth
         }
     }
 
+    /// The string with ANSI escape sequences removed.
     package var withoutANSIEscapeSequences: String {
         var result = ""
         var iterator = makeIterator()
@@ -33,6 +35,7 @@ public extension String {
 }
 
 public extension Character {
+    /// The number of columns this character occupies in a terminal.
     var terminalDisplayWidth: Int {
         guard !unicodeScalars.allSatisfy(\.isZeroWidth) else {
             return 0

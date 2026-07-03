@@ -169,21 +169,18 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // Track whether user confirmed extended sandbox permissions
             var sandboxPermissionConfirmed = false
 
-            // If allowed_paths are specified and sandbox is enabled, handle permission
+            if !expandedAllowedPaths.isEmpty && !sandboxDisabled && !isInteractive {
+                throw LifecycleStepError.sandboxPermissionRequired(
+                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
+                )
+            }
+
             if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
-                if isInteractive {
-                    // Prompt user for permission in interactive mode
-                    sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                        expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                    )
-                    if !sandboxPermissionConfirmed {
-                        interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
-                    }
-                } else {
-                    // Non-interactive mode: reject with error
-                    throw LifecycleStepError.sandboxPermissionRequired(
-                        paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                    )
+                sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
+                    expandedAllowedPaths.map { $0.path(percentEncoded: false) },
+                )
+                if !sandboxPermissionConfirmed {
+                    interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
                 }
             }
 
