@@ -65,23 +65,28 @@ struct TransactionLockTests {
     }
 
     @Test
-    func `wait polls until the lock is released, rather than failing immediately`() async throws {
+    func `wait polls until the lock is released, rather than failing immediately`() throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
 
-        let (holderAcquired, holderAcquiredContinuation) = AsyncStream<Void>.makeStream()
+        let holderAcquired = DispatchSemaphore(value: 0)
+        let holderFinished = DispatchSemaphore(value: 0)
+        let holderError = LockedErrorBox()
 
-        // Open the lock on a background task, hold it briefly, then release.
-        let holder = Task {
-            try await TransactionLock.withLock(directory: root, fileManager: fileManager) {
-                holderAcquiredContinuation.yield()
-                holderAcquiredContinuation.finish()
-                try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+        // Use a real background thread so the synchronous wait loop below cannot
+        // starve the lock holder's release on a constrained cooperative executor.
+        DispatchQueue.global().async {
+            do {
+                try TransactionLock.withLock(directory: root, fileManager: fileManager) {
+                    holderAcquired.signal()
+                    Thread.sleep(forTimeInterval: 0.2)
+                }
+            } catch {
+                holderError.store(error)
             }
+            holderFinished.signal()
         }
-        for await _ in holderAcquired {
-            break
-        }
+        holderAcquired.wait()
 
         // Fail-fast would throw immediately; wait: 2 should succeed once the
         // holder releases (well within the 2s budget).
@@ -89,7 +94,10 @@ struct TransactionLockTests {
             "acquired"
         }
         #expect(result == "acquired")
-        try await holder.value
+        holderFinished.wait()
+        if let error = holderError.load() {
+            throw error
+        }
     }
 
     @Test
@@ -102,6 +110,23 @@ struct TransactionLockTests {
         try TransactionLock.withLock(directory: dirA, fileManager: fileManager) {
             // A lock on an unrelated directory must not contend with dirA's.
             try TransactionLock.withLock(directory: dirB, fileManager: fileManager) {}
+        }
+    }
+}
+
+private final class LockedErrorBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var error: (any Error)?
+
+    func store(_ error: any Error) {
+        lock.withLock {
+            self.error = error
+        }
+    }
+
+    func load() -> (any Error)? {
+        lock.withLock {
+            error
         }
     }
 }
