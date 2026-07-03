@@ -1,8 +1,8 @@
 import Foundation
 import Interaction
 
-package struct PathValidationRule: ValidationRule {
-    private let error: ValidationError
+package struct PathValidationRule: PredicateValidationRule {
+    package let error: ValidationError
     private let workingDirectory: URL
     private let homeDirectory: URL
 
@@ -26,9 +26,5 @@ package struct PathValidationRule: ValidationRule {
         } catch {
             return false
         }
-    }
-
-    package func validate(_ input: String) -> ValidationError? {
-        validate(input: input) ? nil : error
     }
 }

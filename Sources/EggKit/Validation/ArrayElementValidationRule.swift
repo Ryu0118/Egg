@@ -2,8 +2,8 @@ import Foundation
 import Interaction
 
 /// Validates that each element in a comma-separated array matches a regex pattern.
-package struct ArrayElementValidationRule: ValidationRule {
-    private let error: ValidationError
+package struct ArrayElementValidationRule: PredicateValidationRule {
+    package let error: ValidationError
     private let elementPattern: String
 
     package init(elementPattern: String, error: String) {
@@ -27,9 +27,5 @@ package struct ArrayElementValidationRule: ValidationRule {
         }
 
         return true
-    }
-
-    package func validate(_ input: String) -> ValidationError? {
-        validate(input: input) ? nil : error
     }
 }

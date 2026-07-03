@@ -1,8 +1,8 @@
 import Foundation
 import Interaction
 
-package struct ChoiceValidationRule: ValidationRule {
-    private let error: ValidationError
+package struct ChoiceValidationRule: PredicateValidationRule {
+    package let error: ValidationError
     private let choices: [String]
 
     package init(choices: [String], error: String) {
@@ -12,9 +12,5 @@ package struct ChoiceValidationRule: ValidationRule {
 
     package func validate(input: String) -> Bool {
         choices.contains(input)
-    }
-
-    package func validate(_ input: String) -> ValidationError? {
-        validate(input: input) ? nil : error
     }
 }

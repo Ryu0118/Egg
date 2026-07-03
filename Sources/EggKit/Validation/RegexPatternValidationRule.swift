@@ -1,8 +1,8 @@
 import Foundation
 import Interaction
 
-package struct RegexPatternValidationRule: ValidationRule {
-    private let error: ValidationError
+package struct RegexPatternValidationRule: PredicateValidationRule {
+    package let error: ValidationError
     private let pattern: String
 
     package init(pattern: String, error: String) {
@@ -17,9 +17,5 @@ package struct RegexPatternValidationRule: ValidationRule {
 
         let range = NSRange(input.startIndex..., in: input)
         return regex.firstMatch(in: input, range: range) != nil
-    }
-
-    package func validate(_ input: String) -> ValidationError? {
-        validate(input: input) ? nil : error
     }
 }

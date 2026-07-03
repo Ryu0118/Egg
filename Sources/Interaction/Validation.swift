@@ -6,6 +6,21 @@ public protocol ValidationRule: Sendable {
     func validate(_ input: String) -> ValidationError?
 }
 
+/// A validation rule defined by a pass/fail predicate and a fixed error.
+public protocol PredicateValidationRule: ValidationRule {
+    /// The error reported when the predicate fails.
+    var error: ValidationError { get }
+    /// Returns whether the input passes the rule.
+    func validate(input: String) -> Bool
+}
+
+public extension PredicateValidationRule {
+    /// Returns the fixed error when the predicate fails.
+    func validate(_ input: String) -> ValidationError? {
+        validate(input: input) ? nil : error
+    }
+}
+
 /// A user-facing validation failure.
 public struct ValidationError: LocalizedError, Equatable, Sendable {
     /// The validation message to display.
@@ -17,16 +32,6 @@ public struct ValidationError: LocalizedError, Equatable, Sendable {
 
     public var errorDescription: String? {
         message
-    }
-}
-
-public extension ValidationRule {
-    func isValid(_ input: String) -> Bool {
-        validate(input) == nil
-    }
-
-    func validate(input: String) -> Bool {
-        isValid(input)
     }
 }
 
@@ -63,9 +68,5 @@ public struct LengthRule: ValidationRule {
 public extension Collection<any ValidationRule> {
     func validate(_ input: String) -> [ValidationError] {
         compactMap { $0.validate(input) }
-    }
-
-    func validate(input: String) -> [ValidationError] {
-        validate(input)
     }
 }

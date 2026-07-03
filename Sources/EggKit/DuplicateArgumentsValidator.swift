@@ -110,7 +110,7 @@ package struct DuplicateArgumentsValidator {
             throw Error.templateAlreadyExists(name: name)
         }
 
-        let templateNameErrors = Config.templateNameValidationRules.validate(input: name)
+        let templateNameErrors = Config.templateNameValidationRules.validate(name)
         if !templateNameErrors.isEmpty {
             throw CombinedError(errors: templateNameErrors) { "⛔️ \($0)" }
         }

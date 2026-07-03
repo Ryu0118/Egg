@@ -1,8 +1,8 @@
 import Foundation
 import Interaction
 
-package struct LengthValidationRule: ValidationRule {
-    private let error: ValidationError
+package struct LengthValidationRule: PredicateValidationRule {
+    package let error: ValidationError
 
     private let minLength: Int
     private let maxLength: Int
@@ -16,10 +16,6 @@ package struct LengthValidationRule: ValidationRule {
     package func validate(input: String) -> Bool {
         let length = input.count
         return length >= minLength && length <= maxLength
-    }
-
-    package func validate(_ input: String) -> ValidationError? {
-        validate(input: input) ? nil : error
     }
 }
 

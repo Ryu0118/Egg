@@ -1,8 +1,8 @@
 import Foundation
 import Interaction
 
-package struct DirectoryNameValidationRule: ValidationRule {
-    private let error: ValidationError
+package struct DirectoryNameValidationRule: PredicateValidationRule {
+    package let error: ValidationError
 
     package init(error: String) {
         self.error = ValidationError(error)
@@ -29,9 +29,5 @@ package struct DirectoryNameValidationRule: ValidationRule {
         }
 
         return true
-    }
-
-    package func validate(_ input: String) -> ValidationError? {
-        validate(input: input) ? nil : error
     }
 }
