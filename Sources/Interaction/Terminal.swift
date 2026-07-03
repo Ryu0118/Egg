@@ -31,25 +31,30 @@ public struct Terminal: InteractionProviding {
     private let input: any TextInput
     private let output: any TextOutput
     private let tableRenderer: TableRenderer
+    private let capabilities: TerminalCapabilities
+    private let styleRenderer: StyledTextRenderer
 
     public init(
         input: some TextInput = StandardInput(),
         output: some TextOutput = StandardOutput(),
         tableRenderer: TableRenderer = TableRenderer(),
+        capabilities: TerminalCapabilities = .detect(),
     ) {
         self.input = input
         self.output = output
         self.tableRenderer = tableRenderer
+        self.capabilities = capabilities
+        styleRenderer = StyledTextRenderer(colorized: capabilities.supportsColor)
     }
 
-    /// Writes styled text as plain terminal output.
+    /// Writes styled text to the terminal.
     public func write(_ text: StyledText) {
-        output.write(text.plainText)
+        output.write(styleRenderer.render(text))
     }
 
     /// Writes a status-prefixed message.
     public func writeStatus(_ status: Status, _ message: StyledText) {
-        output.write("\(status.prefix) \(message.plainText)\n")
+        output.write("\(styleRenderer.render(status.styledPrefix)) \(styleRenderer.render(message))\n")
     }
 
     /// Writes a rendered table followed by a newline.
@@ -61,7 +66,7 @@ public struct Terminal: InteractionProviding {
     public func readText(_ prompt: TextPrompt) -> String {
         while true {
             renderTitle(prompt.title)
-            output.write("\(prompt.message.plainText) ")
+            output.write("\(styleRenderer.render(prompt.message)) ")
 
             let answer = readLineOrAbort()
             let errors = prompt.validationRules.validate(answer)
@@ -79,7 +84,7 @@ public struct Terminal: InteractionProviding {
     public func confirm(_ prompt: ConfirmationPrompt) -> Bool {
         renderTitle(prompt.title)
         let suffix = prompt.defaultAnswer ? "[Y/n]" : "[y/N]"
-        output.write("\(prompt.question.plainText) \(suffix) ")
+        output.write("\(styleRenderer.render(prompt.question)) \(suffix) ")
 
         let answer = readLineOrAbort().trimmingCharacters(in: .whitespacesAndNewlines)
         if answer.isEmpty {
@@ -141,12 +146,12 @@ public struct Terminal: InteractionProviding {
 
     private func renderTitle(_ title: StyledText?) {
         guard let title else { return }
-        output.write("\(title.plainText)\n")
+        output.write("\(styleRenderer.render(title))\n")
     }
 
     private func renderOptionList(title: StyledText?, question: StyledText, options: [some CustomStringConvertible]) {
-        var text = title.map { "\($0.plainText)\n" } ?? ""
-        text += "\(question.plainText)\n"
+        var text = title.map { "\(styleRenderer.render($0))\n" } ?? ""
+        text += "\(styleRenderer.render(question))\n"
         for (index, option) in options.enumerated() {
             text += "  \(index + 1). \(option.description)\n"
         }
@@ -198,16 +203,16 @@ public struct StandardOutput: TextOutput {
 }
 
 private extension Status {
-    var prefix: String {
+    var styledPrefix: StyledText {
         switch self {
         case .success:
-            "[success]"
+            "\(StyledText.Segment.success("[success]"))"
         case .failure:
-            "[error]"
+            "\(StyledText.Segment.danger("[error]"))"
         case .warning:
-            "[warning]"
+            "\(StyledText.Segment.accent("[warning]"))"
         case .info:
-            "[info]"
+            "\(StyledText.Segment.info("[info]"))"
         }
     }
 }

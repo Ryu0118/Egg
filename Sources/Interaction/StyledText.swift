@@ -55,7 +55,8 @@ public struct StyledText: ExpressibleByStringInterpolation, Equatable, Hashable,
     }
 }
 
-private extension StyledText.Segment {
+package extension StyledText.Segment {
+    /// The segment's text without any styling applied.
     var plainValue: String {
         switch self {
         case let .plain(value),
