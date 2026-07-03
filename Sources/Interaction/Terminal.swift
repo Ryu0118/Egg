@@ -95,11 +95,7 @@ public struct Terminal: InteractionProviding {
             return prompt.options[0]
         }
 
-        renderTitle(prompt.title)
-        output.write("\(prompt.question.plainText)\n")
-        for (index, option) in prompt.options.enumerated() {
-            output.write("  \(index + 1). \(option.description)\n")
-        }
+        renderOptionList(title: prompt.title, question: prompt.question, options: prompt.options)
 
         while true {
             output.write("> ")
@@ -117,11 +113,7 @@ public struct Terminal: InteractionProviding {
     /// Prompts for multiple options by number.
     public func chooseMany<Option>(_ prompt: MultipleChoicePrompt<Option>) -> [Option] {
         precondition(!prompt.options.isEmpty, "Multiple-choice prompts require at least one option.")
-        renderTitle(prompt.title)
-        output.write("\(prompt.question.plainText)\n")
-        for (index, option) in prompt.options.enumerated() {
-            output.write("  \(index + 1). \(option.description)\n")
-        }
+        renderOptionList(title: prompt.title, question: prompt.question, options: prompt.options)
 
         while true {
             output.write("> ")
@@ -141,6 +133,15 @@ public struct Terminal: InteractionProviding {
     private func renderTitle(_ title: StyledText?) {
         guard let title else { return }
         output.write("\(title.plainText)\n")
+    }
+
+    private func renderOptionList(title: StyledText?, question: StyledText, options: [some CustomStringConvertible]) {
+        var text = title.map { "\($0.plainText)\n" } ?? ""
+        text += "\(question.plainText)\n"
+        for (index, option) in options.enumerated() {
+            text += "  \(index + 1). \(option.description)\n"
+        }
+        output.write(text)
     }
 
     private func parseIndexes(_ input: String, optionCount: Int) -> [Int] {
