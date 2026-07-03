@@ -3,7 +3,8 @@ import Foundation
 public extension String {
     /// The number of columns this string occupies in a terminal.
     var terminalDisplayWidth: Int {
-        withoutANSIEscapeSequences.reduce(into: 0) { width, character in
+        let visible = contains("\u{1B}") ? withoutANSIEscapeSequences : self
+        return visible.reduce(into: 0) { width, character in
             width += character.terminalDisplayWidth
         }
     }

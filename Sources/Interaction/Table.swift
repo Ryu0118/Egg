@@ -135,32 +135,28 @@ public struct TableRenderer: Sendable {
 
     /// Returns a newline-separated terminal rendering of a table.
     public func render(_ table: Table) -> String {
-        let widths = columnWidths(for: table)
-        var lines: [String] = []
-
+        var rows = table.rows
         if !table.headers.isEmpty {
-            lines.append(render(row: table.headers, widths: widths))
+            rows.insert(table.headers, at: 0)
         }
 
-        lines.append(contentsOf: table.rows.map { render(row: $0, widths: widths) })
-        return lines.joined(separator: "\n")
-    }
-
-    private func columnWidths(for table: Table) -> [Int] {
-        let columnCount = max(table.headers.count, table.rows.map(\.count).max() ?? 0)
-        return (0 ..< columnCount).map { index in
-            ([table.headers] + table.rows)
-                .compactMap { row in row.indices.contains(index) ? row[index] : nil }
-                .map(\.terminalDisplayWidth)
-                .max() ?? 0
+        let cellWidths = rows.map { $0.map(\.terminalDisplayWidth) }
+        var columnWidths = [Int](repeating: 0, count: rows.map(\.count).max() ?? 0)
+        for row in cellWidths {
+            for (index, width) in row.enumerated() {
+                columnWidths[index] = max(columnWidths[index], width)
+            }
         }
+
+        return zip(rows, cellWidths)
+            .map { row, widths in render(row: row, cellWidths: widths, columnWidths: columnWidths) }
+            .joined(separator: "\n")
     }
 
-    private func render(row: [String], widths: [Int]) -> String {
-        widths.indices.map { index in
-            let value = row.indices.contains(index) ? row[index] : ""
-            let padding = String(repeating: " ", count: widths[index] - value.terminalDisplayWidth)
-            return value + padding
+    private func render(row: [String], cellWidths: [Int], columnWidths: [Int]) -> String {
+        columnWidths.indices.map { index in
+            guard row.indices.contains(index) else { return "" }
+            return row[index] + String(repeating: " ", count: columnWidths[index] - cellWidths[index])
         }
         .joined(separator: " ")
         .trimmingCharacters(in: .whitespaces)
