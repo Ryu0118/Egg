@@ -1,14 +1,13 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 
 package struct DetailRunner {
     private let mode: DetailRunnerMode
     private let templatesFinder: TemplatesFinder
     private let projectDirectory: URL
     private let workingDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let displayer: TemplateDetailDisplayer
 
     package init(
@@ -18,13 +17,12 @@ package struct DetailRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
-        self.noora = noora
+        self.interaction = interaction
         displayer = TemplateDetailDisplayer(interaction: interaction)
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
@@ -117,7 +115,7 @@ package struct DetailRunner {
             throw Error.noTemplatesFound
         }
 
-        let selectedOption = noora.singleChoicePrompt(
+        let selectedOption = interaction.singleChoicePrompt(
             title: "Select Template",
             question: "Which template would you like to view?",
             options: options,

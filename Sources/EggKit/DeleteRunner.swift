@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 
 package struct DeleteRunner {
     private let mode: DeleteRunnerMode
@@ -11,7 +10,6 @@ package struct DeleteRunner {
     private let workingDirectory: URL
     private let force: Bool
     private let fileManager: any FileManagerProtocol
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
 
     package init(
@@ -22,7 +20,6 @@ package struct DeleteRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
@@ -34,7 +31,6 @@ package struct DeleteRunner {
         self.workingDirectory = workingDirectory
         self.force = force
         self.fileManager = fileManager
-        self.noora = noora
         self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
@@ -56,7 +52,7 @@ package struct DeleteRunner {
                 throw Error.noTemplatesFound
             }
 
-            let selectedOption = noora.singleChoicePrompt(
+            let selectedOption = interaction.singleChoicePrompt(
                 title: "Select Template to Delete",
                 question: "Which template would you like to delete?",
                 options: options,
@@ -114,7 +110,7 @@ package struct DeleteRunner {
     ) throws {
         // Confirmation (skip if force is true)
         if !force {
-            let confirm = noora.yesOrNoChoicePrompt(
+            let confirm = interaction.yesOrNoChoicePrompt(
                 title: "Confirm Deletion",
                 question: "Are you sure you want to delete template '\(templateName)'?",
             )

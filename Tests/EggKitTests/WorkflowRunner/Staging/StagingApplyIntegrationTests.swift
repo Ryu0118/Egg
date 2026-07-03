@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 import Testing
 
@@ -51,7 +50,7 @@ struct StagingApplyIntegrationTests {
             workingDirectoryWatcher: workingDirWatcher,
             processRunner: ProcessRunner(),
             requireGitRepository: false,
-            noora: NooraMock(),
+            interaction: TestInteraction(),
         )
 
         let workspaceRoot = await staging.root

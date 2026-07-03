@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 
 package struct MoveRunner {
     private let mode: MoveRunnerMode
@@ -11,7 +10,6 @@ package struct MoveRunner {
     private let projectDirectory: URL
     private let workingDirectory: URL
     private let fileManager: any FileManagerProtocol
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
 
     package init(
@@ -22,7 +20,6 @@ package struct MoveRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
@@ -34,7 +31,6 @@ package struct MoveRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileManager = fileManager
-        self.noora = noora
         self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
@@ -124,7 +120,7 @@ package struct MoveRunner {
             throw Error.noTemplatesFound
         }
 
-        let selectedOption = noora.singleChoicePrompt(
+        let selectedOption = interaction.singleChoicePrompt(
             title: "Select Template to Move",
             question: "Which template would you like to move?",
             options: options,
@@ -197,7 +193,7 @@ package struct MoveRunner {
         }
 
         // Prompt for selection
-        return noora.singleChoicePrompt(
+        return interaction.singleChoicePrompt(
             title: "Select Target Location",
             question: "Where would you like to move '\(templateName)'?",
             options: targetOptions,

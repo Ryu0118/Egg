@@ -1,7 +1,7 @@
 import CryptoKit
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 import ProcessRunning
 
 /// Runs `egg hatch` as a non-interactive, machine-readable transaction.
@@ -17,7 +17,6 @@ package struct AgentHatchTransactionRunner {
     private let fileManager: any FileManagerProtocol
     private let workingDirectory: URL
     private let homeDirectory: URL
-    private let noora: any Noorable
     private let templateDirectory: URL
     private let config: Config
     private let parsedMacros: [ParsedMacroDefinition]
@@ -30,7 +29,6 @@ package struct AgentHatchTransactionRunner {
         fileManager: some FileManagerProtocol,
         workingDirectory: URL,
         homeDirectory: URL,
-        noora: some Noorable = Noora(),
         templateDirectory: URL,
         config: Config,
         parsedMacros: [ParsedMacroDefinition],
@@ -41,7 +39,6 @@ package struct AgentHatchTransactionRunner {
         self.fileManager = fileManager
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
-        self.noora = noora
         self.templateDirectory = templateDirectory
         self.config = config
         self.parsedMacros = parsedMacros
@@ -51,7 +48,7 @@ package struct AgentHatchTransactionRunner {
             processRunner: processRunner,
             fileManager: fileManager,
             homeDirectory: homeDirectory,
-            noora: noora,
+            interaction: Terminal(),
             isInteractive: false,
             override: true,
         )

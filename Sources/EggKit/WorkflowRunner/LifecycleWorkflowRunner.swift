@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow: pre_hatch → hatch → post_hatch.
@@ -36,7 +35,6 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     private let workingDirectory: URL
     private let homeDirectory: URL
     private let phaseRunner: PhaseRunner
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
     private let sandboxDisabled: Bool
     private let isInteractive: Bool
@@ -46,7 +44,6 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         fileManager: some FileManagerProtocol,
         workingDirectory: URL,
         homeDirectory: URL,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
@@ -57,7 +54,6 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         _ = applyChanges
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
-        self.noora = noora
         self.interaction = interaction
         self.sandboxDisabled = sandboxDisabled
         self.isInteractive = isInteractive
@@ -65,7 +61,6 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             processRunner: processRunner,
             fileManager: fileManager,
             homeDirectory: homeDirectory,
-            noora: noora,
             interaction: interaction,
             isInteractive: isInteractive,
             override: overrideConflicts,
@@ -91,7 +86,6 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         // Expand and validate sandbox.allowed_paths
         let sandboxResolver = SandboxAllowedPathsResolver(
             homeDirectory: homeDirectory,
-            noora: noora,
             interaction: interaction,
         )
         let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
@@ -195,7 +189,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 config: config,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
+                interaction: interaction,
             )
             return resolver.resolve()
         }

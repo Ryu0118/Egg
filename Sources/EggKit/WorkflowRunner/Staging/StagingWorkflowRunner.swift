@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow with atomic all-or-nothing execution.
@@ -21,7 +20,7 @@ import ProcessRunning
 ///     fileManager: FileManager.default,
 ///     workingDirectory: URL(filePath: "/tmp/project"),
 ///     homeDirectory: URL(filePath: NSHomeDirectory()),
-///     noora: Noora(),
+///     interaction: Terminal(),
 ///     isInteractive: true,
 ///     override: false
 /// )
@@ -47,7 +46,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let fileManager: any FileManagerProtocol
     private let workingDirectory: URL
     private let homeDirectory: URL
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
     private let isInteractive: Bool
     private let overrideConflicts: Bool
@@ -63,7 +61,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
         fileManager: some FileManagerProtocol,
         workingDirectory: URL,
         homeDirectory: URL,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
@@ -77,7 +74,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.fileManager = fileManager
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
-        self.noora = noora
         self.interaction = interaction
         self.isInteractive = isInteractive
         self.overrideConflicts = overrideConflicts
@@ -95,7 +91,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
             processRunner: processRunner,
             fileManager: fileManager,
             homeDirectory: homeDirectory,
-            noora: noora,
             interaction: interaction,
             isInteractive: isInteractive,
             override: overrideConflicts,
@@ -128,7 +123,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
-            noora: noora,
             interaction: interaction,
         )
 
@@ -157,7 +151,6 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // Expand and validate sandbox.allowed_paths
             let sandboxResolver = SandboxAllowedPathsResolver(
                 homeDirectory: homeDirectory,
-                noora: noora,
                 interaction: interaction,
             )
             let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
@@ -329,12 +322,12 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // Default: show yes/no prompt
             let confirmed =
                 if hasConflicts {
-                    noora.yesOrNoChoicePrompt(
+                    interaction.yesOrNoChoicePrompt(
                         title: "Apply Changes and Override Conflicts",
                         question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?",
                     )
                 } else {
-                    noora.yesOrNoChoicePrompt(
+                    interaction.yesOrNoChoicePrompt(
                         title: "Apply Changes (staging workspace → current directory)",
                         question: "Apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?",
                     )
@@ -418,7 +411,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 config: config,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
+                interaction: interaction,
             )
             return .interactive(resolver.resolve())
         }

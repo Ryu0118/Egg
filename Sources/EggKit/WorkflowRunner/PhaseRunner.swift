@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import ProcessRunning
 
 /// Executes individual workflow phases (pre_hatch, hatch, post_hatch).
@@ -16,7 +15,7 @@ import ProcessRunning
 ///     processRunner: ProcessRunner(),
 ///     fileManager: FileManager.default,
 ///     homeDirectory: homeDir,
-///     noora: Noora(),
+///     interaction: Terminal(),
 ///     isInteractive: true,
 ///     override: false
 /// )
@@ -32,7 +31,6 @@ struct PhaseRunner {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
     private let homeDirectory: URL
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
     private let isInteractive: Bool
     private let override: Bool
@@ -43,7 +41,6 @@ struct PhaseRunner {
         processRunner: any ProcessRunning,
         fileManager: some FileManagerProtocol,
         homeDirectory: URL,
-        noora: some Noorable,
         interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool,
         override: Bool,
@@ -53,7 +50,6 @@ struct PhaseRunner {
         self.processRunner = processRunner
         self.fileManager = fileManager
         self.homeDirectory = homeDirectory
-        self.noora = noora
         self.interaction = interaction
         self.isInteractive = isInteractive
         self.override = override
@@ -163,7 +159,6 @@ struct PhaseRunner {
                 workingDirectory: workingDirectory,
                 outputDirectory: outputDirectory,
             ),
-            noora: noora,
             interaction: interaction,
             isInteractive: isInteractive,
             override: override,

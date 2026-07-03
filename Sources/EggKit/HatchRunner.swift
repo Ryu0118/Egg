@@ -1,12 +1,10 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import ProcessRunning
 
 package struct HatchRunner {
     private let mode: HatchRunnerMode
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
     private let workingDirectory: URL
     private let homeDirectory: URL
@@ -29,7 +27,6 @@ package struct HatchRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         processRunner: some ProcessRunning = ProcessRunner(),
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
         useStaging: Bool = true,
         overrideConflicts: Bool = false,
@@ -44,7 +41,6 @@ package struct HatchRunner {
         self.projectDirectory = projectDirectory
         self.fileManager = fileManager
         self.processRunner = processRunner
-        self.noora = noora
         self.interaction = interaction
         self.useStaging = useStaging
         self.overrideConflicts = overrideConflicts
@@ -141,7 +137,7 @@ package struct HatchRunner {
     private func selectTemplate(from options: [TemplateWithLocation]) throws -> TemplateWithLocation {
         switch pickerStyle {
         case .list:
-            return noora.singleChoicePrompt(
+            return interaction.singleChoicePrompt(
                 title: "Select Template",
                 question: "Which template would you like to use?",
                 options: options,
@@ -149,7 +145,7 @@ package struct HatchRunner {
             )
         case .text:
             let availableNames = options.map(\.template.config.name).joined(separator: ", ")
-            let templateName = noora.textPrompt(
+            let templateName = interaction.textPrompt(
                 title: "Template Name (\(availableNames))",
                 prompt: "Enter the template name:",
                 collapseOnAnswer: true,
@@ -171,7 +167,6 @@ package struct HatchRunner {
                 fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
                 interaction: interaction,
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
@@ -186,7 +181,6 @@ package struct HatchRunner {
                 fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
                 interaction: interaction,
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,

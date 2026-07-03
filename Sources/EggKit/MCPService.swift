@@ -1,6 +1,5 @@
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 
 /// Public API for MCP server integration.

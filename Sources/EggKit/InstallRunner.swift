@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 
 /// Runs the template installation workflow.
 ///
@@ -23,7 +22,6 @@ package struct InstallRunner {
     private let homeDirectory: URL
     private let templateLocation: TemplateLocation
     private let fileManager: any FileManagerProtocol
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
     private let gitCloner: any GitCloning
     private let directoryCloner: any DirectoryCloning
@@ -38,7 +36,7 @@ package struct InstallRunner {
     ///   - workingDirectory: The current working directory
     ///   - homeDirectory: The user's home directory
     ///   - fileManager: File manager for file operations
-    ///   - noora: CLI interaction handler
+    ///   - interaction: CLI interaction handler
     ///   - gitCloner: Git cloning implementation
     ///   - directoryCloner: Directory cloning implementation
     package init(
@@ -48,7 +46,6 @@ package struct InstallRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol = FileManager.default,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
         gitCloner: some GitCloning = GitCloner(),
         directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
@@ -59,7 +56,6 @@ package struct InstallRunner {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.fileManager = fileManager
-        self.noora = noora
         self.interaction = interaction
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
@@ -75,7 +71,6 @@ package struct InstallRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
-        noora: some Noorable,
         interaction: some InteractionProviding = Terminal(),
         gitCloner: some GitCloning,
         directoryCloner: some DirectoryCloning,
@@ -87,7 +82,6 @@ package struct InstallRunner {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
         self.fileManager = fileManager
-        self.noora = noora
         self.interaction = interaction
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
@@ -111,7 +105,7 @@ package struct InstallRunner {
 
     private func runInteractiveMode() async throws -> InstallResult {
         // Prompt for repository URL
-        let urlString = noora.textPrompt(
+        let urlString = interaction.textPrompt(
             title: "Repository URL",
             prompt: "Enter the Git repository URL:",
             description: "HTTPS (https://...) or SSH (git@...) URL of the repository",
@@ -155,7 +149,7 @@ package struct InstallRunner {
 
     private func promptForRef() -> GitRef? {
         let options = ["Default branch", "Specific branch", "Tag", "Commit SHA"]
-        let selected = noora.singleChoicePrompt(
+        let selected = interaction.singleChoicePrompt(
             title: "Git Reference",
             question: "Which reference would you like to use?",
             options: options,
@@ -166,21 +160,21 @@ package struct InstallRunner {
         case "Default branch":
             return nil
         case "Specific branch":
-            let branch = noora.textPrompt(
+            let branch = interaction.textPrompt(
                 title: "Branch Name",
                 prompt: "Enter the branch name:",
                 description: "The branch to clone from",
             )
             return .branch(branch)
         case "Tag":
-            let tag = noora.textPrompt(
+            let tag = interaction.textPrompt(
                 title: "Tag Name",
                 prompt: "Enter the tag name:",
                 description: "The tag to clone from",
             )
             return .tag(tag)
         case "Commit SHA":
-            let sha = noora.textPrompt(
+            let sha = interaction.textPrompt(
                 title: "Commit SHA",
                 prompt: "Enter the commit SHA:",
                 description: "The commit to checkout",
@@ -195,7 +189,7 @@ package struct InstallRunner {
         let globalOption = TemplateLocationType.global
         let projectOption = TemplateLocationType.project(projectDirectory, workingDirectory: workingDirectory)
 
-        return noora.singleChoicePrompt(
+        return interaction.singleChoicePrompt(
             title: "Installation Location",
             question: "Where would you like to install the templates?",
             options: [globalOption, projectOption],
@@ -206,7 +200,7 @@ package struct InstallRunner {
     private func promptForTemplateSelection(_ templates: [DiscoveredTemplate]) -> [DiscoveredTemplate] {
         let templateNames = templates.map(\.name)
 
-        let selectedNames = noora.multipleChoicePrompt(
+        let selectedNames = interaction.multipleChoicePrompt(
             title: "Select Templates",
             question: "Which templates would you like to install?",
             options: templateNames,

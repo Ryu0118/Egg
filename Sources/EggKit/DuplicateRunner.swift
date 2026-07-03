@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import Yams
 
 package struct DuplicateRunner {
@@ -11,7 +10,6 @@ package struct DuplicateRunner {
     private let projectDirectory: URL
     private let workingDirectory: URL
     private let fileManager: any FileManagerProtocol
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
 
     let decoder = YAMLDecoder()
@@ -25,7 +23,6 @@ package struct DuplicateRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
@@ -36,7 +33,6 @@ package struct DuplicateRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileManager = fileManager
-        self.noora = noora
         self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
@@ -74,7 +70,7 @@ package struct DuplicateRunner {
     ) async throws -> DuplicateResult {
         // newName becomes a path component (templateLocation.template below).
         // Unlike the CLI/interactive path, MCP callers never go through
-        // Noora's interactive validation prompt, so this must be checked
+        // Interaction's interactive validation prompt, so this must be checked
         // explicitly and BEFORE any filesystem mutation — otherwise a
         // traversal name (e.g. '../../../etc/evil') would copy the whole
         // source template tree to an arbitrary path before the config-name
@@ -149,7 +145,7 @@ package struct DuplicateRunner {
     private func selectSourceTemplate(
         options: [TemplateWithLocation],
     ) -> TemplateWithLocation {
-        noora.singleChoicePrompt(
+        interaction.singleChoicePrompt(
             title: "Select Template to Duplicate",
             question: "Which template would you like to duplicate?",
             options: options,
@@ -181,7 +177,7 @@ package struct DuplicateRunner {
     private func promptForNewName(
         defaultName: String,
     ) async throws -> String {
-        let newName = noora.textPrompt(
+        let newName = interaction.textPrompt(
             title: "New Template Name",
             prompt: "Enter the name for the duplicated template (default: \(defaultName)):",
             collapseOnAnswer: true,
@@ -189,7 +185,7 @@ package struct DuplicateRunner {
                 NonEmptyRule(message: "Template name cannot be empty."),
                 DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
                 LengthValidationRule.templateName,
-            ].map(NooraValidationRuleAdapter.init),
+            ],
         )
 
         let finalNewName = if newName.isEmpty {
@@ -208,14 +204,14 @@ package struct DuplicateRunner {
     private func promptForNewDescription(
         defaultDescription: String,
     ) -> String {
-        let newDescription = noora.textPrompt(
+        let newDescription = interaction.textPrompt(
             title: "New Template Description",
             prompt: "Enter the description for the duplicated template (default: \(defaultDescription)):",
             collapseOnAnswer: true,
             validationRules: [
                 NonEmptyRule(message: "Description cannot be empty."),
                 LengthValidationRule.description,
-            ].map(NooraValidationRuleAdapter.init),
+            ],
         )
 
         return if newDescription.isEmpty {

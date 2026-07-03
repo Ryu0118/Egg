@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 import Testing
 
@@ -28,7 +27,7 @@ struct StagingContextTests {
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             processRunner: ProcessRunner(),
             requireGitRepository: false,
-            noora: NooraMock(),
+            interaction: TestInteraction(),
         )
 
         defer {

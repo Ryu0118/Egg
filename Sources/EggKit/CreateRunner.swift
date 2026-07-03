@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 
 package struct CreateRunner {
     private let mode: CreateRunnerMode
@@ -10,7 +9,6 @@ package struct CreateRunner {
     private let templatesFinder: TemplatesFinder
     private let projectDirectory: URL
     private let workingDirectory: URL
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
 
     package init(
@@ -20,7 +18,6 @@ package struct CreateRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
@@ -30,7 +27,6 @@ package struct CreateRunner {
         self.templateLocation = templateLocation
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
-        self.noora = noora
         self.interaction = interaction
         templateCreator = TemplateCreator(
             skipConfig: skipConfig,
@@ -48,7 +44,7 @@ package struct CreateRunner {
     package func run() async throws {
         switch mode {
         case .interactive:
-            let templateName = noora.textPrompt(
+            let templateName = interaction.textPrompt(
                 title: "Template name",
                 prompt: "How would you like to name your template?",
                 collapseOnAnswer: true,
@@ -56,24 +52,24 @@ package struct CreateRunner {
                     NonEmptyRule(message: "Project name cannot be empty."),
                     DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
                     LengthValidationRule.templateName,
-                ].map(NooraValidationRuleAdapter.init),
+                ],
             )
 
             guard !templatesFinder.exists(templateName) else {
                 throw Error.templateAlreadyExists
             }
 
-            let description = noora.textPrompt(
+            let description = interaction.textPrompt(
                 title: "Template description",
                 prompt: "Please enter a description for your template.",
                 collapseOnAnswer: true,
                 validationRules: [
                     NonEmptyRule(message: "Description cannot be empty."),
                     LengthValidationRule.description,
-                ].map(NooraValidationRuleAdapter.init),
+                ],
             )
 
-            let locationType: TemplateLocationType = noora.singleChoicePrompt(
+            let locationType: TemplateLocationType = interaction.singleChoicePrompt(
                 title: "Template Location",
                 question: "Where would you like to store your template?",
                 options: [
@@ -120,7 +116,7 @@ package struct CreateRunner {
     ) async throws -> CreateResult {
         // name becomes a path component (templateLocation.template below).
         // Unlike the CLI/interactive path, MCP callers never go through
-        // Noora's interactive validation prompt, so this must be checked
+        // Interaction's interactive validation prompt, so this must be checked
         // explicitly. TemplateCreator.create does roll back on failure today
         // (so a traversal name can't currently leave a directory behind
         // thanks to `name` also being validated as config.name), but that's

@@ -1,6 +1,5 @@
 import Foundation
 import Interaction
-import Noora
 
 /// Resolves macro definitions into concrete values.
 ///
@@ -18,18 +17,18 @@ package struct MacroResolver {
     private let config: Config
     private let workingDirectory: URL
     private let homeDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     package init(
         config: Config,
         workingDirectory: URL,
         homeDirectory: URL,
-        noora: some Noorable,
+        interaction: some InteractionProviding,
     ) {
         self.config = config
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
-        self.noora = noora
+        self.interaction = interaction
     }
 
     /// Resolves all macros defined in the config.
@@ -91,11 +90,11 @@ package struct MacroResolver {
             macro.description
         }
 
-        let value = noora.textPrompt(
+        let value = interaction.textPrompt(
             title: "\(macro.name)",
-            prompt: TerminalText(stringLiteral: promptMessage),
+            prompt: promptMessage,
             collapseOnAnswer: true,
-            validationRules: validationRules.map(NooraValidationRuleAdapter.init),
+            validationRules: validationRules,
         )
 
         // Resolve final value
@@ -118,7 +117,7 @@ package struct MacroResolver {
     }
 
     private func promptForBoolean(_ macro: Config.Macro) -> ResolvedMacro {
-        let value = noora.yesOrNoChoicePrompt(
+        let value = interaction.yesOrNoChoicePrompt(
             title: "\(macro.name)",
             question: "\(macro.description)",
         )
@@ -135,7 +134,7 @@ package struct MacroResolver {
             fatalError("Macro '\(macro.name)' is of type 'choice' but no choices are defined.")
         }
 
-        let value = noora.singleChoicePrompt(
+        let value = interaction.singleChoicePrompt(
             title: "\(macro.name)",
             question: "\(macro.description)",
             options: choices,
@@ -153,7 +152,7 @@ package struct MacroResolver {
             fatalError("Macro '\(macro.name)' is of type 'choices' but no choices are defined.")
         }
 
-        let values = noora.multipleChoicePrompt(
+        let values = interaction.multipleChoicePrompt(
             title: "\(macro.name)",
             question: "\(macro.description)",
             options: choices,
@@ -187,11 +186,11 @@ package struct MacroResolver {
             "\(macro.description) (comma-separated)"
         }
 
-        let input = noora.textPrompt(
+        let input = interaction.textPrompt(
             title: "\(macro.name)",
-            prompt: TerminalText(stringLiteral: promptMessage),
+            prompt: promptMessage,
             collapseOnAnswer: true,
-            validationRules: validationRules.map(NooraValidationRuleAdapter.init),
+            validationRules: validationRules,
         )
 
         // Resolve final values
@@ -238,11 +237,11 @@ package struct MacroResolver {
             macro.description
         }
 
-        let pathString = noora.textPrompt(
+        let pathString = interaction.textPrompt(
             title: "\(macro.name)",
-            prompt: TerminalText(stringLiteral: promptMessage),
+            prompt: promptMessage,
             collapseOnAnswer: true,
-            validationRules: validationRules.map(NooraValidationRuleAdapter.init),
+            validationRules: validationRules,
         )
 
         // Resolve final path

@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import ProcessRunning
 
 /// Manages a staging environment for atomic workflow execution.
@@ -63,8 +62,7 @@ actor StagingContext {
     /// Interaction instance for logging output.
     private let interaction: any InteractionProviding
 
-    /// Noora instance for prompts.
-    private let noora: any Noorable
+    // Interaction provider for prompts.
 
     private init(
         root: URL,
@@ -75,7 +73,6 @@ actor StagingContext {
         workingDirectoryWatcher: any DirectoryWatching,
         processRunner: any ProcessRunning,
         directoryCloner: any DirectoryCloning,
-        noora: any Noorable,
         interaction: any InteractionProviding,
     ) {
         self.root = root
@@ -86,7 +83,6 @@ actor StagingContext {
         self.workingDirectoryWatcher = workingDirectoryWatcher
         self.processRunner = processRunner
         self.directoryCloner = directoryCloner
-        self.noora = noora
         self.interaction = interaction
     }
 
@@ -117,7 +113,6 @@ actor StagingContext {
         processRunner: some ProcessRunning,
         directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
         requireGitRepository: Bool = true,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) async throws -> StagingContext {
         do {
@@ -132,7 +127,7 @@ actor StagingContext {
                 } else if await !(GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
                     // If not under git management, copying all directories may take a very long time.
                     // Proceed anyway? Or consider using --no-staging mode instead.
-                    noora.yesOrNoChoicePrompt(
+                    interaction.yesOrNoChoicePrompt(
                         title: "Copying All Files May Take Time",
                         question: "The working directory is not under git management. Copying all directories may take a very long time. Proceed anyway? (Consider using --no-staging mode instead)",
                     )
@@ -165,7 +160,6 @@ actor StagingContext {
                 workingDirectoryWatcher: workingDirectoryWatcher,
                 processRunner: processRunner,
                 directoryCloner: directoryCloner,
-                noora: noora,
                 interaction: interaction,
             )
         } catch let error as StagingContext.Error {

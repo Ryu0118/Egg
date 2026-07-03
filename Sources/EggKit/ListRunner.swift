@@ -128,7 +128,7 @@ package struct ListRunner {
         return ListResult(templates: templates)
     }
 
-    /// Run in display mode (shows tables using Noora)
+    /// Run in display mode (shows tables using Interaction)
     private func runDisplayMode(location: TemplateLocationType?) async throws {
         if let location {
             let list = try await finder.list(for: location)

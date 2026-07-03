@@ -1,7 +1,6 @@
 import FileManagerProtocol
 import Foundation
 import Interaction
-import Noora
 import ProcessRunning
 
 #if canImport(System)
@@ -16,7 +15,6 @@ package struct OpenRunner {
     private let templatesFinder: TemplatesFinder
     private let projectDirectory: URL
     private let workingDirectory: URL
-    private let noora: any Noorable
     private let interaction: any InteractionProviding
 
     package init(
@@ -27,14 +25,12 @@ package struct OpenRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
         interaction: some InteractionProviding = Terminal(),
     ) {
         self.mode = mode
         self.processRunner = processRunner
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
-        self.noora = noora
         self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
@@ -65,7 +61,7 @@ package struct OpenRunner {
             throw Error.noTemplatesFound
         }
 
-        let selectedOption = noora.singleChoicePrompt(
+        let selectedOption = interaction.singleChoicePrompt(
             title: "Select Template to Open",
             question: "Which template would you like to open?",
             options: options,
