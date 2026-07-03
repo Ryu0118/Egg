@@ -9,7 +9,7 @@ struct HatchDiscardHandler: ToolHandler {
         let workingDirectory = context.arguments.optionalString("working_directory").map { URL(filePath: $0) }
 
         let service = MCPService(workingDirectory: workingDirectory)
-        let result = try service.discardHatchTransaction(
+        let result = try await service.discardHatchTransaction(
             applyToken: applyToken,
             workingDirectory: workingDirectory,
         )

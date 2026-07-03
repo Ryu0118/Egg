@@ -108,7 +108,7 @@ package struct AgentHatchTransactionRunner {
         // (of the same or different templates) don't serialize against each
         // other; each gets its own uniquely-tokened transaction directory, so
         // there's no shared mutable state until this point.
-        let metadata = try TransactionLock.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+        let metadata = try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
             let transactionDirectory = try store.createDirectory(for: token)
             let workDestination = transactionDirectory.appending(path: "work")
             let referenceDestination = transactionDirectory.appending(path: "reference")
@@ -164,7 +164,7 @@ package struct AgentHatchTransactionRunner {
         // (whichever finishes last wins, silently corrupting the other's
         // rollback bundle and working-directory writes). Locking per-token
         // means unrelated transactions never serialize against each other.
-        return try await TransactionLock.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+        return try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
             let metadata = try store.load(token: token)
             guard metadata.status == .preview else {
                 throw Error.transactionNotPreview(token: token, status: metadata.status.rawValue)
@@ -214,9 +214,9 @@ package struct AgentHatchTransactionRunner {
     }
 
     /// Drops a previewed transaction and its staging area without applying it.
-    package func discard(token: String) throws -> AgentHatchApplyResult {
+    package func discard(token: String) async throws -> AgentHatchApplyResult {
         try Self.validateIdentifier(token, kind: "apply token")
-        return try TransactionLock.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+        return try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
             try discardLocked(token: token)
         }
     }
@@ -231,7 +231,7 @@ package struct AgentHatchTransactionRunner {
     /// Also refuses up front, before touching any file, if the bundle is missing
     /// a backup a `modify`/`delete` restore needs — a partial restore that still
     /// reports "rolledBack" would be a worse outcome than failing loudly.
-    package func rollback(id rollbackId: String, force: Bool = false) throws -> AgentHatchRollbackResult {
+    package func rollback(id rollbackId: String, force: Bool = false) async throws -> AgentHatchRollbackResult {
         try Self.validateIdentifier(rollbackId, kind: "rollback id")
         let rollbackRoot = workingDirectory
             .appending(path: ".egg/rollback")
@@ -242,7 +242,7 @@ package struct AgentHatchTransactionRunner {
         // proceed to restore (harmless-ish for idempotent copies, but a
         // racing pruneEmptyDirectories can throw, and the final manifest
         // write — last writer wins — risks a reader observing torn JSON).
-        return try TransactionLock.withLock(directory: rollbackRoot, fileManager: fileManager) {
+        return try await TransactionLock.shared.withLock(directory: rollbackRoot, fileManager: fileManager) {
             let manifestURL = rollbackRoot.appending(path: "manifest.json")
             let data = try fileManager.readFile(at: manifestURL)
             var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)

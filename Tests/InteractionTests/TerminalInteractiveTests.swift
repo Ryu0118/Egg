@@ -3,7 +3,6 @@ import Foundation
 import Testing
 
 private final class ScriptedKeyInput: KeyInput, @unchecked Sendable {
-    private let lock = NSLock()
     private var keys: [TerminalKey]
 
     init(_ keys: [TerminalKey]) {
@@ -11,14 +10,11 @@ private final class ScriptedKeyInput: KeyInput, @unchecked Sendable {
     }
 
     func readKey() -> TerminalKey? {
-        lock.lock()
-        defer { lock.unlock() }
-        return keys.isEmpty ? nil : keys.removeFirst()
+        keys.isEmpty ? nil : keys.removeFirst()
     }
 }
 
 private final class ScriptedLineInput: TextInput, @unchecked Sendable {
-    private let lock = NSLock()
     private var lines: [String]
 
     init(_ lines: [String]) {
@@ -26,26 +22,19 @@ private final class ScriptedLineInput: TextInput, @unchecked Sendable {
     }
 
     func readLine() -> String? {
-        lock.lock()
-        defer { lock.unlock() }
-        return lines.isEmpty ? nil : lines.removeFirst()
+        lines.isEmpty ? nil : lines.removeFirst()
     }
 }
 
 private final class CapturedOutput: TextOutput, @unchecked Sendable {
-    private let lock = NSLock()
     private var buffer = ""
 
     var text: String {
-        lock.lock()
-        defer { lock.unlock() }
-        return buffer
+        buffer
     }
 
     func write(_ text: String) {
-        lock.lock()
         buffer += text
-        lock.unlock()
     }
 }
 

@@ -10,7 +10,7 @@ struct HatchRollbackHandler: ToolHandler {
         let workingDirectory = context.arguments.optionalString("working_directory").map { URL(filePath: $0) }
 
         let service = MCPService(workingDirectory: workingDirectory)
-        let result = try service.rollbackHatchTransaction(
+        let result = try await service.rollbackHatchTransaction(
             rollbackId: rollbackId,
             workingDirectory: workingDirectory,
             force: force,

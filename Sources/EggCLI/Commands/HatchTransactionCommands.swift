@@ -121,7 +121,7 @@ struct HatchRollbackCommand: AsyncParsableCommand {
 
     func run() async throws {
         let service = try await options.makeService()
-        let result = try service.rollbackHatchTransaction(rollbackId: rollbackId, force: force)
+        let result = try await service.rollbackHatchTransaction(rollbackId: rollbackId, force: force)
         try CLIOutput.printJSON(result)
     }
 }
@@ -140,7 +140,7 @@ struct HatchDiscardCommand: AsyncParsableCommand {
 
     func run() async throws {
         let service = try await options.makeService()
-        let result = try service.discardHatchTransaction(applyToken: token)
+        let result = try await service.discardHatchTransaction(applyToken: token)
         try CLIOutput.printJSON(result)
     }
 }
