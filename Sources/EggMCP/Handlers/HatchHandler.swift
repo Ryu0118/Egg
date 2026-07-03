@@ -15,6 +15,8 @@ struct HatchHandler: ToolHandler {
         let stagingRoot = context.arguments.optionalString("staging_root").map { URL(filePath: $0) }
         let useStaging = context.arguments.bool("use_staging", default: true)
         let applyChanges = context.arguments.bool("apply_changes", default: false)
+        let disableSandbox = context.arguments.bool("disable_sandbox", default: false)
+        let userConfirmedNoSandbox = context.arguments.bool("user_confirmed_no_sandbox", default: false)
 
         let service = MCPService(
             workingDirectory: outputDir,
@@ -28,6 +30,8 @@ struct HatchHandler: ToolHandler {
                 macros: macros,
                 outputDirectory: outputDir,
                 stagingRoot: stagingRoot,
+                disableSandbox: disableSandbox,
+                userConfirmedNoSandbox: userConfirmedNoSandbox,
             )
             return try JSONEncoderHelper.encode(result)
         }
@@ -39,6 +43,8 @@ struct HatchHandler: ToolHandler {
             useStaging: useStaging,
             applyChanges: applyChanges,
             stagingRoot: stagingRoot,
+            disableSandbox: disableSandbox,
+            userConfirmedNoSandbox: userConfirmedNoSandbox,
         )
 
         return try JSONEncoderHelper.encode(result)

@@ -75,17 +75,20 @@ public struct MCPService: Sendable {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
 
+        // If sandbox is being disabled, require explicit user confirmation
+        if disableSandbox, !userConfirmedNoSandbox {
+            throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
+        }
+
         // Check if template has sandbox.allowed_paths - require interactive mode or explicit user permission
-        if let allowedPaths = template.config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
+        if !disableSandbox,
+           let allowedPaths = template.config.sandbox?.allowedPaths,
+           !allowedPaths.isEmpty
+        {
             throw MCPServiceError.sandboxPermissionRequired(
                 paths: allowedPaths,
                 templateName: templateName,
             )
-        }
-
-        // If sandbox is being disabled, require explicit user confirmation
-        if disableSandbox, !userConfirmedNoSandbox {
-            throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
         }
 
         // Convert macros dict to ParsedMacroDefinition array
@@ -117,11 +120,26 @@ public struct MCPService: Sendable {
         include: [String] = [],
         exclude: [String] = [],
         includeDiff: Bool = false,
+        disableSandbox: Bool = false,
+        userConfirmedNoSandbox: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
+        try validateSandboxDisable(
+            disableSandbox,
+            userConfirmedNoSandbox: userConfirmedNoSandbox,
+            templateName: templateName,
+        )
         let parsedMacros = parseMacros(macros, for: template)
-        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude, includeDiff: includeDiff)
+        return try await preview(
+            template: template,
+            parsedMacros: parsedMacros,
+            outputDir: outputDir,
+            include: include,
+            exclude: exclude,
+            includeDiff: includeDiff,
+            sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
+        )
     }
 
     /// Previews a hatch from raw CLI macro arguments (e.g. `["--name", "App"]`).
@@ -137,12 +155,21 @@ public struct MCPService: Sendable {
         include: [String] = [],
         exclude: [String] = [],
         includeDiff: Bool = false,
+        sandboxDisabled: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
         let parsedMacros = try MacrosParser(macroDefinitions: template.config.macros ?? [])
             .parseCommandLineArguments(macroArguments)
-        return try await preview(template: template, parsedMacros: parsedMacros, outputDir: outputDir, include: include, exclude: exclude, includeDiff: includeDiff)
+        return try await preview(
+            template: template,
+            parsedMacros: parsedMacros,
+            outputDir: outputDir,
+            include: include,
+            exclude: exclude,
+            includeDiff: includeDiff,
+            sandboxDisabled: sandboxDisabled,
+        )
     }
 
     public func applyHatchTransaction(
@@ -372,6 +399,7 @@ public struct MCPService: Sendable {
         include: [String],
         exclude: [String],
         includeDiff: Bool,
+        sandboxDisabled: Bool,
     ) async throws -> AgentHatchPreviewResult {
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -382,9 +410,20 @@ public struct MCPService: Sendable {
             parsedMacros: parsedMacros,
             include: include,
             exclude: exclude,
+            sandboxDisabled: sandboxDisabled,
         )
 
         return try await runner.preview(includeDiff: includeDiff)
+    }
+
+    private func validateSandboxDisable(
+        _ disableSandbox: Bool,
+        userConfirmedNoSandbox: Bool,
+        templateName: String,
+    ) throws {
+        if disableSandbox, !userConfirmedNoSandbox {
+            throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
+        }
     }
 
     private func makeTemplatesFinder(workingDirectory: URL? = nil) -> TemplatesFinder {
@@ -537,7 +576,7 @@ public enum MCPServiceError: Error, LocalizedError, Sendable {
             Before proceeding, please confirm with the user that they approve running
             'egg hatch' without sandbox protection for template: \(templateName)
 
-            If user approves, call this tool again with 'userConfirmedNoSandbox: true'
+            If user approves, call this tool again with 'user_confirmed_no_sandbox: true'
             """
         }
     }

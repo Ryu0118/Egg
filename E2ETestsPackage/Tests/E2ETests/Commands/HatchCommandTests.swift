@@ -22,6 +22,15 @@ struct HatchCommandTests {
         #expect(result.stdout.contains("--template-search-paths"))
     }
 
+    @Test
+    func `preview help shows sandbox controls`() async throws {
+        let runner = try await CLIRunner()
+        let result = try await runner.run("hatch", "preview", "--help")
+
+        #expect(result.succeeded)
+        #expect(result.stdout.contains("--no-sandbox"))
+    }
+
     @Test(arguments: TestCase.allCases)
     func `hatch template`(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()

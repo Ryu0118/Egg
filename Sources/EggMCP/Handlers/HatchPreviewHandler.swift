@@ -13,6 +13,8 @@ struct HatchPreviewHandler: ToolHandler {
         let include = context.arguments.optionalStringArray("include") ?? []
         let exclude = context.arguments.optionalStringArray("exclude") ?? []
         let includeDiff = context.arguments.bool("include_diff", default: false)
+        let disableSandbox = context.arguments.bool("disable_sandbox", default: false)
+        let userConfirmedNoSandbox = context.arguments.bool("user_confirmed_no_sandbox", default: false)
 
         let service = MCPService(
             workingDirectory: outputDir,
@@ -27,6 +29,8 @@ struct HatchPreviewHandler: ToolHandler {
             include: include,
             exclude: exclude,
             includeDiff: includeDiff,
+            disableSandbox: disableSandbox,
+            userConfirmedNoSandbox: userConfirmedNoSandbox,
         )
 
         return try JSONEncoderHelper.encode(result)

@@ -102,6 +102,14 @@ public struct EggMCPServer {
                         "type": "boolean",
                         "description": "Apply changes immediately. Default: false; when false, egg_hatch returns the same transaction preview shape as egg_hatch_preview.",
                     ]),
+                    "disable_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Disable the sandbox-exec safety guard for lifecycle scripts. Requires user_confirmed_no_sandbox: true.",
+                    ]),
+                    "user_confirmed_no_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Set to true only after the user explicitly approves running lifecycle scripts without sandbox protection.",
+                    ]),
                 ]),
                 "required": .array(["template_name"]),
             ]),
@@ -156,6 +164,14 @@ public struct EggMCPServer {
                     "include_diff": .object([
                         "type": "boolean",
                         "description": "When true, each change carries its unified diff so you can review the exact content before applying. Default: false.",
+                    ]),
+                    "disable_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Disable the sandbox-exec safety guard for preview lifecycle scripts. Requires user_confirmed_no_sandbox: true.",
+                    ]),
+                    "user_confirmed_no_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Set to true only after the user explicitly approves previewing lifecycle scripts without sandbox protection.",
                     ]),
                 ]),
                 "required": .array(["template_name"]),
