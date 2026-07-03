@@ -47,7 +47,7 @@ package struct CreateRunner {
             let templateName = interaction.textPrompt(
                 title: "Template name",
                 prompt: "How would you like to name your template?",
-                collapseOnAnswer: true,
+                collapsesOnAnswer: true,
                 validationRules: [
                     NonEmptyRule(message: "Project name cannot be empty."),
                     DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
@@ -62,7 +62,7 @@ package struct CreateRunner {
             let description = interaction.textPrompt(
                 title: "Template description",
                 prompt: "Please enter a description for your template.",
-                collapseOnAnswer: true,
+                collapsesOnAnswer: true,
                 validationRules: [
                     NonEmptyRule(message: "Description cannot be empty."),
                     LengthValidationRule.description,

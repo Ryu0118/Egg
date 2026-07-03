@@ -6,8 +6,8 @@ public struct TextPrompt: Sendable {
     public let message: StyledText
     /// Optional supporting text for the prompt.
     public let description: StyledText?
-    /// Whether the prompt should collapse after an answer is accepted.
-    public let collapseOnAnswer: Bool
+    /// Whether the prompt collapses after an answer is accepted.
+    public let collapsesOnAnswer: Bool
     /// Validation rules applied to the entered answer.
     public let validationRules: [any ValidationRule]
 
@@ -15,13 +15,13 @@ public struct TextPrompt: Sendable {
         title: StyledText? = nil,
         message: StyledText,
         description: StyledText? = nil,
-        collapseOnAnswer: Bool = true,
+        collapsesOnAnswer: Bool = true,
         validationRules: [any ValidationRule] = [],
     ) {
         self.title = title
         self.message = message
         self.description = description
-        self.collapseOnAnswer = collapseOnAnswer
+        self.collapsesOnAnswer = collapsesOnAnswer
         self.validationRules = validationRules
     }
 }
@@ -36,21 +36,21 @@ public struct ConfirmationPrompt: Sendable {
     public let defaultAnswer: Bool
     /// Optional supporting text for the prompt.
     public let description: StyledText?
-    /// Whether the prompt should collapse after an answer is accepted.
-    public let collapseOnAnswer: Bool
+    /// Whether the prompt collapses after an answer is accepted.
+    public let collapsesOnAnswer: Bool
 
     public init(
         title: StyledText? = nil,
         question: StyledText,
         defaultAnswer: Bool = true,
         description: StyledText? = nil,
-        collapseOnAnswer: Bool = true,
+        collapsesOnAnswer: Bool = true,
     ) {
         self.title = title
         self.question = question
         self.defaultAnswer = defaultAnswer
         self.description = description
-        self.collapseOnAnswer = collapseOnAnswer
+        self.collapsesOnAnswer = collapsesOnAnswer
     }
 }
 
@@ -66,10 +66,10 @@ public struct ChoicePrompt<Option: Equatable & CustomStringConvertible & Sendabl
     public let description: StyledText?
     /// Whether the prompt supports filtering options.
     public let allowsFiltering: Bool
-    /// Whether the prompt should collapse after an option is selected.
-    public let collapseOnSelection: Bool
-    /// Whether a single available option should be selected automatically.
-    public let autoselectSingleOption: Bool
+    /// Whether the prompt collapses after an option is selected.
+    public let collapsesOnSelection: Bool
+    /// Whether a single available option is selected automatically.
+    public let automaticallySelectsSingleOption: Bool
 
     public init(
         title: StyledText? = nil,
@@ -77,16 +77,16 @@ public struct ChoicePrompt<Option: Equatable & CustomStringConvertible & Sendabl
         options: [Option],
         description: StyledText? = nil,
         allowsFiltering: Bool = true,
-        collapseOnSelection: Bool = true,
-        autoselectSingleOption: Bool = true,
+        collapsesOnSelection: Bool = true,
+        automaticallySelectsSingleOption: Bool = true,
     ) {
         self.title = title
         self.question = question
         self.options = options
         self.description = description
         self.allowsFiltering = allowsFiltering
-        self.collapseOnSelection = collapseOnSelection
-        self.autoselectSingleOption = autoselectSingleOption
+        self.collapsesOnSelection = collapsesOnSelection
+        self.automaticallySelectsSingleOption = automaticallySelectsSingleOption
     }
 }
 
@@ -102,8 +102,8 @@ public struct MultipleChoicePrompt<Option: Equatable & CustomStringConvertible &
     public let description: StyledText?
     /// Whether the prompt supports filtering options.
     public let allowsFiltering: Bool
-    /// Whether the prompt should collapse after selection is accepted.
-    public let collapseOnSelection: Bool
+    /// Whether the prompt collapses after selection is accepted.
+    public let collapsesOnSelection: Bool
     /// The minimum number of options required.
     public let minimumSelectionCount: Int
     /// The maximum number of options allowed.
@@ -115,7 +115,7 @@ public struct MultipleChoicePrompt<Option: Equatable & CustomStringConvertible &
         options: [Option],
         description: StyledText? = nil,
         allowsFiltering: Bool = true,
-        collapseOnSelection: Bool = true,
+        collapsesOnSelection: Bool = true,
         minimumSelectionCount: Int = 0,
         maximumSelectionCount: Int? = nil,
     ) {
@@ -124,7 +124,7 @@ public struct MultipleChoicePrompt<Option: Equatable & CustomStringConvertible &
         self.options = options
         self.description = description
         self.allowsFiltering = allowsFiltering
-        self.collapseOnSelection = collapseOnSelection
+        self.collapsesOnSelection = collapsesOnSelection
         self.minimumSelectionCount = minimumSelectionCount
         self.maximumSelectionCount = maximumSelectionCount
     }

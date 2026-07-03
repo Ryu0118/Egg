@@ -72,7 +72,7 @@ struct TextPromptLoop {
     }
 
     private mutating func finish() {
-        guard prompt.collapseOnAnswer else {
+        guard prompt.collapsesOnAnswer else {
             block.render([messagePrefix + buffer.text])
             return
         }

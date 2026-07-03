@@ -73,7 +73,7 @@ struct SingleChoiceLoop<Option: Equatable & CustomStringConvertible & Sendable> 
     }
 
     private mutating func finish(with option: ChoiceOption<Option>) {
-        guard prompt.collapseOnSelection else {
+        guard prompt.collapsesOnSelection else {
             block.render(lines())
             return
         }

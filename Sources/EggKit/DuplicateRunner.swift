@@ -180,7 +180,7 @@ package struct DuplicateRunner {
         let newName = interaction.textPrompt(
             title: "New Template Name",
             prompt: "Enter the name for the duplicated template (default: \(defaultName)):",
-            collapseOnAnswer: true,
+            collapsesOnAnswer: true,
             validationRules: [
                 NonEmptyRule(message: "Template name cannot be empty."),
                 DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
@@ -207,7 +207,7 @@ package struct DuplicateRunner {
         let newDescription = interaction.textPrompt(
             title: "New Template Description",
             prompt: "Enter the description for the duplicated template (default: \(defaultDescription)):",
-            collapseOnAnswer: true,
+            collapsesOnAnswer: true,
             validationRules: [
                 NonEmptyRule(message: "Description cannot be empty."),
                 LengthValidationRule.description,

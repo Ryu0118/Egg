@@ -91,7 +91,7 @@ struct MultipleChoiceLoop<Option: Equatable & CustomStringConvertible & Sendable
     }
 
     private mutating func finish() {
-        guard prompt.collapseOnSelection else {
+        guard prompt.collapsesOnSelection else {
             block.render(lines())
             return
         }

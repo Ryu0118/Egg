@@ -90,7 +90,7 @@ public struct Terminal: InteractionProviding {
     /// Prompts for one option.
     public func choose<Option>(_ prompt: ChoicePrompt<Option>) -> Option {
         precondition(!prompt.options.isEmpty, "Choice prompts require at least one option.")
-        if prompt.options.count == 1, prompt.autoselectSingleOption {
+        if prompt.options.count == 1, prompt.automaticallySelectsSingleOption {
             return prompt.options[0]
         }
         guard capabilities.isInteractive else {

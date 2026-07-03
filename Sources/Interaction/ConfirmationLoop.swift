@@ -56,7 +56,7 @@ struct ConfirmationLoop {
     }
 
     private mutating func finish(with answer: Bool) {
-        guard prompt.collapseOnAnswer else {
+        guard prompt.collapsesOnAnswer else {
             block.render([questionLine + " " + (answer ? "yes" : "no")])
             return
         }

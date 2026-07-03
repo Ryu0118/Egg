@@ -148,7 +148,7 @@ package struct HatchRunner {
             let templateName = interaction.textPrompt(
                 title: "Template Name (\(availableNames))",
                 prompt: "Enter the template name:",
-                collapseOnAnswer: true,
+                collapsesOnAnswer: true,
             )
             guard let selected = options.first(where: { $0.template.config.name == templateName }) else {
                 throw Error.templateNotFound(templateName)
