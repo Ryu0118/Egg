@@ -19,8 +19,6 @@ struct TemplateInstallCommandTests {
 
     /// Known templates in the test repository
     static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
-    /// Known commit SHA for revision tests
-    static let knownCommitSHA = "8f65013501f58d2989eca79a20474c299b640e27"
 
     // MARK: - Help
 
@@ -108,9 +106,10 @@ struct TemplateInstallCommandTests {
     func `installs all templates to global location`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -127,9 +126,10 @@ struct TemplateInstallCommandTests {
     func `installs all templates to project location`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -145,9 +145,10 @@ struct TemplateInstallCommandTests {
     func `installs specific template using --template filter`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -162,9 +163,10 @@ struct TemplateInstallCommandTests {
     func `excludes specific template using --exclude filter`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--exclude", "iOSProjectGenTemplate", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--exclude", "iOSProjectGenTemplate", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -179,9 +181,10 @@ struct TemplateInstallCommandTests {
     func `installs from specific branch`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--branch", "main", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--branch", "main", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -195,9 +198,10 @@ struct TemplateInstallCommandTests {
     func `installs from specific revision`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--revision", Self.knownCommitSHA, "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--revision", fixture.revision, "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -211,6 +215,7 @@ struct TemplateInstallCommandTests {
     func `overwrites existing template with --force`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         let existingTemplate = homeDir.appending(path: ".eggs/SwiftModule")
@@ -219,7 +224,7 @@ struct TemplateInstallCommandTests {
         try "original".write(to: markerFile, atomically: true, encoding: .utf8)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "SwiftModule", "--force", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--template", "SwiftModule", "--force", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -231,6 +236,7 @@ struct TemplateInstallCommandTests {
     func `skips existing template without --force`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let homeDir = try URL(filePath: #require(env["HOME"]))
         let existingTemplate = homeDir.appending(path: ".eggs/SwiftModule")
@@ -239,7 +245,7 @@ struct TemplateInstallCommandTests {
         try "original".write(to: markerFile, atomically: true, encoding: .utf8)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -264,9 +270,10 @@ struct TemplateInstallCommandTests {
     func `fails with non-existent branch`() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
 
         let result = try await runner.run(
-            arguments: ["template", "install", Self.testRepoURL, "--global", "--branch", "nonexistent-branch-12345", "--project-directory", projectDir.path(percentEncoded: false)],
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--branch", "nonexistent-branch-12345", "--project-directory", projectDir.path(percentEncoded: false)],
             environment: env,
         )
 
@@ -407,5 +414,60 @@ struct TemplateInstallCommandTests {
             let configPath = templateDir.appending(path: "config.yml")
             try configContent.write(to: configPath, atomically: true, encoding: .utf8)
         }
+    }
+
+    private func makeGitTemplateFixture(in directory: URL) throws -> GitTemplateFixture {
+        let repositoryDirectory = directory.appending(path: "git-template-fixture")
+        try setupLocalTemplates(at: repositoryDirectory, names: Self.knownTemplates)
+        try runGit(["init", "--initial-branch", "main"], in: repositoryDirectory)
+        try runGit(["config", "user.name", "Egg E2E"], in: repositoryDirectory)
+        try runGit(["config", "user.email", "egg-e2e@example.com"], in: repositoryDirectory)
+        try runGit(["add", "."], in: repositoryDirectory)
+        try runGit(["commit", "-m", "Add template fixtures"], in: repositoryDirectory)
+        let revision = try runGit(["rev-parse", "HEAD"], in: repositoryDirectory)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return GitTemplateFixture(
+            repositoryURL: repositoryDirectory.absoluteURL.standardizedFileURL.absoluteString,
+            revision: revision,
+        )
+    }
+
+    @discardableResult
+    private func runGit(_ arguments: [String], in directory: URL) throws -> String {
+        let process = Process()
+        process.executableURL = URL(filePath: "/usr/bin/git")
+        process.arguments = arguments
+        process.currentDirectoryURL = directory
+
+        let output = Pipe()
+        let error = Pipe()
+        process.standardOutput = output
+        process.standardError = error
+
+        try process.run()
+        process.waitUntilExit()
+
+        let stdout = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        let stderr = String(decoding: error.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        guard process.terminationStatus == 0 else {
+            throw GitFixtureError(arguments: arguments, exitCode: process.terminationStatus, stderr: stderr)
+        }
+        return stdout
+    }
+}
+
+private struct GitTemplateFixture {
+    let repositoryURL: String
+    let revision: String
+}
+
+private struct GitFixtureError: LocalizedError {
+    let arguments: [String]
+    let exitCode: Int32
+    let stderr: String
+
+    var errorDescription: String? {
+        "git \(arguments.joined(separator: " ")) failed with exit code \(exitCode): \(stderr)"
     }
 }
