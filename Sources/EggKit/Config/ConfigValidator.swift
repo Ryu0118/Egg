@@ -1,5 +1,5 @@
 import Foundation
-import Noora
+import Interaction
 
 struct ConfigValidator {
     private let macrosValidator = MacrosValidator()
@@ -7,8 +7,8 @@ struct ConfigValidator {
     func validate(_ config: Config) async throws {
         var allErrors: [Error] = []
 
-        let templateNameErrors = Config.templateNameValidationRules.validate(input: config.name).map { Error.validatableRulesError($0) }
-        let descriptionErrors = Config.descriptionValidationRules.validate(input: config.description).map { Error.validatableRulesError($0) }
+        let templateNameErrors = Config.templateNameValidationRules.validate(config.name).map { Error.validationRuleError($0) }
+        let descriptionErrors = Config.descriptionValidationRules.validate(config.description).map { Error.validationRuleError($0) }
 
         allErrors += templateNameErrors + descriptionErrors
 

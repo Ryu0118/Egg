@@ -11,10 +11,10 @@ let package = Package(
     products: [
         .executable(name: "egg", targets: ["egg"]),
         .library(name: "EggKit", targets: ["EggKit"]),
+        .library(name: "Interaction", targets: ["Interaction"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
-        .package(url: "https://github.com/tuist/Noora", from: "0.51.2"),
         .package(url: "https://github.com/Ryu0118/FileManagerProtocol", from: "0.1.0"),
         .package(url: "https://github.com/Ryu0118/ProcessRunning", from: "0.2.1"),
         .package(url: "https://github.com/jpsim/Yams", from: "6.2.0"),
@@ -35,8 +35,8 @@ let package = Package(
             dependencies: [
                 "EggKit",
                 "EggMCP",
+                "Interaction",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "Noora", package: "Noora"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "AsyncOperations", package: "swift-async-operations"),
@@ -45,10 +45,10 @@ let package = Package(
         .target(
             name: "EggKit",
             dependencies: [
+                "Interaction",
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "Yams", package: "Yams"),
-                .product(name: "Noora", package: "Noora"),
                 .product(name: "Glob", package: "FileSystem"),
                 .product(name: "AsyncOperations", package: "swift-async-operations"),
                 .product(name: "Stencil", package: "Stencil"),
@@ -61,10 +61,21 @@ let package = Package(
                 .product(name: "MCP", package: "swift-sdk"),
             ],
         ),
+        .target(
+            name: "Interaction",
+            dependencies: [],
+        ),
+        .testTarget(
+            name: "InteractionTests",
+            dependencies: [
+                "Interaction",
+            ],
+        ),
         .testTarget(
             name: "EggKitTests",
             dependencies: [
                 "EggKit",
+                "Interaction",
                 .product(name: "Yams", package: "Yams"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
             ],

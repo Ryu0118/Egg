@@ -54,10 +54,10 @@ jobs:
         run: .nest/bin/swiftformat --lint --config .swiftformat .
 
       - name: SwiftLint
-        run: .nest/bin/swiftlint lint --config .swiftlint.yml --strict --no-cache
+        run: make swiftlint
 
       - name: My Swift Linter
-        run: .nest/bin/my-swift-linter --config .swift-ast-lint.yml --no-cache Sources/EggKit Package.swift
+        run: make my-lint
 
   unit-tests:
     name: Unit Tests

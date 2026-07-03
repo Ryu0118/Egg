@@ -1,7 +1,7 @@
 import FileManagerProtocol
 import Foundation
 import Glob
-import Noora
+import Interaction
 
 /// Expands template files by substituting macros and copying to output directory.
 ///
@@ -16,7 +16,7 @@ struct TemplateExpander {
     private let templateDirectory: URL
     private let outputDirectory: URL
     private let builtInMacroContext: BuiltInMacroContext
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let isInteractive: Bool
     private let override: Bool
 
@@ -25,7 +25,7 @@ struct TemplateExpander {
         templateDirectory: URL,
         outputDirectory: URL,
         builtInMacroContext: BuiltInMacroContext,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool = true,
         override: Bool = false,
     ) {
@@ -33,7 +33,7 @@ struct TemplateExpander {
         self.templateDirectory = templateDirectory
         self.outputDirectory = outputDirectory
         self.builtInMacroContext = builtInMacroContext
-        self.noora = noora
+        self.interaction = interaction
         self.isInteractive = isInteractive
         self.override = override
     }
@@ -170,11 +170,11 @@ struct TemplateExpander {
 
         // If interactive, prompt user
         if isInteractive {
-            noora.passthrough("⚠️ The following files already exist and will be overwritten:\n", tab: 1)
+            interaction.writeLine("⚠️ The following files already exist and will be overwritten:", tab: 1)
             for file in existingFiles {
-                noora.passthrough("  - \(file)\n", tab: 2)
+                interaction.writeLine("- \(file)", tab: 3)
             }
-            return noora.yesOrNoChoicePrompt(
+            return interaction.yesOrNoChoicePrompt(
                 title: "Overwrite",
                 question: "Do you want to overwrite these files?",
             )
@@ -200,22 +200,36 @@ struct TemplateExpander {
                 try patterns.append(Glob.Pattern(pattern))
 
             case let .conditional(conditional):
-                let evaluator = ConditionEvaluator(
+                try await appendConditionalPatterns(
+                    conditional,
+                    to: &patterns,
                     macros: macros,
                     outputs: outputs,
                     builtInMacroContext: builtInMacroContext,
                 )
-                let shouldExclude = try await evaluator.evaluate(conditional.if)
-
-                if shouldExclude {
-                    for pattern in conditional.paths {
-                        try patterns.append(Glob.Pattern(pattern))
-                    }
-                }
             }
         }
 
         return patterns
+    }
+
+    private func appendConditionalPatterns(
+        _ conditional: Config.ConditionalExclude,
+        to patterns: inout [Glob.Pattern],
+        macros: [ResolvedMacro],
+        outputs: StepOutputsStorage,
+        builtInMacroContext: BuiltInMacroContext,
+    ) async throws {
+        let evaluator = ConditionEvaluator(
+            macros: macros,
+            outputs: outputs,
+            builtInMacroContext: builtInMacroContext,
+        )
+        guard try await evaluator.evaluate(conditional.if) else { return }
+
+        for pattern in conditional.paths {
+            try patterns.append(Glob.Pattern(pattern))
+        }
     }
 
     /// Removes the config.yml file from the working directory.

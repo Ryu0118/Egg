@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 import Testing
 
@@ -39,13 +38,12 @@ struct StagingWorkflowRunnerTests {
             postHatch: testCase.postHatchSteps,
         )
 
-        let nooraMock = NooraMock()
         let runner = StagingWorkflowRunner(
             processRunner: ProcessRunner(),
             fileManager: fileManager,
             workingDirectory: workingDir,
             homeDirectory: homeDir,
-            noora: nooraMock,
+            interaction: TestInteraction(),
             isInteractive: false,
             overrideConflicts: testCase.override,
             applyChanges: true,

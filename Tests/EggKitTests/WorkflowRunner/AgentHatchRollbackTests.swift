@@ -62,7 +62,7 @@ struct AgentHatchRollbackTests {
     }
 
     @Test
-    func `Restores modify and delete, removes add, leaves unrelated files intact`() throws {
+    func `Restores modify and delete, removes add, leaves unrelated files intact`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -86,7 +86,7 @@ struct AgentHatchRollbackTests {
             ],
         )
 
-        let result = try makeRunner(workingDirectory: root).rollback(id: "rb")
+        let result = try await makeRunner(workingDirectory: root).rollback(id: "rb")
         #expect(result.status == "rolledBack")
         #expect(!fileManager.exists(root.appending(path: "added.txt")))
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "old\n")
@@ -95,7 +95,7 @@ struct AgentHatchRollbackTests {
     }
 
     @Test
-    func `Refuses when the user edited an applied file, unless forced`() throws {
+    func `Refuses when the user edited an applied file, unless forced`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -109,20 +109,20 @@ struct AgentHatchRollbackTests {
         )
         let runner = makeRunner(workingDirectory: root)
 
-        #expect(throws: AgentHatchTransactionRunner.Error.conflictingRollbackChanges(["modified.txt"])) {
-            try runner.rollback(id: "rb")
+        await #expect(throws: AgentHatchTransactionRunner.Error.conflictingRollbackChanges(["modified.txt"])) {
+            try await runner.rollback(id: "rb")
         }
         // The user's edit must survive a refused rollback.
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "user edit\n")
 
         // force overrides and restores the before content.
-        let result = try runner.rollback(id: "rb", force: true)
+        let result = try await runner.rollback(id: "rb", force: true)
         #expect(result.status == "rolledBack")
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "old\n")
     }
 
     @Test
-    func `Refuses a second rollback of the same bundle`() throws {
+    func `Refuses a second rollback of the same bundle`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -130,14 +130,14 @@ struct AgentHatchRollbackTests {
         try writeBundle(id: "rb", in: root, changes: [("added.txt", "add", hash("added\n"))])
         let runner = makeRunner(workingDirectory: root)
 
-        _ = try runner.rollback(id: "rb")
-        #expect(throws: AgentHatchTransactionRunner.Error.alreadyRolledBack(id: "rb")) {
-            try runner.rollback(id: "rb")
+        _ = try await runner.rollback(id: "rb")
+        await #expect(throws: AgentHatchTransactionRunner.Error.alreadyRolledBack(id: "rb")) {
+            try await runner.rollback(id: "rb")
         }
     }
 
     @Test
-    func `A user-recreated file at a delete path is a conflict`() throws {
+    func `A user-recreated file at a delete path is a conflict`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -151,16 +151,16 @@ struct AgentHatchRollbackTests {
         )
         let runner = makeRunner(workingDirectory: root)
 
-        #expect(throws: AgentHatchTransactionRunner.Error.conflictingRollbackChanges(["deleted.txt"])) {
-            try runner.rollback(id: "rb")
+        await #expect(throws: AgentHatchTransactionRunner.Error.conflictingRollbackChanges(["deleted.txt"])) {
+            try await runner.rollback(id: "rb")
         }
-        let forced = try runner.rollback(id: "rb", force: true)
+        let forced = try await runner.rollback(id: "rb", force: true)
         #expect(forced.status == "rolledBack")
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "deleted.txt")), as: UTF8.self) == "original\n")
     }
 
     @Test
-    func `An add path whose pre-apply file was backed up is restored, not deleted`() throws {
+    func `An add path whose pre-apply file was backed up is restored, not deleted`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -174,25 +174,25 @@ struct AgentHatchRollbackTests {
             beforeFiles: ["added.txt": "the user's file\n"],
         )
 
-        _ = try makeRunner(workingDirectory: root).rollback(id: "rb")
+        _ = try await makeRunner(workingDirectory: root).rollback(id: "rb")
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "added.txt")), as: UTF8.self) == "the user's file\n")
     }
 
     @Test
-    func `A missing add target is not a conflict; rollback is a no-op for it`() throws {
+    func `A missing add target is not a conflict; rollback is a no-op for it`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
         // The user already deleted the added file before rolling back.
         try writeBundle(id: "rb", in: root, changes: [("added.txt", "add", hash("added\n"))])
 
-        let result = try makeRunner(workingDirectory: root).rollback(id: "rb")
+        let result = try await makeRunner(workingDirectory: root).rollback(id: "rb")
         #expect(result.status == "rolledBack")
         #expect(!fileManager.exists(root.appending(path: "added.txt")))
     }
 
     @Test
-    func `Removing a nested added file prunes now-empty parent directories`() throws {
+    func `Removing a nested added file prunes now-empty parent directories`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -201,13 +201,13 @@ struct AgentHatchRollbackTests {
         try fileManager.writeText("x\n", at: nested.appending(path: "new.txt"))
         try writeBundle(id: "rb", in: root, changes: [("deep/nested/new.txt", "add", hash("x\n"))])
 
-        _ = try makeRunner(workingDirectory: root).rollback(id: "rb")
+        _ = try await makeRunner(workingDirectory: root).rollback(id: "rb")
         #expect(!fileManager.exists(root.appending(path: "deep")))
         #expect(fileManager.exists(root))
     }
 
     @Test
-    func `A non-empty parent directory survives pruning`() throws {
+    func `A non-empty parent directory survives pruning`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -217,23 +217,23 @@ struct AgentHatchRollbackTests {
         try fileManager.writeText("keep\n", at: root.appending(path: "deep/keep.txt"))
         try writeBundle(id: "rb", in: root, changes: [("deep/nested/new.txt", "add", hash("x\n"))])
 
-        _ = try makeRunner(workingDirectory: root).rollback(id: "rb")
+        _ = try await makeRunner(workingDirectory: root).rollback(id: "rb")
         #expect(!fileManager.exists(root.appending(path: "deep/nested")))
         #expect(fileManager.exists(root.appending(path: "deep/keep.txt")))
     }
 
     @Test
-    func `Missing bundle id fails with a read error`() throws {
+    func `Missing bundle id fails with a read error`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
-        #expect(throws: (any Error).self) {
-            try makeRunner(workingDirectory: root).rollback(id: "nope")
+        await #expect(throws: (any Error).self) {
+            try await makeRunner(workingDirectory: root).rollback(id: "nope")
         }
     }
 
     @Test
-    func `Legacy bundle without afterHash skips conflict detection but still restores`() throws {
+    func `Legacy bundle without afterHash skips conflict detection but still restores`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -245,13 +245,13 @@ struct AgentHatchRollbackTests {
             beforeFiles: ["modified.txt": "old\n"],
         )
 
-        let result = try makeRunner(workingDirectory: root).rollback(id: "rb")
+        let result = try await makeRunner(workingDirectory: root).rollback(id: "rb")
         #expect(result.status == "rolledBack")
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "old\n")
     }
 
     @Test
-    func `A missing modify backup refuses up front instead of a partial silent restore`() throws {
+    func `A missing modify backup refuses up front instead of a partial silent restore`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -269,8 +269,8 @@ struct AgentHatchRollbackTests {
             beforeFiles: ["a.txt": "old a\n"], // b.txt's backup is missing
         )
 
-        #expect(throws: AgentHatchTransactionRunner.Error.missingRollbackBackup(id: "rb", paths: ["b.txt"])) {
-            try makeRunner(workingDirectory: root).rollback(id: "rb")
+        await #expect(throws: AgentHatchTransactionRunner.Error.missingRollbackBackup(id: "rb", paths: ["b.txt"])) {
+            try await makeRunner(workingDirectory: root).rollback(id: "rb")
         }
         // Nothing must have been touched — not even a.txt, whose backup DID exist.
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "a.txt")), as: UTF8.self) == "current a\n")
@@ -278,25 +278,25 @@ struct AgentHatchRollbackTests {
     }
 
     @Test
-    func `A missing delete backup also refuses up front`() throws {
+    func `A missing delete backup also refuses up front`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
         try writeBundle(id: "rb", in: root, changes: [("deleted.txt", "delete", nil)])
         // No beforeFiles at all — the backup is missing.
 
-        #expect(throws: AgentHatchTransactionRunner.Error.missingRollbackBackup(id: "rb", paths: ["deleted.txt"])) {
-            try makeRunner(workingDirectory: root).rollback(id: "rb")
+        await #expect(throws: AgentHatchTransactionRunner.Error.missingRollbackBackup(id: "rb", paths: ["deleted.txt"])) {
+            try await makeRunner(workingDirectory: root).rollback(id: "rb")
         }
     }
 
     @Test(arguments: ["../escape", "a/b", "..", "", "a\\b"])
-    func `Rejects a rollback id that is not a single safe path segment`(badId: String) throws {
+    func `Rejects a rollback id that is not a single safe path segment`(badId: String) async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
-        #expect(throws: AgentHatchTransactionRunner.Error.self) {
-            try makeRunner(workingDirectory: root).rollback(id: badId)
+        await #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try await makeRunner(workingDirectory: root).rollback(id: badId)
         }
     }
 
@@ -308,13 +308,13 @@ struct AgentHatchRollbackTests {
         await #expect(throws: AgentHatchTransactionRunner.Error.self) {
             try await makeRunner(workingDirectory: root).apply(token: badToken)
         }
-        #expect(throws: AgentHatchTransactionRunner.Error.self) {
-            try makeRunner(workingDirectory: root).discard(token: badToken)
+        await #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try await makeRunner(workingDirectory: root).discard(token: badToken)
         }
     }
 
     @Test
-    func `A rollback id that would escape via path traversal cannot read outside .egg-rollback`() throws {
+    func `A rollback id that would escape via path traversal cannot read outside .egg-rollback`() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -329,8 +329,8 @@ struct AgentHatchRollbackTests {
             at: root.appending(path: "secret/manifest.json"),
         )
 
-        #expect(throws: AgentHatchTransactionRunner.Error.self) {
-            try makeRunner(workingDirectory: root).rollback(id: "../secret")
+        await #expect(throws: AgentHatchTransactionRunner.Error.self) {
+            try await makeRunner(workingDirectory: root).rollback(id: "../secret")
         }
     }
 }

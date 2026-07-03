@@ -2,10 +2,20 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 
 package extension EggCommand.TemplateCommand {
     struct DetailCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
+        @Argument(help: "The name of the template to show details for (optional for interactive mode).")
+        package var templateName: String?
+
+        @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
+        package var location: TemplateLocationType.Kind?
+
+        @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
+        package var projectDirectory: String?
+
+        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
+        package var templateSearchPaths: [String] = []
         package static let configuration = CommandConfiguration(
             commandName: "detail",
             abstract: "Show detailed information about a template.",
@@ -25,18 +35,6 @@ package extension EggCommand.TemplateCommand {
             """,
         )
 
-        @Argument(help: "The name of the template to show details for (optional for interactive mode).")
-        package var templateName: String?
-
-        @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
-        package var location: TemplateLocationType.Kind?
-
-        @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
-        package var projectDirectory: String?
-
-        @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
-        package var templateSearchPaths: [String] = []
-
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
         package init() {}
@@ -45,7 +43,7 @@ package extension EggCommand.TemplateCommand {
             let mode = try await validate()
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = resolveHomeDirectory()
+                let homeDirectory = CLIEnvironment.resolveHomeDirectory()
                 try await DetailRunner(
                     mode: mode,
                     projectDirectory: resolveProjectDirectory(),
@@ -55,7 +53,7 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).run()
             } catch {
-                Noora().error("\(error.localizedDescription)")
+                CLIOutput.printError(error.localizedDescription)
                 throw ExitCode.failure
             }
         }
@@ -63,7 +61,7 @@ package extension EggCommand.TemplateCommand {
         func validate() async throws -> DetailRunnerMode {
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-                let homeDirectory = resolveHomeDirectory()
+                let homeDirectory = CLIEnvironment.resolveHomeDirectory()
                 return try await DetailArgumentsValidator(
                     templateName: templateName,
                     location: location?.toConcreteType(

@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import Testing
 
 struct InstallRunnerTests {
@@ -44,7 +43,7 @@ struct InstallRunnerTests {
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
-            noora: NooraMock(),
+            interaction: TestInteraction(),
             gitCloner: mockGitCloner,
             directoryCloner: APFSDirectoryCloner(),
             templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),

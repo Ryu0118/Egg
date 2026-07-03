@@ -1,6 +1,6 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 
 package struct MoveRunner {
     private let mode: MoveRunnerMode
@@ -10,7 +10,7 @@ package struct MoveRunner {
     private let projectDirectory: URL
     private let workingDirectory: URL
     private let fileManager: any FileManagerProtocol
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
     package init(
         mode: MoveRunnerMode,
@@ -20,7 +20,7 @@ package struct MoveRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,
@@ -31,7 +31,7 @@ package struct MoveRunner {
         self.projectDirectory = projectDirectory
         self.workingDirectory = workingDirectory
         self.fileManager = fileManager
-        self.noora = noora
+        self.interaction = interaction
         templatesFinder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -120,7 +120,7 @@ package struct MoveRunner {
             throw Error.noTemplatesFound
         }
 
-        let selectedOption = noora.singleChoicePrompt(
+        let selectedOption = interaction.singleChoicePrompt(
             title: "Select Template to Move",
             question: "Which template would you like to move?",
             options: options,
@@ -193,7 +193,7 @@ package struct MoveRunner {
         }
 
         // Prompt for selection
-        return noora.singleChoicePrompt(
+        return interaction.singleChoicePrompt(
             title: "Select Target Location",
             question: "Where would you like to move '\(templateName)'?",
             options: targetOptions,
@@ -238,7 +238,7 @@ package struct MoveRunner {
             // Remove source
             try fileManager.removeItem(at: sourcePath)
 
-            noora.success("Successfully moved template '\(name)' from \(sourceLocation.name) to \(targetLocation.name)")
+            interaction.writeSuccess("Successfully moved template '\(name)' from \(sourceLocation.name) to \(targetLocation.name)")
         } catch {
             throw Error.moveFailed(name: name, underlying: error)
         }

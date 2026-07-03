@@ -10,9 +10,12 @@ A CLI tool for generating projects from templates. Define macros in `config.yml`
 | `Sources/EggCLI/` | CLI command definitions (ArgumentParser). Thin layer, no business logic |
 | `Sources/EggKit/` | **All implementation**. Runners, validators, config parsing, template expansion |
 | `Sources/EggKit/Config/` | `config.yml` model and validation |
+| `Sources/EggKit/Validation/` | Egg domain validation rules built on Interaction validation primitives |
 | `Sources/EggKit/WorkflowRunner/` | Lifecycle execution engine (pre_hatch → hatch → post_hatch) |
+| `Sources/Interaction/` | Dependency-free terminal interaction library. Prompt, choice, table, styling, and Unicode-aware input primitives |
 | `Sources/EggMCP/` | MCP server: tool handlers exposing egg to AI agents |
 | `Tests/EggKitTests/` | Unit tests |
+| `Tests/InteractionTests/` | Interaction module unit tests |
 | `Tests/EggMCPTests/` | MCP module unit tests |
 | `E2ETestsPackage/` | E2E tests (separate package). Run with `cd E2ETestsPackage && swift test` |
 
@@ -44,3 +47,4 @@ When working on egg templates or CLI usage, read these skills for detailed refer
 
 - Swift 6.2 / macOS 26+
 - Use `package` access modifier for cross-module types
+- `make lint` runs both SwiftLint and my-swift-linter. Install hooks with `make hooks`; pre-push runs `make my-lint`.

@@ -1,13 +1,13 @@
 import Foundation
-import Noora
+import Interaction
 
-package struct ChoiceValidationRule: ValidatableRule {
-    package let error: any ValidatableError
+package struct ChoiceValidationRule: PredicateValidationRule {
+    package let error: ValidationError
     private let choices: [String]
 
     package init(choices: [String], error: String) {
         self.choices = choices
-        self.error = error
+        self.error = ValidationError(error)
     }
 
     package func validate(input: String) -> Bool {

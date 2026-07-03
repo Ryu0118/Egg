@@ -475,8 +475,10 @@ and tells you to run `git init` first.
 ```sh
 make install-commands  # bootstrap dev tools (SwiftFormat, SwiftLint, etc.)
 make format            # swiftformat
-make lint              # swiftlint --strict
+make swiftlint         # swiftlint --strict
 make my-lint           # project-specific AST lint rules
+make lint              # swiftlint + my-swift-linter
+make hooks             # install repo git hooks
 make test              # swift test
 make e2e-test          # end-to-end CLI tests (separate package)
 make check             # format + lint + test + e2e-test

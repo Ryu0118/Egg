@@ -1,6 +1,6 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 import ProcessRunning
 
 /// Orchestrates the complete lifecycle workflow with atomic all-or-nothing execution.
@@ -20,7 +20,7 @@ import ProcessRunning
 ///     fileManager: FileManager.default,
 ///     workingDirectory: URL(filePath: "/tmp/project"),
 ///     homeDirectory: URL(filePath: NSHomeDirectory()),
-///     noora: Noora(),
+///     interaction: Terminal(),
 ///     isInteractive: true,
 ///     override: false
 /// )
@@ -46,7 +46,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let fileManager: any FileManagerProtocol
     private let workingDirectory: URL
     private let homeDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let isInteractive: Bool
     private let overrideConflicts: Bool
     private let sandboxDisabled: Bool
@@ -61,7 +61,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         fileManager: some FileManagerProtocol,
         workingDirectory: URL,
         homeDirectory: URL,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,
@@ -74,7 +74,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.fileManager = fileManager
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
-        self.noora = noora
+        self.interaction = interaction
         self.isInteractive = isInteractive
         self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
@@ -91,7 +91,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             processRunner: processRunner,
             fileManager: fileManager,
             homeDirectory: homeDirectory,
-            noora: noora,
+            interaction: interaction,
             isInteractive: isInteractive,
             override: overrideConflicts,
         )
@@ -115,7 +115,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         // Step 1: Create staging workspace
         // Use stagingRoot if specified, otherwise fall back to workingDirectory
         let directoryToClone = stagingRoot ?? workingDirectory
-        noora.passthrough("🔒 Creating staging workspace...\n")
+        interaction.writeLine("🔒 Creating staging workspace...")
 
         let staging = try await StagingContext.create(
             cloning: directoryToClone,
@@ -123,7 +123,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
-            noora: noora,
+            interaction: interaction,
         )
 
         // Register cleanup handler for SIGINT/SIGTERM (Control+C) IMMEDIATELY after staging creation
@@ -149,7 +149,10 @@ struct StagingWorkflowRunner: WorkflowRunning {
             let macros = try finalizeMacros(collectedMacroValues, config: config, workspaceRoot: staging.root)
 
             // Expand and validate sandbox.allowed_paths
-            let sandboxResolver = SandboxAllowedPathsResolver(homeDirectory: homeDirectory, noora: noora)
+            let sandboxResolver = SandboxAllowedPathsResolver(
+                homeDirectory: homeDirectory,
+                interaction: interaction,
+            )
             let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
                 config.sandbox?.allowedPaths,
                 macros: macros,
@@ -159,21 +162,18 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // Track whether user confirmed extended sandbox permissions
             var sandboxPermissionConfirmed = false
 
-            // If allowed_paths are specified and sandbox is enabled, handle permission
+            if !expandedAllowedPaths.isEmpty && !sandboxDisabled && !isInteractive {
+                throw LifecycleStepError.sandboxPermissionRequired(
+                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
+                )
+            }
+
             if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
-                if isInteractive {
-                    // Prompt user for permission in interactive mode
-                    sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                        expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                    )
-                    if !sandboxPermissionConfirmed {
-                        noora.passthrough("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).\n")
-                    }
-                } else {
-                    // Non-interactive mode: reject with error
-                    throw LifecycleStepError.sandboxPermissionRequired(
-                        paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                    )
+                sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
+                    expandedAllowedPaths.map { $0.path(percentEncoded: false) },
+                )
+                if !sandboxPermissionConfirmed {
+                    interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
                 }
             }
 
@@ -252,7 +252,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
             let changeSummary = try await staging.computeChangeSummary()
 
             if changeSummary.isEmpty {
-                noora.passthrough("ℹ️ No changes to apply.\n")
+                interaction.writeLine("ℹ️ No changes to apply.")
                 await staging.discard()
                 return workingDirectory.appending(path: resolvedOutputPath)
             }
@@ -265,19 +265,19 @@ struct StagingWorkflowRunner: WorkflowRunning {
             let userConfirmedOverride = try await confirmChanges(staging: staging)
 
             // Step 10: Apply changes to working directory
-            noora.passthrough("📦 Applying changes...\n")
+            interaction.writeLine("📦 Applying changes...")
             // Use override if set via CLI flag, OR if user confirmed override in interactive mode
             let overriddenConflicts = try await staging.applyChanges(changeSummary, override: overrideConflicts || userConfirmedOverride)
 
             // Display warning for overridden conflicts (when override=true)
             if !overriddenConflicts.isEmpty {
-                noora.passthrough("⚠️ Overwritten conflicting files:\n")
+                interaction.writeLine("⚠️ Overwritten conflicting files:")
                 for conflict in overriddenConflicts {
-                    noora.passthrough("- \(conflict.pathString) (\(conflict.type.description))\n", tab: 1)
+                    interaction.writeLine("- \(conflict.pathString) (\(conflict.type.description))", tab: 1)
                 }
             }
 
-            noora.passthrough("✅ Changes applied successfully!\n")
+            interaction.writeLine("✅ Changes applied successfully!")
 
             // Return path in real working directory
             return workingDirectory.appending(path: resolvedOutputPath)
@@ -314,7 +314,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         case .autoConfirm:
             // --yes: apply without prompt, but warn about conflicts
             if hasConflicts {
-                noora.warning("Auto-confirming: overriding \(conflicts.count) conflicting file(s)")
+                interaction.writeWarning("Auto-confirming: overriding \(conflicts.count) conflicting file(s)")
             }
             return hasConflicts
 
@@ -322,18 +322,18 @@ struct StagingWorkflowRunner: WorkflowRunning {
             // Default: show yes/no prompt
             let confirmed =
                 if hasConflicts {
-                    noora.yesOrNoChoicePrompt(
+                    interaction.yesOrNoChoicePrompt(
                         title: "Apply Changes and Override Conflicts",
                         question: "Override conflicting files and apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?",
                     )
                 } else {
-                    noora.yesOrNoChoicePrompt(
+                    interaction.yesOrNoChoicePrompt(
                         title: "Apply Changes (staging workspace → current directory)",
                         question: "Apply to \(staging.originalWorkingDirectory.path(percentEncoded: false))?",
                     )
                 }
             guard confirmed else {
-                noora.passthrough("❌ Changes discarded by user.\n")
+                interaction.writeLine("❌ Changes discarded by user.")
                 await staging.discard()
                 throw StagingContext.Error.userAborted
             }
@@ -343,39 +343,42 @@ struct StagingWorkflowRunner: WorkflowRunning {
 
     /// Displays the change summary to the user.
     private func displayChangeSummary(_ summary: ChangeSummary) {
-        noora.passthrough("\n📋 Change Summary:\n")
+        interaction.writeLine()
+        interaction.writeLine("📋 Change Summary:")
 
         if !summary.added.isEmpty {
-            noora.passthrough("\(.success("Added")) (\(summary.added.count)):\n", tab: 1)
+            interaction.writeLine("Added (\(summary.added.count)):", tab: 1)
             for path in summary.added {
-                noora.passthrough("\(.success("+")) \(path)\n", tab: 2)
+                interaction.writeLine("+ \(path)", tab: 2)
             }
         }
 
         if !summary.modified.isEmpty {
-            noora.passthrough("\(.accent("Modified")) (\(summary.modified.count)):\n", tab: 1)
+            interaction.writeLine("Modified (\(summary.modified.count)):", tab: 1)
             for path in summary.modified {
-                noora.passthrough("\(.accent("~")) \(path)\n", tab: 2)
+                interaction.writeLine("~ \(path)", tab: 2)
             }
         }
 
         if !summary.deleted.isEmpty {
-            noora.passthrough("\(.danger("Deleted")) (\(summary.deleted.count)):\n", tab: 1)
+            interaction.writeLine("Deleted (\(summary.deleted.count)):", tab: 1)
             for path in summary.deleted {
-                noora.passthrough("\(.danger("-")) \(path)\n", tab: 2)
+                interaction.writeLine("- \(path)", tab: 2)
             }
         }
 
-        noora.passthrough("\nTotal: \(summary.totalCount) file(s)\n\n", tab: 1)
+        interaction.writeLine()
+        interaction.writeLine("Total: \(summary.totalCount) file(s)", tab: 1)
+        interaction.writeLine()
     }
 
     /// Displays detected conflicts to the user.
     private func displayConflicts(_ conflicts: [ConflictInfo]) {
-        noora.passthrough("⚠️ Conflicts detected:\n")
+        interaction.writeLine("⚠️ Conflicts detected:")
         for conflict in conflicts {
-            noora.passthrough("- \(conflict.pathString): \(conflict.type.description)\n", tab: 1)
+            interaction.writeLine("- \(conflict.pathString): \(conflict.type.description)", tab: 1)
         }
-        noora.passthrough("\n")
+        interaction.writeLine()
     }
 
     /// Intermediate representation for collected macro values before workspace-relative path resolution.
@@ -408,7 +411,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 config: config,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
+                interaction: interaction,
             )
             return .interactive(resolver.resolve())
         }

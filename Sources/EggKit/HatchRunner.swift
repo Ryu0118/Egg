@@ -1,11 +1,11 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 import ProcessRunning
 
 package struct HatchRunner {
     private let mode: HatchRunnerMode
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let workingDirectory: URL
     private let homeDirectory: URL
     private let fileManager: any FileManagerProtocol
@@ -27,7 +27,7 @@ package struct HatchRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         processRunner: some ProcessRunning = ProcessRunner(),
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
         useStaging: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,
@@ -41,7 +41,7 @@ package struct HatchRunner {
         self.projectDirectory = projectDirectory
         self.fileManager = fileManager
         self.processRunner = processRunner
-        self.noora = noora
+        self.interaction = interaction
         self.useStaging = useStaging
         self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
@@ -54,7 +54,6 @@ package struct HatchRunner {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
-            noora: noora,
         )
     }
 
@@ -138,7 +137,7 @@ package struct HatchRunner {
     private func selectTemplate(from options: [TemplateWithLocation]) throws -> TemplateWithLocation {
         switch pickerStyle {
         case .list:
-            return noora.singleChoicePrompt(
+            return interaction.singleChoicePrompt(
                 title: "Select Template",
                 question: "Which template would you like to use?",
                 options: options,
@@ -146,10 +145,10 @@ package struct HatchRunner {
             )
         case .text:
             let availableNames = options.map(\.template.config.name).joined(separator: ", ")
-            let templateName = noora.textPrompt(
+            let templateName = interaction.textPrompt(
                 title: "Template Name (\(availableNames))",
                 prompt: "Enter the template name:",
-                collapseOnAnswer: true,
+                collapsesOnAnswer: true,
             )
             guard let selected = options.first(where: { $0.template.config.name == templateName }) else {
                 throw Error.templateNotFound(templateName)
@@ -168,7 +167,7 @@ package struct HatchRunner {
                 fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
+                interaction: interaction,
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,
@@ -176,13 +175,13 @@ package struct HatchRunner {
                 stagingRoot: stagingRoot,
             )
         } else {
-            noora.warning("Running in direct mode. filesystem changes are permanent")
+            interaction.writeWarning("Running in direct mode. filesystem changes are permanent")
             return LifecycleWorkflowRunner(
                 processRunner: processRunner,
                 fileManager: fileManager,
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
-                noora: noora,
+                interaction: interaction,
                 isInteractive: mode.isInteractive,
                 overrideConflicts: overrideConflicts,
                 sandboxDisabled: sandboxDisabled,

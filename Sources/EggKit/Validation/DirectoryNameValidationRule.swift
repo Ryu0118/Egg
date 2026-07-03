@@ -1,11 +1,11 @@
 import Foundation
-import Noora
+import Interaction
 
-package struct DirectoryNameValidationRule: ValidatableRule {
-    package let error: any ValidatableError
+package struct DirectoryNameValidationRule: PredicateValidationRule {
+    package let error: ValidationError
 
     package init(error: String) {
-        self.error = error
+        self.error = ValidationError(error)
     }
 
     package func validate(input: String) -> Bool {

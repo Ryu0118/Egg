@@ -45,16 +45,13 @@ package struct HatchCommand: AsyncParsableCommand {
 /// With a template name it applies directly; with none it prompts interactively.
 /// This is the default subcommand, so a bare `egg hatch` resolves here.
 package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
-    package static let configuration = CommandConfiguration(
-        commandName: "direct",
-        abstract: "Generate files inline without the preview/apply step (interactive when no template is given).",
-    )
-
     @Argument(help: "The name of the template to use (optional, will prompt if not provided).")
     package var templateName: String?
 
-    @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
-    package var projectDirectory: String?
+    /// Use .allUnrecognized to capture only unrecognized options/flags as macros
+    /// This allows recognized flags like --no-staging to be parsed correctly
+    @Argument(parsing: .allUnrecognized, help: "User-defined macro values format (e.g., --user-defined value).")
+    package var macros: [String] = []
 
     @Flag(name: [.long], help: "Disable staging. When set, changes are applied directly without preview or rollback capability.")
     package var noStaging: Bool = false
@@ -68,6 +65,9 @@ package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, Ha
     @Flag(name: .long, help: "Automatically apply changes without prompting for confirmation.")
     package var applyChanges: Bool = false
 
+    @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
+    package var projectDirectory: String?
+
     @Option(name: .long, help: "Directory to use as staging root (defaults to current directory). Use this when template outputs target a different directory.", completion: .directory)
     package var stagingRoot: String?
 
@@ -76,11 +76,10 @@ package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, Ha
 
     @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
     package var templateSearchPaths: [String] = []
-
-    /// Use .allUnrecognized to capture only unrecognized options/flags as macros
-    /// This allows recognized flags like --no-staging to be parsed correctly
-    @Argument(parsing: .allUnrecognized, help: "User-defined macro values format (e.g., --user-defined value).")
-    package var macros: [String] = []
+    package static let configuration = CommandConfiguration(
+        commandName: "direct",
+        abstract: "Generate files inline without the preview/apply step (interactive when no template is given).",
+    )
 
     package static let fileManager: any FileManagerProtocol = FileManager.default
 
@@ -92,7 +91,7 @@ package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, Ha
         try await HatchRunner(
             mode: mode,
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-            homeDirectory: resolveHomeDirectory(),
+            homeDirectory: CLIEnvironment.resolveHomeDirectory(),
             projectDirectory: resolveProjectDirectory(),
             additionalSearchPaths: resolveTemplateSearchPaths(),
             fileManager: Self.fileManager,
@@ -118,7 +117,7 @@ package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, Ha
                 macros: macros,
                 projectDirectory: resolveProjectDirectory(),
                 workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
-                homeDirectory: resolveHomeDirectory(),
+                homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                 additionalSearchPaths: resolveTemplateSearchPaths(),
                 fileManager: Self.fileManager,
             ).validate()

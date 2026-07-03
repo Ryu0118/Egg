@@ -1,15 +1,15 @@
 import Foundation
-import Noora
+import Interaction
 
-package struct PathValidationRule: ValidatableRule {
-    package let error: any ValidatableError
+package struct PathValidationRule: PredicateValidationRule {
+    package let error: ValidationError
     private let workingDirectory: URL
     private let homeDirectory: URL
 
     package init(workingDirectory: URL, homeDirectory: URL, error: String) {
         self.workingDirectory = workingDirectory
         self.homeDirectory = homeDirectory
-        self.error = error
+        self.error = ValidationError(error)
     }
 
     package func validate(input: String) -> Bool {

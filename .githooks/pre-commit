@@ -24,6 +24,14 @@ else
     exit 1
   }
 fi
+if [ -x "$SRCROOT/.nest/bin/my-swift-linter" ]; then
+  MY_SWIFT_LINTER="$SRCROOT/.nest/bin/my-swift-linter"
+else
+  MY_SWIFT_LINTER=$(command -v my-swift-linter) || {
+    echo "my-swift-linter not found. Run: make install-commands"
+    exit 1
+  }
+fi
 
 STAGED_SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
 
@@ -45,6 +53,12 @@ if [ -n "$STAGED_SWIFT_FILES" ]; then
       echo "SwiftLint reported issues. Fix them before committing."
       exit 1
     fi
+  fi
+
+  if ! (cd "$SRCROOT" && "$MY_SWIFT_LINTER" --config "$SRCROOT/.swift-ast-lint.yml" --no-cache Sources Package.swift); then
+    echo ""
+    echo "my-swift-linter reported issues. Fix them before committing."
+    exit 1
   fi
 fi
 

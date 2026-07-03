@@ -1,8 +1,8 @@
 import Foundation
-import Noora
+import Interaction
 
-package struct LengthValidationRule: ValidatableRule {
-    package let error: any ValidatableError
+package struct LengthValidationRule: PredicateValidationRule {
+    package let error: ValidationError
 
     private let minLength: Int
     private let maxLength: Int
@@ -10,7 +10,7 @@ package struct LengthValidationRule: ValidatableRule {
     package init(minLength: Int, maxLength: Int, error: String) {
         self.minLength = minLength
         self.maxLength = maxLength
-        self.error = error
+        self.error = ValidationError(error)
     }
 
     package func validate(input: String) -> Bool {

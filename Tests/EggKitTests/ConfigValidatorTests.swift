@@ -1,6 +1,6 @@
 @testable import EggKit
 import Foundation
-import Noora
+import Interaction
 import Testing
 
 struct ConfigValidatorTests {
@@ -266,7 +266,7 @@ struct ConfigValidatorTests {
                 description: "fails when template name violates validation rules",
                 config: makeValidConfig(name: "/invalid"),
                 expected: .failure([
-                    .validatableRulesError(testValidatableError("Invalid directory name. Cannot contain '/' or start with whitespace.")),
+                    .validationRuleError(ValidationError("Invalid directory name. Cannot contain '/' or start with whitespace.")),
                 ]),
             ),
             TestCase(
@@ -575,7 +575,7 @@ struct ConfigValidatorTests {
                     postHatch: nil,
                 ),
                 expected: .failure([
-                    .validatableRulesError(testValidatableError("Invalid directory name. Cannot contain '/' or start with whitespace.")),
+                    .validationRuleError(ValidationError("Invalid directory name. Cannot contain '/' or start with whitespace.")),
                     .macroNameEmpty(context: "macros[0]"),
                     .macroDescriptionEmpty(context: "macros[0]"),
                     .lifecycleStepMissingRunOrHatch(context: "pre_hatch[0]"),
@@ -608,12 +608,5 @@ struct ConfigValidatorTests {
             hatch: hatch,
             postHatch: postHatch,
         )
-    }
-
-    private static func testValidatableError(_ message: String) -> any ValidatableError {
-        struct TestError: ValidatableError {
-            var message: String
-        }
-        return TestError(message: message)
     }
 }

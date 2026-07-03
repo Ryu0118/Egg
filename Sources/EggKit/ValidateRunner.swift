@@ -1,21 +1,21 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 
 package struct ValidateRunner {
     private let mode: ValidateRunnerMode
     private let fileManager: any FileManagerProtocol
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let validator = ConfigValidator()
 
     package init(
         mode: ValidateRunnerMode,
         fileManager: some FileManagerProtocol,
-        noora: some Noorable = Noora(),
+        interaction: some InteractionProviding = Terminal(),
     ) {
         self.mode = mode
         self.fileManager = fileManager
-        self.noora = noora
+        self.interaction = interaction
     }
 
     package func run() async throws {
@@ -65,9 +65,9 @@ package struct ValidateRunner {
     ) async throws {
         do {
             try await validator.validate(config)
-            noora.success("Template '\(config.name)' at \(templatePath.path) is valid")
+            interaction.writeSuccess("Template '\(config.name)' at \(templatePath.path) is valid")
         } catch {
-            noora.error("Validation failed for template at \(templatePath.path)")
+            interaction.writeFailure("Validation failed for template at \(templatePath.path)")
             throw error
         }
     }

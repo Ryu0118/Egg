@@ -84,20 +84,24 @@ public struct ToolArguments: Sendable {
     /// Convert a Value to its Swift equivalent
     private func convertValue(_ value: Value) -> Any {
         if let stringValue = value.stringValue {
-            stringValue
-        } else if let boolValue = value.boolValue {
-            boolValue
-        } else if let intValue = value.intValue {
-            intValue
-        } else if let doubleValue = value.doubleValue {
-            doubleValue
-        } else if let arrayValue = value.arrayValue {
-            arrayValue.map { convertValue($0) }
-        } else if let objectValue = value.objectValue {
-            parseMacros(from: objectValue)
-        } else {
-            ""
+            return stringValue
         }
+        if let boolValue = value.boolValue {
+            return boolValue
+        }
+        if let intValue = value.intValue {
+            return intValue
+        }
+        if let doubleValue = value.doubleValue {
+            return doubleValue
+        }
+        if let arrayValue = value.arrayValue {
+            return arrayValue.map { convertValue($0) }
+        }
+        if let objectValue = value.objectValue {
+            return parseMacros(from: objectValue)
+        }
+        return ""
     }
 }
 

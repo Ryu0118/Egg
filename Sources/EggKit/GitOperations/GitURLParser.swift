@@ -15,6 +15,7 @@ package protocol GitURLParsing: Sendable {
 /// - HTTPS: `https://github.com/user/repo.git` or `https://github.com/user/repo`
 /// - SSH: `git@github.com:user/repo.git`
 /// - Git protocol: `git://github.com/user/repo.git`
+/// - File URL: `file:///path/to/repo.git`
 package struct GitURLParser: GitURLParsing {
     package init() {}
 
@@ -30,8 +31,8 @@ package struct GitURLParser: GitURLParsing {
             return GitURL(original: trimmed, normalized: trimmed)
         }
 
-        // HTTPS or Git protocol
-        if isHTTPSURL(trimmed) || isGitProtocolURL(trimmed) {
+        // HTTPS, Git protocol, or local file URL.
+        if isHTTPSURL(trimmed) || isGitProtocolURL(trimmed) || isFileURL(trimmed) {
             return GitURL(original: trimmed, normalized: trimmed)
         }
 
@@ -67,5 +68,13 @@ package struct GitURLParser: GitURLParsing {
         //   git://github.com/user/repo.git
         let gitPattern = #"^git://[\w.\-]+/[\w.\-/]+(?:\.git)?$"#
         return urlString.range(of: gitPattern, options: .regularExpression) != nil
+    }
+
+    /// Checks if the URL is a local file URL accepted by `git clone`.
+    private func isFileURL(_ urlString: String) -> Bool {
+        guard let url = URL(string: urlString), url.isFileURL else {
+            return false
+        }
+        return !url.path(percentEncoded: false).isEmpty
     }
 }

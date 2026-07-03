@@ -1,5 +1,5 @@
 import Foundation
-import Noora
+import Interaction
 
 /// Resolves and validates sandbox.allowed_paths from config.
 ///
@@ -7,11 +7,14 @@ import Noora
 /// for extended sandbox permissions.
 struct SandboxAllowedPathsResolver {
     private let homeDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
 
-    init(homeDirectory: URL, noora: some Noorable) {
+    init(
+        homeDirectory: URL,
+        interaction: some InteractionProviding = Terminal(),
+    ) {
         self.homeDirectory = homeDirectory
-        self.noora = noora
+        self.interaction = interaction
     }
 
     /// Expands macros in sandbox.allowed_paths and converts to URLs.
@@ -54,7 +57,7 @@ struct SandboxAllowedPathsResolver {
 
             // Only absolute paths are allowed
             guard normalized.hasPrefix("/") else {
-                noora.warning("Ignoring non-absolute path in sandbox.allowed_paths: \(expanded)")
+                interaction.writeWarning("Ignoring non-absolute path in sandbox.allowed_paths: \(expanded)")
                 continue
             }
 
@@ -69,14 +72,15 @@ struct SandboxAllowedPathsResolver {
     /// - Parameter paths: The paths that will be writable outside the sandbox
     /// - Returns: True if user confirms, false otherwise
     func confirmSandboxAllowedPaths(_ paths: [String]) -> Bool {
-        noora.passthrough("\n⚠️ Extended Sandbox Write Access Requested\n")
-        noora.passthrough("The following paths outside the sandbox will be writable:\n")
+        interaction.writeLine()
+        interaction.writeLine("⚠️ Extended Sandbox Write Access Requested")
+        interaction.writeLine("The following paths outside the sandbox will be writable:")
         for path in paths {
-            noora.passthrough("  - \(path)\n")
+            interaction.writeLine("- \(path)", tab: 1)
         }
-        noora.passthrough("\n")
+        interaction.writeLine()
 
-        return noora.yesOrNoChoicePrompt(
+        return interaction.yesOrNoChoicePrompt(
             title: "Sandbox Permission",
             question: "Allow writing to these paths?",
         )

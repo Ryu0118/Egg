@@ -1,6 +1,6 @@
 import FileManagerProtocol
 import Foundation
-import Noora
+import Interaction
 import ProcessRunning
 
 /// Executes individual workflow phases (pre_hatch, hatch, post_hatch).
@@ -15,7 +15,7 @@ import ProcessRunning
 ///     processRunner: ProcessRunner(),
 ///     fileManager: FileManager.default,
 ///     homeDirectory: homeDir,
-///     noora: Noora(),
+///     interaction: Terminal(),
 ///     isInteractive: true,
 ///     override: false
 /// )
@@ -31,7 +31,7 @@ struct PhaseRunner {
     private let processRunner: any ProcessRunning
     private let fileManager: any FileManagerProtocol
     private let homeDirectory: URL
-    private let noora: any Noorable
+    private let interaction: any InteractionProviding
     private let isInteractive: Bool
     private let override: Bool
     private let processEnvironment: [String: String]
@@ -41,7 +41,7 @@ struct PhaseRunner {
         processRunner: any ProcessRunning,
         fileManager: some FileManagerProtocol,
         homeDirectory: URL,
-        noora: some Noorable,
+        interaction: some InteractionProviding = Terminal(),
         isInteractive: Bool,
         override: Bool,
         processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
@@ -50,7 +50,7 @@ struct PhaseRunner {
         self.processRunner = processRunner
         self.fileManager = fileManager
         self.homeDirectory = homeDirectory
-        self.noora = noora
+        self.interaction = interaction
         self.isInteractive = isInteractive
         self.override = override
         self.processEnvironment = processEnvironment
@@ -77,7 +77,7 @@ struct PhaseRunner {
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) async throws {
-        progress("🥚 Pre-hatch script executing...\n")
+        progress("🥚 Pre-hatch script executing...")
 
         let builtInContext = makeBuiltInMacroContext(
             workingDirectory: workingDirectory,
@@ -87,7 +87,7 @@ struct PhaseRunner {
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
-            noora: noora,
+            interaction: interaction,
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
             builtInMacroContext: builtInContext,
@@ -123,7 +123,7 @@ struct PhaseRunner {
         workingDirectory: URL,
         pathValidator: ((URL) async throws -> Void)? = nil,
     ) async throws -> URL {
-        progress("🐣 Hatching \(config.name)...\n")
+        progress("🐣 Hatching \(config.name)...")
 
         // Resolve macros in the output path first
         let resolver = VariableResolver(
@@ -159,7 +159,7 @@ struct PhaseRunner {
                 workingDirectory: workingDirectory,
                 outputDirectory: outputDirectory,
             ),
-            noora: noora,
+            interaction: interaction,
             isInteractive: isInteractive,
             override: override,
         )
@@ -170,7 +170,7 @@ struct PhaseRunner {
             excluding: config.hatch.exclude,
         )
 
-        progress("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))\n", tab: 1)
+        progress("✅ Template hatched successfully at \(outputDirectory.path(percentEncoded: false))", tab: 1)
 
         return outputDirectory
     }
@@ -195,7 +195,7 @@ struct PhaseRunner {
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
     ) async throws {
-        progress("🐥 Post-hatch script executing...\n")
+        progress("🐥 Post-hatch script executing...")
 
         let builtInContext = makeBuiltInMacroContext(
             workingDirectory: workingDirectory,
@@ -205,7 +205,7 @@ struct PhaseRunner {
         let stepRunner = LifecycleStepRunner(
             processRunner: processRunner,
             workingDirectory: workingDirectory,
-            noora: noora,
+            interaction: interaction,
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
             builtInMacroContext: builtInContext,
@@ -224,9 +224,9 @@ struct PhaseRunner {
     ///
     /// Non-interactive (agent transaction) runs keep stdout clean so the JSON
     /// result is the only thing on stdout and stays machine-parseable.
-    private func progress(_ message: TerminalText, tab: UInt = 0) {
+    private func progress(_ message: StyledText, tab: UInt = 0) {
         guard isInteractive else { return }
-        noora.passthrough(message, tab: tab)
+        interaction.writeLine(message, tab: tab)
     }
 
     private func makeBuiltInMacroContext(

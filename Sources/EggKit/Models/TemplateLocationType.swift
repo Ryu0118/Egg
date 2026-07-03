@@ -1,5 +1,4 @@
 import Foundation
-import Noora
 
 package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     case global

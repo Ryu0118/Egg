@@ -1,5 +1,5 @@
 import Foundation
-import Noora
+import Interaction
 
 extension ConfigValidator {
     enum Error: LocalizedError {
@@ -28,7 +28,7 @@ extension ConfigValidator {
         case excludeConditionalPathEmpty(context: String, pathIndex: Int)
         case undefinedMacroReferenced(context: String, macroName: String)
         case duplicateStepId(context: String, index: Int, id: String)
-        case validatableRulesError(any ValidatableError)
+        case validationRuleError(ValidationError)
         case invalidConditionExpression(context: String, expression: String)
         case choicesOnlyValidForChoiceTypes(context: String, name: String)
         case validateOnlyValidForStringAndArrayTypes(context: String, name: String)
@@ -85,7 +85,7 @@ extension ConfigValidator {
                 "\(context): Undefined macro '\(macroName)' is referenced."
             case let .duplicateStepId(context, index, id):
                 "\(context)[\(index)]: Duplicate step ID '\(id)'."
-            case let .validatableRulesError(error):
+            case let .validationRuleError(error):
                 error.message
             case let .invalidConditionExpression(context, expression):
                 "\(context): Condition expression '\(expression)' must evaluate to a boolean value."

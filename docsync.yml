@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 6e2a9a7967d3210664f7c1273335c44cc58031015770d0848566cff5885e434b
+  checksum: 355b708c324b9a8a19294aced77d3b4d2ef8a0f6d9ca0dfe08ff94410ec6a158
 - name: agents-project
   sources:
   - Package.swift
@@ -27,4 +27,4 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: dcc503287014db76d5a3978dc8a47b8d24a9c2f8f179ef1a22afbd0c8c4d33f6
+  checksum: 2aae76af82bccf065d45f150db8c0e80db30fb35102d98596054a6073a571959

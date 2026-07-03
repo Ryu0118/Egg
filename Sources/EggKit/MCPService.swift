@@ -1,6 +1,5 @@
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 
 /// Public API for MCP server integration.
@@ -171,7 +170,7 @@ public struct MCPService: Sendable {
     public func discardHatchTransaction(
         applyToken: String,
         workingDirectory: URL? = nil,
-    ) throws -> AgentHatchApplyResult {
+    ) async throws -> AgentHatchApplyResult {
         let outputDir = workingDirectory ?? self.workingDirectory
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -186,14 +185,14 @@ public struct MCPService: Sendable {
             parsedMacros: [],
         )
 
-        return try runner.discard(token: applyToken)
+        return try await runner.discard(token: applyToken)
     }
 
     public func rollbackHatchTransaction(
         rollbackId: String,
         workingDirectory: URL? = nil,
         force: Bool = false,
-    ) throws -> AgentHatchRollbackResult {
+    ) async throws -> AgentHatchRollbackResult {
         let outputDir = workingDirectory ?? self.workingDirectory
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -208,7 +207,7 @@ public struct MCPService: Sendable {
             parsedMacros: [],
         )
 
-        return try runner.rollback(id: rollbackId, force: force)
+        return try await runner.rollback(id: rollbackId, force: force)
     }
 
     // MARK: - Create Template

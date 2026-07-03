@@ -83,6 +83,11 @@ struct GitURLParserTests {
                 input: "git://github.com/user/repo",
                 expectedNormalized: "git://github.com/user/repo",
             ),
+            ValidURLTestCase(
+                description: "file URL for local git fixture",
+                input: "file:///tmp/egg-template-fixture.git",
+                expectedNormalized: "file:///tmp/egg-template-fixture.git",
+            ),
 
             // HTTPS URLs with authentication
             ValidURLTestCase(
@@ -152,10 +157,6 @@ struct GitURLParserTests {
             InvalidURLTestCase(
                 description: "invalid SSH format (missing colon)",
                 input: "git@github.com/user/repo.git",
-            ),
-            InvalidURLTestCase(
-                description: "file protocol",
-                input: "file:///path/to/repo",
             ),
             InvalidURLTestCase(
                 description: "ftp protocol",

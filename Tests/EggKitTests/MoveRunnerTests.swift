@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import Testing
 
 struct MoveRunnerTests {
@@ -36,7 +35,7 @@ struct MoveRunnerTests {
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
-            noora: NooraMock(),
+            interaction: TestInteraction(),
         )
 
         if let expectedError = testCase.expectedError {
@@ -400,7 +399,7 @@ struct MoveRunnerWithCustomPathsTests {
             homeDirectory: homeDirectory,
             additionalSearchPaths: [customPath],
             fileManager: fileManager,
-            noora: NooraMock(),
+            interaction: TestInteraction(),
         )
 
         if let expectedError = testCase.expectedError {

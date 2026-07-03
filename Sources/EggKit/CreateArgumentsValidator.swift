@@ -58,8 +58,8 @@ package struct CreateArgumentsValidator {
             throw Error.templateAlreadyExists
         }
 
-        let templateNameErrors = Config.templateNameValidationRules.validate(input: name)
-        let templateDescriptionErrors = Config.templateNameValidationRules.validate(input: description)
+        let templateNameErrors = Config.templateNameValidationRules.validate(name)
+        let templateDescriptionErrors = Config.templateNameValidationRules.validate(description)
 
         let argumentValidationErrors = templateNameErrors + templateDescriptionErrors
         if !argumentValidationErrors.isEmpty {

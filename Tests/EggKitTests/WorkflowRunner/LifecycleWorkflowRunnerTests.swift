@@ -1,7 +1,6 @@
 @testable import EggKit
 import FileManagerProtocol
 import Foundation
-import Noora
 import ProcessRunning
 import Testing
 
@@ -35,13 +34,12 @@ struct LifecycleWorkflowRunnerTests {
             postHatch: testCase.postHatchSteps,
         )
 
-        let nooraMock = NooraMock()
         let runner = LifecycleWorkflowRunner(
             processRunner: ProcessRunner(),
             fileManager: fileManager,
             workingDirectory: workingDir,
             homeDirectory: homeDir,
-            noora: nooraMock,
+            interaction: TestInteraction(),
             sandboxDisabled: true,
         )
 

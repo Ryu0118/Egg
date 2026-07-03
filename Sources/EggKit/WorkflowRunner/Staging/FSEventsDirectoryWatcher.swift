@@ -49,7 +49,9 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
                 guard let info else { return }
                 let buffer = Unmanaged<EventBuffer>.fromOpaque(info).takeUnretainedValue()
                 guard let pathArray = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] else { return }
-                buffer.append(pathArray)
+                Task {
+                    await buffer.append(pathArray)
+                }
             },
             context,
             pathsToWatch,
@@ -94,7 +96,7 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
         }
 
         // Drain buffered events and process them
-        let bufferedPaths = eventBuffer.drain()
+        let bufferedPaths = await eventBuffer.drain()
 
         guard let watchedDirectory else {
             return changedPaths
@@ -170,20 +172,15 @@ actor FSEventsDirectoryWatcher: DirectoryWatching {
     }
 }
 
-/// Thread-safe buffer for collecting FSEvents paths from the callback.
-private final class EventBuffer: @unchecked Sendable {
+/// Actor-isolated buffer for collecting FSEvents paths from the callback.
+private actor EventBuffer {
     private var paths: [String] = []
-    private let lock = NSLock()
 
     func append(_ newPaths: [String]) {
-        lock.lock()
-        defer { lock.unlock() }
         paths.append(contentsOf: newPaths)
     }
 
     func drain() -> [String] {
-        lock.lock()
-        defer { lock.unlock() }
         let result = paths
         paths = []
         return result

@@ -5,10 +5,8 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct ListCommand: AsyncParsableCommand, HasProjectDirectory, HasTemplateSearchPaths {
-        package static let configuration = CommandConfiguration(
-            commandName: "list",
-            abstract: "List all available templates.",
-        )
+        @Flag(name: .long, help: "Hide the description column in the output.")
+        package var hideDescription: Bool = false
 
         @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
         package var location: TemplateLocationType.Kind?
@@ -16,11 +14,12 @@ package extension EggCommand.TemplateCommand {
         @Option(name: .long, help: "Directory to list templates from (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
 
-        @Flag(name: .long, help: "Hide the description column in the output.")
-        package var hideDescription: Bool = false
-
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
+        package static let configuration = CommandConfiguration(
+            commandName: "list",
+            abstract: "List all available templates.",
+        )
 
         package static let fileManager: any FileManagerProtocol = FileManager.default
 
@@ -28,7 +27,7 @@ package extension EggCommand.TemplateCommand {
 
         package mutating func run() async throws {
             let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
-            let homeDirectory = resolveHomeDirectory()
+            let homeDirectory = CLIEnvironment.resolveHomeDirectory()
             try await ListRunner(
                 location: location?.toConcreteType(
                     resolveProjectDirectory(),

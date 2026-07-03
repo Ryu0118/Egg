@@ -1,18 +1,18 @@
 import Foundation
-import Noora
+import Interaction
 
 extension Config {
-    static var templateNameValidationRules: [any ValidatableRule] {
+    static var templateNameValidationRules: [any ValidationRule] {
         [
-            NonEmptyValidationRule(error: "Project name cannot be empty."),
+            NonEmptyRule(message: "Project name cannot be empty."),
             DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
             LengthValidationRule.templateName,
         ]
     }
 
-    static var descriptionValidationRules: [any ValidatableRule] {
+    static var descriptionValidationRules: [any ValidationRule] {
         [
-            NonEmptyValidationRule(error: "Description cannot be empty."),
+            NonEmptyRule(message: "Description cannot be empty."),
             LengthValidationRule.description,
         ]
     }
