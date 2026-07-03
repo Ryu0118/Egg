@@ -63,7 +63,7 @@ public struct Terminal: InteractionProviding {
             renderTitle(prompt.title)
             output.write("\(prompt.message.plainText) ")
 
-            let answer = input.readLine() ?? ""
+            let answer = readLineOrAbort()
             let errors = prompt.validationRules.validate(answer)
             guard errors.isEmpty else {
                 for error in errors {
@@ -81,7 +81,7 @@ public struct Terminal: InteractionProviding {
         let suffix = prompt.defaultAnswer ? "[Y/n]" : "[y/N]"
         output.write("\(prompt.question.plainText) \(suffix) ")
 
-        let answer = (input.readLine() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let answer = readLineOrAbort().trimmingCharacters(in: .whitespacesAndNewlines)
         if answer.isEmpty {
             return prompt.defaultAnswer
         }
@@ -99,8 +99,7 @@ public struct Terminal: InteractionProviding {
 
         while true {
             output.write("> ")
-            guard let answer = input.readLine(),
-                  let index = Int(answer.trimmingCharacters(in: .whitespacesAndNewlines)),
+            guard let index = Int(readLineOrAbort().trimmingCharacters(in: .whitespacesAndNewlines)),
                   prompt.options.indices.contains(index - 1)
             else {
                 writeStatus(.failure, "Enter a number from 1 to \(prompt.options.count).")
@@ -117,7 +116,7 @@ public struct Terminal: InteractionProviding {
 
         while true {
             output.write("> ")
-            let indexes = parseIndexes(input.readLine() ?? "", optionCount: prompt.options.count)
+            let indexes = parseIndexes(readLineOrAbort(), optionCount: prompt.options.count)
             if indexes.count < prompt.minimumSelectionCount {
                 writeStatus(.failure, "Select at least \(prompt.minimumSelectionCount) option(s).")
                 continue
@@ -128,6 +127,16 @@ public struct Terminal: InteractionProviding {
             }
             return indexes.map { prompt.options[$0] }
         }
+    }
+
+    private func readLineOrAbort() -> String {
+        guard let line = input.readLine() else {
+            // Standard input is exhausted: answering with a default here would
+            // silently approve security-sensitive confirmations, so fail closed.
+            FileHandle.standardError.write(Data("[error] Standard input closed before the prompt was answered.\n".utf8))
+            exit(EXIT_FAILURE)
+        }
+        return line
     }
 
     private func renderTitle(_ title: StyledText?) {
