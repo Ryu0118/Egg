@@ -29,6 +29,7 @@ public enum Status: Sendable {
 /// Default terminal interaction implementation.
 public struct Terminal: InteractionProviding {
     private let input: any TextInput
+    private let keyInput: any KeyInput
     private let output: any TextOutput
     private let tableRenderer: TableRenderer
     private let capabilities: TerminalCapabilities
@@ -36,11 +37,13 @@ public struct Terminal: InteractionProviding {
 
     public init(
         input: some TextInput = StandardInput(),
+        keyInput: some KeyInput = StandardKeyInput(),
         output: some TextOutput = StandardOutput(),
         tableRenderer: TableRenderer = TableRenderer(),
         capabilities: TerminalCapabilities = .detect(),
     ) {
         self.input = input
+        self.keyInput = keyInput
         self.output = output
         self.tableRenderer = tableRenderer
         self.capabilities = capabilities
@@ -64,6 +67,58 @@ public struct Terminal: InteractionProviding {
 
     /// Prompts until the user enters text that passes validation.
     public func readText(_ prompt: TextPrompt) -> String {
+        guard capabilities.isInteractive else {
+            return readTextByLine(prompt)
+        }
+        return resolve(keyInput.withRawInput {
+            var loop = TextPromptLoop(prompt: prompt, output: output, styleRenderer: styleRenderer)
+            return loop.run(keys: keyInput)
+        })
+    }
+
+    /// Prompts for a yes/no answer.
+    public func confirm(_ prompt: ConfirmationPrompt) -> Bool {
+        guard capabilities.isInteractive else {
+            return confirmByLine(prompt)
+        }
+        return resolve(keyInput.withRawInput {
+            var loop = ConfirmationLoop(prompt: prompt, output: output, styleRenderer: styleRenderer)
+            return loop.run(keys: keyInput)
+        })
+    }
+
+    /// Prompts for one option.
+    public func choose<Option>(_ prompt: ChoicePrompt<Option>) -> Option {
+        precondition(!prompt.options.isEmpty, "Choice prompts require at least one option.")
+        if prompt.options.count == 1, prompt.autoselectSingleOption {
+            return prompt.options[0]
+        }
+        guard capabilities.isInteractive else {
+            return chooseByNumber(prompt)
+        }
+        return resolve(withHiddenCursor {
+            keyInput.withRawInput {
+                var loop = SingleChoiceLoop(prompt: prompt, output: output, styleRenderer: styleRenderer)
+                return loop.run(keys: keyInput)
+            }
+        })
+    }
+
+    /// Prompts for multiple options.
+    public func chooseMany<Option>(_ prompt: MultipleChoicePrompt<Option>) -> [Option] {
+        precondition(!prompt.options.isEmpty, "Multiple-choice prompts require at least one option.")
+        guard capabilities.isInteractive else {
+            return chooseManyByNumber(prompt)
+        }
+        return resolve(withHiddenCursor {
+            keyInput.withRawInput {
+                var loop = MultipleChoiceLoop(prompt: prompt, output: output, styleRenderer: styleRenderer)
+                return loop.run(keys: keyInput)
+            }
+        })
+    }
+
+    private func readTextByLine(_ prompt: TextPrompt) -> String {
         while true {
             renderTitle(prompt.title)
             output.write("\(styleRenderer.render(prompt.message)) ")
@@ -80,8 +135,7 @@ public struct Terminal: InteractionProviding {
         }
     }
 
-    /// Prompts for a yes/no answer.
-    public func confirm(_ prompt: ConfirmationPrompt) -> Bool {
+    private func confirmByLine(_ prompt: ConfirmationPrompt) -> Bool {
         renderTitle(prompt.title)
         let suffix = prompt.defaultAnswer ? "[Y/n]" : "[y/N]"
         output.write("\(styleRenderer.render(prompt.question)) \(suffix) ")
@@ -93,13 +147,7 @@ public struct Terminal: InteractionProviding {
         return ["y", "yes"].contains(answer.lowercased())
     }
 
-    /// Prompts for one option by number.
-    public func choose<Option>(_ prompt: ChoicePrompt<Option>) -> Option {
-        precondition(!prompt.options.isEmpty, "Choice prompts require at least one option.")
-        if prompt.options.count == 1, prompt.autoselectSingleOption {
-            return prompt.options[0]
-        }
-
+    private func chooseByNumber<Option>(_ prompt: ChoicePrompt<Option>) -> Option {
         renderOptionList(title: prompt.title, question: prompt.question, options: prompt.options)
 
         while true {
@@ -114,9 +162,7 @@ public struct Terminal: InteractionProviding {
         }
     }
 
-    /// Prompts for multiple options by number.
-    public func chooseMany<Option>(_ prompt: MultipleChoicePrompt<Option>) -> [Option] {
-        precondition(!prompt.options.isEmpty, "Multiple-choice prompts require at least one option.")
+    private func chooseManyByNumber<Option>(_ prompt: MultipleChoicePrompt<Option>) -> [Option] {
         renderOptionList(title: prompt.title, question: prompt.question, options: prompt.options)
 
         while true {
@@ -132,6 +178,27 @@ public struct Terminal: InteractionProviding {
             }
             return indexes.map { prompt.options[$0] }
         }
+    }
+
+    private func resolve<Value>(_ outcome: InteractiveOutcome<Value>) -> Value {
+        switch outcome {
+        case let .answered(value):
+            return value
+        case .interrupted:
+            output.write("\n")
+            exit(130)
+        case .inputClosed:
+            // Standard input is exhausted: answering with a default here would
+            // silently approve security-sensitive confirmations, so fail closed.
+            FileHandle.standardError.write(Data("[error] Standard input closed before the prompt was answered.\n".utf8))
+            exit(EXIT_FAILURE)
+        }
+    }
+
+    private func withHiddenCursor<Value>(_ body: () -> InteractiveOutcome<Value>) -> InteractiveOutcome<Value> {
+        output.write("\u{1B}[?25l")
+        defer { output.write("\u{1B}[?25h") }
+        return body()
     }
 
     private func readLineOrAbort() -> String {
