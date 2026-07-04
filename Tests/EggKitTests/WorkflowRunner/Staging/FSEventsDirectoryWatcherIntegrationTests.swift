@@ -86,7 +86,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         #expect(events.contains(expectedPath), "Should detect file modification")
     }
 
-    @Test("detects file deletion")
+    @Test("reports the relative path of a file removed after its creation events were already drained")
     func detectsFileDeletion() async throws {
         try await withWatcher { ctx in
             let filePath = ctx.directory.appending(path: "to-delete.txt")

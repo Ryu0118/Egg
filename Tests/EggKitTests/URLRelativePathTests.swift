@@ -3,7 +3,10 @@ import Foundation
 import Testing
 
 struct URLRelativePathTests {
-    @Test("relative path", arguments: RelativePathTestCase.allCases)
+    @Test(
+        "computes a path relative to a base directory, falling back to the absolute path when the target isn't under the base",
+        arguments: RelativePathTestCase.allCases,
+    )
     func relativePath(_ testCase: RelativePathTestCase) {
         let target = URL(filePath: testCase.targetPath)
         let base = URL(filePath: testCase.basePath)
@@ -13,7 +16,10 @@ struct URLRelativePathTests {
         #expect(result == testCase.expected)
     }
 
-    @Test("is under", arguments: IsUnderTestCase.allCases)
+    @Test(
+        "determines whether a target path is contained within a base directory, rejecting partial-prefix false positives",
+        arguments: IsUnderTestCase.allCases,
+    )
     func isUnder(_ testCase: IsUnderTestCase) {
         let target = URL(filePath: testCase.targetPath)
         let base = URL(filePath: testCase.basePath)
@@ -23,7 +29,7 @@ struct URLRelativePathTests {
         #expect(result == testCase.expected)
     }
 
-    @Test("appending relative path")
+    @Test("appends a relative path segment to a base URL to form the combined absolute path")
     func appendingRelativePath() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath("MyApp/Sources")
@@ -31,7 +37,7 @@ struct URLRelativePathTests {
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects/MyApp/Sources")
     }
 
-    @Test("appending relative path with empty string")
+    @Test("appending an empty relative path leaves the base URL unchanged")
     func appendingRelativePathWithEmptyString() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath("")
@@ -39,7 +45,7 @@ struct URLRelativePathTests {
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects")
     }
 
-    @Test("appending relative path with dot")
+    @Test("appending \".\" as the relative path leaves the base URL unchanged")
     func appendingRelativePathWithDot() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath(".")
