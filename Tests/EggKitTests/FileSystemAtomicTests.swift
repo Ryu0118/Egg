@@ -4,8 +4,8 @@ import Foundation
 import Testing
 
 struct FileSystemAtomicTests {
-    @Test(arguments: TestCase.allCases)
-    func `with atomic copy and write`(_ testCase: TestCase) async throws {
+    @Test("with atomic copy and write", arguments: TestCase.allCases)
+    func withAtomicCopyAndWrite(_ testCase: TestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempBase = try fileManager.makeTemporaryDirectory(prefix: "atomic-test")
 
@@ -198,27 +198,6 @@ extension FileSystemAtomicTests {
         let destSetup: [Setup]
         let transform: @Sendable (URL) throws -> Void
         let expectation: Expectation
-
-        var testDescription: String {
-            description
-        }
-
-        enum Setup {
-            case file(path: String, content: String)
-            case directory(path: String)
-        }
-
-        enum Verification {
-            case fileExists(path: String)
-            case fileContent(path: String, expected: String)
-            case fileDoesNotExist(path: String)
-            case directoryExists(path: String)
-        }
-
-        enum Expectation {
-            case success(verifications: [Verification])
-            case failure
-        }
 
         static let allCases: [TestCase] = [
             // Basic copy to new destination
@@ -436,6 +415,27 @@ extension FileSystemAtomicTests {
                 ]),
             ),
         ]
+
+        enum Setup {
+            case file(path: String, content: String)
+            case directory(path: String)
+        }
+
+        enum Verification {
+            case fileExists(path: String)
+            case fileContent(path: String, expected: String)
+            case fileDoesNotExist(path: String)
+            case directoryExists(path: String)
+        }
+
+        enum Expectation {
+            case success(verifications: [Verification])
+            case failure
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     enum TestError: Swift.Error {

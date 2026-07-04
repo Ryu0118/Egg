@@ -12,8 +12,8 @@ import Testing
 /// 3. Applying changes back to the working directory
 @Suite(.serialized)
 struct StagingApplyIntegrationTests {
-    @Test(arguments: TestCase.allCases)
-    func `apply changes`(_ testCase: TestCase) async throws {
+    @Test("apply changes", arguments: TestCase.allCases)
+    func applyChanges(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-apply-test")
 
@@ -189,32 +189,6 @@ struct StagingApplyIntegrationTests {
         let forceApply: Bool
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        init(
-            description: String,
-            initialFiles: [InitialFile] = [],
-            workspaceModifications: [Modification] = [],
-            workingDirModifications: [Modification] = [],
-            forceApply: Bool = false,
-            expectation: Expectation,
-        ) {
-            self.description = description
-            self.initialFiles = initialFiles
-            self.workspaceModifications = workspaceModifications
-            self.workingDirModifications = workingDirModifications
-            self.forceApply = forceApply
-            self.expectation = expectation
-        }
-
-        enum Expectation {
-            case successfulApply(expectedFiles: [ExpectedFile])
-            case conflictsDetected(conflictPaths: [String])
-            case emptyChangeSummary
-        }
-
         static let allCases: [TestCase] = [
             // No changes
             TestCase(
@@ -330,11 +304,37 @@ struct StagingApplyIntegrationTests {
                 ]),
             ),
         ]
+
+        init(
+            description: String,
+            initialFiles: [InitialFile] = [],
+            workspaceModifications: [Modification] = [],
+            workingDirModifications: [Modification] = [],
+            forceApply: Bool = false,
+            expectation: Expectation,
+        ) {
+            self.description = description
+            self.initialFiles = initialFiles
+            self.workspaceModifications = workspaceModifications
+            self.workingDirModifications = workingDirModifications
+            self.forceApply = forceApply
+            self.expectation = expectation
+        }
+
+        enum Expectation {
+            case successfulApply(expectedFiles: [ExpectedFile])
+            case conflictsDetected(conflictPaths: [String])
+            case emptyChangeSummary
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     private func initializeGitRepository(at directory: URL) throws {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.executableURL = URL(filePath: "/usr/bin/git")
         process.arguments = ["init"]
         process.currentDirectoryURL = directory
         try process.run()

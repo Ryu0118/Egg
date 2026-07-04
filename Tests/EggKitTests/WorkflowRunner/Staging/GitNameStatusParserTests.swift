@@ -32,10 +32,6 @@ struct GitNameStatusParserTests {
         let expectedModified: [String]
         let expectedDeleted: [String]
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             TestCase(
                 description: "parses empty components",
@@ -223,5 +219,9 @@ struct GitNameStatusParserTests {
                 expectedDeleted: ["Sources/Deprecated.swift", "Tests/OldTest.swift"],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

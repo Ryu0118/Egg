@@ -3,8 +3,8 @@ import Foundation
 import Testing
 
 struct URLRelativePathTests {
-    @Test(arguments: RelativePathTestCase.allCases)
-    func `relative path`(_ testCase: RelativePathTestCase) {
+    @Test("relative path", arguments: RelativePathTestCase.allCases)
+    func relativePath(_ testCase: RelativePathTestCase) {
         let target = URL(filePath: testCase.targetPath)
         let base = URL(filePath: testCase.basePath)
 
@@ -13,8 +13,8 @@ struct URLRelativePathTests {
         #expect(result == testCase.expected)
     }
 
-    @Test(arguments: IsUnderTestCase.allCases)
-    func `is under`(_ testCase: IsUnderTestCase) {
+    @Test("is under", arguments: IsUnderTestCase.allCases)
+    func isUnder(_ testCase: IsUnderTestCase) {
         let target = URL(filePath: testCase.targetPath)
         let base = URL(filePath: testCase.basePath)
 
@@ -23,24 +23,24 @@ struct URLRelativePathTests {
         #expect(result == testCase.expected)
     }
 
-    @Test
-    func `appending relative path`() {
+    @Test("appending relative path")
+    func appendingRelativePath() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath("MyApp/Sources")
 
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects/MyApp/Sources")
     }
 
-    @Test
-    func `appending relative path with empty string`() {
+    @Test("appending relative path with empty string")
+    func appendingRelativePathWithEmptyString() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath("")
 
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects")
     }
 
-    @Test
-    func `appending relative path with dot`() {
+    @Test("appending relative path with dot")
+    func appendingRelativePathWithDot() {
         let base = URL(filePath: "/Users/user/Projects")
         let result = base.appendingRelativePath(".")
 
@@ -54,10 +54,6 @@ extension URLRelativePathTests {
         let targetPath: String
         let basePath: String
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [RelativePathTestCase] = [
             // Basic cases
@@ -156,6 +152,10 @@ extension URLRelativePathTests {
                 expected: "file.txt",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     struct IsUnderTestCase: CustomTestStringConvertible {
@@ -163,10 +163,6 @@ extension URLRelativePathTests {
         let targetPath: String
         let basePath: String
         let expected: Bool
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [IsUnderTestCase] = [
             // Under base
@@ -257,5 +253,9 @@ extension URLRelativePathTests {
                 expected: true,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

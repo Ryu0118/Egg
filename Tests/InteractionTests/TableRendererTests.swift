@@ -2,7 +2,8 @@
 import Testing
 
 struct TableRendererTests {
-    @Test func `renders tables using terminal display width`() {
+    @Test("renders tables using terminal display width")
+    func rendersTablesUsingTerminalDisplayWidth() {
         let table = Table(
             headers: ["name", "description"],
             rows: [
@@ -18,7 +19,8 @@ struct TableRendererTests {
         #expect(output.contains("abc    latin"))
     }
 
-    @Test func `builds table with result builder`() {
+    @Test("builds table with result builder")
+    func buildsTableWithResultBuilder() {
         let includeLatin = true
         let extraRows = [
             ("emoji", "👨‍👩‍👧‍👦"),
@@ -51,7 +53,8 @@ struct TableRendererTests {
         ])
     }
 
-    @Test func `result builder tables render with display width`() {
+    @Test("result builder tables render with display width")
+    func resultBuilderTablesRenderWithDisplayWidth() {
         let table = Table {
             TableHeader("name", "description")
             TableRow("日本語", "wide")

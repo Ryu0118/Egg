@@ -3,8 +3,8 @@ import Foundation
 import Testing
 
 struct MacrosParserTests {
-    @Test(arguments: TestCase.allCases)
-    func `parse command line arguments`(_ testCase: TestCase) throws {
+    @Test("parse command line arguments", arguments: TestCase.allCases)
+    func parseCommandLineArguments(_ testCase: TestCase) throws {
         let parser = MacrosParser(macroDefinitions: testCase.macroDefinitions)
         switch testCase.expected {
         case let .success(expectedMacros):
@@ -22,22 +22,6 @@ struct MacrosParserTests {
         let macros: [String]
         let macroDefinitions: [Config.Macro]
         let expected: Result
-
-        var testDescription: String {
-            description
-        }
-
-        init(
-            description: String,
-            macros: [String],
-            macroDefinitions: [Config.Macro] = [],
-            expected: Result,
-        ) {
-            self.description = description
-            self.macros = macros
-            self.macroDefinitions = macroDefinitions
-            self.expected = expected
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -228,6 +212,22 @@ struct MacrosParserTests {
                 expected: .success([ParsedMacroDefinition(macro: "___CACHE___", values: ["false"])]),
             ),
         ]
+
+        init(
+            description: String,
+            macros: [String],
+            macroDefinitions: [Config.Macro] = [],
+            expected: Result,
+        ) {
+            self.description = description
+            self.macros = macros
+            self.macroDefinitions = macroDefinitions
+            self.expected = expected
+        }
+
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success([ParsedMacroDefinition])

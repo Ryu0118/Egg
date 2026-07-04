@@ -6,8 +6,8 @@ struct PathResolverTests {
     static let workingDirectory = URL(filePath: "/Users/test/projects")
     static let homeDirectory = URL(filePath: "/Users/test")
 
-    @Test(arguments: PathResolverTestCase.allCases)
-    func `resolve to absolute URL`(_ testCase: PathResolverTestCase) throws {
+    @Test("resolve to absolute URL", arguments: PathResolverTestCase.allCases)
+    func resolveToAbsoluteURL(_ testCase: PathResolverTestCase) throws {
         let result = try EggKit.PathResolver.resolveToAbsoluteURL(
             testCase.input,
             workingDirectory: Self.workingDirectory,
@@ -23,10 +23,6 @@ extension PathResolverTests {
         let description: String
         let input: String
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [PathResolverTestCase] = [
             // Whitespace trimming
@@ -87,5 +83,9 @@ extension PathResolverTests {
                 expected: "/absolute/path/to/file",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

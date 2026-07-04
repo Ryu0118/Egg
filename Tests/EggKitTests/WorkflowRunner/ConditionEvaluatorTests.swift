@@ -58,15 +58,6 @@ struct ConditionEvaluatorTests {
         let outputs: [TestOutput]
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        enum Expectation {
-            case success(expectedResult: Bool)
-            case failure(expectedError: LifecycleStepError)
-        }
-
         static let allCases: [TestCase] = [
             // Basic boolean conditions
             TestCase(
@@ -459,5 +450,14 @@ struct ConditionEvaluatorTests {
                 expectation: .success(expectedResult: true),
             ),
         ]
+
+        enum Expectation {
+            case success(expectedResult: Bool)
+            case failure(expectedError: LifecycleStepError)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

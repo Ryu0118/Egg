@@ -36,10 +36,6 @@ struct NativeTemplateEngineTests {
         let builtInMacroContext: BuiltInMacroContext
         let expectedOutput: String
 
-        var testDescription: String {
-            description
-        }
-
         static let defaultContext = BuiltInMacroContext(
             outputDirectory: nil,
             workingDirectory: URL(filePath: "/tmp/work"),
@@ -151,5 +147,9 @@ struct NativeTemplateEngineTests {
                 expectedOutput: "{{ pre_hatch.setup.outputs.version }}",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

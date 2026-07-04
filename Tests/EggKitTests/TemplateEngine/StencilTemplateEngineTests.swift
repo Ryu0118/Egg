@@ -43,15 +43,6 @@ struct StencilTemplateEngineTests {
         let builtInMacroContext: BuiltInMacroContext
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        enum Expectation {
-            case success(String)
-            case syntaxError
-        }
-
         static let defaultContext = BuiltInMacroContext(
             outputDirectory: nil,
             workingDirectory: URL(filePath: "/tmp/work"),
@@ -59,6 +50,11 @@ struct StencilTemplateEngineTests {
             currentDate: Date(timeIntervalSince1970: 0),
             environment: [:],
         )
+
+        enum Expectation {
+            case success(String)
+            case syntaxError
+        }
 
         static let allCases: [TestCase] = [
             // MARK: - Basic variable output
@@ -287,5 +283,9 @@ struct StencilTemplateEngineTests {
                 expectation: .syntaxError,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

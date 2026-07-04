@@ -2,20 +2,23 @@
 import Testing
 
 struct ValidationTests {
-    @Test func `validation error exposes localized message`() {
+    @Test("validation error exposes localized message")
+    func validationErrorExposesLocalizedMessage() {
         let error = ValidationError("Expected message")
 
         #expect(error.localizedDescription == "Expected message")
     }
 
-    @Test func `validation rules return nil for valid input`() {
+    @Test("validation rules return nil for valid input")
+    func validationRulesReturnNilForValidInput() {
         let rule = NonEmptyRule(message: "Required")
 
         #expect(rule.validate("value") == nil)
         #expect(rule.validate("")?.message == "Required")
     }
 
-    @Test func `validation rule collections return errors`() {
+    @Test("validation rule collections return errors")
+    func validationRuleCollectionsReturnErrors() {
         struct ShortRule: PredicateValidationRule {
             let error = ValidationError("Must be short")
 
@@ -31,7 +34,8 @@ struct ValidationTests {
         #expect(rules.validate("abc").isEmpty)
     }
 
-    @Test func `predicate validation rules bridge to validation errors`() {
+    @Test("predicate validation rules bridge to validation errors")
+    func predicateValidationRulesBridgeToValidationErrors() {
         struct EvenLengthRule: PredicateValidationRule {
             let error = ValidationError("Must have even length")
 

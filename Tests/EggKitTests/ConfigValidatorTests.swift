@@ -35,15 +35,6 @@ struct ConfigValidatorTests {
         let config: Config
         let expected: Result
 
-        var testDescription: String {
-            description
-        }
-
-        enum Result {
-            case success
-            case failure([ConfigValidator.Error])
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -583,6 +574,15 @@ struct ConfigValidatorTests {
                 ]),
             ),
         ]
+
+        enum Result {
+            case success
+            case failure([ConfigValidator.Error])
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     private static func makeValidConfig(

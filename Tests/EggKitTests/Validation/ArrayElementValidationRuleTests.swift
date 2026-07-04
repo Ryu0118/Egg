@@ -18,10 +18,6 @@ struct ArrayElementValidationRuleTests {
         let input: String
         let expected: Bool
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             TestCase(
                 description: "validates all elements match pattern",
@@ -90,5 +86,9 @@ struct ArrayElementValidationRuleTests {
                 expected: false,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

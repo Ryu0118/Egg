@@ -6,8 +6,8 @@ struct MacroStringConverterTests {
     private static let workingDirectory = URL(filePath: "/tmp/work", directoryHint: .isDirectory, relativeTo: nil)
     private static let homeDirectory = URL(filePath: "/tmp/home", directoryHint: .isDirectory, relativeTo: nil)
 
-    @Test(arguments: ShellStringTestCase.allCases)
-    func `to shell string`(_ testCase: ShellStringTestCase) {
+    @Test("to shell string", arguments: ShellStringTestCase.allCases)
+    func toShellString(_ testCase: ShellStringTestCase) {
         let result = MacroStringConverter.toShellString(
             testCase.value,
             workingDirectory: Self.workingDirectory,
@@ -20,10 +20,6 @@ struct MacroStringConverterTests {
         let description: String
         let value: ResolvedMacro.Value
         let expectedResult: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [ShellStringTestCase] = [
             // String values
@@ -143,10 +139,14 @@ struct MacroStringConverterTests {
                 expectedResult: "/tmp/My Folder",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
-    @Test(arguments: JavaScriptLiteralTestCase.allCases)
-    func `to java script literal`(_ testCase: JavaScriptLiteralTestCase) {
+    @Test("to java script literal", arguments: JavaScriptLiteralTestCase.allCases)
+    func toJavaScriptLiteral(_ testCase: JavaScriptLiteralTestCase) {
         let result = MacroStringConverter.toJavaScriptLiteral(
             testCase.value,
             workingDirectory: Self.workingDirectory,
@@ -159,10 +159,6 @@ struct MacroStringConverterTests {
         let description: String
         let value: ResolvedMacro.Value
         let expectedResult: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [JavaScriptLiteralTestCase] = [
             // String values - quoted
@@ -302,10 +298,14 @@ struct MacroStringConverterTests {
                 expectedResult: "\"/tmp/My Folder\"",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
-    @Test(arguments: EscapeAndQuoteTestCase.allCases)
-    func `escape and quote`(_ testCase: EscapeAndQuoteTestCase) {
+    @Test("escape and quote", arguments: EscapeAndQuoteTestCase.allCases)
+    func escapeAndQuote(_ testCase: EscapeAndQuoteTestCase) {
         let result = MacroStringConverter.escapeAndQuote(testCase.input)
         #expect(result == testCase.expectedResult)
     }
@@ -314,10 +314,6 @@ struct MacroStringConverterTests {
         let description: String
         let input: String
         let expectedResult: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [EscapeAndQuoteTestCase] = [
             EscapeAndQuoteTestCase(
@@ -361,5 +357,9 @@ struct MacroStringConverterTests {
                 expectedResult: "\"\\\"\\\"\\\"\"",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

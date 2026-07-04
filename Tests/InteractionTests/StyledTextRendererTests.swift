@@ -2,27 +2,31 @@
 import Testing
 
 struct StyledTextRendererTests {
-    @Test func `plain rendering strips all styling`() {
+    @Test("plain rendering strips all styling")
+    func plainRenderingStripsAllStyling() {
         let renderer = StyledTextRenderer(colorized: false)
         let text: StyledText = "Run \(StyledText.Segment.command("egg hatch")) in \(StyledText.Segment.path("/tmp"))"
 
         #expect(renderer.render(text) == "Run 'egg hatch' in /tmp")
     }
 
-    @Test func `colorized rendering wraps styled segments in SGR codes`() {
+    @Test("colorized rendering wraps styled segments in SGR codes")
+    func colorizedRenderingWrapsStyledSegmentsInSGRCodes() {
         let renderer = StyledTextRenderer(colorized: true)
         let text: StyledText = "\(StyledText.Segment.success("Added")) file"
 
         #expect(renderer.render(text) == "\u{1B}[32mAdded\u{1B}[0m file")
     }
 
-    @Test func `colorized rendering leaves plain segments untouched`() {
+    @Test("colorized rendering leaves plain segments untouched")
+    func colorizedRenderingLeavesPlainSegmentsUntouched() {
         let renderer = StyledTextRenderer(colorized: true)
 
         #expect(renderer.render("plain message") == "plain message")
     }
 
-    @Test func `colorized rendering matches plain text after stripping escapes`() {
+    @Test("colorized rendering matches plain text after stripping escapes")
+    func colorizedRenderingMatchesPlainTextAfterStrippingEscapes() {
         let renderer = StyledTextRenderer(colorized: true)
         let text: StyledText = "\(StyledText.Segment.danger("error")): \(StyledText.Segment.muted("details")) \(StyledText.Segment.link(title: "docs", destination: "https://example.com"))"
 

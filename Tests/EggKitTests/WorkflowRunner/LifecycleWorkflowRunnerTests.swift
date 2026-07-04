@@ -63,77 +63,6 @@ struct LifecycleWorkflowRunnerTests {
         let postHatchSteps: [Config.LifecycleStep]?
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        /// Convenience initializer with defaults
-        init(
-            _ description: String,
-            templateSetup: [TemplateSetup],
-            macroDefinitions: [Config.Macro] = [],
-            macros: [ParsedMacroDefinition] = [],
-            preHatchSteps: [Config.LifecycleStep]? = nil,
-            hatchConfig: Config.HatchConfig,
-            postHatchSteps: [Config.LifecycleStep]? = nil,
-            expectation: Expectation,
-        ) {
-            self.description = description
-            self.templateSetup = templateSetup
-            self.macroDefinitions = macroDefinitions
-            self.macros = macros
-            self.preHatchSteps = preHatchSteps
-            self.hatchConfig = hatchConfig
-            self.postHatchSteps = postHatchSteps
-            self.expectation = expectation
-        }
-
-        /// Convenience method for simple success cases
-        static func success(
-            _ description: String,
-            templateSetup: [TemplateSetup],
-            macroDefinitions: [Config.Macro] = [],
-            macros: [ParsedMacroDefinition] = [],
-            preHatchSteps: [Config.LifecycleStep]? = nil,
-            hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
-            postHatchSteps: [Config.LifecycleStep]? = nil,
-            verifications: [Verification],
-        ) -> TestCase {
-            TestCase(
-                description,
-                templateSetup: templateSetup,
-                macroDefinitions: macroDefinitions,
-                macros: macros,
-                preHatchSteps: preHatchSteps,
-                hatchConfig: hatchConfig,
-                postHatchSteps: postHatchSteps,
-                expectation: .success(verifications: verifications),
-            )
-        }
-
-        enum TemplateSetup {
-            case file(path: String, content: String)
-            case directory(path: String)
-        }
-
-        enum Expectation {
-            case success(verifications: [Verification])
-
-            var verifications: [Verification] {
-                switch self {
-                case let .success(verifications):
-                    verifications
-                }
-            }
-        }
-
-        enum Verification {
-            case fileExists(path: String)
-            case fileNotExists(path: String)
-            case fileContent(path: String, expectedContent: String)
-            case directoryExists(path: String)
-        }
-
         static let allCases: [TestCase] = [
             // Hatch only workflow
             .success(
@@ -368,6 +297,77 @@ struct LifecycleWorkflowRunnerTests {
                 ],
             ),
         ]
+
+        /// Convenience initializer with defaults
+        init(
+            _ description: String,
+            templateSetup: [TemplateSetup],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
+            preHatchSteps: [Config.LifecycleStep]? = nil,
+            hatchConfig: Config.HatchConfig,
+            postHatchSteps: [Config.LifecycleStep]? = nil,
+            expectation: Expectation,
+        ) {
+            self.description = description
+            self.templateSetup = templateSetup
+            self.macroDefinitions = macroDefinitions
+            self.macros = macros
+            self.preHatchSteps = preHatchSteps
+            self.hatchConfig = hatchConfig
+            self.postHatchSteps = postHatchSteps
+            self.expectation = expectation
+        }
+
+        /// Convenience method for simple success cases
+        static func success(
+            _ description: String,
+            templateSetup: [TemplateSetup],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
+            preHatchSteps: [Config.LifecycleStep]? = nil,
+            hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
+            postHatchSteps: [Config.LifecycleStep]? = nil,
+            verifications: [Verification],
+        ) -> TestCase {
+            TestCase(
+                description,
+                templateSetup: templateSetup,
+                macroDefinitions: macroDefinitions,
+                macros: macros,
+                preHatchSteps: preHatchSteps,
+                hatchConfig: hatchConfig,
+                postHatchSteps: postHatchSteps,
+                expectation: .success(verifications: verifications),
+            )
+        }
+
+        enum TemplateSetup {
+            case file(path: String, content: String)
+            case directory(path: String)
+        }
+
+        enum Expectation {
+            case success(verifications: [Verification])
+
+            var verifications: [Verification] {
+                switch self {
+                case let .success(verifications):
+                    verifications
+                }
+            }
+        }
+
+        enum Verification {
+            case fileExists(path: String)
+            case fileNotExists(path: String)
+            case fileContent(path: String, expectedContent: String)
+            case directoryExists(path: String)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }
 

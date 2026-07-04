@@ -2,7 +2,8 @@
 import Testing
 
 struct SelectionStateTests {
-    @Test func `single selection clamps cursor when filtering shrinks options`() {
+    @Test("single selection clamps cursor when filtering shrinks options")
+    func singleSelectionClampsCursorWhenFilteringShrinksOptions() {
         var state = SingleSelectionState(
             options: ["Alpha", "ベータ", "日本語", "Gamma"].map { ChoiceOption($0) },
         )
@@ -17,7 +18,8 @@ struct SelectionStateTests {
         #expect(state.selected?.value == "日本語")
     }
 
-    @Test func `single selection filters case and diacritic insensitively`() {
+    @Test("single selection filters case and diacritic insensitively")
+    func singleSelectionFiltersCaseAndDiacriticInsensitively() {
         var state = SingleSelectionState(
             options: ["Café", "CafeKit", "Swift"].map { ChoiceOption($0) },
         )
@@ -27,7 +29,8 @@ struct SelectionStateTests {
         #expect(state.visibleOptions.map(\.value) == ["Café", "CafeKit"])
     }
 
-    @Test func `multiple selection respects min and max limits`() {
+    @Test("multiple selection respects min and max limits")
+    func multipleSelectionRespectsMinAndMaxLimits() {
         var state = MultipleSelectionState(
             options: ["one", "two", "three"].map { ChoiceOption($0) },
             minimumSelectionCount: 1,

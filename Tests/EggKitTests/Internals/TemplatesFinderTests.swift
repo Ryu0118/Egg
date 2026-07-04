@@ -6,8 +6,8 @@ import Testing
 struct TemplatesFinderTests {
     // MARK: - fetchTemplate Tests
 
-    @Test(arguments: FetchTemplateTestCase.allCases)
-    func `fetch template`(_ testCase: FetchTemplateTestCase) async throws {
+    @Test("fetch template", arguments: FetchTemplateTestCase.allCases)
+    func fetchTemplate(_ testCase: FetchTemplateTestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-test")
 
@@ -65,26 +65,6 @@ struct TemplatesFinderTests {
         let templates: [TemplateSetup]
         let searchName: String
         let expected: Result
-
-        var testDescription: String {
-            description
-        }
-
-        struct TemplateSetup {
-            let dirName: String
-            let configName: String
-            let location: LocationKind
-
-            enum LocationKind {
-                case global
-                case project
-            }
-        }
-
-        enum Result {
-            case success(configName: String)
-            case failure
-        }
 
         static let allCases: [FetchTemplateTestCase] = [
             // Search by config.yml name
@@ -146,12 +126,32 @@ struct TemplatesFinderTests {
                 expected: .success(configName: "MyTemplate"),
             ),
         ]
+
+        struct TemplateSetup {
+            let dirName: String
+            let configName: String
+            let location: LocationKind
+
+            enum LocationKind {
+                case global
+                case project
+            }
+        }
+
+        enum Result {
+            case success(configName: String)
+            case failure
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - fetchTemplate with Custom Search Paths Tests
 
-    @Test(arguments: FetchTemplateWithCustomPathsTestCase.allCases)
-    func `fetch template with custom paths`(_ testCase: FetchTemplateWithCustomPathsTestCase) async throws {
+    @Test("fetch template with custom paths", arguments: FetchTemplateWithCustomPathsTestCase.allCases)
+    func fetchTemplateWithCustomPaths(_ testCase: FetchTemplateWithCustomPathsTestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-custom-test")
 
@@ -220,28 +220,6 @@ struct TemplatesFinderTests {
         let searchName: String
         let useCustomPaths: Bool
         let expected: Result
-
-        var testDescription: String {
-            description
-        }
-
-        struct TemplateSetup {
-            let dirName: String
-            let configName: String
-            let location: LocationKind
-
-            enum LocationKind {
-                case global
-                case project
-                case custom1
-                case custom2
-            }
-        }
-
-        enum Result {
-            case success(configName: String)
-            case failure
-        }
 
         static let allCases: [FetchTemplateWithCustomPathsTestCase] = [
             // Custom path basic
@@ -325,12 +303,34 @@ struct TemplatesFinderTests {
                 expected: .success(configName: "GlobalTemplate"),
             ),
         ]
+
+        struct TemplateSetup {
+            let dirName: String
+            let configName: String
+            let location: LocationKind
+
+            enum LocationKind {
+                case global
+                case project
+                case custom1
+                case custom2
+            }
+        }
+
+        enum Result {
+            case success(configName: String)
+            case failure
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - listAll with Custom Search Paths Tests
 
-    @Test
-    func `list all includes custom path templates`() async throws {
+    @Test("list all includes custom path templates")
+    func listAllIncludesCustomPathTemplates() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-list-test")
 
@@ -381,8 +381,8 @@ struct TemplatesFinderTests {
         #expect(templates.all.count == 3)
     }
 
-    @Test
-    func `list all includes template when custom path is template root`() async throws {
+    @Test("list all includes template when custom path is template root")
+    func listAllIncludesTemplateWhenCustomPathIsTemplateRoot() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-list-test")
 
@@ -425,8 +425,8 @@ struct TemplatesFinderTests {
         #expect(template.path == customTemplateDir)
     }
 
-    @Test
-    func `exists returns true for custom path template`() throws {
+    @Test("exists returns true for custom path template")
+    func existsReturnsTrueForCustomPathTemplate() throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-exists-test")
 
@@ -465,8 +465,8 @@ struct TemplatesFinderTests {
         #expect(finder.exists("NonExistentTemplate") == false)
     }
 
-    @Test
-    func `valid template directory resolves custom root template by config name`() throws {
+    @Test("valid template directory resolves custom root template by config name")
+    func validTemplateDirectoryResolvesCustomRootTemplateByConfigName() throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-valid-test")
 
@@ -502,8 +502,8 @@ struct TemplatesFinderTests {
         #expect(resolved == customTemplateDir)
     }
 
-    @Test
-    func `list with locations includes custom location`() async throws {
+    @Test("list with locations includes custom location")
+    func listWithLocationsIncludesCustomLocation() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-locations-test")
 

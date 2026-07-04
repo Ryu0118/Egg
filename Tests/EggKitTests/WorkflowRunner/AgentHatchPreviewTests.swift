@@ -4,12 +4,12 @@ import Foundation
 import ProcessRunning
 import Testing
 
-@Suite("AgentHatchPreview")
+@Suite("Preview transactions run lifecycle hooks in a sandboxed staging area")
 struct AgentHatchPreviewTests {
     private let fileManager: some FileManagerProtocol = FileManager.default
 
-    @Test
-    func `Rejects sandbox allowed paths unless sandbox is disabled`() async throws {
+    @Test("Rejects sandbox allowed paths unless sandbox is disabled")
+    func rejectsSandboxAllowedPathsUnlessSandboxIsDisabled() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }
 
@@ -18,8 +18,8 @@ struct AgentHatchPreviewTests {
         }
     }
 
-    @Test
-    func `Allows preview sandbox bypass when explicitly disabled`() async throws {
+    @Test("Allows preview sandbox bypass when explicitly disabled")
+    func allowsPreviewSandboxBypassWhenExplicitlyDisabled() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }
 
@@ -67,7 +67,7 @@ struct AgentHatchPreviewTests {
 
     private func initializeGitRepository(at directory: URL) throws {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.executableURL = URL(filePath: "/usr/bin/git")
         process.arguments = ["init", "--quiet"]
         process.currentDirectoryURL = directory
         try process.run()

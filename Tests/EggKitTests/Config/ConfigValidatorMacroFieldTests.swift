@@ -33,15 +33,6 @@ struct ConfigValidatorMacroFieldTests {
         let config: Config
         let expected: Result
 
-        var testDescription: String {
-            description
-        }
-
-        enum Result {
-            case success
-            case failure([ConfigValidator.Error])
-        }
-
         static let allCases: [TestCase] = [
             // MARK: - Array type
 
@@ -293,6 +284,15 @@ struct ConfigValidatorMacroFieldTests {
                 ]),
             ),
         ]
+
+        enum Result {
+            case success
+            case failure([ConfigValidator.Error])
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     private static func makeConfig(

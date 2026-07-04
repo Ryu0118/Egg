@@ -9,8 +9,8 @@ import Testing
 struct GitDiffRunnerIntegrationTests {
     private let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test(arguments: TestCase.allCases)
-    func `compute changes`(_ testCase: TestCase) async throws {
+    @Test("compute changes", arguments: TestCase.allCases)
+    func computeChanges(_ testCase: TestCase) async throws {
         let tempRoot = try fileManager.makeTemporaryDirectory(prefix: "git-diff-runner-test")
         defer { try? fileManager.removeItem(at: tempRoot) }
 
@@ -39,6 +39,74 @@ struct GitDiffRunnerIntegrationTests {
             expectedModified: testCase.expectedModified,
             expectedDeleted: testCase.expectedDeleted,
         )
+    }
+
+    /// Tests that directory paths in targetPaths are skipped and only file-level changes are detected.
+    @Test("directory paths are skipped")
+    func directoryPathsAreSkipped() async throws {
+        let tempRoot = try fileManager.makeTemporaryDirectory(prefix: "git-diff-dir-skip-test")
+        defer { try? fileManager.removeItem(at: tempRoot) }
+
+        let workingDir = tempRoot.appending(path: "working")
+        let workspaceDir = tempRoot.appending(path: "staging")
+
+        // Setup: both directories have identical content in Tests/EggKitTests/
+        // but we'll include the directory path "Tests/EggKitTests" in targetPaths
+        try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: workspaceDir, withIntermediateDirectories: true)
+
+        // Create identical files in both directories
+        let workingTestsDir = workingDir.appending(path: "Tests").appending(path: "EggKitTests")
+        let workspaceTestsDir = workspaceDir.appending(path: "Tests").appending(path: "EggKitTests")
+        try fileManager.createDirectory(at: workingTestsDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: workspaceTestsDir, withIntermediateDirectories: true)
+
+        let workingTest1 = workingTestsDir.appending(path: "Test1.swift")
+        let workspaceTest1 = workspaceTestsDir.appending(path: "Test1.swift")
+        let workingTest2 = workingTestsDir.appending(path: "Test2.swift")
+        let workspaceTest2 = workspaceTestsDir.appending(path: "Test2.swift")
+        try fileManager.writeText("test1", at: workingTest1, encoding: .utf8)
+        try fileManager.writeText("test1", at: workspaceTest1, encoding: .utf8)
+        try fileManager.writeText("test2", at: workingTest2, encoding: .utf8)
+        try fileManager.writeText("test2", at: workspaceTest2, encoding: .utf8)
+
+        // Create a file that was actually changed in workspace
+        let workingSrcDir = workingDir.appending(path: "Sources")
+        let workspaceSrcDir = workspaceDir.appending(path: "Sources")
+        try fileManager.createDirectory(at: workingSrcDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: workspaceSrcDir, withIntermediateDirectories: true)
+
+        let workingMain = workingSrcDir.appending(path: "main.swift")
+        let workspaceMain = workspaceSrcDir.appending(path: "main.swift")
+        try fileManager.writeText("original", at: workingMain, encoding: .utf8)
+        try fileManager.writeText("modified", at: workspaceMain, encoding: .utf8)
+
+        // Include a directory path in targetPaths - this should be skipped
+        // In practice, this happens when FSEvents reports directory-level changes
+        let targetPaths: Set = [
+            "Tests/EggKitTests", // directory - should be skipped
+            "Sources/main.swift", // file - should be processed
+        ]
+
+        let runner = GitDiffRunner(
+            processRunner: ProcessRunner(),
+            fileManager: fileManager,
+        )
+
+        let summary = try await runner.computeChanges(
+            workspaceRoot: workspaceDir,
+            workingDirectory: workingDir,
+            targetPaths: targetPaths,
+        )
+
+        // Only the file change should be detected; the directory path should be skipped
+        // and should NOT cause Test1.swift or Test2.swift to appear as deleted/modified
+        #expect(summary.added.isEmpty, "No files should be added")
+        #expect(
+            summary.modified == ["Sources/main.swift"],
+            "Only Sources/main.swift should be modified",
+        )
+        #expect(summary.deleted.isEmpty, "No files should be deleted (directory path was skipped)")
     }
 
     /// Creates a directory and populates it with the specified files.
@@ -119,10 +187,6 @@ struct GitDiffRunnerIntegrationTests {
         let expectedAdded: [String]
         let expectedModified: [String]
         let expectedDeleted: [String]
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -253,73 +317,9 @@ struct GitDiffRunnerIntegrationTests {
                 expectedDeleted: ["src/old.swift"],
             ),
         ]
-    }
 
-    /// Tests that directory paths in targetPaths are skipped and only file-level changes are detected.
-    @Test
-    func `directory paths are skipped`() async throws {
-        let tempRoot = try fileManager.makeTemporaryDirectory(prefix: "git-diff-dir-skip-test")
-        defer { try? fileManager.removeItem(at: tempRoot) }
-
-        let workingDir = tempRoot.appending(path: "working")
-        let workspaceDir = tempRoot.appending(path: "staging")
-
-        // Setup: both directories have identical content in Tests/EggKitTests/
-        // but we'll include the directory path "Tests/EggKitTests" in targetPaths
-        try fileManager.createDirectory(at: workingDir, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: workspaceDir, withIntermediateDirectories: true)
-
-        // Create identical files in both directories
-        let workingTestsDir = workingDir.appending(path: "Tests").appending(path: "EggKitTests")
-        let workspaceTestsDir = workspaceDir.appending(path: "Tests").appending(path: "EggKitTests")
-        try fileManager.createDirectory(at: workingTestsDir, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: workspaceTestsDir, withIntermediateDirectories: true)
-
-        let workingTest1 = workingTestsDir.appending(path: "Test1.swift")
-        let workspaceTest1 = workspaceTestsDir.appending(path: "Test1.swift")
-        let workingTest2 = workingTestsDir.appending(path: "Test2.swift")
-        let workspaceTest2 = workspaceTestsDir.appending(path: "Test2.swift")
-        try fileManager.writeText("test1", at: workingTest1, encoding: .utf8)
-        try fileManager.writeText("test1", at: workspaceTest1, encoding: .utf8)
-        try fileManager.writeText("test2", at: workingTest2, encoding: .utf8)
-        try fileManager.writeText("test2", at: workspaceTest2, encoding: .utf8)
-
-        // Create a file that was actually changed in workspace
-        let workingSrcDir = workingDir.appending(path: "Sources")
-        let workspaceSrcDir = workspaceDir.appending(path: "Sources")
-        try fileManager.createDirectory(at: workingSrcDir, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: workspaceSrcDir, withIntermediateDirectories: true)
-
-        let workingMain = workingSrcDir.appending(path: "main.swift")
-        let workspaceMain = workspaceSrcDir.appending(path: "main.swift")
-        try fileManager.writeText("original", at: workingMain, encoding: .utf8)
-        try fileManager.writeText("modified", at: workspaceMain, encoding: .utf8)
-
-        // Include a directory path in targetPaths - this should be skipped
-        // In practice, this happens when FSEvents reports directory-level changes
-        let targetPaths: Set = [
-            "Tests/EggKitTests", // directory - should be skipped
-            "Sources/main.swift", // file - should be processed
-        ]
-
-        let runner = GitDiffRunner(
-            processRunner: ProcessRunner(),
-            fileManager: fileManager,
-        )
-
-        let summary = try await runner.computeChanges(
-            workspaceRoot: workspaceDir,
-            workingDirectory: workingDir,
-            targetPaths: targetPaths,
-        )
-
-        // Only the file change should be detected; the directory path should be skipped
-        // and should NOT cause Test1.swift or Test2.swift to appear as deleted/modified
-        #expect(summary.added.isEmpty, "No files should be added")
-        #expect(
-            summary.modified == ["Sources/main.swift"],
-            "Only Sources/main.swift should be modified",
-        )
-        #expect(summary.deleted.isEmpty, "No files should be deleted (directory path was skipped)")
+        var testDescription: String {
+            description
+        }
     }
 }

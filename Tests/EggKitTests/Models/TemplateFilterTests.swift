@@ -2,8 +2,8 @@
 import Testing
 
 struct TemplateFilterTests {
-    @Test(arguments: TestCase.allCases)
-    func `should include`(_ testCase: TestCase) {
+    @Test("should include", arguments: TestCase.allCases)
+    func shouldInclude(_ testCase: TestCase) {
         let result = testCase.filter.shouldInclude(testCase.templateName)
         #expect(result == testCase.expected)
     }
@@ -13,10 +13,6 @@ struct TemplateFilterTests {
         let filter: TemplateFilter
         let templateName: String
         let expected: Bool
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [TestCase] = [
             // .none filter - includes everything
@@ -97,5 +93,9 @@ struct TemplateFilterTests {
                 expected: true,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

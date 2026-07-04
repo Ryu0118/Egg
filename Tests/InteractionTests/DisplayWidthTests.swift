@@ -2,12 +2,13 @@
 import Testing
 
 struct DisplayWidthTests {
-    @Test(arguments: DisplayWidthCase.allCases)
-    func `measures terminal display columns`(_ testCase: DisplayWidthCase) {
+    @Test("measures terminal display columns", arguments: DisplayWidthCase.allCases)
+    func measuresTerminalDisplayColumns(_ testCase: DisplayWidthCase) {
         #expect(testCase.value.terminalDisplayWidth == testCase.expectedWidth)
     }
 
-    @Test func `ignores ansi escape sequences while measuring`() {
+    @Test("ignores ansi escape sequences while measuring")
+    func ignoresAnsiEscapeSequencesWhileMeasuring() {
         let styled = "\u{1B}[31m日本語\u{1B}[0m"
 
         #expect(styled.terminalDisplayWidth == 6)
@@ -17,10 +18,6 @@ struct DisplayWidthTests {
         let description: String
         let value: String
         let expectedWidth: Int
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [Self] = [
             Self(description: "ASCII", value: "abc", expectedWidth: 3),
@@ -33,5 +30,9 @@ struct DisplayWidthTests {
             Self(description: "family emoji zwj sequence", value: "👨‍👩‍👧‍👦", expectedWidth: 2),
             Self(description: "flag sequence", value: "🇯🇵", expectedWidth: 2),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

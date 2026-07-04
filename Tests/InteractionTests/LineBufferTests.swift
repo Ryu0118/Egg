@@ -2,7 +2,8 @@
 import Testing
 
 struct LineBufferTests {
-    @Test func `inserts and deletes Japanese text by grapheme cluster`() {
+    @Test("inserts and deletes Japanese text by grapheme cluster")
+    func insertsAndDeletesJapaneseTextByGraphemeCluster() {
         var buffer = LineBuffer()
 
         buffer.insert("日本語")
@@ -18,7 +19,8 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 2)
     }
 
-    @Test func `keeps composed characters intact while editing`() {
+    @Test("keeps composed characters intact while editing")
+    func keepsComposedCharactersIntactWhileEditing() {
         var buffer = LineBuffer("Cafe\u{301}")
 
         #expect(buffer.text == "Cafe\u{301}")
@@ -32,7 +34,8 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 3)
     }
 
-    @Test func `treats emoji sequences as one editable unit`() {
+    @Test("treats emoji sequences as one editable unit")
+    func treatsEmojiSequencesAsOneEditableUnit() {
         var buffer = LineBuffer("A👨‍👩‍👧‍👦B")
 
         #expect(buffer.cursorOffset == 3)
@@ -46,7 +49,8 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 1)
     }
 
-    @Test func `deletes at cursor without crossing character boundaries`() {
+    @Test("deletes at cursor without crossing character boundaries")
+    func deletesAtCursorWithoutCrossingCharacterBoundaries() {
         var buffer = LineBuffer("あb👍🏽c")
 
         buffer.moveCursorToBeginning()
@@ -59,7 +63,8 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 3)
     }
 
-    @Test func `supports replacing the current line`() {
+    @Test("supports replacing the current line")
+    func supportsReplacingTheCurrentLine() {
         var buffer = LineBuffer("old")
 
         buffer.replace(with: "新しい value")

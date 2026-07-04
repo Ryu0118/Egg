@@ -39,15 +39,6 @@ struct ParsedMacroDefinitionValidatorTests {
         let parsedMacros: [ParsedMacroDefinition]
         let expected: Result
 
-        var testDescription: String {
-            description
-        }
-
-        enum Result {
-            case success([ResolvedMacro])
-            case failure([ParsedMacroDefinitionValidator.Error])
-        }
-
         static let allCases: [TestCase] = [
             TestCase(
                 description: "validates string macro",
@@ -688,5 +679,14 @@ struct ParsedMacroDefinitionValidatorTests {
                 ]),
             ),
         ]
+
+        enum Result {
+            case success([ResolvedMacro])
+            case failure([ParsedMacroDefinitionValidator.Error])
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

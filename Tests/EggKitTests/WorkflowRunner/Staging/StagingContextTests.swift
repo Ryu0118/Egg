@@ -5,8 +5,8 @@ import ProcessRunning
 import Testing
 
 struct StagingContextTests {
-    @Test(.serialized, arguments: TestCase.allCases)
-    func `staging context`(_ testCase: TestCase) async throws {
+    @Test("staging context", .serialized, arguments: TestCase.allCases)
+    func stagingContext(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-test")
 
@@ -70,30 +70,6 @@ struct StagingContextTests {
         let description: String
         let initialFiles: [InitialFile]
         let expectation: Expectation
-
-        var testDescription: String {
-            description
-        }
-
-        enum SuccessCheck {
-            case workspaceExists
-            case originalWorkingDirectoryStored
-            case fileCloned(relativePath: String)
-            case fileContent(relativePath: String, expectedContent: String)
-            case pathValidationSucceeds(relativePath: String)
-            case discardRemovesWorkspace
-            case discardedState(Bool)
-            case discardIsIdempotent
-        }
-
-        enum Expectation {
-            case success(checks: [SuccessCheck])
-            case pathValidationFails(absolutePath: String, expectedErrorPath: String)
-            case pathValidationFailsOutsideWorkspace
-            case validationFailsAfterDiscard
-            case computeChangeSummaryFailsAfterDiscard
-            case applyChangesFailsAfterDiscard
-        }
 
         static let allCases: [TestCase] = [
             // Creation tests
@@ -200,6 +176,30 @@ struct StagingContextTests {
                 expectation: .applyChangesFailsAfterDiscard,
             ),
         ]
+
+        enum SuccessCheck {
+            case workspaceExists
+            case originalWorkingDirectoryStored
+            case fileCloned(relativePath: String)
+            case fileContent(relativePath: String, expectedContent: String)
+            case pathValidationSucceeds(relativePath: String)
+            case discardRemovesWorkspace
+            case discardedState(Bool)
+            case discardIsIdempotent
+        }
+
+        enum Expectation {
+            case success(checks: [SuccessCheck])
+            case pathValidationFails(absolutePath: String, expectedErrorPath: String)
+            case pathValidationFailsOutsideWorkspace
+            case validationFailsAfterDiscard
+            case computeChangeSummaryFailsAfterDiscard
+            case applyChangesFailsAfterDiscard
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     private func setupWorkingDirectory(
@@ -232,7 +232,7 @@ struct StagingContextTests {
 
     private func initializeGitRepository(at directory: URL) throws {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.executableURL = URL(filePath: "/usr/bin/git")
         process.arguments = ["init"]
         process.currentDirectoryURL = directory
         try process.run()

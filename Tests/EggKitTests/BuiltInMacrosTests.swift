@@ -4,8 +4,8 @@ import Testing
 
 @Suite(.serialized)
 struct BuiltInMacrosTests {
-    @Test(arguments: IsReservedTestCase.allCases)
-    func `is reserved`(_ testCase: IsReservedTestCase) {
+    @Test("is reserved", arguments: IsReservedTestCase.allCases)
+    func isReserved(_ testCase: IsReservedTestCase) {
         let result = BuiltInMacros.isReserved(testCase.name)
         #expect(result == testCase.expected)
     }
@@ -14,10 +14,6 @@ struct BuiltInMacrosTests {
         let description: String
         let name: String
         let expected: Bool
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [IsReservedTestCase] = [
             // Reserved names
@@ -64,6 +60,10 @@ struct BuiltInMacrosTests {
                 expected: false,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     @Test(arguments: ResolveTestCase.allCases)
@@ -78,10 +78,6 @@ struct BuiltInMacrosTests {
         let context: BuiltInMacroContext
         let expected: String
 
-        var testDescription: String {
-            description
-        }
-
         static let fixedDate = Date(timeIntervalSince1970: 1_733_961_600) // 2024-12-12 00:00:00 UTC
 
         static let defaultContext = BuiltInMacroContext(
@@ -90,14 +86,6 @@ struct BuiltInMacrosTests {
             currentDate: fixedDate,
             environment: ["USER": "testuser"],
         )
-
-        static var expectedDateString: String {
-            expectedDateString(nil)
-        }
-
-        static func expectedDateString(_ format: String?) -> String {
-            BuiltInMacros.formatDate(fixedDate, format: format)
-        }
 
         static let allCases: [ResolveTestCase] = [
             // DATE macro (uses the provided argument as format, or default if none)
@@ -179,10 +167,22 @@ struct BuiltInMacrosTests {
                 expected: "DATE___",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
+
+        static func expectedDateString(_ format: String?) -> String {
+            BuiltInMacros.formatDate(fixedDate, format: format)
+        }
+
+        static var expectedDateString: String {
+            expectedDateString(nil)
+        }
     }
 
-    @Test
-    func `resolve UUID generates valid UUID`() {
+    @Test("resolve UUID generates valid UUID")
+    func resolveUUIDGeneratesValidUUID() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
@@ -196,8 +196,8 @@ struct BuiltInMacrosTests {
         #expect(UUID(uuidString: result) != nil)
     }
 
-    @Test
-    func `resolve UUID generates unique values per occurrence`() {
+    @Test("resolve UUID generates unique values per occurrence")
+    func resolveUUIDGeneratesUniqueValuesPerOccurrence() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
@@ -212,8 +212,8 @@ struct BuiltInMacrosTests {
         #expect(uuids[0] != uuids[1])
     }
 
-    @Test
-    func `resolve system user falls back to NS user name when env missing`() {
+    @Test("resolve system user falls back to NS user name when env missing")
+    func resolveSystemUserFallsBackToNSUserNameWhenEnvMissing() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
             homeDirectory: URL(filePath: "/Users/test"),
@@ -229,15 +229,15 @@ struct BuiltInMacrosTests {
 }
 
 struct BuiltInMacroTests {
-    @Test
-    func `declare creates simple macro`() {
+    @Test("declare creates simple macro")
+    func declareCreatesSimpleMacro() {
         let macro = BuiltInMacro.declare("___TEST___") { _ in "resolved" }
 
         #expect(macro.name == "___TEST___")
     }
 
-    @Test
-    func `declare with argument creates macro that accepts argument`() {
+    @Test("declare with argument creates macro that accepts argument")
+    func declareWithArgumentCreatesMacroThatAcceptsArgument() {
         let macro = BuiltInMacro.declareWithArgument("___TEST___") { arg, _ in
             arg ?? "default"
         }
@@ -245,8 +245,8 @@ struct BuiltInMacroTests {
         #expect(macro.name == "___TEST___")
     }
 
-    @Test(arguments: ArgumentExtractionTestCase.allCases)
-    func `declare with argument extracts argument correctly`(_ testCase: ArgumentExtractionTestCase) {
+    @Test("declare with argument extracts argument correctly", arguments: ArgumentExtractionTestCase.allCases)
+    func declareWithArgumentExtractsArgumentCorrectly(_ testCase: ArgumentExtractionTestCase) {
         // Use BuiltInMacros.DATE which is declared with argument to test extraction
         // We test this indirectly by checking the output format changes based on argument
         let context = BuiltInMacroContext(
@@ -265,15 +265,7 @@ struct BuiltInMacroTests {
         let matchedString: String
         let expectedResult: String
 
-        var testDescription: String {
-            description
-        }
-
         static let fixedDate = Date(timeIntervalSince1970: 1_733_961_600) // 2024-12-12 00:00:00 UTC
-
-        static func expectedDateString(_ format: String?) -> String {
-            BuiltInMacros.formatDate(fixedDate, format: format)
-        }
 
         static let allCases: [ArgumentExtractionTestCase] = [
             ArgumentExtractionTestCase(
@@ -297,5 +289,13 @@ struct BuiltInMacroTests {
                 expectedResult: expectedDateString("MM/dd/yyyy"),
             ),
         ]
+
+        static func expectedDateString(_ format: String?) -> String {
+            BuiltInMacros.formatDate(fixedDate, format: format)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

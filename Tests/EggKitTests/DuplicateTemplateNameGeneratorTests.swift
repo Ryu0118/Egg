@@ -4,8 +4,8 @@ import Foundation
 import Testing
 
 struct DuplicateTemplateNameGeneratorTests {
-    @Test(arguments: TestCase.allCases)
-    func `generate default name`(_ testCase: TestCase) async throws {
+    @Test("generate default name", arguments: TestCase.allCases)
+    func generateDefaultName(_ testCase: TestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "duplicate-name-test")
 
@@ -91,14 +91,6 @@ struct DuplicateTemplateNameGeneratorTests {
         let existingTemplates: Set<String>
         let expected: String
 
-        var testDescription: String {
-            description
-        }
-
-        func sourceLocation(projectDirectory: URL) -> TemplateLocationType {
-            sourceLocationKind.toConcreteType(projectDirectory, workingDirectory: projectDirectory)
-        }
-
         static let allCases: [TestCase] = [
             TestCase(
                 description: "returns base name with (1) when no templates exist",
@@ -176,6 +168,14 @@ struct DuplicateTemplateNameGeneratorTests {
                 expected: "MyTemplate (1)",
             ),
         ]
+
+        func sourceLocation(projectDirectory: URL) -> TemplateLocationType {
+            sourceLocationKind.toConcreteType(projectDirectory, workingDirectory: projectDirectory)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     enum TestError: Error {

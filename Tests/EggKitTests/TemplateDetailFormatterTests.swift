@@ -7,8 +7,8 @@ struct TemplateDetailFormatterTests {
 
     // MARK: - generateExampleValue Tests
 
-    @Test(arguments: GenerateExampleValueTestCase.allCases)
-    func `generate example value`(_ testCase: GenerateExampleValueTestCase) {
+    @Test("generate example value", arguments: GenerateExampleValueTestCase.allCases)
+    func generateExampleValue(_ testCase: GenerateExampleValueTestCase) {
         let result = formatter.generateExampleValue(for: testCase.macro)
         #expect(result == testCase.expected)
     }
@@ -17,10 +17,6 @@ struct TemplateDetailFormatterTests {
         let description: String
         let macro: Config.Macro
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [GenerateExampleValueTestCase] = [
             // String type
@@ -174,12 +170,16 @@ struct TemplateDetailFormatterTests {
                 expected: "./path/to/file",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - generateExampleCommand Tests
 
-    @Test(arguments: GenerateExampleCommandTestCase.allCases)
-    func `generate example command`(_ testCase: GenerateExampleCommandTestCase) {
+    @Test("generate example command", arguments: GenerateExampleCommandTestCase.allCases)
+    func generateExampleCommand(_ testCase: GenerateExampleCommandTestCase) {
         let result = formatter.generateExampleCommand(
             templateName: testCase.templateName,
             macros: testCase.macros,
@@ -192,10 +192,6 @@ struct TemplateDetailFormatterTests {
         let templateName: String
         let macros: [Config.Macro]?
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [GenerateExampleCommandTestCase] = [
             GenerateExampleCommandTestCase(
@@ -320,6 +316,10 @@ struct TemplateDetailFormatterTests {
                 expected: "egg hatch iOSTemplate --app-name \"MyApp\" --use-swift-ui --platform \"iOS\"",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - format Tests
@@ -342,10 +342,6 @@ struct TemplateDetailFormatterTests {
         let expectedBasicInfo: (name: String, description: String, version: String?, locationName: String)
         let expectedMacroCount: Int
         let expectedExampleCommand: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [FormatTestCase] = [
             FormatTestCase(
@@ -430,5 +426,9 @@ struct TemplateDetailFormatterTests {
                 expectedExampleCommand: "egg hatch ChoiceTemplate --style \"UIKit\"",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }
