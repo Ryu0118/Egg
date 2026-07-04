@@ -171,7 +171,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("stop is idempotent - calling multiple times does not throw")
+    @Test("calling stop() repeatedly on the same watcher is a no-op and never throws")
     func stopIsIdempotentCallingMultipleTimesDoesNotThrow() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
