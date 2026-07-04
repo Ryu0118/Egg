@@ -1,8 +1,9 @@
 @testable import Interaction
 import Testing
 
+@Suite("Edits a line buffer by Unicode grapheme cluster, keeping composed characters and emoji sequences intact")
 struct LineBufferTests {
-    @Test("inserts and deletes Japanese text by grapheme cluster")
+    @Test("inserting Japanese text advances the cursor by grapheme count, and backspacing after moving left removes the middle character")
     func insertsAndDeletesJapaneseTextByGraphemeCluster() {
         var buffer = LineBuffer()
 
@@ -19,7 +20,7 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 2)
     }
 
-    @Test("keeps composed characters intact while editing")
+    @Test("backspacing at the end of a combining-accent string removes the whole composed grapheme instead of splitting the base and combining mark")
     func keepsComposedCharactersIntactWhileEditing() {
         var buffer = LineBuffer("Cafe\u{301}")
 
@@ -34,7 +35,7 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 3)
     }
 
-    @Test("treats emoji sequences as one editable unit")
+    @Test("backspacing over a multi-codepoint ZWJ family emoji deletes the entire sequence as a single character, not one codepoint")
     func treatsEmojiSequencesAsOneEditableUnit() {
         var buffer = LineBuffer("A👨‍👩‍👧‍👦B")
 
@@ -49,7 +50,7 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 1)
     }
 
-    @Test("deletes at cursor without crossing character boundaries")
+    @Test("forward-deleting after moving past a wide character removes only the emoji modifier sequence, leaving surrounding characters untouched")
     func deletesAtCursorWithoutCrossingCharacterBoundaries() {
         var buffer = LineBuffer("あb👍🏽c")
 
@@ -63,7 +64,7 @@ struct LineBufferTests {
         #expect(buffer.cursorDisplayColumn == 3)
     }
 
-    @Test("supports replacing the current line")
+    @Test("replacing the buffer's contents resets the text and moves the cursor to the end of the new, mixed-width value")
     func supportsReplacingTheCurrentLine() {
         var buffer = LineBuffer("old")
 

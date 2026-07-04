@@ -1,13 +1,14 @@
 @testable import Interaction
 import Testing
 
+@Suite("Computes terminal display width for ASCII, CJK, combining marks, and emoji sequences")
 struct DisplayWidthTests {
-    @Test("measures terminal display columns", arguments: DisplayWidthCase.allCases)
+    @Test("computes the terminal column width for ASCII, CJK, accented, and emoji strings, matching each case's expected width", arguments: DisplayWidthCase.allCases)
     func measuresTerminalDisplayColumns(_ testCase: DisplayWidthCase) {
         #expect(testCase.value.terminalDisplayWidth == testCase.expectedWidth)
     }
 
-    @Test("ignores ansi escape sequences while measuring")
+    @Test("excludes ANSI color escape codes from the display width of a string wrapping Japanese text")
     func ignoresAnsiEscapeSequencesWhileMeasuring() {
         let styled = "\u{1B}[31m日本語\u{1B}[0m"
 

@@ -6,7 +6,10 @@ struct PathResolverTests {
     static let workingDirectory = URL(filePath: "/Users/test/projects")
     static let homeDirectory = URL(filePath: "/Users/test")
 
-    @Test("resolve to absolute URL", arguments: PathResolverTestCase.allCases)
+    @Test(
+        "resolves relative, tilde-prefixed, and absolute paths to an absolute URL, trimming surrounding whitespace",
+        arguments: PathResolverTestCase.allCases,
+    )
     func resolveToAbsoluteURL(_ testCase: PathResolverTestCase) throws {
         let result = try EggKit.PathResolver.resolveToAbsoluteURL(
             testCase.input,
