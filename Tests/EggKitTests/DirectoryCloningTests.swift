@@ -50,7 +50,7 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test("clone fails when destination exists")
+    @Test("clone(from:to:) throws a CloningError when the destination directory already exists with content in it")
     func cloneFailsWhenDestinationExists() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
