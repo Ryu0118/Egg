@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 struct DuplicateTemplateNameGeneratorTests {
-    @Test("generate default name", arguments: TestCase.allCases)
+    @Test("generateDefaultName appends the next unused \"(n)\" suffix based on which numbered variants of the base name already exist at the template location", arguments: TestCase.allCases)
     func generateDefaultName(_ testCase: TestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "duplicate-name-test")

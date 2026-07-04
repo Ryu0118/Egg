@@ -8,7 +8,7 @@ import Testing
 struct AgentHatchPreviewTests {
     private let fileManager: some FileManagerProtocol = FileManager.default
 
-    @Test("Rejects sandbox allowed paths unless sandbox is disabled")
+    @Test("Throws sandboxPermissionRequired when the config declares allowed paths and sandboxing is not disabled")
     func rejectsSandboxAllowedPathsUnlessSandboxIsDisabled() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }
@@ -18,7 +18,7 @@ struct AgentHatchPreviewTests {
         }
     }
 
-    @Test("Allows preview sandbox bypass when explicitly disabled")
+    @Test("Succeeds and reports the generated file when sandboxDisabled is true, bypassing the allowed-paths check")
     func allowsPreviewSandboxBypassWhenExplicitlyDisabled() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }

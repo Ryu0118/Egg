@@ -110,7 +110,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("detects nested file changes")
+    @Test("reports the relative path of a file created inside a newly-created subdirectory of the watched root")
     func detectsNestedFileChanges() async throws {
         try await withWatcher { ctx in
             let nestedDir = ctx.directory.appending(path: "subdir")
