@@ -4,7 +4,7 @@ import Testing
 
 @Suite(.serialized)
 struct BuiltInMacrosTests {
-    @Test("is reserved", arguments: IsReservedTestCase.allCases)
+    @Test("distinguishes built-in reserved macro names (DATE, YEAR, SYSTEM_USER, UUID) from user-defined ones", arguments: IsReservedTestCase.allCases)
     func isReserved(_ testCase: IsReservedTestCase) {
         let result = BuiltInMacros.isReserved(testCase.name)
         #expect(result == testCase.expected)
@@ -181,7 +181,7 @@ struct BuiltInMacrosTests {
         }
     }
 
-    @Test("resolve UUID generates valid UUID")
+    @Test("resolving ___UUID___ substitutes a string that parses as a valid UUID")
     func resolveUUIDGeneratesValidUUID() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
@@ -196,7 +196,7 @@ struct BuiltInMacrosTests {
         #expect(UUID(uuidString: result) != nil)
     }
 
-    @Test("resolve UUID generates unique values per occurrence")
+    @Test("resolving multiple ___UUID___ occurrences in the same string produces a distinct UUID for each occurrence")
     func resolveUUIDGeneratesUniqueValuesPerOccurrence() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
@@ -212,7 +212,7 @@ struct BuiltInMacrosTests {
         #expect(uuids[0] != uuids[1])
     }
 
-    @Test("resolve system user falls back to NS user name when env missing")
+    @Test("resolving ___SYSTEM_USER___ falls back to NSUserName() when the USER environment variable is not set")
     func resolveSystemUserFallsBackToNSUserNameWhenEnvMissing() {
         let context = BuiltInMacroContext(
             workingDirectory: URL(filePath: "/tmp"),
@@ -229,14 +229,14 @@ struct BuiltInMacrosTests {
 }
 
 struct BuiltInMacroTests {
-    @Test("declare creates simple macro")
+    @Test("declare(_:resolve:) creates a macro whose name matches the given placeholder")
     func declareCreatesSimpleMacro() {
         let macro = BuiltInMacro.declare("___TEST___") { _ in "resolved" }
 
         #expect(macro.name == "___TEST___")
     }
 
-    @Test("declare with argument creates macro that accepts argument")
+    @Test("declareWithArgument(_:resolve:) creates a macro whose resolver closure receives the optional parenthesized argument")
     func declareWithArgumentCreatesMacroThatAcceptsArgument() {
         let macro = BuiltInMacro.declareWithArgument("___TEST___") { arg, _ in
             arg ?? "default"
@@ -245,7 +245,7 @@ struct BuiltInMacroTests {
         #expect(macro.name == "___TEST___")
     }
 
-    @Test("declare with argument extracts argument correctly", arguments: ArgumentExtractionTestCase.allCases)
+    @Test("resolving an argument-taking macro like ___DATE(format)___ extracts the parenthesized format and falls back to the default format when omitted", arguments: ArgumentExtractionTestCase.allCases)
     func declareWithArgumentExtractsArgumentCorrectly(_ testCase: ArgumentExtractionTestCase) {
         // Use BuiltInMacros.DATE which is declared with argument to test extraction
         // We test this indirectly by checking the output format changes based on argument
