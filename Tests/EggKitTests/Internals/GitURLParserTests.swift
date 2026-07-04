@@ -4,16 +4,16 @@ import Testing
 struct GitURLParserTests {
     private let parser = GitURLParser()
 
-    @Test(arguments: ValidURLTestCase.allCases)
-    func `parse valid URL`(_ testCase: ValidURLTestCase) {
+    @Test("parses supported git URL schemes (https, ssh, git, file, and credentialed URLs) into a GitURL preserving the original and normalized form", arguments: ValidURLTestCase.allCases)
+    func parseValidURL(_ testCase: ValidURLTestCase) {
         let result = parser.parse(testCase.input)
         #expect(result != nil)
         #expect(result?.original == testCase.input)
         #expect(result?.normalized == testCase.expectedNormalized)
     }
 
-    @Test(arguments: InvalidURLTestCase.allCases)
-    func `parse invalid URL`(_ testCase: InvalidURLTestCase) {
+    @Test("returns nil for malformed, empty, or unsupported-protocol git URL strings", arguments: InvalidURLTestCase.allCases)
+    func parseInvalidURL(_ testCase: InvalidURLTestCase) {
         let result = parser.parse(testCase.input)
         #expect(result == nil)
     }
@@ -22,10 +22,6 @@ struct GitURLParserTests {
         let description: String
         let input: String
         let expectedNormalized: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [ValidURLTestCase] = [
             // HTTPS URLs
@@ -123,15 +119,15 @@ struct GitURLParserTests {
                 expectedNormalized: "https://github.com/user/my.repo.git",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     struct InvalidURLTestCase: CustomTestStringConvertible {
         let description: String
         let input: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [InvalidURLTestCase] = [
             InvalidURLTestCase(
@@ -163,5 +159,9 @@ struct GitURLParserTests {
                 input: "ftp://github.com/user/repo.git",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

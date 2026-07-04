@@ -1,5 +1,7 @@
 included_paths:
   - "Sources/**/*.swift"
+  - "Tests/**/*.swift"
+  - "E2ETestsPackage/Tests/**/*.swift"
 
 excluded_paths:
   - ".build/**"
@@ -9,6 +11,7 @@ excluded_paths:
   - "**/.build/**"
   - "**/.swiftpm/**"
   - "**/Generated/**"
+  - "**/Fixtures/**"
 
 rules:
   deep-nesting:
@@ -18,6 +21,8 @@ rules:
       severity: error
     include:
       - "Sources/**"
+      - "Tests/**"
+      - "E2ETestsPackage/Tests/**"
   single-large-type-per-file:
     args:
       warning_lines: 50
@@ -25,8 +30,11 @@ rules:
       severity: error
     include:
       - "Sources/**"
+      - "Tests/**"
+      - "E2ETestsPackage/Tests/**"
     exclude:
       - "**/*Generated.swift"
+      - "**/Fixtures/**"
   property-declaration-ordering:
     args:
       severity: error

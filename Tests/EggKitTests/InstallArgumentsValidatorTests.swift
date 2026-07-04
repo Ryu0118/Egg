@@ -32,8 +32,8 @@ struct InstallArgumentsValidatorTests {
         }
     }
 
-    @Test
-    func `validate local path absolute`() async throws {
+    @Test("resolves an absolute local template path to a project-scoped direct source with no filter")
+    func validateLocalPathAbsolute() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -67,8 +67,8 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .none)
     }
 
-    @Test
-    func `validate local path relative`() async throws {
+    @Test("resolves a ./-relative local template path against the working directory to a global-scoped direct source")
+    func validateLocalPathRelative() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -102,8 +102,8 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .none)
     }
 
-    @Test
-    func `validate local path plain relative`() async throws {
+    @Test("resolves a plain relative path without a leading ./ to a global-scoped direct source")
+    func validateLocalPathPlainRelative() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -137,8 +137,8 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .none)
     }
 
-    @Test
-    func `validate local path with filter`() async throws {
+    @Test("resolves a local template path combined with an include filter to a project-scoped direct source carrying that filter")
+    func validateLocalPathWithFilter() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -172,8 +172,8 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .include(["swift-module"]))
     }
 
-    @Test
-    func `validate local path with ref option throws error`() async throws {
+    @Test("throws refOptionsNotAllowedForLocalPath when a branch ref is combined with a local filesystem path")
+    func validateLocalPathWithRefOptionThrowsError() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -211,41 +211,6 @@ struct InstallArgumentsValidatorTests {
         let workingDirectory: URL
         let homeDirectory: URL
         let expected: Result
-
-        var testDescription: String {
-            description
-        }
-
-        private static let defaultProjectDirectory = URL(filePath: "/project")
-        private static let defaultWorkingDirectory = URL(filePath: "/project")
-        private static let defaultHomeDirectory = URL(filePath: "/home")
-
-        static func makeTestCase(
-            description: String,
-            url: String? = nil,
-            branch: String? = nil,
-            tag: String? = nil,
-            revision: String? = nil,
-            templates: [String] = [],
-            excludeTemplates: [String] = [],
-            global: Bool = false,
-            expected: Result,
-        ) -> TestCase {
-            TestCase(
-                description: description,
-                url: url,
-                branch: branch,
-                tag: tag,
-                revision: revision,
-                templates: templates,
-                excludeTemplates: excludeTemplates,
-                global: global,
-                projectDirectory: defaultProjectDirectory,
-                workingDirectory: defaultWorkingDirectory,
-                homeDirectory: defaultHomeDirectory,
-                expected: expected,
-            )
-        }
 
         static let allCases: [TestCase] = [
             // Interactive mode
@@ -470,6 +435,41 @@ struct InstallArgumentsValidatorTests {
                 expected: .failure(.mutuallyExclusiveFilterOptions),
             ),
         ]
+
+        private static let defaultProjectDirectory = URL(filePath: "/project")
+        private static let defaultWorkingDirectory = URL(filePath: "/project")
+        private static let defaultHomeDirectory = URL(filePath: "/home")
+
+        static func makeTestCase(
+            description: String,
+            url: String? = nil,
+            branch: String? = nil,
+            tag: String? = nil,
+            revision: String? = nil,
+            templates: [String] = [],
+            excludeTemplates: [String] = [],
+            global: Bool = false,
+            expected: Result,
+        ) -> TestCase {
+            TestCase(
+                description: description,
+                url: url,
+                branch: branch,
+                tag: tag,
+                revision: revision,
+                templates: templates,
+                excludeTemplates: excludeTemplates,
+                global: global,
+                projectDirectory: defaultProjectDirectory,
+                workingDirectory: defaultWorkingDirectory,
+                homeDirectory: defaultHomeDirectory,
+                expected: expected,
+            )
+        }
+
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success(InstallRunnerMode)

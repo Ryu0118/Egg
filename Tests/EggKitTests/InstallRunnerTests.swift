@@ -142,10 +142,6 @@ struct InstallRunnerTests {
         let expected: Result
         let expectedInstalledNames: [String]
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             // Success cases - install all templates
             TestCase(
@@ -161,7 +157,7 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -186,9 +182,9 @@ struct InstallRunnerTests {
                 location: .global,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
-                    RepoTemplate(name: "swift-package", config: validConfig("Swift Package")),
-                    RepoTemplate(name: "swiftui-view", config: validConfig("SwiftUI View")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-package", config: InstallRunnerTests.validConfig("Swift Package")),
+                    RepoTemplate(name: "swiftui-view", config: InstallRunnerTests.validConfig("SwiftUI View")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -214,9 +210,9 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
-                    RepoTemplate(name: "swift-package", config: validConfig("Swift Package")),
-                    RepoTemplate(name: "swiftui-view", config: validConfig("SwiftUI View")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-package", config: InstallRunnerTests.validConfig("Swift Package")),
+                    RepoTemplate(name: "swiftui-view", config: InstallRunnerTests.validConfig("SwiftUI View")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -245,9 +241,9 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
-                    RepoTemplate(name: "swift-package", config: validConfig("Swift Package")),
-                    RepoTemplate(name: "swiftui-view", config: validConfig("SwiftUI View")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-package", config: InstallRunnerTests.validConfig("Swift Package")),
+                    RepoTemplate(name: "swiftui-view", config: InstallRunnerTests.validConfig("SwiftUI View")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -275,11 +271,11 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
-                    RepoTemplate(name: "swift-package", config: validConfig("Swift Package")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-package", config: InstallRunnerTests.validConfig("Swift Package")),
                 ],
                 existingTemplates: [
-                    ExistingTemplate(name: "swift-module", location: .project, config: validConfig("Existing Module")),
+                    ExistingTemplate(name: "swift-module", location: .project, config: InstallRunnerTests.validConfig("Existing Module")),
                 ],
                 expected: .success(ExpectedResult(
                     installed: ["swift-package"],
@@ -305,10 +301,10 @@ struct InstallRunnerTests {
                 location: .project,
                 force: true,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
                 ],
                 existingTemplates: [
-                    ExistingTemplate(name: "swift-module", location: .project, config: validConfig("Existing Module")),
+                    ExistingTemplate(name: "swift-module", location: .project, config: InstallRunnerTests.validConfig("Existing Module")),
                 ],
                 expected: .success(ExpectedResult(
                     installed: ["swift-module"],
@@ -355,12 +351,12 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
-                    RepoTemplate(name: "swift-package", config: validConfig("Swift Package")),
-                    RepoTemplate(name: "swiftui-view", config: validConfig("SwiftUI View")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-package", config: InstallRunnerTests.validConfig("Swift Package")),
+                    RepoTemplate(name: "swiftui-view", config: InstallRunnerTests.validConfig("SwiftUI View")),
                 ],
                 existingTemplates: [
-                    ExistingTemplate(name: "swift-module", location: .project, config: validConfig("Existing Module")),
+                    ExistingTemplate(name: "swift-module", location: .project, config: InstallRunnerTests.validConfig("Existing Module")),
                 ],
                 expected: .success(ExpectedResult(
                     installed: ["swift-package"],
@@ -388,7 +384,7 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -413,7 +409,7 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -438,7 +434,7 @@ struct InstallRunnerTests {
                 location: .project,
                 force: false,
                 repoTemplates: [
-                    RepoTemplate(name: "swift-module", config: validConfig("Swift Module")),
+                    RepoTemplate(name: "swift-module", config: InstallRunnerTests.validConfig("Swift Module")),
                 ],
                 existingTemplates: [],
                 expected: .success(ExpectedResult(
@@ -450,6 +446,10 @@ struct InstallRunnerTests {
                 expectedInstalledNames: ["swift-module"],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success(ExpectedResult)
@@ -473,6 +473,15 @@ struct InstallRunnerTests {
         let skippedCount: Int
         let failedCount: Int
         let skippedReasons: [(name: String, reason: SkipReason)]
+    }
+
+    fileprivate static func validConfig(_ name: String) -> String {
+        """
+        name: "\(name)"
+        description: "A test template"
+        hatch:
+          output: "./output"
+        """
     }
 }
 
@@ -508,13 +517,4 @@ private extension TemplateLocationType.Kind {
             projectDirectory.appending(path: ".eggs").appending(path: templateName)
         }
     }
-}
-
-private func validConfig(_ name: String) -> String {
-    """
-    name: "\(name)"
-    description: "A test template"
-    hatch:
-      output: "./output"
-    """
 }

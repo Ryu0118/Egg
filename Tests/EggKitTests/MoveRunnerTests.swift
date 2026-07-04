@@ -124,14 +124,6 @@ struct MoveRunnerTests {
         let verification: Verification?
         let expectedError: MoveRunner.Error?
 
-        var testDescription: String {
-            description
-        }
-
-        func mode(projectDirectory: URL) -> MoveRunnerMode {
-            modeConfig.toMode(projectDirectory: projectDirectory)
-        }
-
         static let allCases: [TestCase] = [
             // Success cases - direct mode
             TestCase(
@@ -287,6 +279,14 @@ struct MoveRunnerTests {
                 expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project"),
             ),
         ]
+
+        func mode(projectDirectory: URL) -> MoveRunnerMode {
+            modeConfig.toMode(projectDirectory: projectDirectory)
+        }
+
+        var testDescription: String {
+            description
+        }
 
         enum ModeConfig {
             case direct(
@@ -527,14 +527,6 @@ struct MoveRunnerWithCustomPathsTests {
         let verification: Verification?
         let expectedError: MoveRunner.Error?
 
-        var testDescription: String {
-            description
-        }
-
-        func mode(projectDirectory: URL, customPath: URL) -> MoveRunnerMode {
-            modeConfig.toMode(projectDirectory: projectDirectory, customPath: customPath)
-        }
-
         static let allCases: [TestCase] = [
             // Success cases - moving from custom path
             TestCase(
@@ -640,6 +632,14 @@ struct MoveRunnerWithCustomPathsTests {
                 expectedError: .targetAlreadyExists(name: "MyTemplate", location: "project"),
             ),
         ]
+
+        func mode(projectDirectory: URL, customPath: URL) -> MoveRunnerMode {
+            modeConfig.toMode(projectDirectory: projectDirectory, customPath: customPath)
+        }
+
+        var testDescription: String {
+            description
+        }
 
         enum ModeConfig {
             case direct(

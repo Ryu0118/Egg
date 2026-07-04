@@ -45,6 +45,11 @@ public struct SingleSelectionState<Value: Equatable & CustomStringConvertible & 
         cursorIndex = (cursorIndex + 1) % visibleOptions.count
     }
 
+    /// Moves focus to the first visible option.
+    public mutating func moveCursorToBeginning() {
+        cursorIndex = 0
+    }
+
     mutating func clampCursor() {
         guard !visibleOptions.isEmpty else {
             cursorIndex = 0

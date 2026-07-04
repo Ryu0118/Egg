@@ -59,10 +59,6 @@ struct CreateArgumentsValidatorTests {
         let existingTemplates: Set<String>
         let expected: Result
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -158,6 +154,10 @@ struct CreateArgumentsValidatorTests {
                 expected: .failure(.templateAlreadyExists),
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success(CreateRunnerMode)

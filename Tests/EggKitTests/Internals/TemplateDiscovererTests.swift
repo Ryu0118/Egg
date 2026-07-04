@@ -6,8 +6,8 @@ import Testing
 struct TemplateDiscovererTests {
     private let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test(arguments: TestCase.allCases)
-    func `discover templates`(_ testCase: TestCase) async throws {
+    @Test("discovers valid templates under a directory tree while skipping entries with missing or invalid config.yml and reserved directory names", arguments: TestCase.allCases)
+    func discoverTemplates(_ testCase: TestCase) async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "template-discoverer-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -36,27 +36,6 @@ struct TemplateDiscovererTests {
         let expectedCount: Int
         let expectedNames: [String]
         let excludedNames: [String]
-
-        var testDescription: String {
-            description
-        }
-
-        func setup(in baseDir: URL, fileManager: any FileManagerProtocol) throws {
-            for dir in directories {
-                let dirPath = baseDir.appending(path: dir.name)
-                try fileManager.createDirectory(at: dirPath, withIntermediateDirectories: true)
-
-                if let config = dir.configContent {
-                    let configPath = dirPath.appending(path: "config.yml")
-                    try config.write(to: configPath, atomically: true, encoding: .utf8)
-                }
-
-                if let readme = dir.readmeContent {
-                    let readmePath = dirPath.appending(path: "README.md")
-                    try readme.write(to: readmePath, atomically: true, encoding: .utf8)
-                }
-            }
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -168,6 +147,27 @@ struct TemplateDiscovererTests {
                 excludedNames: ["invalid1", "invalid2", "no-config"],
             ),
         ]
+
+        func setup(in baseDir: URL, fileManager: any FileManagerProtocol) throws {
+            for dir in directories {
+                let dirPath = baseDir.appending(path: dir.name)
+                try fileManager.createDirectory(at: dirPath, withIntermediateDirectories: true)
+
+                if let config = dir.configContent {
+                    let configPath = dirPath.appending(path: "config.yml")
+                    try config.write(to: configPath, atomically: true, encoding: .utf8)
+                }
+
+                if let readme = dir.readmeContent {
+                    let readmePath = dirPath.appending(path: "README.md")
+                    try readme.write(to: readmePath, atomically: true, encoding: .utf8)
+                }
+            }
+        }
+
+        var testDescription: String {
+            description
+        }
 
         /// Helper functions for config content
         private static func validConfig(_ name: String) -> String {

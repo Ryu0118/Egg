@@ -85,107 +85,6 @@ struct TemplateExpanderTests {
         let override: Bool
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        /// Convenience initializer with defaults
-        init(
-            _ description: String,
-            templateSetup: [TemplateSetup],
-            macros: [ResolvedMacro] = [],
-            stepOutputs: [TestOutput] = [],
-            excludeRules: [Config.ExcludeRule]? = nil,
-            existingFiles: [ExistingFile] = [],
-            isInteractive: Bool = false,
-            override: Bool = false,
-            expectation: Expectation,
-        ) {
-            self.description = description
-            self.templateSetup = templateSetup
-            self.macros = macros
-            self.stepOutputs = stepOutputs
-            self.excludeRules = excludeRules
-            self.existingFiles = existingFiles
-            self.isInteractive = isInteractive
-            self.override = override
-            self.expectation = expectation
-        }
-
-        /// Convenience method for simple success cases
-        static func success(
-            _ description: String,
-            templateSetup: [TemplateSetup],
-            macros: [ResolvedMacro] = [],
-            stepOutputs: [TestOutput] = [],
-            excludeRules: [Config.ExcludeRule]? = nil,
-            existingFiles: [ExistingFile] = [],
-            isInteractive: Bool = false,
-            override: Bool = false,
-            verifications: [Verification],
-        ) -> TestCase {
-            TestCase(
-                description,
-                templateSetup: templateSetup,
-                macros: macros,
-                stepOutputs: stepOutputs,
-                excludeRules: excludeRules,
-                existingFiles: existingFiles,
-                isInteractive: isInteractive,
-                override: override,
-                expectation: .success(verifications: verifications),
-            )
-        }
-
-        /// Convenience method for failure cases
-        static func failure(
-            _ description: String,
-            templateSetup: [TemplateSetup],
-            macros: [ResolvedMacro] = [],
-            stepOutputs: [TestOutput] = [],
-            excludeRules: [Config.ExcludeRule]? = nil,
-            existingFiles: [ExistingFile] = [],
-            isInteractive: Bool = false,
-            override: Bool = false,
-            expectedError: TemplateExpander.Error,
-        ) -> TestCase {
-            TestCase(
-                description,
-                templateSetup: templateSetup,
-                macros: macros,
-                stepOutputs: stepOutputs,
-                excludeRules: excludeRules,
-                existingFiles: existingFiles,
-                isInteractive: isInteractive,
-                override: override,
-                expectation: .failure(expectedError: expectedError),
-            )
-        }
-
-        enum TemplateSetup {
-            case file(path: String, content: String)
-            case directory(path: String)
-            case binaryFile(path: String, data: Data)
-        }
-
-        struct ExistingFile {
-            let path: String
-            let content: String
-        }
-
-        enum Expectation {
-            case success(verifications: [Verification])
-            case failure(expectedError: TemplateExpander.Error)
-        }
-
-        enum Verification {
-            case fileExists(path: String)
-            case fileNotExists(path: String)
-            case fileContent(path: String, expectedContent: String)
-            case binaryFileContent(path: String, expectedData: Data)
-            case directoryExists(path: String)
-        }
-
         static let allCases: [TestCase] = [
             // Basic template expansion
             .success(
@@ -514,6 +413,107 @@ struct TemplateExpanderTests {
                 ],
             ),
         ]
+
+        /// Convenience initializer with defaults
+        init(
+            _ description: String,
+            templateSetup: [TemplateSetup],
+            macros: [ResolvedMacro] = [],
+            stepOutputs: [TestOutput] = [],
+            excludeRules: [Config.ExcludeRule]? = nil,
+            existingFiles: [ExistingFile] = [],
+            isInteractive: Bool = false,
+            override: Bool = false,
+            expectation: Expectation,
+        ) {
+            self.description = description
+            self.templateSetup = templateSetup
+            self.macros = macros
+            self.stepOutputs = stepOutputs
+            self.excludeRules = excludeRules
+            self.existingFiles = existingFiles
+            self.isInteractive = isInteractive
+            self.override = override
+            self.expectation = expectation
+        }
+
+        /// Convenience method for simple success cases
+        static func success(
+            _ description: String,
+            templateSetup: [TemplateSetup],
+            macros: [ResolvedMacro] = [],
+            stepOutputs: [TestOutput] = [],
+            excludeRules: [Config.ExcludeRule]? = nil,
+            existingFiles: [ExistingFile] = [],
+            isInteractive: Bool = false,
+            override: Bool = false,
+            verifications: [Verification],
+        ) -> TestCase {
+            TestCase(
+                description,
+                templateSetup: templateSetup,
+                macros: macros,
+                stepOutputs: stepOutputs,
+                excludeRules: excludeRules,
+                existingFiles: existingFiles,
+                isInteractive: isInteractive,
+                override: override,
+                expectation: .success(verifications: verifications),
+            )
+        }
+
+        /// Convenience method for failure cases
+        static func failure(
+            _ description: String,
+            templateSetup: [TemplateSetup],
+            macros: [ResolvedMacro] = [],
+            stepOutputs: [TestOutput] = [],
+            excludeRules: [Config.ExcludeRule]? = nil,
+            existingFiles: [ExistingFile] = [],
+            isInteractive: Bool = false,
+            override: Bool = false,
+            expectedError: TemplateExpander.Error,
+        ) -> TestCase {
+            TestCase(
+                description,
+                templateSetup: templateSetup,
+                macros: macros,
+                stepOutputs: stepOutputs,
+                excludeRules: excludeRules,
+                existingFiles: existingFiles,
+                isInteractive: isInteractive,
+                override: override,
+                expectation: .failure(expectedError: expectedError),
+            )
+        }
+
+        enum TemplateSetup {
+            case file(path: String, content: String)
+            case directory(path: String)
+            case binaryFile(path: String, data: Data)
+        }
+
+        struct ExistingFile {
+            let path: String
+            let content: String
+        }
+
+        enum Expectation {
+            case success(verifications: [Verification])
+            case failure(expectedError: TemplateExpander.Error)
+        }
+
+        enum Verification {
+            case fileExists(path: String)
+            case fileNotExists(path: String)
+            case fileContent(path: String, expectedContent: String)
+            case binaryFileContent(path: String, expectedData: Data)
+            case directoryExists(path: String)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     struct TestOutput {

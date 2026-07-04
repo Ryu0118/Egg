@@ -6,8 +6,8 @@ import Testing
 struct TemplateDeleteCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows delete command help`() async throws {
+    @Test("--help shows delete command help")
+    func helpShowsDeleteCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "delete", "--help")
 
@@ -20,8 +20,11 @@ struct TemplateDeleteCommandTests {
         #expect(result.stdout.contains("--template-search-paths"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `delete template`(_ testCase: TestCase) async throws {
+    @Test(
+        "removes a template's directory from disk with --force, failing without side effects when the template does not exist",
+        arguments: TestCase.allCases,
+    )
+    func deleteTemplate(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-delete")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -111,40 +114,6 @@ struct TemplateDeleteCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String {
-            description
-        }
-
-        func buildArguments(projectDir: URL) -> [String] {
-            var args = ["template", "delete", templateToDelete]
-            args += ["--project-directory", projectDir.path(percentEncoded: false)]
-            if force {
-                args.append("--force")
-            }
-            return args
-        }
-
-        enum Location: String {
-            case global
-            case project
-        }
-
-        enum Expected {
-            case success
-            case failure(errorContains: String)
-        }
-
-        struct TemplateSetup {
-            let name: String
-            let description: String
-            let location: Location
-        }
-
-        struct Verification {
-            let templateName: String
-            let location: Location
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -178,5 +147,39 @@ struct TemplateDeleteCommandTests {
                 verification: nil,
             ),
         ]
+
+        func buildArguments(projectDir: URL) -> [String] {
+            var args = ["template", "delete", templateToDelete]
+            args += ["--project-directory", projectDir.path(percentEncoded: false)]
+            if force {
+                args.append("--force")
+            }
+            return args
+        }
+
+        enum Location: String {
+            case global
+            case project
+        }
+
+        enum Expected {
+            case success
+            case failure(errorContains: String)
+        }
+
+        struct TemplateSetup {
+            let name: String
+            let description: String
+            let location: Location
+        }
+
+        struct Verification {
+            let templateName: String
+            let location: Location
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

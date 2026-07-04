@@ -8,7 +8,7 @@ import Testing
 /// Rollback only reads `.egg/rollback/<id>/{manifest.json,before/}` and the
 /// working directory, so each test synthesizes a bundle directly — no git,
 /// no staging, no template expansion.
-@Suite("AgentHatchRollback")
+@Suite("Rollback restores or removes exactly the files a bundle recorded")
 struct AgentHatchRollbackTests {
     private let fileManager: some FileManagerProtocol = FileManager.default
 
@@ -61,8 +61,8 @@ struct AgentHatchRollbackTests {
         try fileManager.writeText(manifest, at: bundleRoot.appending(path: "manifest.json"))
     }
 
-    @Test
-    func `Restores modify and delete, removes add, leaves unrelated files intact`() async throws {
+    @Test("Restores modify and delete, removes add, leaves unrelated files intact")
+    func restoresModifyAndDeleteRemovesAddLeavesUnrelatedFilesIntact() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -94,8 +94,8 @@ struct AgentHatchRollbackTests {
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "unrelated.txt")), as: UTF8.self) == "unrelated\n")
     }
 
-    @Test
-    func `Refuses when the user edited an applied file, unless forced`() async throws {
+    @Test("Refuses when the user edited an applied file, unless forced")
+    func refusesWhenTheUserEditedAnAppliedFileUnlessForced() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -121,8 +121,8 @@ struct AgentHatchRollbackTests {
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "old\n")
     }
 
-    @Test
-    func `Refuses a second rollback of the same bundle`() async throws {
+    @Test("Refuses a second rollback of the same bundle")
+    func refusesASecondRollbackOfTheSameBundle() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -136,8 +136,8 @@ struct AgentHatchRollbackTests {
         }
     }
 
-    @Test
-    func `A user-recreated file at a delete path is a conflict`() async throws {
+    @Test("A user-recreated file at a delete path is a conflict")
+    func aUserRecreatedFileAtADeletePathIsAConflict() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -159,8 +159,8 @@ struct AgentHatchRollbackTests {
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "deleted.txt")), as: UTF8.self) == "original\n")
     }
 
-    @Test
-    func `An add path whose pre-apply file was backed up is restored, not deleted`() async throws {
+    @Test("An add path whose pre-apply file was backed up is restored, not deleted")
+    func anAddPathWhosePreApplyFileWasBackedUpIsRestoredNotDeleted() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -178,8 +178,8 @@ struct AgentHatchRollbackTests {
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "added.txt")), as: UTF8.self) == "the user's file\n")
     }
 
-    @Test
-    func `A missing add target is not a conflict; rollback is a no-op for it`() async throws {
+    @Test("A missing add target is not a conflict; rollback is a no-op for it")
+    func aMissingAddTargetIsNotAConflictRollbackIsANoOpForIt() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -191,8 +191,8 @@ struct AgentHatchRollbackTests {
         #expect(!fileManager.exists(root.appending(path: "added.txt")))
     }
 
-    @Test
-    func `Removing a nested added file prunes now-empty parent directories`() async throws {
+    @Test("Removing a nested added file prunes now-empty parent directories")
+    func removingANestedAddedFilePrunesNowEmptyParentDirectories() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -206,8 +206,8 @@ struct AgentHatchRollbackTests {
         #expect(fileManager.exists(root))
     }
 
-    @Test
-    func `A non-empty parent directory survives pruning`() async throws {
+    @Test("A non-empty parent directory survives pruning")
+    func aNonEmptyParentDirectorySurvivesPruning() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -222,8 +222,8 @@ struct AgentHatchRollbackTests {
         #expect(fileManager.exists(root.appending(path: "deep/keep.txt")))
     }
 
-    @Test
-    func `Missing bundle id fails with a read error`() async throws {
+    @Test("Missing bundle id fails with a read error")
+    func missingBundleIdFailsWithAReadError() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -232,8 +232,8 @@ struct AgentHatchRollbackTests {
         }
     }
 
-    @Test
-    func `Legacy bundle without afterHash skips conflict detection but still restores`() async throws {
+    @Test("Legacy bundle without afterHash skips conflict detection but still restores")
+    func legacyBundleWithoutAfterHashSkipsConflictDetectionButStillRestores() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -250,8 +250,8 @@ struct AgentHatchRollbackTests {
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "modified.txt")), as: UTF8.self) == "old\n")
     }
 
-    @Test
-    func `A missing modify backup refuses up front instead of a partial silent restore`() async throws {
+    @Test("A missing modify backup refuses up front instead of a partial silent restore")
+    func aMissingModifyBackupRefusesUpFrontInsteadOfAPartialSilentRestore() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -277,8 +277,8 @@ struct AgentHatchRollbackTests {
         #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "b.txt")), as: UTF8.self) == "current b\n")
     }
 
-    @Test
-    func `A missing delete backup also refuses up front`() async throws {
+    @Test("A missing delete backup also refuses up front")
+    func aMissingDeleteBackupAlsoRefusesUpFront() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -290,8 +290,8 @@ struct AgentHatchRollbackTests {
         }
     }
 
-    @Test(arguments: ["../escape", "a/b", "..", "", "a\\b"])
-    func `Rejects a rollback id that is not a single safe path segment`(badId: String) async throws {
+    @Test("Rejects a rollback id that is not a single safe path segment", arguments: ["../escape", "a/b", "..", "", "a\\b"])
+    func rejectsARollbackIdThatIsNotASingleSafePathSegment(badId: String) async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -300,8 +300,8 @@ struct AgentHatchRollbackTests {
         }
     }
 
-    @Test(arguments: ["../escape", "a/b", "..", ""])
-    func `Rejects an apply token that is not a single safe path segment`(badToken: String) async throws {
+    @Test("Rejects an apply token that is not a single safe path segment", arguments: ["../escape", "a/b", "..", ""])
+    func rejectsAnApplyTokenThatIsNotASingleSafePathSegment(badToken: String) async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -313,8 +313,8 @@ struct AgentHatchRollbackTests {
         }
     }
 
-    @Test
-    func `A rollback id that would escape via path traversal cannot read outside .egg-rollback`() async throws {
+    @Test("A rollback id that would escape via path traversal cannot read outside .egg-rollback")
+    func aRollbackIdThatWouldEscapeViaPathTraversalCannotReadOutsideEggRollback() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 

@@ -88,37 +88,15 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
             homeDirectory: homeDirectory,
             interaction: interaction,
         )
-        let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
+        let finalAllowedPaths = try await sandboxResolver.resolveConfirmedAllowedPaths(
             config.sandbox?.allowedPaths,
             macros: macros,
             workingDirectory: workingDirectory,
+            isInteractive: isInteractive,
+            sandboxDisabled: sandboxDisabled,
         )
 
-        // Track whether user confirmed extended sandbox permissions
-        var sandboxPermissionConfirmed = false
-
-        // If allowed_paths are specified and sandbox is enabled, handle permission
-        if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
-            if isInteractive {
-                // Prompt user for permission in interactive mode
-                sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                    expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                )
-                if !sandboxPermissionConfirmed {
-                    interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
-                }
-            } else {
-                // Non-interactive mode: reject with error
-                throw LifecycleStepError.sandboxPermissionRequired(
-                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                )
-            }
-        }
-
         let outputs = StepOutputsStorage()
-
-        // Compute final allowed paths for sandbox configuration
-        let finalAllowedPaths: [URL] = sandboxPermissionConfirmed ? expandedAllowedPaths : []
 
         let executionEnvironment: ExecutionEnvironment =
             sandboxDisabled ? .unsandboxed : .sandboxed(.workingDirectory(workingDirectory, allowedPaths: finalAllowedPaths))

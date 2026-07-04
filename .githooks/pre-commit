@@ -55,7 +55,7 @@ if [ -n "$STAGED_SWIFT_FILES" ]; then
     fi
   fi
 
-  if ! (cd "$SRCROOT" && "$MY_SWIFT_LINTER" --config "$SRCROOT/.swift-ast-lint.yml" --no-cache Sources Package.swift); then
+  if ! (cd "$SRCROOT" && "$MY_SWIFT_LINTER" --config "$SRCROOT/.swift-ast-lint.yml" --no-cache Sources Tests E2ETestsPackage/Tests Package.swift); then
     echo ""
     echo "my-swift-linter reported issues. Fix them before committing."
     exit 1

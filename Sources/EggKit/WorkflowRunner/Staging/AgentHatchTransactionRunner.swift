@@ -21,6 +21,7 @@ package struct AgentHatchTransactionRunner {
     private let config: Config
     private let parsedMacros: [ParsedMacroDefinition]
     private let pathFilter: GitStagingChangeDetector.PathFilter
+    private let sandboxDisabled: Bool
     private let store: HatchTransactionStore
     private let phaseRunner: PhaseRunner
 
@@ -34,6 +35,7 @@ package struct AgentHatchTransactionRunner {
         parsedMacros: [ParsedMacroDefinition],
         include: [String] = [],
         exclude: [String] = [],
+        sandboxDisabled: Bool = false,
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -42,6 +44,7 @@ package struct AgentHatchTransactionRunner {
         self.templateDirectory = templateDirectory
         self.config = config
         self.parsedMacros = parsedMacros
+        self.sandboxDisabled = sandboxDisabled
         pathFilter = GitStagingChangeDetector.PathFilter(include: include, exclude: exclude)
         store = HatchTransactionStore(fileManager: fileManager, workingDirectory: workingDirectory)
         phaseRunner = PhaseRunner(
@@ -60,7 +63,10 @@ package struct AgentHatchTransactionRunner {
     /// When `includeDiff` is set, each change carries its unified diff so a
     /// caller can review the exact content before applying.
     package func preview(includeDiff: Bool = false) async throws -> AgentHatchPreviewResult {
-        if let allowedPaths = config.sandbox?.allowedPaths, !allowedPaths.isEmpty {
+        if !sandboxDisabled,
+           let allowedPaths = config.sandbox?.allowedPaths,
+           !allowedPaths.isEmpty
+        {
             throw LifecycleStepError.sandboxPermissionRequired(paths: allowedPaths)
         }
 
@@ -386,11 +392,15 @@ package struct AgentHatchTransactionRunner {
             "EGG_WORKSPACE_ROOT": workspace.path(percentEncoded: false),
             "EGG_ORIGINAL_WORKING_DIRECTORY": workingDirectory.path(percentEncoded: false),
         ]
-        let executionEnvironment = ExecutionEnvironment.sandboxed(.staging(
-            root: workspace,
-            originalWorkingDirectory: workingDirectory,
-            allowedPaths: [],
-        ))
+        let executionEnvironment: ExecutionEnvironment = if sandboxDisabled {
+            .unsandboxed
+        } else {
+            .sandboxed(.staging(
+                root: workspace,
+                originalWorkingDirectory: workingDirectory,
+                allowedPaths: [],
+            ))
+        }
 
         if let preHatch = config.preHatch {
             try await phaseRunner.executePreHatch(

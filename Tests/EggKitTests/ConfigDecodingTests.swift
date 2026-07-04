@@ -7,8 +7,8 @@ import Yams
 struct ConfigDecodingTests {
     let decoder = YAMLDecoder()
 
-    @Test(arguments: TestCase.allCases)
-    func `decode config yaml`(_ testCase: TestCase) throws {
+    @Test("decodes config.yml fixtures covering every macro type, lifecycle hook, and condition form into the Config model without error", arguments: TestCase.allCases)
+    func decodeConfigYaml(_ testCase: TestCase) throws {
         // Load YAML file from file system
         let fixtureURL = URL(filePath: #filePath)
             .deletingLastPathComponent()
@@ -35,10 +35,6 @@ struct ConfigDecodingTests {
         let description: String
         let filename: String
         let expectedMacroCount: Int?
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -161,5 +157,9 @@ struct ConfigDecodingTests {
                 expectedMacroCount: nil,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

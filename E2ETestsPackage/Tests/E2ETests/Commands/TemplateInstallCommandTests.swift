@@ -10,6 +10,9 @@ struct TemplateInstallCommandTests {
     static let testRepoOwner = "Ryu0118"
     static let testRepoName = "swift-egg-templates"
 
+    /// Known templates in the test repository
+    static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
+
     static var testRepoURL: String {
         if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"] {
             return "https://x-access-token:\(token)@github.com/\(testRepoOwner)/\(testRepoName).git"
@@ -17,13 +20,10 @@ struct TemplateInstallCommandTests {
         return "git@github.com:\(testRepoOwner)/\(testRepoName).git"
     }
 
-    /// Known templates in the test repository
-    static let knownTemplates = ["SwiftModule", "iOSProjectGenTemplate"]
-
     // MARK: - Help
 
-    @Test
-    func `--help shows install command help`() async throws {
+    @Test("template install --help documents git source flags (--branch/--tag/--revision) and filter/destination flags (--template/--exclude/--global/--force)")
+    func helpShowsInstallCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "install", "--help")
 
@@ -41,8 +41,8 @@ struct TemplateInstallCommandTests {
 
     // MARK: - Validation Errors
 
-    @Test
-    func `fails with invalid URL`() async throws {
+    @Test("fails with an Invalid error when the source is neither a valid URL nor an existing local path")
+    func failsWithInvalidURL() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -55,8 +55,8 @@ struct TemplateInstallCommandTests {
         #expect((result.stderr + result.stdout).contains("Invalid"))
     }
 
-    @Test
-    func `fails when using both --template and --exclude`() async throws {
+    @Test("fails with a Cannot use both error when --template and --exclude are combined")
+    func failsWhenUsingBothTemplateAndExclude() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -69,8 +69,8 @@ struct TemplateInstallCommandTests {
         #expect((result.stderr + result.stdout).contains("Cannot use both"))
     }
 
-    @Test
-    func `fails when using --branch and --tag together`() async throws {
+    @Test("fails with an Only one of error when --branch and --tag are combined")
+    func failsWhenUsingBranchAndTagTogether() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -83,8 +83,8 @@ struct TemplateInstallCommandTests {
         #expect((result.stderr + result.stdout).contains("Only one of"))
     }
 
-    @Test
-    func `fails when using --branch with local path`() async throws {
+    @Test("fails with a not-allowed-for-local-path error when --branch is combined with a local directory source")
+    func failsWhenUsingBranchWithLocalPath() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -102,8 +102,8 @@ struct TemplateInstallCommandTests {
 
     // MARK: - Git Repository Installation
 
-    @Test
-    func `installs all templates to global location`() async throws {
+    @Test("installs every template from the repo into ~/.eggs when no --template/--exclude filter is given")
+    func installsAllTemplatesToGlobalLocation() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -122,8 +122,8 @@ struct TemplateInstallCommandTests {
         }
     }
 
-    @Test
-    func `installs all templates to project location`() async throws {
+    @Test("installs every template into the project's local .eggs directory when --global is omitted")
+    func installsAllTemplatesToProjectLocation() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -141,8 +141,8 @@ struct TemplateInstallCommandTests {
         }
     }
 
-    @Test
-    func `installs specific template using --template filter`() async throws {
+    @Test("--template SwiftModule installs only that template and skips iOSProjectGenTemplate")
+    func installsSpecificTemplateUsingTemplateFilter() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -159,8 +159,8 @@ struct TemplateInstallCommandTests {
         #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/iOSProjectGenTemplate").path(percentEncoded: false)))
     }
 
-    @Test
-    func `excludes specific template using --exclude filter`() async throws {
+    @Test("--exclude iOSProjectGenTemplate installs SwiftModule but skips the excluded template")
+    func excludesSpecificTemplateUsingExcludeFilter() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -177,8 +177,8 @@ struct TemplateInstallCommandTests {
         #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/iOSProjectGenTemplate").path(percentEncoded: false)))
     }
 
-    @Test
-    func `installs from specific branch`() async throws {
+    @Test("--branch main checks out and installs the template fixture from that branch")
+    func installsFromSpecificBranch() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -194,8 +194,8 @@ struct TemplateInstallCommandTests {
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
     }
 
-    @Test
-    func `installs from specific revision`() async throws {
+    @Test("--revision <sha> installs the template fixture pinned to that exact commit")
+    func installsFromSpecificRevision() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -211,8 +211,8 @@ struct TemplateInstallCommandTests {
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
     }
 
-    @Test
-    func `overwrites existing template with --force`() async throws {
+    @Test("--force overwrites an existing template directory, replacing its prior marker file")
+    func overwritesExistingTemplateWithForce() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -232,8 +232,8 @@ struct TemplateInstallCommandTests {
         #expect(!fileManager.fileExists(atPath: markerFile.path(percentEncoded: false)), "Marker should be gone after overwrite")
     }
 
-    @Test
-    func `skips existing template without --force`() async throws {
+    @Test("without --force, install fails and leaves the existing template's marker file untouched")
+    func skipsExistingTemplateWithoutForce() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -253,8 +253,8 @@ struct TemplateInstallCommandTests {
         #expect(fileManager.fileExists(atPath: markerFile.path(percentEncoded: false)), "Marker should still exist")
     }
 
-    @Test
-    func `fails with non-existent repository`() async throws {
+    @Test("fails when the git repository URL points to a repository that does not exist")
+    func failsWithNonExistentRepository() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -266,8 +266,8 @@ struct TemplateInstallCommandTests {
         #expect(!result.succeeded)
     }
 
-    @Test
-    func `fails with non-existent branch`() async throws {
+    @Test("fails when --branch references a branch that does not exist in the repository")
+    func failsWithNonExistentBranch() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
         let fixture = try makeGitTemplateFixture(in: projectDir)
@@ -282,8 +282,8 @@ struct TemplateInstallCommandTests {
 
     // MARK: - Local Path Installation
 
-    @Test
-    func `installs templates from local absolute path`() async throws {
+    @Test("installs both templates when given an absolute local directory path as the source")
+    func installsTemplatesFromLocalAbsolutePath() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -302,8 +302,8 @@ struct TemplateInstallCommandTests {
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/LocalTemplate2").path(percentEncoded: false)))
     }
 
-    @Test
-    func `installs templates from local relative path with ./`() async throws {
+    @Test("resolves a ./-prefixed relative source path against the working directory to install the template")
+    func installsTemplatesFromLocalRelativePathWith() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -322,8 +322,8 @@ struct TemplateInstallCommandTests {
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/RelativePathTemplate").path(percentEncoded: false)))
     }
 
-    @Test
-    func `installs templates from plain relative path without ./`() async throws {
+    @Test("resolves a bare relative source path (no ./ prefix, with subdirectories) against the working directory to install the template")
+    func installsTemplatesFromPlainRelativePathWithout() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -342,8 +342,8 @@ struct TemplateInstallCommandTests {
         #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/PluginTemplate").path(percentEncoded: false)))
     }
 
-    @Test
-    func `installs templates from local path with filter`() async throws {
+    @Test("--template filter on a local-path source installs only the matching template and skips the rest")
+    func installsTemplatesFromLocalPathWithFilter() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 
@@ -362,8 +362,8 @@ struct TemplateInstallCommandTests {
         #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/ExcludedTemplate").path(percentEncoded: false)))
     }
 
-    @Test
-    func `fails when local path does not exist`() async throws {
+    @Test("fails with an invalid-source error when the local source path does not exist")
+    func failsWhenLocalPathDoesNotExist() async throws {
         let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
         defer { cleanup() }
 

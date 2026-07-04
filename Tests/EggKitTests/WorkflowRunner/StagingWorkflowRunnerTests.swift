@@ -86,82 +86,6 @@ struct StagingWorkflowRunnerTests {
         let override: Bool
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        init(
-            _ description: String,
-            workingDirSetup: [FileSetup] = [],
-            templateSetup: [FileSetup],
-            macroDefinitions: [Config.Macro] = [],
-            macros: [ParsedMacroDefinition] = [],
-            preHatchSteps: [Config.LifecycleStep]? = nil,
-            hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
-            postHatchSteps: [Config.LifecycleStep]? = nil,
-            override: Bool = true,
-            expectation: Expectation,
-        ) {
-            self.description = description
-            self.workingDirSetup = workingDirSetup
-            self.templateSetup = templateSetup
-            self.macroDefinitions = macroDefinitions
-            self.macros = macros
-            self.preHatchSteps = preHatchSteps
-            self.hatchConfig = hatchConfig
-            self.postHatchSteps = postHatchSteps
-            self.override = override
-            self.expectation = expectation
-        }
-
-        static func success(
-            _ description: String,
-            workingDirSetup: [FileSetup] = [],
-            templateSetup: [FileSetup],
-            macroDefinitions: [Config.Macro] = [],
-            macros: [ParsedMacroDefinition] = [],
-            preHatchSteps: [Config.LifecycleStep]? = nil,
-            hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
-            postHatchSteps: [Config.LifecycleStep]? = nil,
-            override: Bool = true,
-            verifications: [Verification],
-        ) -> TestCase {
-            TestCase(
-                description,
-                workingDirSetup: workingDirSetup,
-                templateSetup: templateSetup,
-                macroDefinitions: macroDefinitions,
-                macros: macros,
-                preHatchSteps: preHatchSteps,
-                hatchConfig: hatchConfig,
-                postHatchSteps: postHatchSteps,
-                override: override,
-                expectation: .success(verifications: verifications),
-            )
-        }
-
-        enum FileSetup {
-            case file(path: String, content: String)
-            case directory(path: String)
-        }
-
-        enum Expectation {
-            case success(verifications: [Verification])
-            case error(ExpectedError)
-        }
-
-        enum ExpectedError {
-            case userAborted
-            case escapeAttempt
-        }
-
-        enum Verification {
-            case fileExists(path: String)
-            case fileNotExists(path: String)
-            case fileContent(path: String, expectedContent: String)
-            case directoryExists(path: String)
-        }
-
         static let allCases: [TestCase] = [
             // Basic workflow in staging workspace
             .success(
@@ -468,27 +392,103 @@ struct StagingWorkflowRunnerTests {
                 ],
             ),
         ]
+
+        init(
+            _ description: String,
+            workingDirSetup: [FileSetup] = [],
+            templateSetup: [FileSetup],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
+            preHatchSteps: [Config.LifecycleStep]? = nil,
+            hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
+            postHatchSteps: [Config.LifecycleStep]? = nil,
+            override: Bool = true,
+            expectation: Expectation,
+        ) {
+            self.description = description
+            self.workingDirSetup = workingDirSetup
+            self.templateSetup = templateSetup
+            self.macroDefinitions = macroDefinitions
+            self.macros = macros
+            self.preHatchSteps = preHatchSteps
+            self.hatchConfig = hatchConfig
+            self.postHatchSteps = postHatchSteps
+            self.override = override
+            self.expectation = expectation
+        }
+
+        static func success(
+            _ description: String,
+            workingDirSetup: [FileSetup] = [],
+            templateSetup: [FileSetup],
+            macroDefinitions: [Config.Macro] = [],
+            macros: [ParsedMacroDefinition] = [],
+            preHatchSteps: [Config.LifecycleStep]? = nil,
+            hatchConfig: Config.HatchConfig = Config.HatchConfig(output: "."),
+            postHatchSteps: [Config.LifecycleStep]? = nil,
+            override: Bool = true,
+            verifications: [Verification],
+        ) -> TestCase {
+            TestCase(
+                description,
+                workingDirSetup: workingDirSetup,
+                templateSetup: templateSetup,
+                macroDefinitions: macroDefinitions,
+                macros: macros,
+                preHatchSteps: preHatchSteps,
+                hatchConfig: hatchConfig,
+                postHatchSteps: postHatchSteps,
+                override: override,
+                expectation: .success(verifications: verifications),
+            )
+        }
+
+        enum FileSetup {
+            case file(path: String, content: String)
+            case directory(path: String)
+        }
+
+        enum Expectation {
+            case success(verifications: [Verification])
+            case error(ExpectedError)
+        }
+
+        enum ExpectedError {
+            case userAborted
+            case escapeAttempt
+        }
+
+        enum Verification {
+            case fileExists(path: String)
+            case fileNotExists(path: String)
+            case fileContent(path: String, expectedContent: String)
+            case directoryExists(path: String)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
-}
-
-private func initializeGitRepository(at directory: URL) throws {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-    process.arguments = ["init"]
-    process.currentDirectoryURL = directory
-    try process.run()
-    process.waitUntilExit()
-
-    guard process.terminationStatus == 0 else {
-        throw GitInitializationError.failed(status: process.terminationStatus)
-    }
-}
-
-private enum GitInitializationError: Error {
-    case failed(status: Int32)
 }
 
 extension StagingWorkflowRunnerTests {
+    private enum GitInitializationError: Error {
+        case failed(status: Int32)
+    }
+
+    private func initializeGitRepository(at directory: URL) throws {
+        let process = Process()
+        process.executableURL = URL(filePath: "/usr/bin/git")
+        process.arguments = ["init"]
+        process.currentDirectoryURL = directory
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            throw GitInitializationError.failed(status: process.terminationStatus)
+        }
+    }
+
     private func setupItem(_ item: TestCase.FileSetup, in baseDir: URL, using fileManager: some FileManagerProtocol) throws {
         switch item {
         case let .file(path, content):

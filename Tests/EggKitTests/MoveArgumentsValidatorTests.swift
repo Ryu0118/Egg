@@ -84,10 +84,6 @@ struct MoveArgumentsValidatorTests {
         let existingTemplates: [(name: String, location: TemplateLocationType.Kind)]
         let expected: Result
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -200,6 +196,10 @@ struct MoveArgumentsValidatorTests {
                 expected: .failure(.sameLocation(name: "MyTemplate", location: "global")),
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success(ExpectedMode)
@@ -357,32 +357,6 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
         let existingTemplates: [(name: String, location: LocationKind)]
         let expected: Result
 
-        var testDescription: String {
-            description
-        }
-
-        enum LocationKind {
-            case global
-            case project
-            case custom
-
-            func toPath(
-                templateName: String,
-                projectDirectory: URL,
-                homeDirectory: URL,
-                customPath: URL,
-            ) -> URL {
-                switch self {
-                case .global:
-                    homeDirectory.appending(path: ".eggs").appending(path: templateName)
-                case .project:
-                    projectDirectory.appending(path: ".eggs").appending(path: templateName)
-                case .custom:
-                    customPath.appending(path: templateName)
-                }
-            }
-        }
-
         static let allCases: [TestCase] = [
             // Custom path template detection
             TestCase(
@@ -445,6 +419,32 @@ struct MoveArgumentsValidatorWithCustomPathsTests {
                 )),
             ),
         ]
+
+        enum LocationKind {
+            case global
+            case project
+            case custom
+
+            func toPath(
+                templateName: String,
+                projectDirectory: URL,
+                homeDirectory: URL,
+                customPath: URL,
+            ) -> URL {
+                switch self {
+                case .global:
+                    homeDirectory.appending(path: ".eggs").appending(path: templateName)
+                case .project:
+                    projectDirectory.appending(path: ".eggs").appending(path: templateName)
+                case .custom:
+                    customPath.appending(path: templateName)
+                }
+            }
+        }
+
+        var testDescription: String {
+            description
+        }
 
         enum Result {
             case success(ExpectedMode)

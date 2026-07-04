@@ -22,10 +22,6 @@ struct PathValidationRuleTests {
         let input: String
         let expected: Bool
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             // Valid paths
             TestCase(
@@ -71,5 +67,9 @@ struct PathValidationRuleTests {
                 expected: true,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

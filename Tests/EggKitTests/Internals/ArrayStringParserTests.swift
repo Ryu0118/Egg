@@ -4,8 +4,8 @@ import Testing
 struct ArrayStringParserTests {
     // MARK: - isValidArrayString Tests
 
-    @Test(arguments: IsValidArrayStringTestCase.allCases)
-    func `is valid array string`(_ testCase: IsValidArrayStringTestCase) {
+    @Test("detects whether a string is well-formed JSON array syntax versus plain text", arguments: IsValidArrayStringTestCase.allCases)
+    func isValidArrayString(_ testCase: IsValidArrayStringTestCase) {
         let result = ArrayStringParser.isValidArrayString(testCase.input)
         #expect(result == testCase.expected)
     }
@@ -14,10 +14,6 @@ struct ArrayStringParserTests {
         let description: String
         let input: String
         let expected: Bool
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [IsValidArrayStringTestCase] = [
             IsValidArrayStringTestCase(
@@ -51,6 +47,10 @@ struct ArrayStringParserTests {
                 expected: false,
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - parse Tests
@@ -65,10 +65,6 @@ struct ArrayStringParserTests {
         let description: String
         let input: String
         let expected: [String]
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [ParseTestCase] = [
             ParseTestCase(
@@ -102,12 +98,16 @@ struct ArrayStringParserTests {
                 expected: ["iOS", "macOS"],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - toSpaceSeparated Tests
 
-    @Test(arguments: ToSpaceSeparatedTestCase.allCases)
-    func `to space separated`(_ testCase: ToSpaceSeparatedTestCase) {
+    @Test("converts a JSON array string into a space-separated string, leaving non-array input unchanged", arguments: ToSpaceSeparatedTestCase.allCases)
+    func toSpaceSeparated(_ testCase: ToSpaceSeparatedTestCase) {
         let result = ArrayStringParser.toSpaceSeparated(testCase.input)
         #expect(result == testCase.expected)
     }
@@ -116,10 +116,6 @@ struct ArrayStringParserTests {
         let description: String
         let input: String
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [ToSpaceSeparatedTestCase] = [
             ToSpaceSeparatedTestCase(
@@ -143,5 +139,9 @@ struct ArrayStringParserTests {
                 expected: "",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

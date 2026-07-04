@@ -6,8 +6,8 @@ import Testing
 struct TemplateMoveCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows move command help`() async throws {
+    @Test("--help shows move command help")
+    func helpShowsMoveCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "move", "--help")
 
@@ -21,8 +21,11 @@ struct TemplateMoveCommandTests {
         #expect(result.stdout.contains("--template-search-paths"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `move template`(_ testCase: TestCase) async throws {
+    @Test(
+        "moves a template between global and project locations, removing it from the source and recreating it at the target, optionally overwriting with --force",
+        arguments: TestCase.allCases,
+    )
+    func moveTemplate(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-move")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -142,44 +145,6 @@ struct TemplateMoveCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String {
-            description
-        }
-
-        func buildArguments(projectDir: URL) -> [String] {
-            var args = [
-                "template", "move", templateToMove,
-                "--to", targetLocation.rawValue,
-                "--project-directory", projectDir.path(percentEncoded: false),
-            ]
-            if force {
-                args.append("--force")
-            }
-            return args
-        }
-
-        enum Location: String {
-            case global
-            case project
-        }
-
-        enum Expected {
-            case success
-            case failure(errorContains: String)
-        }
-
-        struct TemplateSetup {
-            let name: String
-            let description: String
-            let location: Location
-        }
-
-        struct Verification {
-            let templateName: String
-            let sourceLocation: Location
-            let targetLocation: Location
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -252,5 +217,43 @@ struct TemplateMoveCommandTests {
                 verification: nil,
             ),
         ]
+
+        func buildArguments(projectDir: URL) -> [String] {
+            var args = [
+                "template", "move", templateToMove,
+                "--to", targetLocation.rawValue,
+                "--project-directory", projectDir.path(percentEncoded: false),
+            ]
+            if force {
+                args.append("--force")
+            }
+            return args
+        }
+
+        enum Location: String {
+            case global
+            case project
+        }
+
+        enum Expected {
+            case success
+            case failure(errorContains: String)
+        }
+
+        struct TemplateSetup {
+            let name: String
+            let description: String
+            let location: Location
+        }
+
+        struct Verification {
+            let templateName: String
+            let sourceLocation: Location
+            let targetLocation: Location
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

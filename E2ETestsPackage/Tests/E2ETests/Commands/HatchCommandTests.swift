@@ -6,8 +6,8 @@ import Testing
 struct HatchCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows hatch command help`() async throws {
+    @Test("hatch --help documents staging/sandbox/apply flags plus --project-directory and --template-search-paths options")
+    func helpShowsHatchCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("hatch", "--help")
 
@@ -22,8 +22,35 @@ struct HatchCommandTests {
         #expect(result.stdout.contains("--template-search-paths"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `hatch template`(_ testCase: TestCase) async throws {
+    @Test("hatch preview --help documents --no-sandbox and its required --user-confirmed-no-sandbox counterpart")
+    func previewHelpShowsSandboxControls() async throws {
+        let runner = try await CLIRunner()
+        let result = try await runner.run("hatch", "preview", "--help")
+
+        #expect(result.succeeded)
+        #expect(result.stdout.contains("--no-sandbox"))
+        #expect(result.stdout.contains("--user-confirmed-no-sandbox"))
+    }
+
+    @Test("preview requires explicit confirmation before disabling sandbox protection")
+    func previewRequiresExplicitConfirmationBeforeDisablingSandboxProtection() async throws {
+        let runner = try await CLIRunner()
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-hatch-preview-no-sandbox")
+        defer { try? fileManager.removeItem(at: tempDir) }
+
+        let result = try await runner.run(
+            arguments: ["hatch", "preview", "AnyTemplate", "--no-sandbox"],
+            workingDirectory: tempDir,
+        )
+
+        #expect(!result.succeeded)
+        #expect(result.stdout.isEmpty)
+        #expect(result.stderr.contains("--user-confirmed-no-sandbox"))
+        #expect(result.stderr.contains("Ask the user whether to run lifecycle scripts without sandbox protection"))
+    }
+
+    @Test("hatch scenario matrix: each fixture produces the expected output files/content or fails with the expected error message", arguments: TestCase.allCases)
+    func hatchTemplate(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-hatch")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -166,9 +193,23 @@ struct HatchCommandTests {
         let verification: Verification?
         let useCustomSearchPath: Bool
 
-        var testDescription: String {
-            description
-        }
+        static let allCases: [TestCase] = [
+            // Basic template execution
+            basicTemplateExecution,
+            macroSubstitution,
+            templateNotFound,
+            overrideConflicts,
+            preHatchLifecycle,
+            postHatchLifecycle,
+            // Stencil template tests
+            stencilBasicRendering,
+            stencilConditionalRendering,
+            stencilLoopRendering,
+            // Custom search paths tests
+            customSearchPathTemplate,
+            customSearchPathTemplateAtRoot,
+            customSearchPathTemplateNotFoundWithoutFlag,
+        ]
 
         init(
             description: String,
@@ -303,24 +344,6 @@ struct HatchCommandTests {
                 self.contentContains = contentContains
             }
         }
-
-        static let allCases: [TestCase] = [
-            // Basic template execution
-            basicTemplateExecution,
-            macroSubstitution,
-            templateNotFound,
-            overrideConflicts,
-            preHatchLifecycle,
-            postHatchLifecycle,
-            // Stencil template tests
-            stencilBasicRendering,
-            stencilConditionalRendering,
-            stencilLoopRendering,
-            // Custom search paths tests
-            customSearchPathTemplate,
-            customSearchPathTemplateAtRoot,
-            customSearchPathTemplateNotFoundWithoutFlag,
-        ]
 
         /// Basic template execution without macros
         static let basicTemplateExecution = TestCase(
@@ -725,5 +748,9 @@ struct HatchCommandTests {
             verification: nil,
             useCustomSearchPath: false,
         )
+
+        var testDescription: String {
+            description
+        }
     }
 }

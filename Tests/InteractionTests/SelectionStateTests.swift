@@ -1,8 +1,10 @@
 @testable import Interaction
 import Testing
 
+@Suite("Tracks cursor position and selection for single- and multiple-choice option lists, including filtering and selection limits")
 struct SelectionStateTests {
-    @Test func `single selection clamps cursor when filtering shrinks options`() {
+    @Test("moving the cursor down then filtering to a single remaining option clamps the cursor to it and keeps it selected")
+    func singleSelectionClampsCursorWhenFilteringShrinksOptions() {
         var state = SingleSelectionState(
             options: ["Alpha", "ベータ", "日本語", "Gamma"].map { ChoiceOption($0) },
         )
@@ -17,7 +19,8 @@ struct SelectionStateTests {
         #expect(state.selected?.value == "日本語")
     }
 
-    @Test func `single selection filters case and diacritic insensitively`() {
+    @Test("filtering by a lowercase, unaccented query matches options that differ in case or diacritics")
+    func singleSelectionFiltersCaseAndDiacriticInsensitively() {
         var state = SingleSelectionState(
             options: ["Café", "CafeKit", "Swift"].map { ChoiceOption($0) },
         )
@@ -27,7 +30,8 @@ struct SelectionStateTests {
         #expect(state.visibleOptions.map(\.value) == ["Café", "CafeKit"])
     }
 
-    @Test func `multiple selection respects min and max limits`() {
+    @Test("adding a third option is rejected once the maximum of two is reached, while removing and re-adding options below that cap stays within the minimum of one")
+    func multipleSelectionRespectsMinAndMaxLimits() {
         var state = MultipleSelectionState(
             options: ["one", "two", "three"].map { ChoiceOption($0) },
             minimumSelectionCount: 1,

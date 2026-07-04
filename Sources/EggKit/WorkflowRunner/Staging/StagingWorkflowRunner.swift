@@ -153,35 +153,15 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 homeDirectory: homeDirectory,
                 interaction: interaction,
             )
-            let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
+            let finalAllowedPaths = try await sandboxResolver.resolveConfirmedAllowedPaths(
                 config.sandbox?.allowedPaths,
                 macros: macros,
                 workingDirectory: staging.root,
+                isInteractive: isInteractive,
+                sandboxDisabled: sandboxDisabled,
             )
 
-            // Track whether user confirmed extended sandbox permissions
-            var sandboxPermissionConfirmed = false
-
-            if !expandedAllowedPaths.isEmpty && !sandboxDisabled && !isInteractive {
-                throw LifecycleStepError.sandboxPermissionRequired(
-                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                )
-            }
-
-            if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
-                sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                    expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                )
-                if !sandboxPermissionConfirmed {
-                    interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
-                }
-            }
-
             let outputs = StepOutputsStorage()
-
-            // Compute final allowed paths for sandbox configuration
-            // Only include if user confirmed in interactive mode
-            let finalAllowedPaths: [URL] = sandboxPermissionConfirmed ? expandedAllowedPaths : []
 
             // Step 2: Execute pre_hatch phase in staging workspace (with OS-level sandboxing)
             let executionEnvironment: ExecutionEnvironment =
@@ -344,39 +324,39 @@ struct StagingWorkflowRunner: WorkflowRunning {
     /// Displays the change summary to the user.
     private func displayChangeSummary(_ summary: ChangeSummary) {
         interaction.writeLine()
-        interaction.writeLine("📋 Change Summary:")
+        interaction.writeLine("📋 \(StyledText.Segment.primary("Change Summary:"))")
 
         if !summary.added.isEmpty {
             interaction.writeLine("Added (\(summary.added.count)):", tab: 1)
             for path in summary.added {
-                interaction.writeLine("+ \(path)", tab: 2)
+                interaction.writeLine("\(StyledText.Segment.success("+ \(path)"))", tab: 2)
             }
         }
 
         if !summary.modified.isEmpty {
             interaction.writeLine("Modified (\(summary.modified.count)):", tab: 1)
             for path in summary.modified {
-                interaction.writeLine("~ \(path)", tab: 2)
+                interaction.writeLine("\(StyledText.Segment.accent("~ \(path)"))", tab: 2)
             }
         }
 
         if !summary.deleted.isEmpty {
             interaction.writeLine("Deleted (\(summary.deleted.count)):", tab: 1)
             for path in summary.deleted {
-                interaction.writeLine("- \(path)", tab: 2)
+                interaction.writeLine("\(StyledText.Segment.danger("- \(path)"))", tab: 2)
             }
         }
 
         interaction.writeLine()
-        interaction.writeLine("Total: \(summary.totalCount) file(s)", tab: 1)
+        interaction.writeLine("\(StyledText.Segment.muted("Total: \(summary.totalCount) file(s)"))", tab: 1)
         interaction.writeLine()
     }
 
     /// Displays detected conflicts to the user.
     private func displayConflicts(_ conflicts: [ConflictInfo]) {
-        interaction.writeLine("⚠️ Conflicts detected:")
+        interaction.writeLine("⚠️ \(StyledText.Segment.danger("Conflicts detected:"))")
         for conflict in conflicts {
-            interaction.writeLine("- \(conflict.pathString): \(conflict.type.description)", tab: 1)
+            interaction.writeLine("\(StyledText.Segment.danger("- \(conflict.pathString): \(conflict.type.description)"))", tab: 1)
         }
         interaction.writeLine()
     }

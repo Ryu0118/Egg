@@ -6,8 +6,8 @@ import Testing
 struct TemplateListCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows list command help`() async throws {
+    @Test("--help shows list command help")
+    func helpShowsListCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "list", "--help")
 
@@ -20,8 +20,11 @@ struct TemplateListCommandTests {
         #expect(result.stdout.contains("--template-search-paths"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `list templates`(_ testCase: TestCase) async throws {
+    @Test(
+        "lists templates filtered by location and custom search paths, hiding descriptions on request",
+        arguments: TestCase.allCases,
+    )
+    func listTemplates(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-list")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -107,62 +110,6 @@ struct TemplateListCommandTests {
         let expectedOutputContains: [String]
         let expectedOutputNotContains: [String]
         let useCustomSearchPath: Bool
-
-        var testDescription: String {
-            description
-        }
-
-        init(
-            description: String,
-            templates: [TemplateSetup],
-            locationFilter: Location?,
-            hideDescription: Bool,
-            expectedOutputContains: [String],
-            expectedOutputNotContains: [String],
-            useCustomSearchPath: Bool = false,
-        ) {
-            self.description = description
-            self.templates = templates
-            self.locationFilter = locationFilter
-            self.hideDescription = hideDescription
-            self.expectedOutputContains = expectedOutputContains
-            self.expectedOutputNotContains = expectedOutputNotContains
-            self.useCustomSearchPath = useCustomSearchPath
-        }
-
-        func buildArguments(projectDir: URL, customDir: URL? = nil) -> [String] {
-            var args = ["template", "list"]
-            args += ["--project-directory", projectDir.path(percentEncoded: false)]
-
-            if let location = locationFilter {
-                args += ["--location", location.rawValue]
-            }
-            if hideDescription {
-                args.append("--hide-description")
-            }
-            if let customDir {
-                args += ["--template-search-paths", customDir.path(percentEncoded: false)]
-            }
-            return args
-        }
-
-        enum Location: String {
-            case global
-            case project
-        }
-
-        struct TemplateSetup {
-            let name: String
-            let description: String
-            let location: LocationKind
-
-            enum LocationKind {
-                case global
-                case project
-                case custom
-                case customRoot
-            }
-        }
 
         static let allCases: [TestCase] = [
             // Empty list
@@ -295,5 +242,61 @@ struct TemplateListCommandTests {
                 useCustomSearchPath: true,
             ),
         ]
+
+        init(
+            description: String,
+            templates: [TemplateSetup],
+            locationFilter: Location?,
+            hideDescription: Bool,
+            expectedOutputContains: [String],
+            expectedOutputNotContains: [String],
+            useCustomSearchPath: Bool = false,
+        ) {
+            self.description = description
+            self.templates = templates
+            self.locationFilter = locationFilter
+            self.hideDescription = hideDescription
+            self.expectedOutputContains = expectedOutputContains
+            self.expectedOutputNotContains = expectedOutputNotContains
+            self.useCustomSearchPath = useCustomSearchPath
+        }
+
+        func buildArguments(projectDir: URL, customDir: URL? = nil) -> [String] {
+            var args = ["template", "list"]
+            args += ["--project-directory", projectDir.path(percentEncoded: false)]
+
+            if let location = locationFilter {
+                args += ["--location", location.rawValue]
+            }
+            if hideDescription {
+                args.append("--hide-description")
+            }
+            if let customDir {
+                args += ["--template-search-paths", customDir.path(percentEncoded: false)]
+            }
+            return args
+        }
+
+        enum Location: String {
+            case global
+            case project
+        }
+
+        struct TemplateSetup {
+            let name: String
+            let description: String
+            let location: LocationKind
+
+            enum LocationKind {
+                case global
+                case project
+                case custom
+                case customRoot
+            }
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

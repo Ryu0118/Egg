@@ -4,8 +4,8 @@ import Testing
 struct MacroNameConverterTests {
     // MARK: - flagToMacro Tests
 
-    @Test(arguments: FlagToMacroTestCase.allCases)
-    func `flag to macro`(_ testCase: FlagToMacroTestCase) {
+    @Test("converts a kebab-case CLI flag into its ___SCREAMING_SNAKE_CASE___ macro name", arguments: FlagToMacroTestCase.allCases)
+    func flagToMacro(_ testCase: FlagToMacroTestCase) {
         let result = MacroNameConverter.flagToMacro(testCase.flag)
         #expect(result == testCase.expected)
     }
@@ -14,10 +14,6 @@ struct MacroNameConverterTests {
         let description: String
         let flag: String
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [FlagToMacroTestCase] = [
             FlagToMacroTestCase(
@@ -51,12 +47,16 @@ struct MacroNameConverterTests {
                 expected: "___NAME_123___",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - macroToFlag Tests
 
-    @Test(arguments: MacroToFlagTestCase.allCases)
-    func `macro to flag`(_ testCase: MacroToFlagTestCase) {
+    @Test("converts a ___SCREAMING_SNAKE_CASE___ macro name back into its kebab-case CLI flag", arguments: MacroToFlagTestCase.allCases)
+    func macroToFlag(_ testCase: MacroToFlagTestCase) {
         let result = MacroNameConverter.macroToFlag(testCase.macro)
         #expect(result == testCase.expected)
     }
@@ -65,10 +65,6 @@ struct MacroNameConverterTests {
         let description: String
         let macro: String
         let expected: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [MacroToFlagTestCase] = [
             MacroToFlagTestCase(
@@ -97,6 +93,10 @@ struct MacroNameConverterTests {
                 expected: "--name-123",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
     // MARK: - Roundtrip Tests
@@ -112,10 +112,6 @@ struct MacroNameConverterTests {
         let description: String
         let flag: String
         let expectedFlag: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [RoundtripTestCase] = [
             RoundtripTestCase(
@@ -134,5 +130,9 @@ struct MacroNameConverterTests {
                 expectedFlag: "--my-long-macro-name",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

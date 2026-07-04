@@ -14,10 +14,6 @@ struct StepOutputParserTests {
         let stdout: String
         let expected: [String: String]
 
-        var testDescription: String {
-            description
-        }
-
         static let allCases: [TestCase] = [
             TestCase(
                 description: "parses basic key=value pairs",
@@ -162,5 +158,9 @@ struct StepOutputParserTests {
                 ],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

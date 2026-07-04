@@ -38,24 +38,26 @@ private final class CapturedOutput: TextOutput, @unchecked Sendable {
     }
 }
 
-private func makeTerminal(
-    keys: [TerminalKey] = [],
-    lines: [String] = [],
-    isInteractive: Bool = true,
-) -> (terminal: Terminal, output: CapturedOutput) {
-    let output = CapturedOutput()
-    let terminal = Terminal(
-        input: ScriptedLineInput(lines),
-        keyInput: ScriptedKeyInput(keys),
-        output: output,
-        capabilities: TerminalCapabilities(isInteractive: isInteractive, supportsColor: false),
-    )
-    return (terminal, output)
-}
-
+@Suite("Drives Terminal's interactive prompts (choose, chooseMany, readText, confirm) against scripted key and line input")
 struct TerminalInteractiveTests {
-    @Test func `choose navigates options with arrow keys`() {
-        let (terminal, output) = makeTerminal(keys: [.down, .enter])
+    private static func makeTerminal(
+        keys: [TerminalKey] = [],
+        lines: [String] = [],
+        isInteractive: Bool = true,
+    ) -> (terminal: Terminal, output: CapturedOutput) {
+        let output = CapturedOutput()
+        let terminal = Terminal(
+            input: ScriptedLineInput(lines),
+            keyInput: ScriptedKeyInput(keys),
+            output: output,
+            capabilities: TerminalCapabilities(isInteractive: isInteractive, supportsColor: false),
+        )
+        return (terminal, output)
+    }
+
+    @Test("pressing down then enter selects the second option and renders the cursor marker and confirmed answer")
+    func chooseNavigatesOptionsWithArrowKeys() {
+        let (terminal, output) = Self.makeTerminal(keys: [.down, .enter])
 
         let answer = terminal.choose(ChoicePrompt(question: "Pick one", options: ["first", "second", "third"]))
 
@@ -64,8 +66,9 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("Pick one ✓ second"))
     }
 
-    @Test func `choose filters options by typed text`() {
-        let (terminal, output) = makeTerminal(keys: [.character("b"), .character("a"), .enter])
+    @Test("typing characters filters the option list and enter selects the matching option, echoing the typed filter text")
+    func chooseFiltersOptionsByTypedText() {
+        let (terminal, output) = Self.makeTerminal(keys: [.character("b"), .character("a"), .enter])
 
         let answer = terminal.choose(ChoicePrompt(question: "Pick", options: ["apple", "banana"]))
 
@@ -73,8 +76,9 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("Pick (filter: ba)"))
     }
 
-    @Test func `chooseMany toggles options with space`() {
-        let (terminal, output) = makeTerminal(keys: [.character(" "), .down, .down, .character(" "), .enter])
+    @Test("toggling with space, moving down twice, and toggling again selects the first and third options and renders a filled marker plus the confirmed list")
+    func chooseManyTogglesOptionsWithSpace() {
+        let (terminal, output) = Self.makeTerminal(keys: [.character(" "), .down, .down, .character(" "), .enter])
 
         let answer = terminal.chooseMany(MultipleChoicePrompt(question: "Pick", options: ["a", "b", "c"]))
 
@@ -83,8 +87,9 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("Pick ✓ a, c"))
     }
 
-    @Test func `chooseMany enforces the minimum selection count`() {
-        let (terminal, output) = makeTerminal(keys: [.enter, .character(" "), .enter])
+    @Test("pressing enter with nothing selected re-prompts with a minimum-selection warning until at least one option is toggled")
+    func chooseManyEnforcesTheMinimumSelectionCount() {
+        let (terminal, output) = Self.makeTerminal(keys: [.enter, .character(" "), .enter])
 
         let answer = terminal.chooseMany(
             MultipleChoicePrompt(question: "Pick", options: ["a", "b"], minimumSelectionCount: 1),
@@ -94,8 +99,9 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("! Select at least 1 option(s)."))
     }
 
-    @Test func `readText edits the buffer with cursor keys`() {
-        let (terminal, _) = makeTerminal(
+    @Test("typing two characters, moving left, backspacing, and typing another character produces the edited buffer contents, not the original keystroke order")
+    func readTextEditsTheBufferWithCursorKeys() {
+        let (terminal, _) = Self.makeTerminal(
             keys: [.character("a"), .character("b"), .left, .backspace, .character("c"), .enter],
         )
 
@@ -104,8 +110,9 @@ struct TerminalInteractiveTests {
         #expect(answer == "cb")
     }
 
-    @Test func `readText re-prompts until validation passes`() {
-        let (terminal, output) = makeTerminal(keys: [.enter, .character("x"), .enter])
+    @Test("submitting empty input against a non-empty validation rule re-prompts with an error message until valid text is entered")
+    func readTextRePromptsUntilValidationPasses() {
+        let (terminal, output) = Self.makeTerminal(keys: [.enter, .character("x"), .enter])
 
         let answer = terminal.readText(
             TextPrompt(message: "Name:", validationRules: [NonEmptyRule()]),
@@ -115,17 +122,19 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("! Input cannot be empty."))
     }
 
-    @Test func `confirm answers with a single key`() {
-        let (yesTerminal, yesOutput) = makeTerminal(keys: [.enter])
-        let (noTerminal, _) = makeTerminal(keys: [.character("n")])
+    @Test("enter answers a confirmation prompt yes while typing 'n' answers no, and the yes case echoes the confirmed answer")
+    func confirmAnswersWithASingleKey() {
+        let (yesTerminal, yesOutput) = Self.makeTerminal(keys: [.enter])
+        let (noTerminal, _) = Self.makeTerminal(keys: [.character("n")])
 
         #expect(yesTerminal.confirm(ConfirmationPrompt(question: "Continue?")) == true)
         #expect(noTerminal.confirm(ConfirmationPrompt(question: "Continue?")) == false)
         #expect(yesOutput.text.contains("Continue? ✓ yes"))
     }
 
-    @Test func `non-interactive sessions fall back to numbered prompts`() {
-        let (terminal, output) = makeTerminal(lines: ["2"], isInteractive: false)
+    @Test("when the terminal is non-interactive, choose renders a numbered list and reads the selection index from a line of text input")
+    func nonInteractiveSessionsFallBackToNumberedPrompts() {
+        let (terminal, output) = Self.makeTerminal(lines: ["2"], isInteractive: false)
 
         let answer = terminal.choose(ChoicePrompt(question: "Pick one", options: ["first", "second"]))
 
@@ -133,8 +142,9 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("1. first"))
     }
 
-    @Test func `interactive prompts render title and description hierarchy`() {
-        let (terminal, output) = makeTerminal(keys: [.enter])
+    @Test("a choice prompt with a title and description renders both the title marker and indented description above the question")
+    func interactivePromptsRenderTitleAndDescriptionHierarchy() {
+        let (terminal, output) = Self.makeTerminal(keys: [.enter])
 
         _ = terminal.choose(
             ChoicePrompt(
@@ -150,8 +160,9 @@ struct TerminalInteractiveTests {
         #expect(output.text.contains("  Choose the starter to hatch."))
     }
 
-    @Test func `choice prompt renders an empty filtered state`() {
-        let (terminal, output) = makeTerminal(keys: [.character("z"), .backspace, .enter])
+    @Test("filtering to a query with no matches shows a 'no matches' message, and backspacing to clear the filter restores the option list for selection")
+    func choicePromptRendersAnEmptyFilteredState() {
+        let (terminal, output) = Self.makeTerminal(keys: [.character("z"), .backspace, .enter])
 
         let answer = terminal.choose(ChoicePrompt(question: "Pick", options: ["apple", "banana"]))
 

@@ -66,16 +66,16 @@ package enum CLIOutput {
 
     /// Prints a failure message to stderr-like terminal output.
     package static func printError(_ message: String) {
-        Terminal().writeStatus(.failure, "\(message)")
+        Terminal().writeFailure("\(message)")
     }
 
     /// Prints a success message using the shared terminal style.
     package static func printSuccess(_ message: String) {
-        Terminal().writeStatus(.success, "\(message)")
+        Terminal().writeSuccess("\(message)")
     }
 
     /// Prints a warning message using the shared terminal style.
     package static func printWarning(_ message: String) {
-        Terminal().writeStatus(.warning, "\(message)")
+        Terminal().writeWarning("\(message)")
     }
 }

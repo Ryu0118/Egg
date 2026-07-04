@@ -52,6 +52,10 @@ public struct StyledText: ExpressibleByStringInterpolation, Equatable, Hashable,
         public mutating func appendInterpolation(_ segment: Segment) {
             segments.append(segment)
         }
+
+        public mutating func appendInterpolation(_ text: StyledText) {
+            segments.append(contentsOf: text.segments)
+        }
     }
 }
 

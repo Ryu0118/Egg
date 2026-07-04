@@ -102,6 +102,14 @@ public struct EggMCPServer {
                         "type": "boolean",
                         "description": "Apply changes immediately. Default: false; when false, egg_hatch returns the same transaction preview shape as egg_hatch_preview.",
                     ]),
+                    "disable_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Disable the sandbox-exec safety guard for lifecycle scripts. Before setting this, ask the user whether to run without sandbox protection; do not classify script contents yourself. Requires user_confirmed_no_sandbox: true.",
+                    ]),
+                    "user_confirmed_no_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Set to true only after the user explicitly approves running lifecycle scripts without sandbox protection.",
+                    ]),
                 ]),
                 "required": .array(["template_name"]),
             ]),
@@ -156,6 +164,14 @@ public struct EggMCPServer {
                     "include_diff": .object([
                         "type": "boolean",
                         "description": "When true, each change carries its unified diff so you can review the exact content before applying. Default: false.",
+                    ]),
+                    "disable_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Disable the sandbox-exec safety guard for preview lifecycle scripts. Before setting this, ask the user whether to run without sandbox protection; do not classify script contents yourself. Requires user_confirmed_no_sandbox: true.",
+                    ]),
+                    "user_confirmed_no_sandbox": .object([
+                        "type": "boolean",
+                        "description": "Set to true only after the user explicitly approves previewing lifecycle scripts without sandbox protection.",
                     ]),
                 ]),
                 "required": .array(["template_name"]),
@@ -413,10 +429,10 @@ public struct EggMCPServer {
                     toolName: params.name,
                     arguments: params.arguments ?? [:],
                 )
-                return CallTool.Result(content: [.text(result)])
+                return CallTool.Result(content: [.text(text: result, annotations: nil, _meta: nil)])
             } catch {
                 return CallTool.Result(
-                    content: [.text("Error: \(error.localizedDescription)")],
+                    content: [.text(text: "Error: \(error.localizedDescription)", annotations: nil, _meta: nil)],
                     isError: true,
                 )
             }

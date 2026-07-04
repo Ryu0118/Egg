@@ -35,8 +35,8 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test
-    func `clone fails with non file URL`() async throws {
+    @Test("clone(from:to:) throws CloningError.invalidURL when either the source or destination is a non-file URL like https://")
+    func cloneFailsWithNonFileURL() async throws {
         let cloner = APFSDirectoryCloner()
         let httpURL = try #require(URL(string: "https://example.com"))
         let fileURL = URL(filePath: "/tmp/test")
@@ -50,8 +50,8 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test
-    func `clone fails when destination exists`() async throws {
+    @Test("clone(from:to:) throws a CloningError when the destination directory already exists with content in it")
+    func cloneFailsWhenDestinationExists() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
         let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
@@ -75,8 +75,8 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test
-    func `cloning error descriptions`() {
+    @Test("CloningError.errorDescription produces a readable message for both an invalid URL and an underlying system clone failure code")
+    func cloningErrorDescriptions() {
         let invalidURLError = CloningError.invalidURL
         #expect(invalidURLError.errorDescription == "The provided URL is not a valid file URL")
 
@@ -212,28 +212,6 @@ extension DirectoryCloningTests {
         let sourceSetup: [Setup]
         let expectation: Expectation
 
-        var testDescription: String {
-            description
-        }
-
-        enum Setup {
-            case file(path: String, content: String)
-            case directory(path: String)
-            case symlink(path: String, target: String)
-        }
-
-        enum Verification {
-            case fileExists(path: String)
-            case fileContent(path: String, expected: String)
-            case directoryExists(path: String)
-            case symlinkExists(path: String, target: String)
-        }
-
-        enum Expectation {
-            case success(verifications: [Verification])
-            case failure(CloningError)
-        }
-
         static let allCases: [TestCase] = [
             TestCase(
                 description: "clones single file",
@@ -333,6 +311,28 @@ extension DirectoryCloningTests {
                 ]),
             ),
         ]
+
+        enum Setup {
+            case file(path: String, content: String)
+            case directory(path: String)
+            case symlink(path: String, target: String)
+        }
+
+        enum Verification {
+            case fileExists(path: String)
+            case fileContent(path: String, expected: String)
+            case directoryExists(path: String)
+            case symlinkExists(path: String, target: String)
+        }
+
+        enum Expectation {
+            case success(verifications: [Verification])
+            case failure(CloningError)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     enum TestError: Error {

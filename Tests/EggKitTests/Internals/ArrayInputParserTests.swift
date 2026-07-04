@@ -4,8 +4,8 @@ import Testing
 struct ArrayInputParserTests {
     private let parser = ArrayInputParser()
 
-    @Test(arguments: CLITestCase.allCases)
-    func `parse from CLI`(_ testCase: CLITestCase) {
+    @Test("parses CLI array arguments from space- and comma-separated forms into a normalized string array", arguments: CLITestCase.allCases)
+    func parseFromCLI(_ testCase: CLITestCase) {
         let result = parser.parseFromCLI(testCase.input)
         #expect(result == testCase.expected)
     }
@@ -14,10 +14,6 @@ struct ArrayInputParserTests {
         let description: String
         let input: [String]
         let expected: [String]
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [CLITestCase] = [
             CLITestCase(
@@ -41,10 +37,14 @@ struct ArrayInputParserTests {
                 expected: [],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 
-    @Test(arguments: InteractiveTestCase.allCases)
-    func `parse from interactive`(_ testCase: InteractiveTestCase) {
+    @Test("parses interactively-entered comma-separated input into a trimmed, non-empty string array", arguments: InteractiveTestCase.allCases)
+    func parseFromInteractive(_ testCase: InteractiveTestCase) {
         let result = parser.parseFromInteractive(testCase.input)
         #expect(result == testCase.expected)
     }
@@ -53,10 +53,6 @@ struct ArrayInputParserTests {
         let description: String
         let input: String
         let expected: [String]
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [InteractiveTestCase] = [
             InteractiveTestCase(
@@ -80,5 +76,9 @@ struct ArrayInputParserTests {
                 expected: [],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

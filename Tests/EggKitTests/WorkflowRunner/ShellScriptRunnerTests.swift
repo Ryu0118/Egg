@@ -56,8 +56,8 @@ struct ShellScriptRunnerTests {
         }
     }
 
-    @Test(arguments: StreamingTestCase.allCases)
-    func `execute streaming`(_ testCase: StreamingTestCase) async throws {
+    @Test("streams stdout chunks to the progress callback as the shell command runs, in addition to returning the full captured stdout on success or throwing on non-zero exit", arguments: StreamingTestCase.allCases)
+    func executeStreaming(_ testCase: StreamingTestCase) async throws {
         let tempDir = URL(filePath: NSTemporaryDirectory())
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
@@ -107,15 +107,6 @@ struct ShellScriptRunnerTests {
         let description: String
         let command: String
         let expectation: Expectation
-
-        var testDescription: String {
-            description
-        }
-
-        enum Expectation {
-            case success(expectedStdout: String, expectedStderr: String?)
-            case failure(expectedExitCode: Int32?)
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -179,21 +170,21 @@ struct ShellScriptRunnerTests {
                 expectation: .success(expectedStdout: "HOME is set", expectedStderr: nil),
             ),
         ]
+
+        enum Expectation {
+            case success(expectedStdout: String, expectedStderr: String?)
+            case failure(expectedExitCode: Int32?)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
     struct StreamingTestCase: CustomTestStringConvertible {
         let description: String
         let command: String
         let expectation: Expectation
-
-        var testDescription: String {
-            description
-        }
-
-        enum Expectation {
-            case success(expectedStdout: String)
-            case failure(expectedExitCode: Int32?)
-        }
 
         static let allCases: [StreamingTestCase] = [
             StreamingTestCase(
@@ -226,10 +217,19 @@ struct ShellScriptRunnerTests {
                 expectation: .failure(expectedExitCode: 127),
             ),
         ]
+
+        enum Expectation {
+            case success(expectedStdout: String)
+            case failure(expectedExitCode: Int32?)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
-    @Test(arguments: EnvironmentTestCase.allCases)
-    func `execute with additional environment`(_ testCase: EnvironmentTestCase) async throws {
+    @Test("makes additionalEnvironment variables visible to the executed shell command, including overriding inherited variables and subshells", arguments: EnvironmentTestCase.allCases)
+    func executeWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
@@ -241,8 +241,8 @@ struct ShellScriptRunnerTests {
         #expect(stdout.contains(testCase.expectedOutput), "Expected '\(testCase.expectedOutput)' in stdout, got '\(stdout)'")
     }
 
-    @Test(arguments: EnvironmentTestCase.allCases)
-    func `execute streaming with additional environment`(_ testCase: EnvironmentTestCase) async throws {
+    @Test("makes additionalEnvironment variables visible when streaming a shell command's output, mirroring the non-streaming execution path", arguments: EnvironmentTestCase.allCases)
+    func executeStreamingWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
             processRunner: ProcessRunner(),
@@ -259,10 +259,6 @@ struct ShellScriptRunnerTests {
         let command: String
         let additionalEnvironment: [String: String]
         let expectedOutput: String
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [EnvironmentTestCase] = [
             EnvironmentTestCase(
@@ -305,5 +301,9 @@ struct ShellScriptRunnerTests {
                 expectedOutput: "PATH_EXISTS",
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

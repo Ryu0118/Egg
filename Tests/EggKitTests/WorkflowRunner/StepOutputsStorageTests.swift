@@ -3,8 +3,8 @@ import Foundation
 import Testing
 
 struct StepOutputsStorageTests {
-    @Test(arguments: TestCase.allCases)
-    func `store and retrieve`(_ testCase: TestCase) async {
+    @Test("stores step outputs and retrieves them via get/has across phases, overwrites, and edge cases like missing keys or empty outputs", arguments: TestCase.allCases)
+    func storeAndRetrieve(_ testCase: TestCase) async {
         let storage = StepOutputsStorage()
 
         for operation in testCase.operations {
@@ -24,16 +24,6 @@ struct StepOutputsStorageTests {
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let operations: [Operation]
-
-        var testDescription: String {
-            description
-        }
-
-        enum Operation {
-            case store(phase: LifecyclePhase, stepId: String, outputs: [String: String])
-            case expectGet(phase: LifecyclePhase, stepId: String, key: String, expectedValue: String?)
-            case expectHas(phase: LifecyclePhase, stepId: String, key: String, expectedResult: Bool)
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -114,5 +104,15 @@ struct StepOutputsStorageTests {
                 ],
             ),
         ]
+
+        enum Operation {
+            case store(phase: LifecyclePhase, stepId: String, outputs: [String: String])
+            case expectGet(phase: LifecyclePhase, stepId: String, key: String, expectedValue: String?)
+            case expectHas(phase: LifecyclePhase, stepId: String, key: String, expectedResult: Bool)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

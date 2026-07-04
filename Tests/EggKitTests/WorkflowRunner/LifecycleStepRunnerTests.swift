@@ -17,8 +17,8 @@ struct LifecycleStepRunnerTests {
         )
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `execute phase`(_ testCase: TestCase) async throws {
+    @Test("runs a phase's lifecycle steps end-to-end, verifying output capture, macro substitution, conditional skipping, and cross-step/cross-phase output references", arguments: TestCase.allCases)
+    func executePhase(_ testCase: TestCase) async throws {
         let processRunner = ProcessRunner()
         let workingDirectory = URL(filePath: NSTemporaryDirectory())
 
@@ -84,15 +84,6 @@ struct LifecycleStepRunnerTests {
         let macros: [ResolvedMacro]
         let initialOutputs: [TestOutput]
         let expectation: Expectation
-
-        var testDescription: String {
-            description
-        }
-
-        enum Expectation {
-            case success(expectedOutputs: [TestOutput])
-            case failure(expectedError: LifecycleStepError)
-        }
 
         static let allCases: [TestCase] = [
             // Basic execution - single step with output
@@ -398,10 +389,19 @@ struct LifecycleStepRunnerTests {
                 ]),
             ),
         ]
+
+        enum Expectation {
+            case success(expectedOutputs: [TestOutput])
+            case failure(expectedError: LifecycleStepError)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 
-    @Test(arguments: EnvironmentPropagationTestCase.allCases)
-    func `execute with additional environment`(_ testCase: EnvironmentPropagationTestCase) async throws {
+    @Test("propagates additionalEnvironment variables into step shell processes, including across steps, phases, and combined with macro substitution", arguments: EnvironmentPropagationTestCase.allCases)
+    func executeWithAdditionalEnvironment(_ testCase: EnvironmentPropagationTestCase) async throws {
         let processRunner = ProcessRunner()
         let workingDirectory = URL(filePath: NSTemporaryDirectory())
 
@@ -440,10 +440,6 @@ struct LifecycleStepRunnerTests {
         let macros: [ResolvedMacro]
         let additionalEnvironment: [String: String]
         let expectedOutputs: [TestOutput]
-
-        var testDescription: String {
-            description
-        }
 
         static let allCases: [EnvironmentPropagationTestCase] = [
             // Single environment variable propagation
@@ -571,5 +567,9 @@ struct LifecycleStepRunnerTests {
                 ],
             ),
         ]
+
+        var testDescription: String {
+            description
+        }
     }
 }

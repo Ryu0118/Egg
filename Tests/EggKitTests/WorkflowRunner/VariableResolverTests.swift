@@ -52,10 +52,6 @@ struct VariableResolverTests {
         let expectation: Expectation
         let builtInMacroContext: BuiltInMacroContext?
 
-        var testDescription: String {
-            description
-        }
-
         static let defaultBuiltInMacroContext = BuiltInMacroContext(
             outputDirectory: nil,
             workingDirectory: URL(filePath: "/tmp/work"),
@@ -63,11 +59,6 @@ struct VariableResolverTests {
             currentDate: Date(timeIntervalSince1970: 0),
             environment: [:],
         )
-
-        enum Expectation {
-            case success(expectedResult: String)
-            case failure(expectedError: LifecycleStepError)
-        }
 
         static let allCases: [TestCase] = [
             TestCase(
@@ -424,5 +415,14 @@ struct VariableResolverTests {
                 ),
             ),
         ]
+
+        enum Expectation {
+            case success(expectedResult: String)
+            case failure(expectedError: LifecycleStepError)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

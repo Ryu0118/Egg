@@ -6,8 +6,8 @@ import Testing
 struct TemplateValidateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows validate command help`() async throws {
+    @Test("--help shows validate command help")
+    func helpShowsValidateCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "validate", "--help")
 
@@ -17,8 +17,11 @@ struct TemplateValidateCommandTests {
         #expect(result.stdout.contains("<template-path>"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `validate template`(_ testCase: TestCase) async throws {
+    @Test(
+        "succeeds for well-formed config.yml and fails with an error for missing, malformed, or incomplete config.yml",
+        arguments: TestCase.allCases,
+    )
+    func validateTemplate(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-validate")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -50,15 +53,6 @@ struct TemplateValidateCommandTests {
         let description: String
         let configContent: String?
         let expected: Expected
-
-        var testDescription: String {
-            description
-        }
-
-        enum Expected {
-            case success
-            case failure(errorContains: String)
-        }
 
         static let allCases: [TestCase] = [
             // Success cases
@@ -111,5 +105,14 @@ struct TemplateValidateCommandTests {
                 expected: .failure(errorContains: "Error"),
             ),
         ]
+
+        enum Expected {
+            case success
+            case failure(errorContains: String)
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }
