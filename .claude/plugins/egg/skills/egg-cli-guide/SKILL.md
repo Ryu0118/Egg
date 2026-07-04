@@ -26,7 +26,7 @@ Project-local templates take precedence over global ones.
 This is the flow to use by default. Every command below is non-interactive and emits JSON on stdout.
 
 ```sh
-egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff] [--no-sandbox]
+egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff] [--no-sandbox --user-confirmed-no-sandbox]
 egg hatch apply <applyToken> [--force]
 egg hatch rollback <rollbackId> [--force]
 egg hatch discard <applyToken>
@@ -37,7 +37,7 @@ egg hatch discard <applyToken>
   - `--exclude <pathspec>` drops matching paths from the change set.
   - `--output <dir>` sets the directory the generated output targets.
   - `--diff` includes each change's unified diff in the response (off by default).
-  - `--no-sandbox` asks for explicit approval, then disables the `sandbox-exec` guard around lifecycle scripts during preview.
+  - `--no-sandbox` disables the `sandbox-exec` guard around lifecycle scripts during preview only when paired with `--user-confirmed-no-sandbox` after explicit user approval. The command stays non-interactive and does not classify script contents.
 - **`apply <applyToken>`** writes the previewed changes to the real working directory and returns a `rollbackId`. Fails if the working directory drifted since the preview, unless `--force` is passed.
 - **`rollback <rollbackId>`** restores the pre-apply state. Fails if a file was hand-edited since the apply, unless `--force` is passed.
 - **`discard <applyToken>`** throws away a preview without applying it.

@@ -29,10 +29,11 @@ struct HatchCommandTests {
 
         #expect(result.succeeded)
         #expect(result.stdout.contains("--no-sandbox"))
+        #expect(result.stdout.contains("--user-confirmed-no-sandbox"))
     }
 
     @Test
-    func `preview asks before running without sandbox protection`() async throws {
+    func `preview requires explicit confirmation before disabling sandbox protection`() async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-hatch-preview-no-sandbox")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -40,13 +41,12 @@ struct HatchCommandTests {
         let result = try await runner.run(
             arguments: ["hatch", "preview", "AnyTemplate", "--no-sandbox"],
             workingDirectory: tempDir,
-            input: "n\n",
         )
 
         #expect(!result.succeeded)
         #expect(result.stdout.isEmpty)
-        #expect(result.stderr.contains("Run preview lifecycle scripts without sandbox protection?"))
-        #expect(result.stderr.contains("Preview cancelled because running without sandbox protection was not approved."))
+        #expect(result.stderr.contains("--user-confirmed-no-sandbox"))
+        #expect(result.stderr.contains("Ask the user whether to run lifecycle scripts without sandbox protection"))
     }
 
     @Test(arguments: TestCase.allCases)

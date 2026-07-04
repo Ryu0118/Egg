@@ -29,13 +29,11 @@ struct CLIRunner {
         _ arguments: String...,
         workingDirectory: URL? = nil,
         environment: [String: String]? = nil,
-        input: String? = nil,
     ) async throws -> CLIResult {
         try await run(
             arguments: arguments,
             workingDirectory: workingDirectory,
             environment: environment,
-            input: input,
         )
     }
 
@@ -49,7 +47,6 @@ struct CLIRunner {
         arguments: [String],
         workingDirectory: URL? = nil,
         environment: [String: String]? = nil,
-        input: String? = nil,
     ) async throws -> CLIResult {
         let executablePath = FilePath(binaryPath.path(percentEncoded: false))
         let env: Environment
@@ -71,7 +68,6 @@ struct CLIRunner {
             arguments: Arguments(arguments),
             environment: env,
             workingDirectory: workingDir,
-            input: .string(input ?? ""),
             output: outputConfig,
             error: errorConfig,
         )
