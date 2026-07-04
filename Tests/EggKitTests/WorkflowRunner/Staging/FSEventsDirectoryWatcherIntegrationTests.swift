@@ -253,7 +253,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("ignores changes outside watched directory")
+    @Test("only reports the file written inside the watched subdirectory, filtering out a simultaneous write to a sibling directory")
     func ignoresChangesOutsideWatchedDirectory() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
