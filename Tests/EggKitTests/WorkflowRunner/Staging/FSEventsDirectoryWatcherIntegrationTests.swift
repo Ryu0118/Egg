@@ -207,7 +207,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         #expect(events.contains(expectedPath), "Should detect file after restart")
     }
 
-    @Test("accumulates events across multiple drains")
+    @Test("drainEvents keeps prior events alongside new ones so a second drain still contains a file created before the first drain")
     func accumulatesEventsAcrossMultipleDrains() async throws {
         try await withWatcher { ctx in
             let file1 = ctx.directory.appending(path: "first.txt")
