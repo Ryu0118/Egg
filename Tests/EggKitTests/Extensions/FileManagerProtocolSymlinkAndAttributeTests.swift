@@ -24,7 +24,7 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
 
     // MARK: - existsAsLink / isSymbolicLink
 
-    @Test("existsAsLink is true for a dangling symlink; exists is false")
+    @Test("existsAsLink reports true for a dangling symlink even though exists reports false, since exists follows the link to its missing target")
     func existsAsLinkIsTrueForADanglingSymlinkExistsIsFalse() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
@@ -37,7 +37,7 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
         #expect(fileManager.isSymbolicLink(at: link) == true)
     }
 
-    @Test("existsAsLink is true for a valid symlink; isSymbolicLink is true, isDirectory follows to the target")
+    @Test("for a symlink pointing at a directory, existsAsLink and isSymbolicLink both report true while isDirectory follows the link and reports true for the target")
     func existsAsLinkIsTrueForAValidSymlinkIsSymbolicLinkIsTrueIsDirectoryFollowsToTheTarget() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
