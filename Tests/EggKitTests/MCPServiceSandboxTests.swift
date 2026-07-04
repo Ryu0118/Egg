@@ -6,7 +6,7 @@ import Testing
 struct MCPServiceSandboxTests {
     private let fileManager: some FileManagerProtocol = FileManager.default
 
-    @Test("preview sandbox disable requires explicit MCP confirmation")
+    @Test("previewHatchTemplate rejects a disableSandbox request over MCP unless the caller has explicitly confirmed user_confirmed_no_sandbox")
     func previewSandboxDisableRequiresExplicitMCPConfirmation() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }

@@ -2,7 +2,7 @@
 import Testing
 
 struct TemplateFilterTests {
-    @Test("should include", arguments: TestCase.allCases)
+    @Test("TemplateFilter.shouldInclude admits or rejects a template name per the .none, .include, and .exclude filtering rules", arguments: TestCase.allCases)
     func shouldInclude(_ testCase: TestCase) {
         let result = testCase.filter.shouldInclude(testCase.templateName)
         #expect(result == testCase.expected)

@@ -6,7 +6,7 @@ struct MacroStringConverterTests {
     private static let workingDirectory = URL(filePath: "/tmp/work", directoryHint: .isDirectory, relativeTo: nil)
     private static let homeDirectory = URL(filePath: "/tmp/home", directoryHint: .isDirectory, relativeTo: nil)
 
-    @Test("to shell string", arguments: ShellStringTestCase.allCases)
+    @Test("renders resolved macro values as shell-safe strings, normalizing path dot-components and trailing slashes", arguments: ShellStringTestCase.allCases)
     func toShellString(_ testCase: ShellStringTestCase) {
         let result = MacroStringConverter.toShellString(
             testCase.value,
@@ -145,7 +145,7 @@ struct MacroStringConverterTests {
         }
     }
 
-    @Test("to java script literal", arguments: JavaScriptLiteralTestCase.allCases)
+    @Test("renders resolved macro values as JavaScript literals, quoting strings/choices/paths, leaving booleans bare, and escaping special characters", arguments: JavaScriptLiteralTestCase.allCases)
     func toJavaScriptLiteral(_ testCase: JavaScriptLiteralTestCase) {
         let result = MacroStringConverter.toJavaScriptLiteral(
             testCase.value,
@@ -304,7 +304,7 @@ struct MacroStringConverterTests {
         }
     }
 
-    @Test("escape and quote", arguments: EscapeAndQuoteTestCase.allCases)
+    @Test("wraps a string in double quotes while escaping embedded quotes, newlines, tabs, and carriage returns for safe JS embedding", arguments: EscapeAndQuoteTestCase.allCases)
     func escapeAndQuote(_ testCase: EscapeAndQuoteTestCase) {
         let result = MacroStringConverter.escapeAndQuote(testCase.input)
         #expect(result == testCase.expectedResult)

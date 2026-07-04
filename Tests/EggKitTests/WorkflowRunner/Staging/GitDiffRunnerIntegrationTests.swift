@@ -9,7 +9,7 @@ import Testing
 struct GitDiffRunnerIntegrationTests {
     private let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("compute changes", arguments: TestCase.allCases)
+    @Test("computes added, modified, and deleted files between working directory and workspace across varied file layouts", arguments: TestCase.allCases)
     func computeChanges(_ testCase: TestCase) async throws {
         let tempRoot = try fileManager.makeTemporaryDirectory(prefix: "git-diff-runner-test")
         defer { try? fileManager.removeItem(at: tempRoot) }
@@ -42,7 +42,7 @@ struct GitDiffRunnerIntegrationTests {
     }
 
     /// Tests that directory paths in targetPaths are skipped and only file-level changes are detected.
-    @Test("directory paths are skipped")
+    @Test("ignores directory-level entries in targetPaths so only the actually changed file is reported, not unrelated files under that directory")
     func directoryPathsAreSkipped() async throws {
         let tempRoot = try fileManager.makeTemporaryDirectory(prefix: "git-diff-dir-skip-test")
         defer { try? fileManager.removeItem(at: tempRoot) }

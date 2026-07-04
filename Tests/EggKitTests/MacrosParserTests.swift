@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 struct MacrosParserTests {
-    @Test("parse command line arguments", arguments: TestCase.allCases)
+    @Test("parses --flag CLI arguments into macro definitions, handling arrays, booleans, kebab/snake-case normalization, and malformed-flag errors", arguments: TestCase.allCases)
     func parseCommandLineArguments(_ testCase: TestCase) throws {
         let parser = MacrosParser(macroDefinitions: testCase.macroDefinitions)
         switch testCase.expected {

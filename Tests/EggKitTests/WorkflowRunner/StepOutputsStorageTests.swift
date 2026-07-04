@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 struct StepOutputsStorageTests {
-    @Test("store and retrieve", arguments: TestCase.allCases)
+    @Test("stores step outputs and retrieves them via get/has across phases, overwrites, and edge cases like missing keys or empty outputs", arguments: TestCase.allCases)
     func storeAndRetrieve(_ testCase: TestCase) async {
         let storage = StepOutputsStorage()
 

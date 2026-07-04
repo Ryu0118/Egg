@@ -12,7 +12,7 @@ import Testing
 /// 3. Applying changes back to the working directory
 @Suite(.serialized)
 struct StagingApplyIntegrationTests {
-    @Test("apply changes", arguments: TestCase.allCases)
+    @Test("applies staged file adds, modifies, and deletes back to the working directory, detecting conflicts against concurrent working-dir edits", arguments: TestCase.allCases)
     func applyChanges(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-apply-test")

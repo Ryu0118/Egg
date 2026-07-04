@@ -5,7 +5,7 @@ import ProcessRunning
 import Testing
 
 struct StagingContextTests {
-    @Test("staging context", .serialized, arguments: TestCase.allCases)
+    @Test("verifies StagingContext creation, path validation, discard, and post-discard guard behavior across scenarios", .serialized, arguments: TestCase.allCases)
     func stagingContext(_ testCase: TestCase) async throws {
         let fileManager: some FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "workspace-test")

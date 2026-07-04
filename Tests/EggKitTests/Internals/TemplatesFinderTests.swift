@@ -6,7 +6,7 @@ import Testing
 struct TemplatesFinderTests {
     // MARK: - fetchTemplate Tests
 
-    @Test("fetch template", arguments: FetchTemplateTestCase.allCases)
+    @Test("resolves a template by config.yml name or directory name across global and project locations, preferring config name matches", arguments: FetchTemplateTestCase.allCases)
     func fetchTemplate(_ testCase: FetchTemplateTestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-test")
@@ -150,7 +150,7 @@ struct TemplatesFinderTests {
 
     // MARK: - fetchTemplate with Custom Search Paths Tests
 
-    @Test("fetch template with custom paths", arguments: FetchTemplateWithCustomPathsTestCase.allCases)
+    @Test("resolves a template across custom, global, and project search paths with custom paths taking priority in declared order", arguments: FetchTemplateWithCustomPathsTestCase.allCases)
     func fetchTemplateWithCustomPaths(_ testCase: FetchTemplateWithCustomPathsTestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-custom-test")
@@ -329,7 +329,7 @@ struct TemplatesFinderTests {
 
     // MARK: - listAll with Custom Search Paths Tests
 
-    @Test("list all includes custom path templates")
+    @Test("listAll groups templates from global, project, and custom search paths into their matching location buckets and an aggregated all list")
     func listAllIncludesCustomPathTemplates() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-list-test")
@@ -381,7 +381,7 @@ struct TemplatesFinderTests {
         #expect(templates.all.count == 3)
     }
 
-    @Test("list all includes template when custom path is template root")
+    @Test("listAll treats a custom search path as a template itself when config.yml lives directly at that path's root")
     func listAllIncludesTemplateWhenCustomPathIsTemplateRoot() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-list-test")
@@ -425,7 +425,7 @@ struct TemplatesFinderTests {
         #expect(template.path == customTemplateDir)
     }
 
-    @Test("exists returns true for custom path template")
+    @Test("exists(_:) returns true for a template only present in a custom search path and false for a name that matches nothing")
     func existsReturnsTrueForCustomPathTemplate() throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-exists-test")
@@ -465,7 +465,7 @@ struct TemplatesFinderTests {
         #expect(finder.exists("NonExistentTemplate") == false)
     }
 
-    @Test("valid template directory resolves custom root template by config name")
+    @Test("validTemplateDirectory(_:) finds a custom root-level template by its config.yml name even though it differs from the directory name")
     func validTemplateDirectoryResolvesCustomRootTemplateByConfigName() throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-valid-test")
@@ -502,7 +502,7 @@ struct TemplatesFinderTests {
         #expect(resolved == customTemplateDir)
     }
 
-    @Test("list with locations includes custom location")
+    @Test("listWithLocations(_:) tags a template found in a custom search path with the .custom location case and its originating path")
     func listWithLocationsIncludesCustomLocation() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-locations-test")
