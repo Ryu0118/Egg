@@ -35,7 +35,7 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test("clone fails with non file URL")
+    @Test("clone(from:to:) throws CloningError.invalidURL when either the source or destination is a non-file URL like https://")
     func cloneFailsWithNonFileURL() async throws {
         let cloner = APFSDirectoryCloner()
         let httpURL = try #require(URL(string: "https://example.com"))
