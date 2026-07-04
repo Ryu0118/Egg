@@ -429,10 +429,10 @@ public struct EggMCPServer {
                     toolName: params.name,
                     arguments: params.arguments ?? [:],
                 )
-                return CallTool.Result(content: [.text(result)])
+                return CallTool.Result(content: [.text(text: result, annotations: nil, _meta: nil)])
             } catch {
                 return CallTool.Result(
-                    content: [.text("Error: \(error.localizedDescription)")],
+                    content: [.text(text: "Error: \(error.localizedDescription)", annotations: nil, _meta: nil)],
                     isError: true,
                 )
             }
