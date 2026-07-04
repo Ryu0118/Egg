@@ -4,7 +4,7 @@ import Testing
 struct GitURLParserTests {
     private let parser = GitURLParser()
 
-    @Test("parse valid URL", arguments: ValidURLTestCase.allCases)
+    @Test("parses supported git URL schemes (https, ssh, git, file, and credentialed URLs) into a GitURL preserving the original and normalized form", arguments: ValidURLTestCase.allCases)
     func parseValidURL(_ testCase: ValidURLTestCase) {
         let result = parser.parse(testCase.input)
         #expect(result != nil)
@@ -12,7 +12,7 @@ struct GitURLParserTests {
         #expect(result?.normalized == testCase.expectedNormalized)
     }
 
-    @Test("parse invalid URL", arguments: InvalidURLTestCase.allCases)
+    @Test("returns nil for malformed, empty, or unsupported-protocol git URL strings", arguments: InvalidURLTestCase.allCases)
     func parseInvalidURL(_ testCase: InvalidURLTestCase) {
         let result = parser.parse(testCase.input)
         #expect(result == nil)

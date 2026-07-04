@@ -4,7 +4,7 @@ import Testing
 struct ArrayStringParserTests {
     // MARK: - isValidArrayString Tests
 
-    @Test("is valid array string", arguments: IsValidArrayStringTestCase.allCases)
+    @Test("detects whether a string is well-formed JSON array syntax versus plain text", arguments: IsValidArrayStringTestCase.allCases)
     func isValidArrayString(_ testCase: IsValidArrayStringTestCase) {
         let result = ArrayStringParser.isValidArrayString(testCase.input)
         #expect(result == testCase.expected)
@@ -106,7 +106,7 @@ struct ArrayStringParserTests {
 
     // MARK: - toSpaceSeparated Tests
 
-    @Test("to space separated", arguments: ToSpaceSeparatedTestCase.allCases)
+    @Test("converts a JSON array string into a space-separated string, leaving non-array input unchanged", arguments: ToSpaceSeparatedTestCase.allCases)
     func toSpaceSeparated(_ testCase: ToSpaceSeparatedTestCase) {
         let result = ArrayStringParser.toSpaceSeparated(testCase.input)
         #expect(result == testCase.expected)

@@ -4,7 +4,7 @@ import Testing
 struct MacroNameConverterTests {
     // MARK: - flagToMacro Tests
 
-    @Test("flag to macro", arguments: FlagToMacroTestCase.allCases)
+    @Test("converts a kebab-case CLI flag into its ___SCREAMING_SNAKE_CASE___ macro name", arguments: FlagToMacroTestCase.allCases)
     func flagToMacro(_ testCase: FlagToMacroTestCase) {
         let result = MacroNameConverter.flagToMacro(testCase.flag)
         #expect(result == testCase.expected)
@@ -55,7 +55,7 @@ struct MacroNameConverterTests {
 
     // MARK: - macroToFlag Tests
 
-    @Test("macro to flag", arguments: MacroToFlagTestCase.allCases)
+    @Test("converts a ___SCREAMING_SNAKE_CASE___ macro name back into its kebab-case CLI flag", arguments: MacroToFlagTestCase.allCases)
     func macroToFlag(_ testCase: MacroToFlagTestCase) {
         let result = MacroNameConverter.macroToFlag(testCase.macro)
         #expect(result == testCase.expected)

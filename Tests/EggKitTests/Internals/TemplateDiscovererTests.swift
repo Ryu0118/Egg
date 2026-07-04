@@ -6,7 +6,7 @@ import Testing
 struct TemplateDiscovererTests {
     private let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test("discover templates", arguments: TestCase.allCases)
+    @Test("discovers valid templates under a directory tree while skipping entries with missing or invalid config.yml and reserved directory names", arguments: TestCase.allCases)
     func discoverTemplates(_ testCase: TestCase) async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "template-discoverer-test")
         defer { try? fileManager.removeItem(at: tempDir) }

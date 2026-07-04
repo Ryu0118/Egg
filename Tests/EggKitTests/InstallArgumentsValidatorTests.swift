@@ -32,7 +32,7 @@ struct InstallArgumentsValidatorTests {
         }
     }
 
-    @Test("validate local path absolute")
+    @Test("resolves an absolute local template path to a project-scoped direct source with no filter")
     func validateLocalPathAbsolute() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -67,7 +67,7 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .none)
     }
 
-    @Test("validate local path relative")
+    @Test("resolves a ./-relative local template path against the working directory to a global-scoped direct source")
     func validateLocalPathRelative() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -102,7 +102,7 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .none)
     }
 
-    @Test("validate local path plain relative")
+    @Test("resolves a plain relative path without a leading ./ to a global-scoped direct source")
     func validateLocalPathPlainRelative() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -137,7 +137,7 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .none)
     }
 
-    @Test("validate local path with filter")
+    @Test("resolves a local template path combined with an include filter to a project-scoped direct source carrying that filter")
     func validateLocalPathWithFilter() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -172,7 +172,7 @@ struct InstallArgumentsValidatorTests {
         #expect(filter == .include(["swift-module"]))
     }
 
-    @Test("validate local path with ref option throws error")
+    @Test("throws refOptionsNotAllowedForLocalPath when a branch ref is combined with a local filesystem path")
     func validateLocalPathWithRefOptionThrowsError() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-validator-test")
         defer { try? fileManager.removeItem(at: tempDir) }

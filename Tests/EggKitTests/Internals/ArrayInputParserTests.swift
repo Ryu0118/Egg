@@ -4,7 +4,7 @@ import Testing
 struct ArrayInputParserTests {
     private let parser = ArrayInputParser()
 
-    @Test("parse from CLI", arguments: CLITestCase.allCases)
+    @Test("parses CLI array arguments from space- and comma-separated forms into a normalized string array", arguments: CLITestCase.allCases)
     func parseFromCLI(_ testCase: CLITestCase) {
         let result = parser.parseFromCLI(testCase.input)
         #expect(result == testCase.expected)
@@ -43,7 +43,7 @@ struct ArrayInputParserTests {
         }
     }
 
-    @Test("parse from interactive", arguments: InteractiveTestCase.allCases)
+    @Test("parses interactively-entered comma-separated input into a trimmed, non-empty string array", arguments: InteractiveTestCase.allCases)
     func parseFromInteractive(_ testCase: InteractiveTestCase) {
         let result = parser.parseFromInteractive(testCase.input)
         #expect(result == testCase.expected)
