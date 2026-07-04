@@ -50,7 +50,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         try await operation(context)
     }
 
-    @Test("detects new file creation")
+    @Test("reports the relative path of a newly created file after a real FSEvents notification fires")
     func detectsNewFileCreation() async throws {
         try await withWatcher { ctx in
             let filePath = ctx.directory.appending(path: "new-file.txt")
@@ -64,7 +64,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("detects file modification")
+    @Test("reports the relative path of an existing file after its contents are overwritten with Data.write")
     func detectsFileModification() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
