@@ -7,7 +7,7 @@ import Yams
 struct ConfigDecodingTests {
     let decoder = YAMLDecoder()
 
-    @Test("decode config yaml", arguments: TestCase.allCases)
+    @Test("decodes config.yml fixtures covering every macro type, lifecycle hook, and condition form into the Config model without error", arguments: TestCase.allCases)
     func decodeConfigYaml(_ testCase: TestCase) throws {
         // Load YAML file from file system
         let fixtureURL = URL(filePath: #filePath)
