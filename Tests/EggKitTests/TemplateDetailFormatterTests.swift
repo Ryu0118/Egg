@@ -7,7 +7,10 @@ struct TemplateDetailFormatterTests {
 
     // MARK: - generateExampleValue Tests
 
-    @Test("generate example value", arguments: GenerateExampleValueTestCase.allCases)
+    @Test(
+        "derives an example value for each macro type, preferring the macro's default over a generic placeholder",
+        arguments: GenerateExampleValueTestCase.allCases,
+    )
     func generateExampleValue(_ testCase: GenerateExampleValueTestCase) {
         let result = formatter.generateExampleValue(for: testCase.macro)
         #expect(result == testCase.expected)
@@ -178,7 +181,10 @@ struct TemplateDetailFormatterTests {
 
     // MARK: - generateExampleCommand Tests
 
-    @Test("generate example command", arguments: GenerateExampleCommandTestCase.allCases)
+    @Test(
+        "builds an `egg hatch` example command line, quoting spaced template names and rendering flags per macro type",
+        arguments: GenerateExampleCommandTestCase.allCases,
+    )
     func generateExampleCommand(_ testCase: GenerateExampleCommandTestCase) {
         let result = formatter.generateExampleCommand(
             templateName: testCase.templateName,
@@ -324,7 +330,10 @@ struct TemplateDetailFormatterTests {
 
     // MARK: - format Tests
 
-    @Test(arguments: FormatTestCase.allCases)
+    @Test(
+        "formats a Template into basic info, macro count, and an example command for display",
+        arguments: FormatTestCase.allCases,
+    )
     func format(_ testCase: FormatTestCase) {
         let result = formatter.format(template: testCase.template, location: testCase.location)
         #expect(result.basicInfo.name == testCase.expectedBasicInfo.name)
