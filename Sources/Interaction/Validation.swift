@@ -49,22 +49,6 @@ public struct NonEmptyRule: ValidationRule {
     }
 }
 
-/// Requires input length to fall within a closed range.
-public struct LengthRule: ValidationRule {
-    private let range: ClosedRange<Int>
-    private let message: String
-
-    public init(_ range: ClosedRange<Int>, message: String) {
-        self.range = range
-        self.message = message
-    }
-
-    /// Validates that the input length is in the configured range.
-    public func validate(_ input: String) -> ValidationError? {
-        range.contains(input.count) ? nil : ValidationError(message)
-    }
-}
-
 public extension Collection<any ValidationRule> {
     func validate(_ input: String) -> [ValidationError] {
         compactMap { $0.validate(input) }

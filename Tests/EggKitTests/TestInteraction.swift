@@ -1,17 +1,10 @@
 import Interaction
 
+/// A no-op `InteractionProviding` for tests that never expect a prompt.
+///
+/// Runners under test operate in non-interactive mode, so any prompt call
+/// here indicates a test setup bug rather than expected behavior.
 struct TestInteraction: InteractionProviding {
-    private let textAnswers: [String]
-    private let confirmationAnswers: [Bool]
-
-    init(
-        textAnswers: [String] = [],
-        confirmationAnswers: [Bool] = [],
-    ) {
-        self.textAnswers = textAnswers
-        self.confirmationAnswers = confirmationAnswers
-    }
-
     func write(_: StyledText) {}
 
     func writeStatus(_: Status, _: StyledText) {}
@@ -19,17 +12,11 @@ struct TestInteraction: InteractionProviding {
     func writeTable(_: Table) {}
 
     func readText(_: TextPrompt) -> String {
-        guard let answer = textAnswers.first else {
-            preconditionFailure("TestInteraction.readText was called without a configured answer.")
-        }
-        return answer
+        preconditionFailure("TestInteraction.readText was called without a configured answer.")
     }
 
     func confirm(_: ConfirmationPrompt) -> Bool {
-        guard let answer = confirmationAnswers.first else {
-            preconditionFailure("TestInteraction.confirm was called without a configured answer.")
-        }
-        return answer
+        preconditionFailure("TestInteraction.confirm was called without a configured answer.")
     }
 
     func choose<Option>(_: ChoicePrompt<Option>) -> Option {

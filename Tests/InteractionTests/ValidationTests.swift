@@ -16,12 +16,18 @@ struct ValidationTests {
     }
 
     @Test func `validation rule collections return errors`() {
-        let rules: [any ValidationRule] = [
-            NonEmptyRule(message: "Required"),
-            LengthRule(2 ... 4, message: "Must be short"),
-        ]
+        struct ShortRule: PredicateValidationRule {
+            let error = ValidationError("Must be short")
 
-        #expect(rules.validate("").map(\.message) == ["Required", "Must be short"])
+            func validate(input: String) -> Bool {
+                input.count <= 4
+            }
+        }
+
+        let rules: [any ValidationRule] = [NonEmptyRule(message: "Required"), ShortRule()]
+
+        #expect(rules.validate("").map(\.message) == ["Required"])
+        #expect(rules.validate("abcdefgh").map(\.message) == ["Must be short"])
         #expect(rules.validate("abc").isEmpty)
     }
 
