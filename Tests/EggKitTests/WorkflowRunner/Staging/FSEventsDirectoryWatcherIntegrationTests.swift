@@ -162,7 +162,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("throws when started twice")
+    @Test("calling start() a second time on an already-running watcher throws .alreadyStarted")
     func throwsWhenStartedTwice() async throws {
         try await withWatcher { ctx in
             await #expect(throws: DirectoryWatcherError.alreadyStarted) {
