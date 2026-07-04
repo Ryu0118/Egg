@@ -231,7 +231,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("detects deeply nested changes")
+    @Test("reports the correct relative path for a file created four directory levels deep under the watched root")
     func detectsDeeplyNestedChanges() async throws {
         try await withWatcher { ctx in
             let deepPath = ctx.directory
