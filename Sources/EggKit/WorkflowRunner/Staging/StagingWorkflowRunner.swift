@@ -344,39 +344,39 @@ struct StagingWorkflowRunner: WorkflowRunning {
     /// Displays the change summary to the user.
     private func displayChangeSummary(_ summary: ChangeSummary) {
         interaction.writeLine()
-        interaction.writeLine("📋 Change Summary:")
+        interaction.writeLine("📋 \(StyledText.Segment.primary("Change Summary:"))")
 
         if !summary.added.isEmpty {
             interaction.writeLine("Added (\(summary.added.count)):", tab: 1)
             for path in summary.added {
-                interaction.writeLine("+ \(path)", tab: 2)
+                interaction.writeLine("\(StyledText.Segment.success("+ \(path)"))", tab: 2)
             }
         }
 
         if !summary.modified.isEmpty {
             interaction.writeLine("Modified (\(summary.modified.count)):", tab: 1)
             for path in summary.modified {
-                interaction.writeLine("~ \(path)", tab: 2)
+                interaction.writeLine("\(StyledText.Segment.accent("~ \(path)"))", tab: 2)
             }
         }
 
         if !summary.deleted.isEmpty {
             interaction.writeLine("Deleted (\(summary.deleted.count)):", tab: 1)
             for path in summary.deleted {
-                interaction.writeLine("- \(path)", tab: 2)
+                interaction.writeLine("\(StyledText.Segment.danger("- \(path)"))", tab: 2)
             }
         }
 
         interaction.writeLine()
-        interaction.writeLine("Total: \(summary.totalCount) file(s)", tab: 1)
+        interaction.writeLine("\(StyledText.Segment.muted("Total: \(summary.totalCount) file(s)"))", tab: 1)
         interaction.writeLine()
     }
 
     /// Displays detected conflicts to the user.
     private func displayConflicts(_ conflicts: [ConflictInfo]) {
-        interaction.writeLine("⚠️ Conflicts detected:")
+        interaction.writeLine("⚠️ \(StyledText.Segment.danger("Conflicts detected:"))")
         for conflict in conflicts {
-            interaction.writeLine("- \(conflict.pathString): \(conflict.type.description)", tab: 1)
+            interaction.writeLine("\(StyledText.Segment.danger("- \(conflict.pathString): \(conflict.type.description)"))", tab: 1)
         }
         interaction.writeLine()
     }
