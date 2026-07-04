@@ -17,7 +17,7 @@ struct LifecycleStepRunnerTests {
         )
     }
 
-    @Test("execute phase", arguments: TestCase.allCases)
+    @Test("runs a phase's lifecycle steps end-to-end, verifying output capture, macro substitution, conditional skipping, and cross-step/cross-phase output references", arguments: TestCase.allCases)
     func executePhase(_ testCase: TestCase) async throws {
         let processRunner = ProcessRunner()
         let workingDirectory = URL(filePath: NSTemporaryDirectory())
@@ -400,7 +400,7 @@ struct LifecycleStepRunnerTests {
         }
     }
 
-    @Test("execute with additional environment", arguments: EnvironmentPropagationTestCase.allCases)
+    @Test("propagates additionalEnvironment variables into step shell processes, including across steps, phases, and combined with macro substitution", arguments: EnvironmentPropagationTestCase.allCases)
     func executeWithAdditionalEnvironment(_ testCase: EnvironmentPropagationTestCase) async throws {
         let processRunner = ProcessRunner()
         let workingDirectory = URL(filePath: NSTemporaryDirectory())
