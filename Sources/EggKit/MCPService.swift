@@ -571,10 +571,10 @@ public enum MCPServiceError: Error, LocalizedError, Sendable {
             """
         case let .sandboxDisableRequiresConfirmation(templateName):
             """
-            ⚠️ SANDBOX DISABLED: This operation will run without filesystem restrictions.
+            SANDBOX DISABLED CONFIRMATION REQUIRED
 
-            Before proceeding, please confirm with the user that they approve running
-            'egg hatch' without sandbox protection for template: \(templateName)
+            Ask the user whether to run 'egg hatch' without sandbox protection for template: \(templateName)
+            Do not classify the script contents yourself; require explicit user approval.
 
             If user approves, call this tool again with 'user_confirmed_no_sandbox: true'
             """

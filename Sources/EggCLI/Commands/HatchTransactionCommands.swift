@@ -2,6 +2,7 @@ import ArgumentParser
 import EggKit
 import FileManagerProtocol
 import Foundation
+import Interaction
 
 /// Shared option set for resolving where a hatch transaction operates.
 ///
@@ -72,6 +73,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
     @OptionGroup var options: HatchTransactionOptions
 
     func run() async throws {
+        let sandboxDisabled = try confirmSandboxDisabledExecutionIfNeeded()
         let service = try await options.makeService()
         let outputDirectory = output.map { URL(filePath: $0, relativeTo: URL(filePath: HatchTransactionOptions.fileManager.currentDirectoryPath)).standardizedFileURL }
         let result = try await service.previewHatchTemplate(
@@ -81,9 +83,43 @@ struct HatchPreviewCommand: AsyncParsableCommand {
             include: include,
             exclude: exclude,
             includeDiff: diff,
-            sandboxDisabled: noSandbox,
+            sandboxDisabled: sandboxDisabled,
         )
         try CLIOutput.printJSON(result)
+    }
+
+    private func confirmSandboxDisabledExecutionIfNeeded() throws -> Bool {
+        guard noSandbox else { return false }
+        let terminal = Terminal(output: StandardErrorOutput())
+        let approved = terminal.confirm(
+            ConfirmationPrompt(
+                title: "Sandbox disabled",
+                question: "Run preview lifecycle scripts without sandbox protection?",
+                defaultAnswer: false,
+                description: "egg does not inspect the script contents for this prompt.",
+            ),
+        )
+        guard approved else {
+            throw HatchPreviewError.sandboxDisabledExecutionDeclined
+        }
+        return true
+    }
+}
+
+private enum HatchPreviewError: LocalizedError {
+    case sandboxDisabledExecutionDeclined
+
+    var errorDescription: String? {
+        switch self {
+        case .sandboxDisabledExecutionDeclined:
+            "Preview cancelled because running without sandbox protection was not approved."
+        }
+    }
+}
+
+private struct StandardErrorOutput: TextOutput {
+    func write(_ text: String) {
+        FileHandle.standardError.write(Data(text.utf8))
     }
 }
 

@@ -104,7 +104,7 @@ public struct EggMCPServer {
                     ]),
                     "disable_sandbox": .object([
                         "type": "boolean",
-                        "description": "Disable the sandbox-exec safety guard for lifecycle scripts. Requires user_confirmed_no_sandbox: true.",
+                        "description": "Disable the sandbox-exec safety guard for lifecycle scripts. Before setting this, ask the user whether to run without sandbox protection; do not classify script contents yourself. Requires user_confirmed_no_sandbox: true.",
                     ]),
                     "user_confirmed_no_sandbox": .object([
                         "type": "boolean",
@@ -167,7 +167,7 @@ public struct EggMCPServer {
                     ]),
                     "disable_sandbox": .object([
                         "type": "boolean",
-                        "description": "Disable the sandbox-exec safety guard for preview lifecycle scripts. Requires user_confirmed_no_sandbox: true.",
+                        "description": "Disable the sandbox-exec safety guard for preview lifecycle scripts. Before setting this, ask the user whether to run without sandbox protection; do not classify script contents yourself. Requires user_confirmed_no_sandbox: true.",
                     ]),
                     "user_confirmed_no_sandbox": .object([
                         "type": "boolean",

@@ -37,7 +37,7 @@ egg hatch discard <applyToken>
   - `--exclude <pathspec>` drops matching paths from the change set.
   - `--output <dir>` sets the directory the generated output targets.
   - `--diff` includes each change's unified diff in the response (off by default).
-  - `--no-sandbox` disables the `sandbox-exec` guard around lifecycle scripts during preview.
+  - `--no-sandbox` asks for explicit approval, then disables the `sandbox-exec` guard around lifecycle scripts during preview.
 - **`apply <applyToken>`** writes the previewed changes to the real working directory and returns a `rollbackId`. Fails if the working directory drifted since the preview, unless `--force` is passed.
 - **`rollback <rollbackId>`** restores the pre-apply state. Fails if a file was hand-edited since the apply, unless `--force` is passed.
 - **`discard <applyToken>`** throws away a preview without applying it.
@@ -92,7 +92,7 @@ All `template` subcommands support an interactive mode when arguments are omitte
 
 ## MCP Integration
 
-`egg mcp` starts a Model Context Protocol server that mirrors the CLI transaction flow (`egg_template_detail`, `egg_hatch_preview`, `egg_hatch_apply`, `egg_hatch_rollback`, `egg_hatch_discard`). Macro keys over MCP must use the exact config names (e.g. `___MODULE_NAME___`), not the kebab-case CLI flags. To disable sandboxing for `egg_hatch_preview` or legacy `egg_hatch`, pass both `disable_sandbox: true` and `user_confirmed_no_sandbox: true` after explicit user approval. A legacy `egg_hatch` tool defaults to preview mode and only applies changes when `apply_changes: true` is explicitly passed.
+`egg mcp` starts a Model Context Protocol server that mirrors the CLI transaction flow (`egg_template_detail`, `egg_hatch_preview`, `egg_hatch_apply`, `egg_hatch_rollback`, `egg_hatch_discard`). Macro keys over MCP must use the exact config names (e.g. `___MODULE_NAME___`), not the kebab-case CLI flags. To disable sandboxing for `egg_hatch_preview` or legacy `egg_hatch`, first ask the user whether to run lifecycle scripts without sandbox protection. Do not classify script contents yourself; after explicit user approval, pass both `disable_sandbox: true` and `user_confirmed_no_sandbox: true`. A legacy `egg_hatch` tool defaults to preview mode and only applies changes when `apply_changes: true` is explicitly passed.
 
 ## Troubleshooting
 
