@@ -1,8 +1,9 @@
 @testable import Interaction
 import Testing
 
+@Suite("Renders StyledText segments to plain or ANSI-colorized terminal output")
 struct StyledTextRendererTests {
-    @Test("plain rendering strips all styling")
+    @Test("a non-colorized renderer converts command and path segments into their plain textual form (quoted command, bare path) with no ANSI codes")
     func plainRenderingStripsAllStyling() {
         let renderer = StyledTextRenderer(colorized: false)
         let text: StyledText = "Run \(StyledText.Segment.command("egg hatch")) in \(StyledText.Segment.path("/tmp"))"
@@ -10,7 +11,7 @@ struct StyledTextRendererTests {
         #expect(renderer.render(text) == "Run 'egg hatch' in /tmp")
     }
 
-    @Test("colorized rendering wraps styled segments in SGR codes")
+    @Test("a colorized renderer wraps a success segment in the green SGR escape sequence while leaving surrounding plain text untouched")
     func colorizedRenderingWrapsStyledSegmentsInSGRCodes() {
         let renderer = StyledTextRenderer(colorized: true)
         let text: StyledText = "\(StyledText.Segment.success("Added")) file"
@@ -18,14 +19,14 @@ struct StyledTextRendererTests {
         #expect(renderer.render(text) == "\u{1B}[32mAdded\u{1B}[0m file")
     }
 
-    @Test("colorized rendering leaves plain segments untouched")
+    @Test("a colorized renderer passes through a message with no styled segments unchanged")
     func colorizedRenderingLeavesPlainSegmentsUntouched() {
         let renderer = StyledTextRenderer(colorized: true)
 
         #expect(renderer.render("plain message") == "plain message")
     }
 
-    @Test("colorized rendering matches plain text after stripping escapes")
+    @Test("stripping ANSI escapes from a colorized render of danger, muted, and link segments reproduces the same text as StyledText's plain-text representation")
     func colorizedRenderingMatchesPlainTextAfterStrippingEscapes() {
         let renderer = StyledTextRenderer(colorized: true)
         let text: StyledText = "\(StyledText.Segment.danger("error")): \(StyledText.Segment.muted("details")) \(StyledText.Segment.link(title: "docs", destination: "https://example.com"))"

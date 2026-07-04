@@ -127,7 +127,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("detects multiple file changes")
+    @Test("reports the relative paths of three files created concurrently in a single batch of events")
     func detectsMultipleFileChanges() async throws {
         try await withWatcher { ctx in
             let file1 = ctx.directory.appending(path: "file1.txt")
