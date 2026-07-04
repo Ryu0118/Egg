@@ -184,7 +184,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         await watcher.stop()
     }
 
-    @Test("can restart after stop")
+    @Test("a watcher can be started again after stop() and still detects subsequent file changes")
     func canRestartAfterStop() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }

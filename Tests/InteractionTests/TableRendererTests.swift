@@ -1,8 +1,9 @@
 @testable import Interaction
 import Testing
 
+@Suite("Builds and renders tables with column alignment based on terminal display width")
 struct TableRendererTests {
-    @Test("renders tables using terminal display width")
+    @Test("renders a table with wide Japanese cells so columns align using display width rather than character count")
     func rendersTablesUsingTerminalDisplayWidth() {
         let table = Table(
             headers: ["name", "description"],
@@ -19,7 +20,7 @@ struct TableRendererTests {
         #expect(output.contains("abc    latin"))
     }
 
-    @Test("builds table with result builder")
+    @Test("the Table result builder supports literal rows, conditional rows, and rows generated from a for-loop, producing headers and rows in declaration order")
     func buildsTableWithResultBuilder() {
         let includeLatin = true
         let extraRows = [
@@ -53,7 +54,7 @@ struct TableRendererTests {
         ])
     }
 
-    @Test("result builder tables render with display width")
+    @Test("a table constructed via the result builder renders with columns aligned by display width, matching the manually constructed table's output")
     func resultBuilderTablesRenderWithDisplayWidth() {
         let table = Table {
             TableHeader("name", "description")
