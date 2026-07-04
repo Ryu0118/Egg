@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 struct FileSystemAtomicTests {
-    @Test("with atomic copy and write", arguments: TestCase.allCases)
+    @Test("withAtomicCopyAndWrite stages a transform in a temporary working copy and merges it into the destination on success, or leaves the destination untouched when the transform throws", arguments: TestCase.allCases)
     func withAtomicCopyAndWrite(_ testCase: TestCase) async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempBase = try fileManager.makeTemporaryDirectory(prefix: "atomic-test")
