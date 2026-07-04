@@ -3,7 +3,7 @@ import FileManagerProtocol
 import Foundation
 import Testing
 
-@Suite("TransactionLock")
+@Suite("Serializes concurrent hatch transactions on the same directory")
 struct TransactionLockTests {
     private let fileManager: some FileManagerProtocol = FileManager.default
 
@@ -11,8 +11,8 @@ struct TransactionLockTests {
         try fileManager.makeTemporaryDirectory(prefix: "TransactionLockTests")
     }
 
-    @Test
-    func `Acquires and releases, creating the directory if needed`() async throws {
+    @Test("Acquires and releases, creating the directory if needed")
+    func acquiresAndReleasesCreatingTheDirectoryIfNeeded() async throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
         let target = root.appending(path: "does/not/exist/yet")
@@ -24,8 +24,8 @@ struct TransactionLockTests {
         #expect(fileManager.exists(target.appending(path: ".lock")))
     }
 
-    @Test
-    func `A second fail-fast acquisition on the same directory is rejected while the first is held`() async throws {
+    @Test("A second fail-fast acquisition on the same directory is rejected while the first is held")
+    func aSecondFailFastAcquisitionOnTheSameDirectoryIsRejectedWhileTheFirstIsHeld() async throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -39,8 +39,8 @@ struct TransactionLockTests {
         }
     }
 
-    @Test
-    func `The lock is released after the body returns, so a subsequent acquisition succeeds`() async throws {
+    @Test("The lock is released after the body returns, so a subsequent acquisition succeeds")
+    func theLockIsReleasedAfterTheBodyReturnsSoASubsequentAcquisitionSucceeds() async throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -49,8 +49,8 @@ struct TransactionLockTests {
         try await TransactionLock.shared.withLock(directory: root, fileManager: fileManager) {}
     }
 
-    @Test
-    func `The lock is released even when the body throws`() async throws {
+    @Test("The lock is released even when the body throws")
+    func theLockIsReleasedEvenWhenTheBodyThrows() async throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -64,8 +64,8 @@ struct TransactionLockTests {
         try await TransactionLock.shared.withLock(directory: root, fileManager: fileManager) {}
     }
 
-    @Test
-    func `wait polls until the lock is released, rather than failing immediately`() async throws {
+    @Test("wait polls until the lock is released, rather than failing immediately")
+    func waitPollsUntilTheLockIsReleasedRatherThanFailingImmediately() async throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -85,8 +85,8 @@ struct TransactionLockTests {
         try await holder.value
     }
 
-    @Test
-    func `Directories with unrelated names lock independently`() async throws {
+    @Test("Directories with unrelated names lock independently")
+    func directoriesWithUnrelatedNamesLockIndependently() async throws {
         let root = try makeDirectory()
         defer { try? fileManager.removeItem(at: root) }
         let dirA = root.appending(path: "a")

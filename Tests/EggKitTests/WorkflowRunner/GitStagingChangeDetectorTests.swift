@@ -4,7 +4,7 @@ import Foundation
 import ProcessRunning
 import Testing
 
-@Suite("GitStagingChangeDetector")
+@Suite("Detects added, modified, and deleted files between staging and reference trees")
 struct GitStagingChangeDetectorTests {
     private func makeWorkspace(prefix: String) throws -> (URL, any FileManagerProtocol) {
         let fileManager: some FileManagerProtocol = FileManager.default
@@ -16,8 +16,8 @@ struct GitStagingChangeDetectorTests {
         GitStagingChangeDetector(processRunner: ProcessRunner(), fileManager: fileManager)
     }
 
-    @Test
-    func `Reports added, modified, and deleted files against the baseline`() async throws {
+    @Test("Reports added, modified, and deleted files against the baseline")
+    func reportsAddedModifiedAndDeletedFilesAgainstTheBaseline() async throws {
         let (root, fileManager) = try makeWorkspace(prefix: "GitStagingBasic")
         defer { try? fileManager.removeItem(at: root) }
 
@@ -37,8 +37,8 @@ struct GitStagingChangeDetectorTests {
         #expect(summary.deleted == ["gone.txt"])
     }
 
-    @Test
-    func `Files ignored by the project's .gitignore are not reported as changes`() async throws {
+    @Test("Files ignored by the project's .gitignore are not reported as changes")
+    func filesIgnoredByTheProjectSGitignoreAreNotReportedAsChanges() async throws {
         let (root, fileManager) = try makeWorkspace(prefix: "GitStagingIgnored")
         defer { try? fileManager.removeItem(at: root) }
 
@@ -61,8 +61,8 @@ struct GitStagingChangeDetectorTests {
         #expect(!summary.allPaths.contains { $0.hasPrefix("node_modules") })
     }
 
-    @Test
-    func `--include forces a normally-ignored path into the change set`() async throws {
+    @Test("--include forces a normally-ignored path into the change set")
+    func includeForcesANormallyIgnoredPathIntoTheChangeSet() async throws {
         let (root, fileManager) = try makeWorkspace(prefix: "GitStagingInclude")
         defer { try? fileManager.removeItem(at: root) }
 
@@ -80,8 +80,8 @@ struct GitStagingChangeDetectorTests {
         #expect(summary.added == ["dist/bundle.js"])
     }
 
-    @Test
-    func `egg's own .egg directory is excluded structurally`() async throws {
+    @Test("egg's own .egg directory is excluded structurally")
+    func eggSOwnEggDirectoryIsExcludedStructurally() async throws {
         let (root, fileManager) = try makeWorkspace(prefix: "GitStagingEgg")
         defer { try? fileManager.removeItem(at: root) }
 

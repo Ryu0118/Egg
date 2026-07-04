@@ -4,8 +4,8 @@ import Foundation
 import Testing
 
 struct ApplyStagingAreaTests {
-    @Test(arguments: TestCase.allCases)
-    func `apply staging area`(_ testCase: TestCase) throws {
+    @Test("apply staging area", arguments: TestCase.allCases)
+    func applyStagingArea(_ testCase: TestCase) throws {
         let context = try TestContext.setUp(testCase: testCase)
         defer { try? context.tearDown() }
 

@@ -50,8 +50,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         try await operation(context)
     }
 
-    @Test
-    func `detects new file creation`() async throws {
+    @Test("detects new file creation")
+    func detectsNewFileCreation() async throws {
         try await withWatcher { ctx in
             let filePath = ctx.directory.appending(path: "new-file.txt")
             try ctx.writeText("content", at: filePath)
@@ -64,8 +64,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `detects file modification`() async throws {
+    @Test("detects file modification")
+    func detectsFileModification() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -86,8 +86,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         #expect(events.contains(expectedPath), "Should detect file modification")
     }
 
-    @Test
-    func `detects file deletion`() async throws {
+    @Test("detects file deletion")
+    func detectsFileDeletion() async throws {
         try await withWatcher { ctx in
             let filePath = ctx.directory.appending(path: "to-delete.txt")
             // Create file first
@@ -110,8 +110,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `detects nested file changes`() async throws {
+    @Test("detects nested file changes")
+    func detectsNestedFileChanges() async throws {
         try await withWatcher { ctx in
             let nestedDir = ctx.directory.appending(path: "subdir")
             try ctx.makeDirectory(at: nestedDir)
@@ -127,8 +127,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `detects multiple file changes`() async throws {
+    @Test("detects multiple file changes")
+    func detectsMultipleFileChanges() async throws {
         try await withWatcher { ctx in
             let file1 = ctx.directory.appending(path: "file1.txt")
             let file2 = ctx.directory.appending(path: "file2.txt")
@@ -152,8 +152,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `returns empty events when no changes`() async throws {
+    @Test("returns empty events when no changes")
+    func returnsEmptyEventsWhenNoChanges() async throws {
         try await withWatcher { ctx in
             try await Task.sleep(for: .milliseconds(150))
 
@@ -162,8 +162,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `throws when started twice`() async throws {
+    @Test("throws when started twice")
+    func throwsWhenStartedTwice() async throws {
         try await withWatcher { ctx in
             await #expect(throws: DirectoryWatcherError.alreadyStarted) {
                 try await ctx.watcher.start(watching: ctx.directory)
@@ -171,8 +171,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `stop is idempotent - calling multiple times does not throw`() async throws {
+    @Test("stop is idempotent - calling multiple times does not throw")
+    func stopIsIdempotentCallingMultipleTimesDoesNotThrow() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -184,8 +184,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         await watcher.stop()
     }
 
-    @Test
-    func `can restart after stop`() async throws {
+    @Test("can restart after stop")
+    func canRestartAfterStop() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 
@@ -207,8 +207,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         #expect(events.contains(expectedPath), "Should detect file after restart")
     }
 
-    @Test
-    func `accumulates events across multiple drains`() async throws {
+    @Test("accumulates events across multiple drains")
+    func accumulatesEventsAcrossMultipleDrains() async throws {
         try await withWatcher { ctx in
             let file1 = ctx.directory.appending(path: "first.txt")
             try ctx.writeText("first", at: file1)
@@ -231,8 +231,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `detects deeply nested changes`() async throws {
+    @Test("detects deeply nested changes")
+    func detectsDeeplyNestedChanges() async throws {
         try await withWatcher { ctx in
             let deepPath = ctx.directory
                 .appending(path: "a")
@@ -253,8 +253,8 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test
-    func `ignores changes outside watched directory`() async throws {
+    @Test("ignores changes outside watched directory")
+    func ignoresChangesOutsideWatchedDirectory() async throws {
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "fsevents-test")
         defer { try? fileManager.removeItem(at: tempDir) }
 

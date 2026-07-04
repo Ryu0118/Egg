@@ -1,10 +1,10 @@
 @testable import EggMCP
 import Testing
 
-@Suite("EggMCP")
+@Suite("EggMCP module builds and exposes its public entry points")
 struct EggMCPTests {
-    @Test
-    func `EggMCP module is importable`() {
+    @Test("EggMCP module is importable")
+    func eggMCPModuleIsImportable() {
         #expect(Bool(true))
     }
 }

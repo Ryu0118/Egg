@@ -24,8 +24,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
 
     // MARK: - existsAsLink / isSymbolicLink
 
-    @Test
-    func `existsAsLink is true for a dangling symlink; exists is false`() throws {
+    @Test("existsAsLink is true for a dangling symlink; exists is false")
+    func existsAsLinkIsTrueForADanglingSymlinkExistsIsFalse() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -37,8 +37,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
         #expect(fileManager.isSymbolicLink(at: link) == true)
     }
 
-    @Test
-    func `existsAsLink is true for a valid symlink; isSymbolicLink is true, isDirectory follows to the target`() throws {
+    @Test("existsAsLink is true for a valid symlink; isSymbolicLink is true, isDirectory follows to the target")
+    func existsAsLinkIsTrueForAValidSymlinkIsSymbolicLinkIsTrueIsDirectoryFollowsToTheTarget() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -54,8 +54,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
         #expect(fileManager.isDirectory(at: link) == true)
     }
 
-    @Test
-    func `existsAsLink and exists agree for a regular file and a missing path`() throws {
+    @Test("existsAsLink and exists agree for a regular file and a missing path")
+    func existsAsLinkAndExistsAgreeForARegularFileAndAMissingPath() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -72,8 +72,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
 
     // MARK: - removeIfExists
 
-    @Test
-    func `removeIfExists removes a dangling symlink`() throws {
+    @Test("removeIfExists removes a dangling symlink")
+    func removeIfExistsRemovesADanglingSymlink() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -87,8 +87,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
 
     // MARK: - copyIfExists
 
-    @Test
-    func `copyIfExists copies a dangling symlink as a symlink, preserving its (unresolved) target string`() throws {
+    @Test("copyIfExists copies a dangling symlink as a symlink, preserving its (unresolved) target string")
+    func copyIfExistsCopiesADanglingSymlinkAsASymlinkPreservingItsUnresolvedTargetString() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -103,8 +103,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
         #expect(try fileManager.destinationOfSymbolicLink(atPath: destination.path(percentEncoded: false)) == "nowhere.txt")
     }
 
-    @Test
-    func `copyIfExists clears a dangling symlink already sitting at the destination`() throws {
+    @Test("copyIfExists clears a dangling symlink already sitting at the destination")
+    func copyIfExistsClearsADanglingSymlinkAlreadySittingAtTheDestination() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -122,8 +122,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
 
     // MARK: - capturedFileAttributes / restore
 
-    @Test
-    func `Captures and restores POSIX permission bits across a content overwrite`() throws {
+    @Test("Captures and restores POSIX permission bits across a content overwrite")
+    func capturesAndRestoresPOSIXPermissionBitsAcrossAContentOverwrite() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -144,8 +144,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
         #expect(mode?.uint16Value == 0o640)
     }
 
-    @Test
-    func `Captures and restores an extended attribute across a content overwrite`() throws {
+    @Test("Captures and restores an extended attribute across a content overwrite")
+    func capturesAndRestoresAnExtendedAttributeAcrossAContentOverwrite() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
@@ -171,8 +171,8 @@ struct FileManagerProtocolSymlinkAndAttributeTests {
         #expect(String(bytes: buffer.prefix(size), encoding: .utf8) == "hello")
     }
 
-    @Test
-    func `capturedFileAttributes on a missing path yields an empty, harmless snapshot`() throws {
+    @Test("capturedFileAttributes on a missing path yields an empty, harmless snapshot")
+    func capturedFileAttributesOnAMissingPathYieldsAnEmptyHarmlessSnapshot() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
