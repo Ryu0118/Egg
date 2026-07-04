@@ -152,7 +152,7 @@ struct FSEventsDirectoryWatcherIntegrationTests {
         }
     }
 
-    @Test("returns empty events when no changes")
+    @Test("drainEvents returns an empty set when nothing was written to the watched directory")
     func returnsEmptyEventsWhenNoChanges() async throws {
         try await withWatcher { ctx in
             try await Task.sleep(for: .milliseconds(150))
