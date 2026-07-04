@@ -92,7 +92,7 @@ package struct MacroResolver {
 
         let value = interaction.textPrompt(
             title: "\(macro.name)",
-            prompt: promptMessage,
+            prompt: StyledText(promptMessage),
             collapsesOnAnswer: true,
             validationRules: validationRules,
         )
@@ -188,7 +188,7 @@ package struct MacroResolver {
 
         let input = interaction.textPrompt(
             title: "\(macro.name)",
-            prompt: promptMessage,
+            prompt: StyledText(promptMessage),
             collapsesOnAnswer: true,
             validationRules: validationRules,
         )
@@ -239,7 +239,7 @@ package struct MacroResolver {
 
         let pathString = interaction.textPrompt(
             title: "\(macro.name)",
-            prompt: promptMessage,
+            prompt: StyledText(promptMessage),
             collapsesOnAnswer: true,
             validationRules: validationRules,
         )

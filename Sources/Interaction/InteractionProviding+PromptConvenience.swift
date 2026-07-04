@@ -1,30 +1,11 @@
-import Interaction
-
-package extension InteractionProviding {
-    /// Reads text using EggKit's concise prompt convenience.
-    func textPrompt(
-        title: StyledText? = nil,
-        prompt: String,
-        description: StyledText? = nil,
-        collapsesOnAnswer: Bool = true,
-        validationRules: [any Interaction.ValidationRule] = [],
-    ) -> String {
-        textPrompt(
-            title: title,
-            prompt: StyledText(prompt),
-            description: description,
-            collapsesOnAnswer: collapsesOnAnswer,
-            validationRules: validationRules,
-        )
-    }
-
-    /// Reads text using EggKit's concise prompt convenience.
+public extension InteractionProviding {
+    /// Reads text using a concise, keyword-based prompt convenience.
     func textPrompt(
         title: StyledText? = nil,
         prompt: StyledText,
         description: StyledText? = nil,
         collapsesOnAnswer: Bool = true,
-        validationRules: [any Interaction.ValidationRule] = [],
+        validationRules: [any ValidationRule] = [],
     ) -> String {
         readText(
             TextPrompt(
@@ -37,7 +18,7 @@ package extension InteractionProviding {
         )
     }
 
-    /// Reads a yes/no answer using EggKit's concise prompt convenience.
+    /// Reads a yes/no answer using a concise, keyword-based prompt convenience.
     func yesOrNoChoicePrompt(
         title: StyledText? = nil,
         question: StyledText,
@@ -56,7 +37,7 @@ package extension InteractionProviding {
         )
     }
 
-    /// Reads one option using EggKit's concise prompt convenience.
+    /// Reads one option using a concise, keyword-based prompt convenience.
     func singleChoicePrompt<Option>(
         title: StyledText? = nil,
         question: StyledText,
@@ -79,7 +60,7 @@ package extension InteractionProviding {
         )
     }
 
-    /// Reads multiple options using EggKit's concise prompt convenience.
+    /// Reads multiple options using a concise, keyword-based prompt convenience.
     func multipleChoicePrompt<Option>(
         title: StyledText? = nil,
         question: StyledText,
