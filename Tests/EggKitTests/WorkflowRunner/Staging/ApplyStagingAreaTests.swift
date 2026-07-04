@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 struct ApplyStagingAreaTests {
-    @Test("apply staging area", arguments: TestCase.allCases)
+    @Test("stages a ChangeSummary into a staging directory and applies it to the working directory, correctly handling adds/modifies/deletes, manifest counts, and cleanup on success or error", arguments: TestCase.allCases)
     func applyStagingArea(_ testCase: TestCase) throws {
         let context = try TestContext.setUp(testCase: testCase)
         defer { try? context.tearDown() }
