@@ -6,8 +6,8 @@ import Testing
 struct TemplateDuplicateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows duplicate command help`() async throws {
+    @Test("--help shows duplicate command help")
+    func helpShowsDuplicateCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "duplicate", "--help")
 
@@ -21,8 +21,11 @@ struct TemplateDuplicateCommandTests {
         #expect(result.stdout.contains("--template-search-paths"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `duplicate template`(_ testCase: TestCase) async throws {
+    @Test(
+        "duplicates a template under a new name while preserving the original, failing when the source is missing or the target name is taken",
+        arguments: TestCase.allCases,
+    )
+    func duplicateTemplate(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-duplicate")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -142,42 +145,6 @@ struct TemplateDuplicateCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String {
-            description
-        }
-
-        func buildArguments(projectDir: URL) -> [String] {
-            [
-                "template", "duplicate", sourceTemplate,
-                "--name", newName,
-                "--description", newDescription,
-                "--project-directory", projectDir.path(percentEncoded: false),
-            ]
-        }
-
-        enum Location: String {
-            case global
-            case project
-        }
-
-        enum Expected {
-            case success
-            case failure(errorContains: String)
-        }
-
-        struct TemplateSetup {
-            let name: String
-            let description: String
-            let location: Location
-        }
-
-        struct Verification {
-            let originalName: String
-            let originalLocation: Location
-            let duplicateName: String
-            let duplicateLocation: Location
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -236,5 +203,41 @@ struct TemplateDuplicateCommandTests {
                 verification: nil,
             ),
         ]
+
+        func buildArguments(projectDir: URL) -> [String] {
+            [
+                "template", "duplicate", sourceTemplate,
+                "--name", newName,
+                "--description", newDescription,
+                "--project-directory", projectDir.path(percentEncoded: false),
+            ]
+        }
+
+        enum Location: String {
+            case global
+            case project
+        }
+
+        enum Expected {
+            case success
+            case failure(errorContains: String)
+        }
+
+        struct TemplateSetup {
+            let name: String
+            let description: String
+            let location: Location
+        }
+
+        struct Verification {
+            let originalName: String
+            let originalLocation: Location
+            let duplicateName: String
+            let duplicateLocation: Location
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }

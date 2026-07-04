@@ -11,11 +11,11 @@ import ProcessRunning
 actor BinaryBuildState {
     static let shared = BinaryBuildState()
 
+    var buildTask: Task<URL, any Error>?
+
     private let processRunner: ProcessRunner
     private var cachedBinaryPath: URL?
     private var buildError: Error?
-
-    var buildTask: Task<URL, any Error>?
 
     private init() {
         processRunner = ProcessRunner()

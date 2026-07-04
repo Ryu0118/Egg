@@ -6,8 +6,8 @@ import Testing
 struct TemplateCreateCommandTests {
     let fileManager: any FileManagerProtocol = FileManager.default
 
-    @Test
-    func `--help shows create command help`() async throws {
+    @Test("--help shows create command help")
+    func helpShowsCreateCommandHelp() async throws {
         let runner = try await CLIRunner()
         let result = try await runner.run("template", "create", "--help")
 
@@ -20,8 +20,11 @@ struct TemplateCreateCommandTests {
         #expect(result.stdout.contains("--skip-config"))
     }
 
-    @Test(arguments: TestCase.allCases)
-    func `create template`(_ testCase: TestCase) async throws {
+    @Test(
+        "creates a new template directory, optionally skipping config.yml, failing without creating anything when the name is already taken",
+        arguments: TestCase.allCases,
+    )
+    func createTemplate(_ testCase: TestCase) async throws {
         let runner = try await CLIRunner()
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "cli-test-create")
         defer { try? fileManager.removeItem(at: tempDir) }
@@ -108,58 +111,6 @@ struct TemplateCreateCommandTests {
         let expected: Expected
         let verification: Verification?
 
-        var testDescription: String {
-            description
-        }
-
-        func buildArguments(projectDir: URL) -> [String] {
-            var args = [
-                "template", "create",
-                "--name", name,
-                "--description", templateDescription,
-                "--location", location.rawValue,
-            ]
-            if location == .project {
-                args += ["--project-directory", projectDir.path(percentEncoded: false)]
-            }
-            if skipConfig {
-                args.append("--skip-config")
-            }
-            return args
-        }
-
-        enum Location: String {
-            case global
-            case project
-        }
-
-        enum Expected {
-            case success
-            case failure(errorContains: String)
-        }
-
-        struct Verification {
-            let templateName: String
-            let location: Location
-            let expectConfig: Bool
-            let expectNoConfig: Bool
-            let expectTemplateDir: Bool
-
-            init(
-                templateName: String,
-                location: Location,
-                expectConfig: Bool = true,
-                expectNoConfig: Bool = false,
-                expectTemplateDir: Bool = true,
-            ) {
-                self.templateName = templateName
-                self.location = location
-                self.expectConfig = expectConfig
-                self.expectNoConfig = expectNoConfig
-                self.expectTemplateDir = expectTemplateDir
-            }
-        }
-
         static let allCases: [TestCase] = [
             // Success cases
             TestCase(
@@ -216,5 +167,57 @@ struct TemplateCreateCommandTests {
                 verification: nil,
             ),
         ]
+
+        func buildArguments(projectDir: URL) -> [String] {
+            var args = [
+                "template", "create",
+                "--name", name,
+                "--description", templateDescription,
+                "--location", location.rawValue,
+            ]
+            if location == .project {
+                args += ["--project-directory", projectDir.path(percentEncoded: false)]
+            }
+            if skipConfig {
+                args.append("--skip-config")
+            }
+            return args
+        }
+
+        enum Location: String {
+            case global
+            case project
+        }
+
+        enum Expected {
+            case success
+            case failure(errorContains: String)
+        }
+
+        struct Verification {
+            let templateName: String
+            let location: Location
+            let expectConfig: Bool
+            let expectNoConfig: Bool
+            let expectTemplateDir: Bool
+
+            init(
+                templateName: String,
+                location: Location,
+                expectConfig: Bool = true,
+                expectNoConfig: Bool = false,
+                expectTemplateDir: Bool = true,
+            ) {
+                self.templateName = templateName
+                self.location = location
+                self.expectConfig = expectConfig
+                self.expectNoConfig = expectNoConfig
+                self.expectTemplateDir = expectTemplateDir
+            }
+        }
+
+        var testDescription: String {
+            description
+        }
     }
 }
