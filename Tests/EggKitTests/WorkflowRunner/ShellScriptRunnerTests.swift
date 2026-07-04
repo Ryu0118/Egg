@@ -56,7 +56,7 @@ struct ShellScriptRunnerTests {
         }
     }
 
-    @Test("execute streaming", arguments: StreamingTestCase.allCases)
+    @Test("streams stdout chunks to the progress callback as the shell command runs, in addition to returning the full captured stdout on success or throwing on non-zero exit", arguments: StreamingTestCase.allCases)
     func executeStreaming(_ testCase: StreamingTestCase) async throws {
         let tempDir = URL(filePath: NSTemporaryDirectory())
         let runner = ShellScriptRunner(
@@ -228,7 +228,7 @@ struct ShellScriptRunnerTests {
         }
     }
 
-    @Test("execute with additional environment", arguments: EnvironmentTestCase.allCases)
+    @Test("makes additionalEnvironment variables visible to the executed shell command, including overriding inherited variables and subshells", arguments: EnvironmentTestCase.allCases)
     func executeWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
@@ -241,7 +241,7 @@ struct ShellScriptRunnerTests {
         #expect(stdout.contains(testCase.expectedOutput), "Expected '\(testCase.expectedOutput)' in stdout, got '\(stdout)'")
     }
 
-    @Test("execute streaming with additional environment", arguments: EnvironmentTestCase.allCases)
+    @Test("makes additionalEnvironment variables visible when streaming a shell command's output, mirroring the non-streaming execution path", arguments: EnvironmentTestCase.allCases)
     func executeStreamingWithAdditionalEnvironment(_ testCase: EnvironmentTestCase) async throws {
         let tempDir = FileManager.default.temporaryDirectory
         let runner = ShellScriptRunner(
