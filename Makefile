@@ -1,7 +1,7 @@
 SWIFTFORMAT := .nest/bin/swiftformat
 SWIFTLINT := .nest/bin/swiftlint
 MY_SWIFT_LINTER := .nest/bin/my-swift-linter
-MY_SWIFT_LINTER_PATHS := Sources Tests Package.swift
+MY_SWIFT_LINTER_PATHS := Sources Tests E2ETestsPackage/Tests Package.swift
 
 .PHONY: install-commands format swiftlint lint my-lint format-lint hooks test e2e-test check
 
