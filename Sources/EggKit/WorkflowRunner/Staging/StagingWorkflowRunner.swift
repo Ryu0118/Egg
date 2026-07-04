@@ -153,35 +153,15 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 homeDirectory: homeDirectory,
                 interaction: interaction,
             )
-            let expandedAllowedPaths = try await sandboxResolver.expandAllowedPaths(
+            let finalAllowedPaths = try await sandboxResolver.resolveConfirmedAllowedPaths(
                 config.sandbox?.allowedPaths,
                 macros: macros,
                 workingDirectory: staging.root,
+                isInteractive: isInteractive,
+                sandboxDisabled: sandboxDisabled,
             )
 
-            // Track whether user confirmed extended sandbox permissions
-            var sandboxPermissionConfirmed = false
-
-            if !expandedAllowedPaths.isEmpty && !sandboxDisabled && !isInteractive {
-                throw LifecycleStepError.sandboxPermissionRequired(
-                    paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                )
-            }
-
-            if !expandedAllowedPaths.isEmpty && !sandboxDisabled {
-                sandboxPermissionConfirmed = sandboxResolver.confirmSandboxAllowedPaths(
-                    expandedAllowedPaths.map { $0.path(percentEncoded: false) },
-                )
-                if !sandboxPermissionConfirmed {
-                    interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
-                }
-            }
-
             let outputs = StepOutputsStorage()
-
-            // Compute final allowed paths for sandbox configuration
-            // Only include if user confirmed in interactive mode
-            let finalAllowedPaths: [URL] = sandboxPermissionConfirmed ? expandedAllowedPaths : []
 
             // Step 2: Execute pre_hatch phase in staging workspace (with OS-level sandboxing)
             let executionEnvironment: ExecutionEnvironment =

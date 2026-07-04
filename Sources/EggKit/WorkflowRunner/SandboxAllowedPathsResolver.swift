@@ -86,6 +86,47 @@ struct SandboxAllowedPathsResolver {
         )
     }
 
+    /// Expands, confirms, and resolves sandbox.allowed_paths for a lifecycle run.
+    ///
+    /// In interactive sessions the user is prompted to allow the extended write
+    /// access; declining continues in sandbox-only mode. Non-interactive sessions
+    /// cannot be prompted, so any non-empty allowed_paths is rejected outright.
+    ///
+    /// - Returns: The confirmed allowed paths, or an empty array if the user
+    ///   declined extended access.
+    /// - Throws: `LifecycleStepError.sandboxPermissionRequired` when non-interactive.
+    func resolveConfirmedAllowedPaths(
+        _ allowedPaths: [String]?,
+        macros: [ResolvedMacro],
+        workingDirectory: URL,
+        isInteractive: Bool,
+        sandboxDisabled: Bool,
+    ) async throws -> [URL] {
+        let expandedAllowedPaths = try await expandAllowedPaths(
+            allowedPaths,
+            macros: macros,
+            workingDirectory: workingDirectory,
+        )
+
+        guard !expandedAllowedPaths.isEmpty, !sandboxDisabled else {
+            return []
+        }
+
+        guard isInteractive else {
+            throw LifecycleStepError.sandboxPermissionRequired(
+                paths: expandedAllowedPaths.map { $0.path(percentEncoded: false) },
+            )
+        }
+
+        let confirmed = confirmSandboxAllowedPaths(
+            expandedAllowedPaths.map { $0.path(percentEncoded: false) },
+        )
+        if !confirmed {
+            interaction.writeLine("⚠️ Continuing without extended sandbox permissions (sandbox-only mode).")
+        }
+        return confirmed ? expandedAllowedPaths : []
+    }
+
     /// Expands shell path shortcuts like `~` and `$HOME`.
     private func expandShellPath(_ path: String) -> String {
         var result = path
