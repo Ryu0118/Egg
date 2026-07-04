@@ -75,7 +75,7 @@ struct DirectoryCloningTests {
         }
     }
 
-    @Test("cloning error descriptions")
+    @Test("CloningError.errorDescription produces a readable message for both an invalid URL and an underlying system clone failure code")
     func cloningErrorDescriptions() {
         let invalidURLError = CloningError.invalidURL
         #expect(invalidURLError.errorDescription == "The provided URL is not a valid file URL")
