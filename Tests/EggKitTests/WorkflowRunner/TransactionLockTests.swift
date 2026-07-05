@@ -99,7 +99,9 @@ struct TransactionLockTests {
                 maxOccupants = max(maxOccupants, occupants)
             }
 
-            func exit() { occupants -= 1 }
+            func exit() {
+                occupants -= 1
+            }
         }
         let occupancy = Occupancy()
         let fm = fileManager

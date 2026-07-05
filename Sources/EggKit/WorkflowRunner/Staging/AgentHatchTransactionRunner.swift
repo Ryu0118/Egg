@@ -482,10 +482,10 @@ package struct AgentHatchTransactionRunner {
         return .missing
     }
 
-    // Every deletion below unlinks the very lock files the caller is holding
-    // (they live inside the deleted directories). TransactionLock's protocol
-    // permits that only as the final act before release: each branch deletes
-    // and then immediately returns or throws, with no guarded work after.
+    /// Every deletion below unlinks the very lock files the caller is holding
+    /// (they live inside the deleted directories). TransactionLock's protocol
+    /// permits that only as the final act before release: each branch deletes
+    /// and then immediately returns or throws, with no guarded work after.
     private func discardLocked(token: String, bundleRoot: URL, force: Bool) throws -> AgentHatchApplyResult {
         let bundleExists = fileManager.exists(bundleRoot.appending(path: "manifest.json"))
 
