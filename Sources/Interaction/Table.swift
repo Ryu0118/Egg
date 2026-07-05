@@ -129,36 +129,56 @@ public enum TableCellBuilder {
     }
 }
 
-/// Renders tables using terminal display widths.
+/// Renders tables as a bordered box using terminal display widths.
 public struct TableRenderer: Sendable {
     public init() {}
 
-    /// Returns a newline-separated terminal rendering of a table.
+    /// Returns a newline-separated, box-drawn terminal rendering of a table.
     public func render(_ table: Table) -> String {
-        var rows = table.rows
+        let columnWidths = columnWidths(for: table)
+        guard !columnWidths.isEmpty else { return "" }
+
+        var lines: [String] = [border(columnWidths, left: "┌", mid: "┬", right: "┐")]
         if !table.headers.isEmpty {
-            rows.insert(table.headers, at: 0)
+            lines.append(row(table.headers, columnWidths: columnWidths))
+            lines.append(border(columnWidths, left: "├", mid: "┼", right: "┤"))
         }
+        lines.append(contentsOf: table.rows.map { row($0, columnWidths: columnWidths) })
+        lines.append(border(columnWidths, left: "└", mid: "┴", right: "┘"))
 
-        let cellWidths = rows.map { $0.map(\.terminalDisplayWidth) }
-        var columnWidths = [Int](repeating: 0, count: rows.map(\.count).max() ?? 0)
-        for row in cellWidths {
-            for (index, width) in row.enumerated() {
-                columnWidths[index] = max(columnWidths[index], width)
-            }
-        }
-
-        return zip(rows, cellWidths)
-            .map { row, widths in render(row: row, cellWidths: widths, columnWidths: columnWidths) }
-            .joined(separator: "\n")
+        return lines.joined(separator: "\n")
     }
 
-    private func render(row: [String], cellWidths: [Int], columnWidths: [Int]) -> String {
-        columnWidths.indices.map { index in
-            guard row.indices.contains(index) else { return "" }
-            return row[index] + String(repeating: " ", count: columnWidths[index] - cellWidths[index])
+    /// Widest cell (by terminal display width) in each column, across headers and rows.
+    private func columnWidths(for table: Table) -> [Int] {
+        var allRows = table.rows
+        if !table.headers.isEmpty {
+            allRows.insert(table.headers, at: 0)
         }
-        .joined(separator: " ")
-        .trimmingCharacters(in: .whitespaces)
+        guard let columnCount = allRows.map(\.count).max(), columnCount > 0 else { return [] }
+
+        var widths = [Int](repeating: 0, count: columnCount)
+        for row in allRows {
+            for (index, cell) in row.enumerated() {
+                widths[index] = max(widths[index], cell.terminalDisplayWidth)
+            }
+        }
+        return widths
+    }
+
+    /// A horizontal border line, e.g. `┌────┬────┐`.
+    private func border(_ columnWidths: [Int], left: String, mid: String, right: String) -> String {
+        let segments = columnWidths.map { String(repeating: "─", count: $0 + 2) }
+        return left + segments.joined(separator: mid) + right
+    }
+
+    /// A `│ cell │ cell │` line, padding each cell to its column's width.
+    private func row(_ row: [String], columnWidths: [Int]) -> String {
+        let cells = columnWidths.indices.map { index -> String in
+            let value = row.indices.contains(index) ? row[index] : ""
+            let padding = String(repeating: " ", count: columnWidths[index] - value.terminalDisplayWidth)
+            return " " + value + padding + " "
+        }
+        return "│" + cells.joined(separator: "│") + "│"
     }
 }
