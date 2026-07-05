@@ -211,6 +211,16 @@ struct MacrosParserTests {
                 ],
                 expected: .success([ParsedMacroDefinition(macro: "___CACHE___", values: ["false"])]),
             ),
+            // Passing a value to a boolean macro is reported specifically,
+            // naming the flag rather than the stray value.
+            TestCase(
+                description: "reports a value passed to a boolean macro (--flag true)",
+                macros: ["--flag", "true", "--name", "App"],
+                macroDefinitions: [
+                    Config.Macro(name: "___FLAG___", description: "A flag", type: .boolean),
+                ],
+                expected: .failure(.valueForBooleanMacro(macro: "--flag", value: "true")),
+            ),
         ]
 
         init(

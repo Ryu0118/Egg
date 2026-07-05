@@ -34,6 +34,13 @@ struct MacrosParser {
 
             // Check if current element starts with --
             guard current.hasPrefix("--") else {
+                // A bare value here means the previous flag already consumed
+                // its slot. The usual cause is passing a value to a boolean
+                // macro (`--flag true`): the flag took no value, so `true` is
+                // read as the next macro. Name that case so the fix is obvious.
+                if i > 0, let previousMacro = booleanMacroName(forFlag: commandLineArguments[i - 1]) {
+                    throw MacrosParseError.valueForBooleanMacro(macro: previousMacro, value: current)
+                }
                 throw MacrosParseError.missingDoubleDash(macro: current)
             }
 
@@ -113,6 +120,14 @@ struct MacrosParser {
 
         return result
     }
+
+    /// The flag's macro name if it names a declared boolean macro, else nil.
+    private func booleanMacroName(forFlag flag: String) -> String? {
+        guard flag.hasPrefix("--") else { return nil }
+        let normalized = MacroNameConverter.flagToMacro(String(flag.dropFirst(2)))
+        let isBoolean = macroDefinitions.contains { $0.name == normalized && $0.type == .boolean }
+        return isBoolean ? flag : nil
+    }
 }
 
 enum MacrosParseError: Error, LocalizedError, Equatable {
@@ -120,6 +135,7 @@ enum MacrosParseError: Error, LocalizedError, Equatable {
     case singleDashNotAllowed(macro: String)
     case emptyMacroName
     case missingContent(macro: String)
+    case valueForBooleanMacro(macro: String, value: String)
 
     var errorDescription: String? {
         switch self {
@@ -131,6 +147,8 @@ enum MacrosParseError: Error, LocalizedError, Equatable {
             "Macro name cannot be empty"
         case let .missingContent(macro):
             "Macro '\(macro)' requires at least one value"
+        case let .valueForBooleanMacro(macro, value):
+            "Boolean macro '\(macro)' takes no value — pass just '\(macro)' for true or '--no-\(macro.dropFirst(2))' for false, not '\(macro) \(value)'."
         }
     }
 }
