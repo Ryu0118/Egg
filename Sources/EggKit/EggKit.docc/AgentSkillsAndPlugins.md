@@ -11,7 +11,7 @@ scaffold. This repository provides three integration layers:
 - Agent Skills teach assistants how egg commands and templates work.
 - Plugins package those skills and MCP configuration for specific clients.
 - The MCP server exposes structured tools for template detail, preview, apply,
-  rollback, and discard.
+  rollback, discard, and transaction listing.
 
 ## Agent Skills
 

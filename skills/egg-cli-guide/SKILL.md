@@ -1,6 +1,6 @@
 ---
 name: egg-cli-guide
-description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard transaction flow, or wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open).
+description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, or wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open).
 ---
 
 # egg CLI Guide
@@ -29,7 +29,19 @@ This is the flow to use by default. Every command below is non-interactive and e
 egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff] [--allow-write <path> ...] [--no-sandbox --user-confirmed-no-sandbox]
 egg hatch apply <applyToken> [--force]
 egg hatch rollback <rollbackId> [--force]
-egg hatch discard <applyToken>
+egg hatch discard <applyToken> [--force]
+egg hatch transactions
+```
+
+Every transaction moves through one state machine, recorded in
+`.egg/transactions/<token>/metadata.json`. The `applyToken` and `rollbackId`
+are always the same value:
+
+```
+preview ──apply──▶ applied ──rollback──▶ rolledBack ──apply──▶ applied (fresh bundle)
+preview ──discard──▶ deleted
+rolledBack ──discard──▶ deleted
+applied ──discard --force──▶ deleted (records only; applied files stay)
 ```
 
 - **`preview`** stages the template in an isolated clone and reports the proposed `changes`, any `warnings`, and an `applyToken`. Nothing is written to the working directory yet.
@@ -39,9 +51,10 @@ egg hatch discard <applyToken>
   - `--diff` includes each change's unified diff in the response (off by default).
   - `--allow-write <path>` (repeatable) consents to lifecycle-script writes on an external path the template declares in `config.yml`'s `sandbox.allowed_paths`. If a template declares such paths and none are consented, preview fails fast (before running anything) listing the expanded paths; show them to the user, ask for approval, and retry naming only the approved paths. Consenting to an undeclared path is an error. Writes to approved paths happen during preview and are not reverted by discard/rollback.
   - `--no-sandbox` disables the `sandbox-exec` guard around lifecycle scripts during preview only when paired with `--user-confirmed-no-sandbox` after explicit user approval. The command stays non-interactive and does not classify script contents. Prefer `--allow-write` for declared paths; reserve `--no-sandbox` for cases the sandbox cannot express.
-- **`apply <applyToken>`** writes the previewed changes to the real working directory and returns a `rollbackId`. Fails if the working directory drifted since the preview, unless `--force` is passed.
-- **`rollback <rollbackId>`** restores the pre-apply state. Fails if a file was hand-edited since the apply, unless `--force` is passed.
-- **`discard <applyToken>`** throws away a preview without applying it.
+- **`apply <applyToken>`** writes the previewed changes to the real working directory and returns a `rollbackId`. Fails if the working directory drifted since the preview, unless `--force` is passed. Also re-applies a `rolledBack` transaction with the same token (a fresh rollback bundle replaces the consumed one; the result carries a `reapplied_after_rollback` warning).
+- **`rollback <rollbackId>`** restores the pre-apply state and marks the transaction `rolledBack`, so it can be re-applied later. Fails if a file was hand-edited since the apply, unless `--force` is passed.
+- **`discard <applyToken>`** deletes the transaction's records — the staged transaction and its rollback bundle — as a pair, from any state. Applied files in the working directory are never touched. Discarding an `applied` transaction requires `--force`, because deleting its bundle removes the only way to undo the apply; ask the user before forcing.
+- **`transactions`** lists every record under `.egg/` as JSON: token, status (`preview`/`applied`/`rolledBack`, plus `corrupt` for unreadable metadata and `orphanedRollback` for bundles left by older egg versions), template name, `sizeBytes`, and bundle presence.
 
 Run `egg template detail <name>` before `preview` to learn exactly which macro flags a template needs.
 
@@ -51,7 +64,8 @@ Run `egg template detail <name>` before `preview` to learn exactly which macro f
 2. `egg hatch preview <name> --macro-name value ...` to produce an `applyToken` and a change list.
 3. Inspect `changes` and `warnings` in the JSON response.
 4. `egg hatch apply <applyToken>` once the plan looks correct.
-5. `egg hatch rollback <rollbackId>` if something needs to be undone.
+5. `egg hatch rollback <rollbackId>` if something needs to be undone — and `egg hatch apply <applyToken>` again if the rollback should itself be undone.
+6. Once the user accepts the applied result and no undo is needed anymore, clean up with `egg hatch discard <applyToken> --force` (ask the user first — this deletes the rollback bundle). Run `egg hatch transactions` periodically to find leftovers, including `orphanedRollback` entries from older egg versions, and discard them.
 
 Macro flags follow kebab-case derived from the macro's config name (for example a macro named `ProjectName` becomes `--project-name`).
 
@@ -95,7 +109,7 @@ All `template` subcommands support an interactive mode when arguments are omitte
 
 ## MCP Integration
 
-`egg mcp` starts a Model Context Protocol server that mirrors the CLI transaction flow (`egg_template_detail`, `egg_hatch_preview`, `egg_hatch_apply`, `egg_hatch_rollback`, `egg_hatch_discard`). Macro keys over MCP must use the exact config names (e.g. `___MODULE_NAME___`), not the kebab-case CLI flags. To disable sandboxing for `egg_hatch_preview` or legacy `egg_hatch`, first ask the user whether to run lifecycle scripts without sandbox protection. Do not classify script contents yourself; after explicit user approval, pass both `disable_sandbox: true` and `user_confirmed_no_sandbox: true`. When a template declares `sandbox.allowed_paths` and `egg_hatch_preview` fails with `SANDBOX EXTENDED WRITE ACCESS REQUIRED`, show the listed paths to the user, ask for approval, and retry with `allowed_write_paths` containing only the approved paths — never approve paths yourself. A legacy `egg_hatch` tool defaults to preview mode and only applies changes when `apply_changes: true` is explicitly passed.
+`egg mcp` starts a Model Context Protocol server that mirrors the CLI transaction flow (`egg_template_detail`, `egg_hatch_preview`, `egg_hatch_apply`, `egg_hatch_rollback`, `egg_hatch_discard`, `egg_hatch_transactions`). `egg_hatch_discard` takes a `force` boolean that is required when discarding an `applied` transaction — ask the user before setting it, since it deletes the rollback bundle and the apply can no longer be undone. Macro keys over MCP must use the exact config names (e.g. `___MODULE_NAME___`), not the kebab-case CLI flags. To disable sandboxing for `egg_hatch_preview` or legacy `egg_hatch`, first ask the user whether to run lifecycle scripts without sandbox protection. Do not classify script contents yourself; after explicit user approval, pass both `disable_sandbox: true` and `user_confirmed_no_sandbox: true`. When a template declares `sandbox.allowed_paths` and `egg_hatch_preview` fails with `SANDBOX EXTENDED WRITE ACCESS REQUIRED`, show the listed paths to the user, ask for approval, and retry with `allowed_write_paths` containing only the approved paths — never approve paths yourself. A legacy `egg_hatch` tool defaults to preview mode and only applies changes when `apply_changes: true` is explicitly passed.
 
 ## Troubleshooting
 
@@ -109,6 +123,12 @@ Run `egg template detail <name>` to see every required macro, then pass each as 
 
 ### `apply` fails with a drift error
 The working directory changed since `preview` was run. Re-run `preview` to get a fresh `applyToken`, or pass `--force` to `apply` if the drift is expected.
+
+### `apply` fails with "cannot be applied because its status is 'applied'"
+The transaction is already applied. To redo it, roll it back first (`egg hatch rollback <token>`), then apply again. Only `preview` and `rolledBack` transactions can be applied.
+
+### `discard` refuses with "deletes its rollback bundle"
+The transaction is `applied`, so discarding removes the only way to undo it. To undo the changes instead, run `egg hatch rollback <token>` first. To delete the records and keep the applied files, ask the user, then re-run with `--force`.
 
 ### Lifecycle script errors
 - Check script permissions.

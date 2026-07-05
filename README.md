@@ -117,12 +117,17 @@ Agents should use the non-interactive flow:
 egg hatch preview SwiftPackage --module-name NetworkClient --diff
 egg hatch apply <applyToken>
 egg hatch rollback <rollbackId>
-egg hatch discard <applyToken>
+egg hatch discard <applyToken> [--force]
+egg hatch transactions
 ```
 
 `preview` returns JSON with the proposed changes and an `applyToken`. `apply`
 writes the approved changes and returns a `rollbackId`. `rollback` restores the
-pre-apply state when the generated result should be undone.
+pre-apply state when the generated result should be undone; a rolled-back
+transaction can be re-applied with the same token. `discard` deletes a
+transaction and its rollback bundle from any state (`--force` required for an
+applied transaction, since that removes the only way to undo it), and
+`transactions` lists all records so leftovers can be found and cleaned up.
 
 The same flow is available through the built-in MCP server:
 
@@ -212,7 +217,8 @@ The DocC catalog lives in `Sources/EggKit/EggKit.docc`.
 - `Agent Skills and Plugins` explains the Claude Code, Codex, skills, plugin,
   and MCP story.
 - `Template Config` documents `config.yml`, macro types, and Stencil files.
-- `Transaction Flow` documents preview/apply/rollback/discard.
+- `Transaction Flow` documents preview/apply/rollback/discard/transactions and
+  the transaction state machine.
 
 Generate the archive locally with SwiftPM:
 

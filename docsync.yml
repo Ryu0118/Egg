@@ -31,7 +31,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: b864dd53780ebf4ef05bc7139c4c041d9ac30d9d70b08c69801fc2571fbd6313
+  checksum: b53a671b0904553bed95acb43afaf3f84bcc8a49cca329615ab02d612d511a31
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -82,7 +82,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: b0cedb946cd8597aba503920aaeaf443af1519a1a0999b6ee52765cdcf913562
+  checksum: 3063fc593ca7c35188f68a80632399ab777514f4b64cb2911206b6d6af0a517d
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
