@@ -19,6 +19,23 @@ Egg then depends on the extracted package via SwiftPM.
 inside Egg. So the module code and its tests move verbatim; only Egg's
 `Package.swift` and a few harness references change.
 
+### Access-level check (verified — no promotion needed)
+
+`package` access is invisible across a package boundary, so any `package`
+symbol consumed by EggKit would break Egg's phase-2 rebuild. Measured:
+
+- 171 `public` declarations; only **2** `package` declarations.
+- `DisplayWidth.withoutANSIEscapeSequences` (`DisplayWidth.swift:13`): used
+  only inside Interaction + InteractionTests. Not cross-module.
+- `StyledText.Segment.plainValue` (`StyledText.swift:64`, in a `package
+  extension`): used only inside `StyledTextRenderer`/`StyledText`. EggKit's
+  `TemplateDetailDisplayer` uses the **public** `Segment` case factories
+  (`.muted(_:)`, `.primary(_:)`, …), never `plainValue`.
+
+Both `package` symbols are Interaction-internal → the public surface EggKit
+consumes is already `public`. **No access-level promotion required.** Keep
+`missing-docs min_access_level: package` as-is.
+
 ## New package layout (`../Interaction`)
 
 ```
@@ -101,7 +118,11 @@ Copy each harness file from Egg, then adapt:
 - **.github/workflows/docs.yml**: `--target Interaction`.
 - **.github/workflows/release.yml**: replace binary-build pipeline with a
   lightweight tag-triggered `gh release create` (library needs no binary artifact).
-- **docsync.yml**: rebuild source->doc checksum mappings for Interaction files.
+- **docsync.yml**: authored **fresh** for Interaction (new DocC catalog, no
+  shared sources with Egg) — not a mapping edit.
+- **update-nestfile.yml is intentionally NOT copied**: it maintains nest
+  artifact distribution for a CLI; Interaction is a library, so it is dropped
+  on purpose.
 - **nestfile.yaml, .mise.toml, .gitnagg.yml, .gitignore, gitleaks.yml,
   docsync-check.yml, scripts/**: copy as-is (path-agnostic).
 
@@ -153,10 +174,15 @@ Two-phase, tag `0.1.0`, `from:` reference:
 2. Point Egg's `Package.swift` at `from: "0.1.0"` → `swift build` + `swift test`
    to confirm → commit.
 
-## Git remote
+## Git init + remote
 
-Register the new repo as remote of `../Interaction`:
-`git remote add origin git@github.com:Ryu0118/swift-interaction.git`.
+`../Interaction` is a brand-new repo with fresh history (user said 移して, not
+"preserve history"; no subtree split unless asked):
+
+```
+git init
+git remote add origin git@github.com:Ryu0118/swift-interaction.git
+```
 
 ## Constraints
 
