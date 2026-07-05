@@ -22,6 +22,7 @@ let package = Package(
         .package(url: "https://github.com/tuist/FileSystem", from: "0.13.47"),
         .package(url: "https://github.com/stencilproject/Stencil", from: "0.15.1"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.12.1"),
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.1.0"),
     ],
     targets: [
         .executableTarget(
