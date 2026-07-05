@@ -17,6 +17,43 @@ rules:
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
   checksum: 355b708c324b9a8a19294aced77d3b4d2ef8a0f6d9ca0dfe08ff94410ec6a158
+- name: readme-agent-integrations
+  sources:
+  - .claude/plugins/egg/.claude-plugin/plugin.json
+  - .claude/plugins/egg/.mcp.json
+  - .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
+  - .claude/plugins/egg/skills/egg-template/SKILL.md
+  - plugins/egg/.codex-plugin/plugin.json
+  - Sources/EggCLI/Commands/MCPCommand.swift
+  - Sources/EggMCP/**/*.swift
+  doc: README.md
+  message: Agent integration surface changed - review README Quick Start for Agents
+    and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
+    plugin, or MCP usage changed.
+  checksum: 9502a19b4cbd8b44078a3a1280d37c8c1a0a0d319e4f1aa467caa7d228970480
+- name: readme-template-authoring
+  sources:
+  - Sources/EggKit/Config/**/*.swift
+  - Sources/EggKit/TemplateEngine/**/*.swift
+  - Sources/EggKit/WorkflowRunner/TemplateExpander.swift
+  - .claude/plugins/egg/skills/egg-template/references/config-spec.md
+  - .claude/plugins/egg/skills/egg-template/references/template-files.md
+  - .claude/plugins/egg/skills/egg-template/references/lifecycle.md
+  doc: README.md
+  message: Template config, macro, lifecycle, or Stencil behavior changed - review
+    README Template Basics and Quick Start for Humans sections, and update only if
+    user-facing authoring guidance changed.
+  checksum: 4112942c65fda033212b01990e4239cd43dae925a0d6ba787596e18bc32a0d2a
+- name: readme-docs-deploy
+  sources:
+  - .github/workflows/docs.yml
+  - Makefile
+  - Package.swift
+  - Package.resolved
+  doc: README.md
+  message: DocC generation or GitHub Pages deployment changed - review README Documentation
+    section and update the command or deployment description if needed.
+  checksum: e83a972c511ad32658722535b00ee0f0aa981746ba22ae6412e31f76ecc29dc2
 - name: egg-cli-guide-sandbox
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -31,6 +68,44 @@ rules:
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
   checksum: 0b3e6abff2b27aba804b090bb7532a13799e07726e17c0898566dddf8f0db99b
+- name: docc-agent-integrations
+  sources:
+  - .claude/plugins/egg/.claude-plugin/plugin.json
+  - .claude/plugins/egg/.mcp.json
+  - .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
+  - .claude/plugins/egg/skills/egg-template/SKILL.md
+  - plugins/egg/.codex-plugin/plugin.json
+  - Sources/EggMCP/**/*.swift
+  doc: Sources/EggKit/EggKit.docc/AgentSkillsAndPlugins.md
+  message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
+    and Plugins article if install steps, capabilities, or recommended agent flow
+    changed.
+  checksum: 86e699836eae605efa8dbb7913d5e48e7a3a81ff14b357597b491fc373148df6
+- name: docc-template-config
+  sources:
+  - Sources/EggKit/Config/**/*.swift
+  - Sources/EggKit/TemplateEngine/**/*.swift
+  - Sources/EggKit/WorkflowRunner/TemplateExpander.swift
+  - .claude/plugins/egg/skills/egg-template/references/config-spec.md
+  - .claude/plugins/egg/skills/egg-template/references/template-files.md
+  - .claude/plugins/egg/skills/egg-template/references/lifecycle.md
+  doc: Sources/EggKit/EggKit.docc/TemplateConfig.md
+  message: Template config, macro type, lifecycle, native template, or Stencil behavior
+    changed - update the DocC Template Config article if user-facing template authoring
+    behavior changed.
+  checksum: 4112942c65fda033212b01990e4239cd43dae925a0d6ba787596e18bc32a0d2a
+- name: docc-transaction-flow
+  sources:
+  - Sources/EggCLI/Commands/HatchTransactionCommands.swift
+  - Sources/EggKit/WorkflowRunner/Staging/**/*.swift
+  - Sources/EggMCP/Handlers/HatchApplyHandler.swift
+  - Sources/EggMCP/Handlers/HatchDiscardHandler.swift
+  - Sources/EggMCP/Handlers/HatchPreviewHandler.swift
+  - Sources/EggMCP/Handlers/HatchRollbackHandler.swift
+  doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
+  message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
+    Flow article if command usage, guarantees, or failure behavior changed.
+  checksum: 88b82e9daa76db935d8cbe0280e98e8567a5aa1a45b2bb6b19acc290f4eec791
 - name: agents-project
   sources:
   - Package.swift
@@ -41,4 +116,4 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 9a929bae84b4ad50fbf999684d3c3f01e03f89293b2a8ce0e6eac162b07bf2c2
+  checksum: eb85459e346a7fc3a24814e0ac695552fe9a772325c67f466b38a7ea3f524b44

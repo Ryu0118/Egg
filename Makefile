@@ -3,7 +3,7 @@ SWIFTLINT := .nest/bin/swiftlint
 MY_SWIFT_LINTER := .nest/bin/my-swift-linter
 MY_SWIFT_LINTER_PATHS := Sources Tests E2ETestsPackage/Tests Package.swift
 
-.PHONY: install-commands format swiftlint lint my-lint format-lint hooks test e2e-test check
+.PHONY: install-commands format swiftlint lint my-lint format-lint hooks test e2e-test docs check
 
 install-commands:
 	mise install
@@ -33,5 +33,12 @@ test:
 
 e2e-test:
 	cd E2ETestsPackage && swift test
+
+docs:
+	CLANG_MODULE_CACHE_PATH=.build/module-cache swift package --disable-sandbox \
+		--cache-path .build/swiftpm-cache \
+		--config-path .build/swiftpm-config \
+		--security-path .build/swiftpm-security \
+		generate-documentation --target EggKit
 
 check: format lint test e2e-test

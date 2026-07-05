@@ -14,6 +14,7 @@ A CLI tool for generating projects from templates. Define macros in `config.yml`
 | `Sources/EggKit/WorkflowRunner/` | Lifecycle execution engine (pre_hatch → hatch → post_hatch) |
 | `Sources/Interaction/` | Dependency-free terminal interaction library. Prompt, choice, table, styling, and Unicode-aware input primitives |
 | `Sources/EggMCP/` | MCP server: tool handlers exposing egg to AI agents |
+| `Sources/EggKit/EggKit.docc/` | DocC guides for agent integrations, template config, and transaction flow |
 | `Tests/EggKitTests/` | Unit tests |
 | `Tests/InteractionTests/` | Interaction module unit tests |
 | `Tests/EggMCPTests/` | MCP module unit tests |
@@ -48,3 +49,4 @@ When working on egg templates or CLI usage, read these skills for detailed refer
 - Swift 6.2 / macOS 26+
 - Use `package` access modifier for cross-module types
 - `make lint` runs both SwiftLint and my-swift-linter. Install hooks with `make hooks`; pre-push runs `make my-lint`.
+- `make docs` builds the EggKit DocC archive.
