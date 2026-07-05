@@ -1,3 +1,4 @@
+import Foundation
 @testable import Interaction
 import Testing
 
@@ -75,15 +76,21 @@ struct TableRendererTests {
         )
 
         let output = TableRenderer().render(table)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
 
-        #expect(output == """
-        ┌────────┬─────────────┐
-        │ name   │ description │
-        ├────────┼─────────────┤
-        │ 日本語 │ wide        │
-        │ abc    │ latin       │
-        └────────┴─────────────┘
-        """)
+        // The 日本語 line has fewer raw characters than the others (3
+        // double-width characters vs. e.g. "name" + padding), so it looks
+        // misaligned as a plain-text literal in any font that doesn't render
+        // CJK at exactly double width. Assert on parsed cell content and
+        // measured display width instead of eyeballing a block of text.
+        #expect(lines.count == 6)
+        #expect(lines[0] == "┌────────┬─────────────┐")
+        #expect(cells(ofRow: lines[1]) == ["name", "description"])
+        #expect(lines[2] == "├────────┼─────────────┤")
+        #expect(cells(ofRow: lines[3]) == ["日本語", "wide"])
+        #expect(cells(ofRow: lines[4]) == ["abc", "latin"])
+        #expect(lines[5] == "└────────┴─────────────┘")
+        #expect(Set(lines.map(\.terminalDisplayWidth)).count == 1)
     }
 
     @Test("draws borders around a headerless table without a header separator row")
@@ -163,5 +170,12 @@ struct TableRendererTests {
             headers: ["name", "description"],
             rows: [["日本語", "wide"], ["abc", "latin"]],
         )))
+    }
+
+    private func cells(ofRow line: String) -> [String] {
+        line.split(separator: "│", omittingEmptySubsequences: false)
+            .dropFirst()
+            .dropLast()
+            .map { $0.trimmingCharacters(in: .whitespaces) }
     }
 }
