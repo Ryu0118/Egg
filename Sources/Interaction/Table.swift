@@ -131,19 +131,28 @@ public enum TableCellBuilder {
 
 /// Renders tables as a bordered box using terminal display widths.
 public struct TableRenderer: Sendable {
-    public init() {}
+    private let maximumWidth: Int?
+
+    /// Creates a table renderer, optionally constraining rendered tables to a maximum display width.
+    public init(maximumWidth: Int? = nil) {
+        self.maximumWidth = maximumWidth
+    }
 
     /// Returns a newline-separated, box-drawn terminal rendering of a table.
-    public func render(_ table: Table) -> String {
-        let columnWidths = columnWidths(for: table)
+    public func render(_ table: Table, maximumWidth overrideMaximumWidth: Int? = nil) -> String {
+        let naturalWidths = columnWidths(for: table)
+        let columnWidths = constrainedColumnWidths(
+            naturalWidths,
+            maximumWidth: overrideMaximumWidth ?? maximumWidth,
+        )
         guard !columnWidths.isEmpty else { return "" }
 
         var lines: [String] = [border(columnWidths, left: "┌", mid: "┬", right: "┐")]
         if !table.headers.isEmpty {
-            lines.append(row(table.headers, columnWidths: columnWidths))
+            lines.append(contentsOf: row(table.headers, columnWidths: columnWidths))
             lines.append(border(columnWidths, left: "├", mid: "┼", right: "┤"))
         }
-        lines.append(contentsOf: table.rows.map { row($0, columnWidths: columnWidths) })
+        lines.append(contentsOf: table.rows.flatMap { row($0, columnWidths: columnWidths) })
         lines.append(border(columnWidths, left: "└", mid: "┴", right: "┘"))
 
         return lines.joined(separator: "\n")
@@ -166,19 +175,149 @@ public struct TableRenderer: Sendable {
         return widths
     }
 
+    /// Shrinks natural column widths until the whole table fits within `maximumWidth`.
+    ///
+    /// The calculation reserves the fixed border and padding width first, then
+    /// repeatedly trims the widest column so wrapping pressure is spread across
+    /// columns instead of collapsing one column immediately.
+    private func constrainedColumnWidths(_ naturalWidths: [Int], maximumWidth: Int?) -> [Int] {
+        guard let maximumWidth, maximumWidth > 0 else { return naturalWidths }
+
+        let minimumTableWidth = naturalWidths.count * 3 + 1
+        let availableCellWidth = maximumWidth - minimumTableWidth
+        guard availableCellWidth > 0 else {
+            return [Int](repeating: 1, count: naturalWidths.count)
+        }
+
+        let naturalCellWidth = naturalWidths.reduce(0, +)
+        guard naturalCellWidth > availableCellWidth else { return naturalWidths }
+
+        var widths = naturalWidths.map { max($0, 1) }
+        while widths.reduce(0, +) > availableCellWidth {
+            guard let widestIndex = widths.indices.max(by: { widths[$0] < widths[$1] }),
+                  widths[widestIndex] > 1
+            else {
+                break
+            }
+            widths[widestIndex] -= 1
+        }
+        return widths
+    }
+
     /// A horizontal border line, e.g. `┌────┬────┐`.
     private func border(_ columnWidths: [Int], left: String, mid: String, right: String) -> String {
         let segments = columnWidths.map { String(repeating: "─", count: $0 + 2) }
         return left + segments.joined(separator: mid) + right
     }
 
-    /// A `│ cell │ cell │` line, padding each cell to its column's width.
-    private func row(_ row: [String], columnWidths: [Int]) -> String {
-        let cells = columnWidths.indices.map { index -> String in
+    /// One or more `│ cell │ cell │` lines, padding wrapped cell fragments.
+    private func row(_ row: [String], columnWidths: [Int]) -> [String] {
+        let wrappedCells = columnWidths.indices.map { index -> [String] in
             let value = row.indices.contains(index) ? row[index] : ""
-            let padding = String(repeating: " ", count: columnWidths[index] - value.terminalDisplayWidth)
-            return " " + value + padding + " "
+            return wrap(value, width: columnWidths[index])
         }
-        return "│" + cells.joined(separator: "│") + "│"
+        let lineCount = wrappedCells.map(\.count).max() ?? 1
+
+        return (0 ..< lineCount).map { lineIndex in
+            let cells = columnWidths.indices.map { columnIndex -> String in
+                let value = wrappedCells[columnIndex].indices.contains(lineIndex) ? wrappedCells[columnIndex][lineIndex] : ""
+                let padding = String(repeating: " ", count: columnWidths[columnIndex] - value.terminalDisplayWidth)
+                return " " + value + padding + " "
+            }
+            return "│" + cells.joined(separator: "│") + "│"
+        }
+    }
+
+    /// Wraps a possibly multi-line cell into display-width-limited fragments.
+    ///
+    /// Explicit newlines inside the cell are preserved as hard breaks before
+    /// applying soft wrapping to each physical line.
+    private func wrap(_ value: String, width: Int) -> [String] {
+        guard width > 0, !value.isEmpty else { return [""] }
+
+        return value
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .flatMap { wrapLine(String($0), width: width) }
+    }
+
+    /// Wraps one physical line by words, falling back to grapheme-cluster breaks for oversized words.
+    private func wrapLine(_ line: String, width: Int) -> [String] {
+        var lines: [String] = []
+        var current = ""
+        var currentWidth = 0
+
+        func flushCurrent() {
+            lines.append(current)
+            current = ""
+            currentWidth = 0
+        }
+
+        for word in words(in: line) {
+            let wordWidth = word.terminalDisplayWidth
+
+            if current.isEmpty {
+                let chunks = breakWord(word, width: width)
+                lines.append(contentsOf: chunks.dropLast())
+                current = chunks.last ?? ""
+                currentWidth = current.terminalDisplayWidth
+                continue
+            }
+
+            if currentWidth + 1 + wordWidth <= width {
+                current += " " + word
+                currentWidth += 1 + wordWidth
+                continue
+            }
+
+            flushCurrent()
+
+            let chunks = breakWord(word, width: width)
+            lines.append(contentsOf: chunks.dropLast())
+            current = chunks.last ?? ""
+            currentWidth = current.terminalDisplayWidth
+        }
+
+        if !current.isEmpty {
+            lines.append(current)
+        }
+        return lines.isEmpty ? [""] : lines
+    }
+
+    /// Splits a line into non-empty word tokens, normalizing whitespace runs to a single separator.
+    private func words(in line: String) -> [String] {
+        line.split(whereSeparator: \.isWhitespace).map(String.init)
+    }
+
+    /// Breaks one oversized word into fragments that fit the target display width.
+    ///
+    /// Iterating by `Character` keeps composed accents, emoji sequences, and CJK
+    /// text intact while still respecting terminal display width.
+    private func breakWord(_ word: String, width: Int) -> [String] {
+        var chunks: [String] = []
+        var current = ""
+        var currentWidth = 0
+
+        for character in word {
+            let characterWidth = character.terminalDisplayWidth
+            if currentWidth + characterWidth > width, !current.isEmpty {
+                chunks.append(current)
+                current = ""
+                currentWidth = 0
+            }
+
+            current.append(character)
+            currentWidth += characterWidth
+
+            if currentWidth >= width {
+                chunks.append(current)
+                current = ""
+                currentWidth = 0
+            }
+        }
+
+        if !current.isEmpty {
+            chunks.append(current)
+        }
+        return chunks.isEmpty ? [""] : chunks
     }
 }
