@@ -250,13 +250,17 @@ public struct EggMCPServer {
         ),
         Tool(
             name: "egg_hatch_transactions",
-            description: "Lists hatch transaction records under .egg/ with status (preview, applied, rolledBack, corrupt, orphanedRollback), template name, and disk usage — including orphaned rollback bundles left by older egg versions. Use egg_hatch_discard to delete entries that are no longer needed.",
+            description: "Lists hatch transaction records under .egg/ with status (preview, applied, rolledBack, corrupt, orphanedRollback) and template name — including orphaned rollback bundles left by older egg versions. Use egg_hatch_discard to delete entries that are no longer needed.",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
                     "working_directory": .object([
                         "type": "string",
                         "description": "Project directory that contains the .egg directory. Defaults to current working directory.",
+                    ]),
+                    "include_sizes": .object([
+                        "type": "boolean",
+                        "description": "Also compute each record's disk footprint (sizeBytes). Walks the full staged trees, so it can be slow on large histories. Default: false.",
                     ]),
                 ]),
                 "required": .array([]),

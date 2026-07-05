@@ -82,8 +82,9 @@ applied result is accepted and no longer needs to be undoable.
 ## Transactions
 
 `transactions` lists every record under `.egg/transactions` and `.egg/rollback`
-as JSON: token, status, template name, disk footprint (`sizeBytes`), and
-whether a rollback bundle exists.
+as JSON: token, status, template name, and whether a rollback bundle exists.
+Pass `--size` to also compute each record's disk footprint (`sizeBytes`) —
+that walks the full staged trees, so it can be slow on large histories.
 
 Beyond the state-machine statuses, two extra values can appear: `corrupt` for
 an unreadable `metadata.json`, and `orphanedRollback` for a bundle whose

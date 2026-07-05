@@ -205,8 +205,9 @@ public struct MCPService: Sendable {
 
     public func listHatchTransactions(
         workingDirectory: URL? = nil,
+        includeSizes: Bool = false,
     ) -> AgentHatchTransactionsResult {
-        makeTransactionRunner(workingDirectory: workingDirectory).transactions()
+        makeTransactionRunner(workingDirectory: workingDirectory).transactions(includeSizes: includeSizes)
     }
 
     /// Runner for operating on an already-persisted transaction: apply,

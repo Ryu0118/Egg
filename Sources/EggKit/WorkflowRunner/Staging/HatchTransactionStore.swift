@@ -74,14 +74,13 @@ struct HatchTransactionStore {
     }
 
     /// Tokens of every transaction directory under `.egg/transactions`,
-    /// including ones whose metadata.json is corrupt or missing. Missing
-    /// root yields an empty list.
+    /// including ones whose metadata.json is corrupt or missing, in no
+    /// particular order. Missing root yields an empty list.
     func tokens() -> [String] {
         let contents = (try? fileManager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: [])) ?? []
         return contents
             .filter { fileManager.isDirectory(at: $0) }
             .map(\.lastPathComponent)
-            .sorted()
     }
 
     func discard(token: String) throws {

@@ -31,7 +31,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: b53a671b0904553bed95acb43afaf3f84bcc8a49cca329615ab02d612d511a31
+  checksum: e2ae7cbc2415d498bff1c68ef7d9a1d7b9f46b2c945416b2325c5318fb1c105a
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -68,7 +68,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 7a99710e8bd0ddd4644d55813d300b054f73066cf2a1fe877ea3b593ac1ce7bf
+  checksum: 88f9453b2eaa83805daf2255575be02dd4aaff135e6be431350bf85529b7590f
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -82,7 +82,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 3063fc593ca7c35188f68a80632399ab777514f4b64cb2911206b6d6af0a517d
+  checksum: b7421d71ca1bfe7c8fa86556cacda017f3cd12335ba98ee683b76fadc9e1375b
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -107,7 +107,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 07e6cf916cba80f96f45057cee257fabfaf132e7cf59b4b96ee504e0c338b4ff
+  checksum: 88836aefb7429452bd3a21f927b267713e6f97cfe99e7494bcb0a93128339646
 - name: agents-project
   sources:
   - Package.swift

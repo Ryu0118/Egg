@@ -80,8 +80,8 @@ struct HatchTransactionStoreTests {
         #expect(try store.load(token: "legacy").status == .applied)
     }
 
-    @Test("tokens lists transaction directories sorted, tolerating a missing root")
-    func tokensListsTransactionDirectoriesSorted() throws {
+    @Test("tokens lists every transaction directory, tolerating a missing root")
+    func tokensListsEveryTransactionDirectory() throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
         let store = makeStore(workingDirectory: root)
@@ -95,6 +95,6 @@ struct HatchTransactionStoreTests {
         // A stray file at the root is not a transaction.
         try fileManager.writeText("noise", at: store.root.appending(path: "noise.txt"))
 
-        #expect(store.tokens() == ["a-tx", "b-tx", "c-shell"])
+        #expect(store.tokens().sorted() == ["a-tx", "b-tx", "c-shell"])
     }
 }

@@ -109,14 +109,16 @@ public struct AgentHatchTransactionSummary: Codable, Sendable, Equatable {
     public let status: AgentHatchTransactionStatus
     public let templateName: String?
     /// Disk footprint of the transaction directory plus its rollback bundle.
-    public let sizeBytes: Int
+    /// Computed only when the listing was asked for sizes (CLI `--size`,
+    /// MCP `include_sizes: true`) — it walks the full trees; nil otherwise.
+    public let sizeBytes: Int?
     public let hasRollbackBundle: Bool
 
     public init(
         token: String,
         status: AgentHatchTransactionStatus,
         templateName: String?,
-        sizeBytes: Int,
+        sizeBytes: Int?,
         hasRollbackBundle: Bool,
     ) {
         self.token = token

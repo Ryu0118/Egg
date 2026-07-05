@@ -71,14 +71,25 @@ struct AgentHatchTransactionsListTests {
         try writeTransaction(token: "c-rolled", in: root, status: .rolledBack)
         try writeBundle(id: "c-rolled", in: root, status: "rolledBack")
 
-        let result = makeRunner(workingDirectory: root).transactions()
+        let result = makeRunner(workingDirectory: root).transactions(includeSizes: true)
 
         #expect(result.status == "ok")
         #expect(result.transactions.map(\.token) == ["a-preview", "b-applied", "c-rolled"])
         #expect(result.transactions.map(\.status) == [.preview, .applied, .rolledBack])
         #expect(result.transactions.map(\.hasRollbackBundle) == [false, true, true])
         #expect(result.transactions.allSatisfy { $0.templateName == "t" })
-        #expect(result.transactions.allSatisfy { $0.sizeBytes > 0 })
+        #expect(result.transactions.allSatisfy { ($0.sizeBytes ?? 0) > 0 })
+    }
+
+    @Test("A plain listing skips the disk-footprint walk and reports no sizes")
+    func aPlainListingReportsNoSizes() throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        try writeTransaction(token: "tx", in: root, status: .preview)
+
+        let result = makeRunner(workingDirectory: root).transactions()
+
+        #expect(result.transactions.allSatisfy { $0.sizeBytes == nil })
     }
 
     @Test("Corrupt metadata surfaces as corrupt without failing the listing")

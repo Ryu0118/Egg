@@ -274,15 +274,23 @@ package struct AgentHatchTransactionRunner {
     /// at worst misreport one entry's status, which the next listing corrects.
     /// Corrupt metadata surfaces as `"corrupt"` rather than failing the whole
     /// listing; bundles without a transaction directory as `"orphanedRollback"`.
-    package func transactions() -> AgentHatchTransactionsResult {
+    ///
+    /// `includeSizes` walks every record's full directory tree to compute its
+    /// disk footprint — cost proportional to the total staged bytes on disk,
+    /// not the number of records — so it is off by default and a plain
+    /// listing stays a cheap metadata read.
+    package func transactions(includeSizes: Bool = false) -> AgentHatchTransactionsResult {
         var summaries: [AgentHatchTransactionSummary] = []
+        let decoder = JSONDecoder()
 
         for token in store.tokens() {
             let transactionDir = store.directory(for: token)
             let bundleDir = rollbackRoot(for: token)
             let hasBundle = fileManager.exists(bundleDir.appending(path: "manifest.json"))
-            let sizeBytes = directoryFootprint(of: transactionDir).byteCount
+            let sizeBytes: Int? = includeSizes
+                ? directoryFootprint(of: transactionDir).byteCount
                 + (hasBundle ? directoryFootprint(of: bundleDir).byteCount : 0)
+                : nil
             if let metadata = try? store.load(token: token) {
                 summaries.append(AgentHatchTransactionSummary(
                     token: token,
@@ -309,12 +317,12 @@ package struct AgentHatchTransactionRunner {
             let id = bundleDir.lastPathComponent
             guard !knownTokens.contains(id) else { continue }
             let manifest = (try? fileManager.readFile(at: bundleDir.appending(path: "manifest.json")))
-                .flatMap { try? JSONDecoder().decode(RollbackManifest.self, from: $0) }
+                .flatMap { try? decoder.decode(RollbackManifest.self, from: $0) }
             summaries.append(AgentHatchTransactionSummary(
                 token: id,
                 status: .orphanedRollback,
                 templateName: manifest?.templateName,
-                sizeBytes: directoryFootprint(of: bundleDir).byteCount,
+                sizeBytes: includeSizes ? directoryFootprint(of: bundleDir).byteCount : nil,
                 hasRollbackBundle: true,
             ))
         }

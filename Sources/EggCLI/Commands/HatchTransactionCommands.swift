@@ -183,9 +183,12 @@ struct HatchTransactionsCommand: AsyncParsableCommand {
 
     @OptionGroup var options: HatchTransactionOptions
 
+    @Flag(name: .long, help: "Compute each record's disk footprint (walks the full staged trees; slower on large histories).")
+    var size = false
+
     func run() async throws {
         let service = try await options.makeService()
-        try CLIOutput.printJSON(service.listHatchTransactions())
+        try CLIOutput.printJSON(service.listHatchTransactions(includeSizes: size))
     }
 }
 
