@@ -200,6 +200,62 @@ struct AgentHatchLifecycleTests {
         }
     }
 
+    @Test("A forced apply overwrites a user file at an add path, and rollback restores it")
+    func aForcedApplyOverwritesAUserFileAndRollbackRestoresIt() async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        let runner = makeRunner(workingDirectory: root)
+
+        try writeTransaction(
+            token: "tx",
+            in: root,
+            status: .preview,
+            changes: [("hello.txt", "add")],
+            workFiles: ["hello.txt": "template\n"],
+        )
+        // The user creates a file at the add path after the preview.
+        try fileManager.writeText("user content\n", at: root.appending(path: "hello.txt"))
+
+        // Unforced apply must refuse the conflict.
+        await #expect(throws: AgentHatchTransactionRunner.Error.conflictingWorkingDirectoryChanges(["hello.txt"])) {
+            try await runner.apply(token: "tx")
+        }
+
+        // Forced apply overwrites.
+        let applied = try await runner.apply(token: "tx", force: true)
+        #expect(applied.status == "applied")
+        #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "hello.txt")), as: UTF8.self) == "template\n")
+
+        // Rollback brings the user's file back instead of just deleting.
+        _ = try await runner.rollback(id: "tx")
+        #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "hello.txt")), as: UTF8.self) == "user content\n")
+    }
+
+    @Test("Applying an unknown token fails with transactionNotFound and leaves no shell")
+    func applyingAnUnknownTokenFailsWithTransactionNotFound() async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        let runner = makeRunner(workingDirectory: root)
+
+        await #expect(throws: AgentHatchTransactionRunner.Error.transactionNotFound(token: "ghost")) {
+            try await runner.apply(token: "ghost")
+        }
+        #expect(!fileManager.exists(root.appending(path: ".egg/transactions/ghost")))
+    }
+
+    @Test("Applying a transaction with corrupt metadata fails with a guided error")
+    func applyingATransactionWithCorruptMetadataFailsWithAGuidedError() async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        let store = makeStore(workingDirectory: root)
+        _ = try store.createDirectory(for: "bad")
+        try fileManager.writeText("not json", at: store.metadataURL(for: "bad"))
+
+        await #expect(throws: AgentHatchTransactionRunner.Error.corruptTransactionRecord(token: "bad")) {
+            try await makeRunner(workingDirectory: root).apply(token: "bad")
+        }
+    }
+
     @Test("Rollback of an orphaned bundle succeeds and leaves no transaction shell behind")
     func rollbackOfAnOrphanedBundleLeavesNoTransactionShell() async throws {
         let root = try makeWorkspace()

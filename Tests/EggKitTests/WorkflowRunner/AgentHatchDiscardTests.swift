@@ -160,8 +160,11 @@ struct AgentHatchDiscardTests {
         await #expect(throws: AgentHatchTransactionRunner.Error.transactionNotFound(token: "ghost")) {
             try await runner.discard(token: "ghost")
         }
-        // The lock's directory creation must not leave a shell behind.
+        // Neither lock's directory creation may leave a shell behind — a
+        // rollback-side ghost would list as orphanedRollback forever.
         #expect(!fileManager.exists(transactionDir(root, "ghost")))
+        #expect(!fileManager.exists(bundleDir(root, "ghost")))
+        #expect(makeRunner(workingDirectory: root).transactions().transactions.isEmpty)
     }
 
     @Test("Corrupt metadata requires force, then deletes the pair")

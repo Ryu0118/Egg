@@ -183,7 +183,15 @@ package struct AgentHatchTransactionRunner {
         // rollback bundle and working-directory writes). Locking per-token
         // means unrelated transactions never serialize against each other.
         return try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
-            let metadata = try store.load(token: token)
+            guard store.metadataExists(token: token) else {
+                // Drop the empty shell this lock's directory creation may have
+                // just made (final act before the throw, per the lock protocol).
+                removeLockShell(at: store.directory(for: token))
+                throw Error.transactionNotFound(token: token)
+            }
+            guard let metadata = try? store.load(token: token) else {
+                throw Error.corruptTransactionRecord(token: token)
+            }
             guard metadata.status == .preview || metadata.status == .rolledBack else {
                 throw Error.transactionNotApplicable(token: token, status: metadata.status.rawValue)
             }
@@ -365,8 +373,20 @@ package struct AgentHatchTransactionRunner {
             fileManager: fileManager,
         ) {
             let manifestURL = rollbackRoot.appending(path: "manifest.json")
+            guard fileManager.exists(manifestURL) else {
+                // Drop the empty shells the locks' directory creation may have
+                // just made (final act before the throw, per the lock
+                // protocol). Directories with real content are never touched.
+                removeLockShell(at: rollbackRoot)
+                if !store.metadataExists(token: rollbackId) {
+                    removeLockShell(at: store.directory(for: rollbackId))
+                }
+                throw Error.transactionNotFound(token: rollbackId)
+            }
             let data = try fileManager.readFile(at: manifestURL)
-            var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
+            guard var manifest = try? JSONDecoder().decode(RollbackManifest.self, from: data) else {
+                throw Error.corruptTransactionRecord(token: rollbackId)
+            }
             let beforeRoot = rollbackRoot.appending(path: "before")
 
             guard manifest.status != .rolledBack else {
@@ -434,7 +454,7 @@ package struct AgentHatchTransactionRunner {
             // still held, which TransactionLock's protocol permits only as
             // the final act before release — no guarded work may follow.
             if try store.markRolledBackIfPresent(token: rollbackId) == nil {
-                try? fileManager.removeItem(at: store.directory(for: rollbackId))
+                removeLockShell(at: store.directory(for: rollbackId))
             }
 
             return AgentHatchRollbackResult(
@@ -449,6 +469,19 @@ package struct AgentHatchTransactionRunner {
         workingDirectory
             .appending(path: ".egg/rollback")
             .appending(path: id)
+    }
+
+    /// Removes a lock-shell directory — one containing nothing but the lock
+    /// file the caller's own acquisition just created — left behind when an
+    /// operation targeted a token that has no records. A directory with any
+    /// real content (crash-orphaned `before/` backups, a staged `work/` tree)
+    /// is never touched.
+    private func removeLockShell(at directory: URL) {
+        let contents = (try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: []))?
+            .map(\.lastPathComponent) ?? []
+        if contents.allSatisfy({ $0 == ".lock" }) {
+            try? fileManager.removeItem(at: directory)
+        }
     }
 
     /// SHA-256 hex digest used to fingerprint applied file content.
@@ -527,7 +560,7 @@ package struct AgentHatchTransactionRunner {
             }
             try fileManager.removeIfExists(bundleRoot)
             // Drop the empty shell the outer lock's directory creation left.
-            try? fileManager.removeItem(at: store.directory(for: token))
+            removeLockShell(at: store.directory(for: token))
             return AgentHatchApplyResult(
                 status: "discarded",
                 applyToken: token,
@@ -537,7 +570,8 @@ package struct AgentHatchTransactionRunner {
             )
 
         case .missing:
-            try? fileManager.removeItem(at: store.directory(for: token))
+            removeLockShell(at: store.directory(for: token))
+            removeLockShell(at: bundleRoot)
             throw Error.transactionNotFound(token: token)
         }
     }
@@ -929,6 +963,7 @@ extension AgentHatchTransactionRunner {
         case conflictingRollbackChanges([String])
         case discardRequiresForce(token: String, status: String)
         case transactionNotFound(token: String)
+        case corruptTransactionRecord(token: String)
         case missingRollbackBackup(id: String, paths: [String])
         case invalidIdentifier(kind: String, value: String)
         case writeConsentRequired(declaredPaths: [String])
@@ -950,6 +985,8 @@ extension AgentHatchTransactionRunner {
                 "Discarding transaction '\(token)' (status: '\(status)') deletes its rollback bundle — the only way to undo the apply. To undo the changes instead, run 'egg hatch rollback \(token)' first. To delete the records anyway and keep the applied files as they are, pass --force (CLI) or force: true (MCP)."
             case let .transactionNotFound(token):
                 "No transaction or rollback bundle found for '\(token)'. Run 'egg hatch transactions' to list known transactions."
+            case let .corruptTransactionRecord(token):
+                "Transaction '\(token)' has a corrupt record on disk and cannot be applied or rolled back. Delete its records with 'egg hatch discard \(token) --force', then re-run preview."
             case let .missingRollbackBackup(id, paths):
                 "Rollback bundle '\(id)' is missing its backup for: \(paths.joined(separator: ", ")). Refusing to restore only some files — nothing was changed."
             case let .invalidIdentifier(kind, value):

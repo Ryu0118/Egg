@@ -188,6 +188,10 @@ struct ApplyStagingArea {
         }
 
         let targetPath = targetPath(for: entry.relativePath)
+        // A forced apply legitimately overwrites a file the user created at
+        // an "add" path after the preview; the stage phase backed it up so
+        // the mid-apply rollback below can put it back.
+        try fileManager.removeIfExists(targetPath)
         try ensureParentDirectory(for: targetPath, fileManager: fileManager)
         try fileManager.copyItem(at: stagedPath, to: targetPath)
     }
@@ -229,6 +233,13 @@ struct ApplyStagingArea {
 
             case .add:
                 try fileManager.removeIfExists(targetPath)
+
+                // A forced apply may have overwritten a pre-existing file at
+                // this path; restore it rather than leaving the path empty.
+                if let backupPath = entry.backupPath, fileManager.exists(backupPath) {
+                    try ensureParentDirectory(for: targetPath, fileManager: fileManager)
+                    try fileManager.copyItem(at: backupPath, to: targetPath)
+                }
 
             case .modify:
                 try fileManager.removeIfExists(targetPath)
@@ -279,13 +290,17 @@ struct ApplyStagingArea {
             let source = workspaceRoot.appending(path: path)
             let stagedDestination = stagedPath(for: path)
             try copyToStaging(source: source, destination: stagedDestination, fileManager: fileManager)
+            // Normally absent, but a forced apply overwrites a file the user
+            // created at this path after the preview — back it up so a
+            // mid-apply failure can restore it instead of deleting it.
+            let backup = try backupOriginalIfNeeded(relativePath: path, fileManager: fileManager)
 
             entries.append(
                 ChangeEntry(
                     relativePath: path,
                     kind: .add,
                     stagedPath: stagedDestination,
-                    backupPath: nil,
+                    backupPath: backup,
                 ),
             )
         }

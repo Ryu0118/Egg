@@ -222,14 +222,18 @@ struct AgentHatchRollbackTests {
         #expect(fileManager.exists(root.appending(path: "deep/keep.txt")))
     }
 
-    @Test("Missing bundle id fails with a read error")
-    func missingBundleIdFailsWithAReadError() async throws {
+    @Test("Missing bundle id fails with transactionNotFound and leaves no lock shells")
+    func missingBundleIdFailsWithTransactionNotFound() async throws {
         let root = try makeWorkspace()
         defer { try? fileManager.removeItem(at: root) }
 
-        await #expect(throws: (any Error).self) {
+        await #expect(throws: AgentHatchTransactionRunner.Error.transactionNotFound(token: "nope")) {
             try await makeRunner(workingDirectory: root).rollback(id: "nope")
         }
+        // The locks' directory creation must not leave ghost shells that the
+        // listing would then misreport as orphanedRollback.
+        #expect(!fileManager.exists(root.appending(path: ".egg/rollback/nope")))
+        #expect(!fileManager.exists(root.appending(path: ".egg/transactions/nope")))
     }
 
     @Test("Legacy bundle without afterHash skips conflict detection but still restores")
