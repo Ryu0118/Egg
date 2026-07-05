@@ -21,8 +21,8 @@ rules:
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
   - .claude/plugins/egg/.mcp.json
-  - .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
-  - .claude/plugins/egg/skills/egg-template/SKILL.md
+  - skills/egg-cli-guide/SKILL.md
+  - skills/egg-template/SKILL.md
   - plugins/egg/.codex-plugin/plugin.json
   - .agents/plugins/marketplace.json
   - Sources/EggCLI/Commands/MCPCommand.swift
@@ -31,20 +31,20 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: e0a7bb0da93e6542be8a3a4a81589017c2371ab6c29f023aebd879a4423b09fe
+  checksum: d877fd574110bb02779a41a928ef2a652291c9c3007b2f8a91320e4ba88e56d7
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
   - Sources/EggKit/TemplateEngine/**/*.swift
   - Sources/EggKit/WorkflowRunner/TemplateExpander.swift
-  - .claude/plugins/egg/skills/egg-template/references/config-spec.md
-  - .claude/plugins/egg/skills/egg-template/references/template-files.md
-  - .claude/plugins/egg/skills/egg-template/references/lifecycle.md
+  - skills/egg-template/references/config-spec.md
+  - skills/egg-template/references/template-files.md
+  - skills/egg-template/references/lifecycle.md
   doc: README.md
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: 4112942c65fda033212b01990e4239cd43dae925a0d6ba787596e18bc32a0d2a
+  checksum: 3351c744c847b37394da028774a8b0bf59f401e982559dbb6883a23088bb9b57
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -64,7 +64,7 @@ rules:
   - Sources/EggMCP/Handlers/HatchHandler.swift
   - Sources/EggKit/WorkflowRunner/Staging/AgentHatchTransactionRunner.swift
   - Sources/EggKit/WorkflowRunner/SandboxAllowedPathsResolver.swift
-  doc: .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
+  doc: skills/egg-cli-guide/SKILL.md
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
@@ -73,8 +73,8 @@ rules:
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
   - .claude/plugins/egg/.mcp.json
-  - .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
-  - .claude/plugins/egg/skills/egg-template/SKILL.md
+  - skills/egg-cli-guide/SKILL.md
+  - skills/egg-template/SKILL.md
   - plugins/egg/.codex-plugin/plugin.json
   - .agents/plugins/marketplace.json
   - Sources/EggMCP/**/*.swift
@@ -82,20 +82,20 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 8b3257b09c2dcaf792456be0532e7d38acad504380ac0d6451bc4eb1e54bf57c
+  checksum: e9cfb391ef3a6aedc49d3cba7e0c4a44e29022328ec4cfe215ae9c08a4eb57fd
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
   - Sources/EggKit/TemplateEngine/**/*.swift
   - Sources/EggKit/WorkflowRunner/TemplateExpander.swift
-  - .claude/plugins/egg/skills/egg-template/references/config-spec.md
-  - .claude/plugins/egg/skills/egg-template/references/template-files.md
-  - .claude/plugins/egg/skills/egg-template/references/lifecycle.md
+  - skills/egg-template/references/config-spec.md
+  - skills/egg-template/references/template-files.md
+  - skills/egg-template/references/lifecycle.md
   doc: Sources/EggKit/EggKit.docc/TemplateConfig.md
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: 4112942c65fda033212b01990e4239cd43dae925a0d6ba787596e18bc32a0d2a
+  checksum: 3351c744c847b37394da028774a8b0bf59f401e982559dbb6883a23088bb9b57
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
