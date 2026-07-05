@@ -55,6 +55,35 @@ struct HatchTransactionStore {
         return metadata
     }
 
+    /// Marks a transaction rolled back, keeping its `rollbackId` (the bundle
+    /// stays on disk until a later apply replaces it or discard deletes it).
+    ///
+    /// Returns nil without error when no metadata exists — an orphaned
+    /// rollback bundle left by a pre-unification egg version whose discard
+    /// removed the transaction directory but not the bundle.
+    func markRolledBackIfPresent(token: String) throws -> HatchTransactionMetadata? {
+        guard fileManager.exists(metadataURL(for: token)) else { return nil }
+        var metadata = try load(token: token)
+        metadata.status = .rolledBack
+        try save(metadata)
+        return metadata
+    }
+
+    func metadataExists(token: String) -> Bool {
+        fileManager.exists(metadataURL(for: token))
+    }
+
+    /// Tokens of every transaction directory under `.egg/transactions`,
+    /// including ones whose metadata.json is corrupt or missing. Missing
+    /// root yields an empty list.
+    func tokens() -> [String] {
+        let contents = (try? fileManager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: [])) ?? []
+        return contents
+            .filter { fileManager.isDirectory(at: $0) }
+            .map(\.lastPathComponent)
+            .sorted()
+    }
+
     func discard(token: String) throws {
         try fileManager.removeIfExists(root.appending(path: token))
     }
@@ -64,6 +93,7 @@ struct HatchTransactionMetadata: Codable, Equatable {
     enum Status: String, Codable {
         case preview
         case applied
+        case rolledBack
         case discarded
     }
 

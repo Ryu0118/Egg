@@ -44,7 +44,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: 3351c744c847b37394da028774a8b0bf59f401e982559dbb6883a23088bb9b57
+  checksum: a37fd22ab1c18ca42dddbd8595b365e9a7834abb22da5c18027d394d9ea4d636
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -95,7 +95,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: 3351c744c847b37394da028774a8b0bf59f401e982559dbb6883a23088bb9b57
+  checksum: a37fd22ab1c18ca42dddbd8595b365e9a7834abb22da5c18027d394d9ea4d636
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -107,7 +107,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 88b82e9daa76db935d8cbe0280e98e8567a5aa1a45b2bb6b19acc290f4eec791
+  checksum: 7119bc333e3dd58d5b6cb21c40fe940cc3a61f60070f087479164b1f7b901cf4
 - name: agents-project
   sources:
   - Package.swift
@@ -118,7 +118,7 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 9c30f5dfaa489bd595df33bfc762f4f1d521f7057dee1eb768d3568e32dc88e9
+  checksum: 30fa22ccb4849bf6f4b6a596766c558ae02f62ffccf41b67a6d8e3d07851c1b1
 excludes:
 - .build/**
 - '**/.build/**'
