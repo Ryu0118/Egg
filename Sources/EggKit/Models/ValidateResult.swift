@@ -14,15 +14,21 @@ public struct ValidateResult: Codable, Sendable {
     /// Validation errors (if any)
     public let errors: [String]?
 
+    /// Non-fatal findings: keys the decoder silently ignores (typos like a
+    /// bogus `lifecycle:` wrapper that switches hooks off with no signal).
+    public let warnings: [String]?
+
     public init(
         templateName: String,
         templatePath: String,
         isValid: Bool,
         errors: [String]? = nil,
+        warnings: [String]? = nil,
     ) {
         self.templateName = templateName
         self.templatePath = templatePath
         self.isValid = isValid
         self.errors = errors
+        self.warnings = warnings
     }
 }

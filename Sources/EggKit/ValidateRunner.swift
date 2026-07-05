@@ -33,6 +33,7 @@ package struct ValidateRunner {
         config: Config,
         templatePath: URL,
     ) async -> ValidateResult {
+        let warnings = unknownKeyWarnings(templatePath: templatePath)
         do {
             try await validator.validate(config)
             return ValidateResult(
@@ -40,6 +41,7 @@ package struct ValidateRunner {
                 templatePath: templatePath.path(percentEncoded: false),
                 isValid: true,
                 errors: nil,
+                warnings: warnings.isEmpty ? nil : warnings,
             )
         } catch {
             let errors = extractValidationErrors(from: error)
@@ -48,8 +50,20 @@ package struct ValidateRunner {
                 templatePath: templatePath.path(percentEncoded: false),
                 isValid: false,
                 errors: errors,
+                warnings: warnings.isEmpty ? nil : warnings,
             )
         }
+    }
+
+    /// Keys the decoder silently ignored — a typo'd section means a feature
+    /// is off with no signal, so validate surfaces it even though decoding
+    /// succeeded.
+    private func unknownKeyWarnings(templatePath: URL) -> [String] {
+        let configURL = templatePath.appending(path: "config.yml")
+        guard let data = try? fileManager.readFile(at: configURL),
+              let text = String(data: data, encoding: .utf8)
+        else { return [] }
+        return ConfigUnknownKeyScanner().unknownKeyWarnings(inYAML: text)
     }
 
     private func extractValidationErrors(from error: Swift.Error) -> [String] {
@@ -63,6 +77,9 @@ package struct ValidateRunner {
         config: Config,
         templatePath: URL,
     ) async throws {
+        for warning in unknownKeyWarnings(templatePath: templatePath) {
+            interaction.writeWarning(StyledText(warning))
+        }
         do {
             try await validator.validate(config)
             interaction.writeSuccess("Template '\(config.name)' at \(templatePath.path) is valid")

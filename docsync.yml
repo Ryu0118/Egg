@@ -44,7 +44,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: 0e56c4ad4763cdfbb1b2fef2b0eeedfaad092f322de3ef9cc88b79faf4c91dd9
+  checksum: fe9113b399acbc0980b624cdba35b5795a6a1a9a8e2af37349b1dc205c2330cf
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -95,7 +95,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: 0e56c4ad4763cdfbb1b2fef2b0eeedfaad092f322de3ef9cc88b79faf4c91dd9
+  checksum: fe9113b399acbc0980b624cdba35b5795a6a1a9a8e2af37349b1dc205c2330cf
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
