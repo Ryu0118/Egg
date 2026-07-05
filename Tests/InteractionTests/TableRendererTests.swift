@@ -83,13 +83,14 @@ struct TableRendererTests {
         // misaligned as a plain-text literal in any font that doesn't render
         // CJK at exactly double width. Assert on parsed cell content and
         // measured display width instead of eyeballing a block of text.
-        #expect(lines.count == 6)
+        #expect(lines.count == 7)
         #expect(lines[0] == "┌────────┬─────────────┐")
         #expect(cells(ofRow: lines[1]) == ["name", "description"])
         #expect(lines[2] == "├────────┼─────────────┤")
         #expect(cells(ofRow: lines[3]) == ["日本語", "wide"])
-        #expect(cells(ofRow: lines[4]) == ["abc", "latin"])
-        #expect(lines[5] == "└────────┴─────────────┘")
+        #expect(lines[4] == "├────────┼─────────────┤")
+        #expect(cells(ofRow: lines[5]) == ["abc", "latin"])
+        #expect(lines[6] == "└────────┴─────────────┘")
         #expect(Set(lines.map(\.terminalDisplayWidth)).count == 1)
     }
 
@@ -102,6 +103,7 @@ struct TableRendererTests {
         #expect(output == """
         ┌────┬────┐
         │ a  │ 1  │
+        ├────┼────┤
         │ bb │ 22 │
         └────┴────┘
         """)

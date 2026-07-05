@@ -152,7 +152,12 @@ public struct TableRenderer: Sendable {
             lines.append(contentsOf: row(table.headers, columnWidths: columnWidths))
             lines.append(border(columnWidths, left: "├", mid: "┼", right: "┤"))
         }
-        lines.append(contentsOf: table.rows.flatMap { row($0, columnWidths: columnWidths) })
+        for (index, tableRow) in table.rows.enumerated() {
+            if index > 0 {
+                lines.append(border(columnWidths, left: "├", mid: "┼", right: "┤"))
+            }
+            lines.append(contentsOf: row(tableRow, columnWidths: columnWidths))
+        }
         lines.append(border(columnWidths, left: "└", mid: "┴", right: "┘"))
 
         return lines.joined(separator: "\n")
