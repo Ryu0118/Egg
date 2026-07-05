@@ -19,6 +19,10 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and --name.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "duplicate",
             abstract: "Duplicate an existing template.",
@@ -42,6 +46,19 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                guard let templateName, let name else {
+                    throw ValidationError("--json requires a template name and --name (interactive prompts need a TTY).")
+                }
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
+                ).duplicateTemplate(sourceName: templateName, newName: name, newDescription: description)
+                try CLIOutput.printJSON(result)
+                return
+            }
             let mode = try await validate()
             do {
                 let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)

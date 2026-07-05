@@ -16,6 +16,10 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and deletes without confirmation.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "delete",
             abstract: "Delete a template.",
@@ -38,6 +42,19 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                guard let templateName else {
+                    throw ValidationError("--json requires a template name (interactive selection needs a TTY).")
+                }
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
+                ).deleteTemplate(templateName: templateName)
+                try CLIOutput.printJSON(result)
+                return
+            }
             let mode = try await validate()
             do {
                 try await DeleteRunner(

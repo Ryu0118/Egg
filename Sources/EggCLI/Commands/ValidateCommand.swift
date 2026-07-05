@@ -10,6 +10,10 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "validate",
             abstract: "Validate a template's config.yml file.",
@@ -26,6 +30,15 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                ).validateTemplate(templatePath: templatePath)
+                try CLIOutput.printJSON(result)
+                return
+            }
             let mode = try await validate()
             do {
                 try await ValidateRunner(

@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 64125bb8b891c9b00e9ed4c9522843524f13f8610815a15ae7e26ee865693239
+  checksum: 0b986e3dd3fcc9043ae333d03c01f3c7c85271e831fc32bbcca19c1206ddc8dd
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -31,7 +31,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: ecd4ad2e5f19de37a2a21a75ef30dcce429b8f85e07ddf2172a5ca219e126e36
+  checksum: d83689db2b97a0c100937a091b62a4f4f19d1e76b837eef623caff511bad1f98
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -82,7 +82,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: aba149502def0f46daef247fa40c4b21d1ab4b3e4c6523b021dcc8c28252274e
+  checksum: e7fffe0dac5c71db50964305713aded7ab28056a7f8a5e8fe9fdfb347e885d16
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift

@@ -31,6 +31,10 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, help: "Project directory.", completion: .directory)
         package var projectDirectory: String?
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a source URL/path, and overwrites existing templates.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "install",
             abstract: "Install templates from a Git repository or local directory.",
@@ -64,6 +68,24 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                guard let url else {
+                    throw ValidationError("--json requires a source URL or path (interactive prompts need a TTY).")
+                }
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                ).installTemplates(
+                    source: url,
+                    location: global ? "global" : "project",
+                    ref: branch ?? tag ?? revision,
+                    include: template.isEmpty ? nil : template,
+                    exclude: exclude.isEmpty ? nil : exclude,
+                )
+                try CLIOutput.printJSON(result.encoded)
+                return
+            }
             let mode = try await validate()
             do {
                 let result = try await InstallRunner(

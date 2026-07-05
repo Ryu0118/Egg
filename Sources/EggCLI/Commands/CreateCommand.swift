@@ -23,6 +23,10 @@ package extension EggCommand.TemplateCommand {
             completion: .list(["global", "project"]),
         )
         package var location: TemplateLocationType.Kind?
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires --name, --description, and --location.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "create",
             abstract: "Create a new template with config.yml and template files.",
@@ -46,6 +50,18 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                guard let name, let description, let location else {
+                    throw ValidationError("--json requires --name, --description, and --location (interactive prompts need a TTY).")
+                }
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                ).createTemplate(name: name, description: description, location: location.rawValue)
+                try CLIOutput.printJSON(result)
+                return
+            }
             let mode = try await validate()
             do {
                 try await CreateRunner(

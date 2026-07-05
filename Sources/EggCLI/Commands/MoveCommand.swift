@@ -19,6 +19,10 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and --to, and overwrites an existing target.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "move",
             abstract: "Move a template between project and global locations.",
@@ -47,6 +51,19 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                guard let templateName, let to else {
+                    throw ValidationError("--json requires a template name and --to (interactive prompts need a TTY).")
+                }
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
+                ).moveTemplate(templateName: templateName, targetLocation: to.rawValue)
+                try CLIOutput.printJSON(result)
+                return
+            }
             let mode = try await validate()
             do {
                 try await MoveRunner(

@@ -105,6 +105,10 @@ Prefer `egg hatch direct` only for one-shot human use where a preview/rollback p
 | `egg template delete <name> [--force]` | Delete a template. |
 | `egg template open <name>` | Reveal a template's directory in Finder. |
 
+All `template` subcommands accept `--json` to emit machine-readable JSON on stdout instead of the human-readable tables and status lines — agents should always pass it rather than parsing prose. `--json` implies direct mode: every value the command needs must be supplied as a flag (e.g. `detail <name> --json`, `create --name n --description d --location project --json`).
+
+Interactive fallbacks require a TTY. When stdin is not a TTY (agents, CI) and a command would prompt, egg fails fast with the prompt's question and the flags to pass instead of hanging — so a missing argument surfaces as an immediate error, never a stuck process.
+
 All `template` subcommands support an interactive mode when arguments are omitted, and accept `--project-directory`/`--template-search-paths` to look beyond the current directory.
 
 ## MCP Integration
