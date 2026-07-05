@@ -424,6 +424,10 @@ package struct AgentHatchTransactionRunner {
             // the manifest. An orphaned bundle (pre-unification discard removed
             // the transaction dir) has no metadata; drop the empty shell the
             // outer lock's directory creation left behind instead.
+            //
+            // Deleting the shell unlinks the outer lock's file while it is
+            // still held, which TransactionLock's protocol permits only as
+            // the final act before release — no guarded work may follow.
             if try store.markRolledBackIfPresent(token: rollbackId) == nil {
                 try? fileManager.removeItem(at: store.directory(for: rollbackId))
             }
@@ -448,6 +452,10 @@ package struct AgentHatchTransactionRunner {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    // Every deletion below unlinks the very lock files the caller is holding
+    // (they live inside the deleted directories). TransactionLock's protocol
+    // permits that only as the final act before release: each branch deletes
+    // and then immediately returns or throws, with no guarded work after.
     private func discardLocked(token: String, bundleRoot: URL, force: Bool) throws -> AgentHatchApplyResult {
         let bundleExists = fileManager.exists(bundleRoot.appending(path: "manifest.json"))
 

@@ -70,33 +70,63 @@ actor TransactionLock {
     }
 
     private static func open(directory: URL, wait: TimeInterval?, fileManager: some FileManagerProtocol) async throws -> Int32 {
-        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         let path = directory.appending(path: ".lock").path(percentEncoded: false)
+        let deadline = wait.map { Date().addingTimeInterval($0) }
 
-        let fd = path.withCString { Darwin.open($0, O_CREAT | O_RDWR, 0o644) }
-        guard fd >= 0 else {
-            throw Error.lockFileUnavailable(path: path, underlying: String(cString: strerror(errno)))
-        }
+        // A holder may legitimately unlink this lock file while holding the
+        // lock: discard and orphan cleanup delete the directory that contains
+        // it as their final act. flock is bound to the inode, not the path,
+        // so a lock acquired on an fd whose file has since been unlinked or
+        // replaced excludes nobody — a later opener creates a fresh inode at
+        // the same path and locks it instantly. Guard against holding such a
+        // dead lock: after acquiring, verify the fd still names the inode
+        // currently at `path`, and race for the live file otherwise.
+        //
+        // The other half of the protocol is a discipline on deleters: unlink
+        // the lock file only as the final act before release, never with
+        // guarded work still to do.
+        while true {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            let fd = path.withCString { Darwin.open($0, O_CREAT | O_RDWR, 0o644) }
+            guard fd >= 0 else {
+                throw Error.lockFileUnavailable(path: path, underlying: String(cString: strerror(errno)))
+            }
 
-        do {
-            try await acquire(fd: fd, path: path, wait: wait)
-        } catch {
+            do {
+                try await acquire(fd: fd, path: path, deadline: deadline)
+            } catch {
+                close(fd)
+                throw error
+            }
+
+            if isLiveLock(fd: fd, path: path) {
+                return fd
+            }
+            flock(fd, LOCK_UN)
             close(fd)
-            throw error
         }
-        return fd
     }
 
-    private static func acquire(fd: Int32, path: String, wait: TimeInterval?) async throws {
+    /// Whether `fd` still refers to the inode currently at `path` — i.e. the
+    /// locked file was not unlinked or replaced while we were acquiring.
+    private static func isLiveLock(fd: Int32, path: String) -> Bool {
+        var fdStat = stat()
+        var pathStat = stat()
+        guard fstat(fd, &fdStat) == 0,
+              path.withCString({ stat($0, &pathStat) }) == 0
+        else { return false }
+        return fdStat.st_dev == pathStat.st_dev && fdStat.st_ino == pathStat.st_ino
+    }
+
+    private static func acquire(fd: Int32, path: String, deadline: Date?) async throws {
         if flock(fd, LOCK_EX | LOCK_NB) == 0 { return }
         guard errno == EWOULDBLOCK else {
             throw Error.lockFileUnavailable(path: path, underlying: String(cString: strerror(errno)))
         }
-        guard let wait, wait > 0 else {
+        guard let deadline else {
             throw Error.locked(path: path)
         }
 
-        let deadline = Date().addingTimeInterval(wait)
         while Date() < deadline {
             if flock(fd, LOCK_EX | LOCK_NB) == 0 { return }
             try await Task.sleep(for: .milliseconds(50))

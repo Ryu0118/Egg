@@ -85,6 +85,65 @@ struct TransactionLockTests {
         try await holder.value
     }
 
+    @Test("A waiting acquirer never keeps a lock on an unlinked lock file while another process holds the live one")
+    func waitingAcquirerRetriesWhenTheLockFileWasUnlinked() async throws {
+        let root = try makeDirectory()
+        defer { try? fileManager.removeItem(at: root) }
+        let lockFile = root.appending(path: ".lock")
+
+        actor Occupancy {
+            private var occupants = 0
+            private(set) var maxOccupants = 0
+            func enter() {
+                occupants += 1
+                maxOccupants = max(maxOccupants, occupants)
+            }
+
+            func exit() { occupants -= 1 }
+        }
+        let occupancy = Occupancy()
+        let fm = fileManager
+
+        // A holds the lock and — like discard's pair deletion — unlinks the
+        // lock file as its final act while still holding it.
+        let holderA = Task {
+            try await TransactionLock.shared.withLock(directory: root, fileManager: fm) {
+                try await Task.sleep(for: .milliseconds(150))
+                try? fm.removeItem(at: lockFile)
+            }
+        }
+        try await Task.sleep(for: .milliseconds(50))
+
+        // B starts waiting while A still holds: its fd points at the inode A
+        // is about to unlink. After A releases, B's next poll succeeds on
+        // that dead inode — without the inode re-check it would hold a lock
+        // that excludes nobody.
+        let waiterB = Task {
+            try await TransactionLock.shared.withLock(directory: root, wait: 5, fileManager: fm) {
+                await occupancy.enter()
+                try await Task.sleep(for: .milliseconds(300))
+                await occupancy.exit()
+            }
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        try await holderA.value
+
+        // C arrives right after A released: the path is empty, so C creates
+        // a fresh lock file. If B kept its dead lock, B and C would both be
+        // inside their critical sections at once.
+        let holderC = Task {
+            try await TransactionLock.shared.withLock(directory: root, wait: 5, fileManager: fm) {
+                await occupancy.enter()
+                try await Task.sleep(for: .milliseconds(300))
+                await occupancy.exit()
+            }
+        }
+
+        try await waiterB.value
+        try await holderC.value
+        #expect(await occupancy.maxOccupants == 1)
+    }
+
     @Test("Allows locks on two unrelated sibling directories to be held at the same time without contending")
     func directoriesWithUnrelatedNamesLockIndependently() async throws {
         let root = try makeDirectory()
