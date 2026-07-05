@@ -20,7 +20,7 @@ package struct ListRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         mode = .display(location: location)
         self.projectDirectory = projectDirectory
@@ -46,7 +46,7 @@ package struct ListRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         hideDescription: Bool = false,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory

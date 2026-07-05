@@ -17,7 +17,7 @@ package struct DetailRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         self.mode = mode
         self.projectDirectory = projectDirectory

@@ -111,7 +111,7 @@ actor StagingContext {
         processRunner: some ProcessRunning,
         directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
         requireGitRepository: Bool = true,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) async throws -> StagingContext {
         do {
             // Create staging base directory in a temporary location

@@ -36,7 +36,7 @@ struct LifecycleStepRunner {
     init(
         processRunner: any ProcessRunning,
         workingDirectory: URL,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
         builtInMacroContext: BuiltInMacroContext,

@@ -18,7 +18,7 @@ package struct CreateRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,

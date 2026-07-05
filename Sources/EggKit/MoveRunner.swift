@@ -20,7 +20,7 @@ package struct MoveRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         let templateLocation = TemplateLocation(
             homeDirectory: homeDirectory,

@@ -46,7 +46,7 @@ package struct InstallRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol = FileManager.default,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         gitCloner: some GitCloning = GitCloner(),
         directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
     ) {
@@ -71,7 +71,7 @@ package struct InstallRunner {
         workingDirectory: URL,
         homeDirectory: URL,
         fileManager: some FileManagerProtocol,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         gitCloner: some GitCloning,
         directoryCloner: some DirectoryCloning,
         templateDiscoverer: some TemplateDiscovering,

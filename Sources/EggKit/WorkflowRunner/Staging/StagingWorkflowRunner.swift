@@ -20,7 +20,7 @@ import ProcessRunning
 ///     fileManager: FileManager.default,
 ///     workingDirectory: URL(filePath: "/tmp/project"),
 ///     homeDirectory: URL(filePath: NSHomeDirectory()),
-///     interaction: Terminal(),
+///     interaction: GuardedTerminal(),
 ///     isInteractive: true,
 ///     override: false
 /// )
@@ -61,7 +61,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         fileManager: some FileManagerProtocol,
         workingDirectory: URL,
         homeDirectory: URL,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,

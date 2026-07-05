@@ -25,7 +25,7 @@ struct TemplateExpander {
         templateDirectory: URL,
         outputDirectory: URL,
         builtInMacroContext: BuiltInMacroContext,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         isInteractive: Bool = true,
         override: Bool = false,
     ) {

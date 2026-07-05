@@ -27,7 +27,7 @@ package struct HatchRunner {
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
         processRunner: some ProcessRunning = ProcessRunner(),
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         useStaging: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = false,

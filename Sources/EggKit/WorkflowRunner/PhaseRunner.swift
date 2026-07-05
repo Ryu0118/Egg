@@ -15,7 +15,7 @@ import ProcessRunning
 ///     processRunner: ProcessRunner(),
 ///     fileManager: FileManager.default,
 ///     homeDirectory: homeDir,
-///     interaction: Terminal(),
+///     interaction: GuardedTerminal(),
 ///     isInteractive: true,
 ///     override: false
 /// )
@@ -41,7 +41,7 @@ struct PhaseRunner {
         processRunner: any ProcessRunning,
         fileManager: some FileManagerProtocol,
         homeDirectory: URL,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         isInteractive: Bool,
         override: Bool,
         processEnvironment: [String: String] = ProcessInfo.processInfo.environment,

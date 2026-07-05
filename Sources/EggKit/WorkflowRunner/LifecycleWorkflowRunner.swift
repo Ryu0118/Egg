@@ -44,7 +44,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         fileManager: some FileManagerProtocol,
         workingDirectory: URL,
         homeDirectory: URL,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
         isInteractive: Bool = true,
         overrideConflicts: Bool = false,
         sandboxDisabled: Bool = true,

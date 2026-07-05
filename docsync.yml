@@ -44,7 +44,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: a37fd22ab1c18ca42dddbd8595b365e9a7834abb22da5c18027d394d9ea4d636
+  checksum: 0e56c4ad4763cdfbb1b2fef2b0eeedfaad092f322de3ef9cc88b79faf4c91dd9
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -68,7 +68,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: efda6dd226860744d2f47f69381013b81000d170d416c70d6a0700d84f3337f9
+  checksum: 10f87c65b9406c11634d5288bc72a242d2442662208adb43edf17b3122dbc4c6
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -95,7 +95,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: a37fd22ab1c18ca42dddbd8595b365e9a7834abb22da5c18027d394d9ea4d636
+  checksum: 0e56c4ad4763cdfbb1b2fef2b0eeedfaad092f322de3ef9cc88b79faf4c91dd9
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -107,7 +107,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 087edc3de6022c91a55d91e6fde659b6b67582534953597f23d3898598361056
+  checksum: 879ac4cd3619bc4777f45f8f928278647580bd4f0ed7f695dac8ba761724763a
 - name: agents-project
   sources:
   - Package.swift
@@ -118,7 +118,7 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 30fa22ccb4849bf6f4b6a596766c558ae02f62ffccf41b67a6d8e3d07851c1b1
+  checksum: ddb3eca12e86034a887bcf68abb1c8b6e58a79d18bceeb39ae0fcb02ccdaec96
 excludes:
 - .build/**
 - '**/.build/**'

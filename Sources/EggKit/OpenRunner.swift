@@ -25,7 +25,7 @@ package struct OpenRunner {
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
         fileManager: some FileManagerProtocol,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         self.mode = mode
         self.processRunner = processRunner

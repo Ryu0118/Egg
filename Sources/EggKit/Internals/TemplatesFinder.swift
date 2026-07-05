@@ -20,7 +20,7 @@ struct TemplatesFinder {
         workingDirectory: URL,
         homeDirectory: URL,
         additionalSearchPaths: [URL] = [],
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         self.fileManager = fileManager
         self.projectDirectory = projectDirectory

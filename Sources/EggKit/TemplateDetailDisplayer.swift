@@ -6,7 +6,7 @@ struct TemplateDetailDisplayer {
     private let interaction: any InteractionProviding
     private let formatter = TemplateDetailFormatter()
 
-    init(interaction: some InteractionProviding = Terminal()) {
+    init(interaction: some InteractionProviding = GuardedTerminal()) {
         self.interaction = interaction
     }
 

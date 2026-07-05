@@ -11,7 +11,7 @@ struct SandboxAllowedPathsResolver {
 
     init(
         homeDirectory: URL,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         self.homeDirectory = homeDirectory
         self.interaction = interaction

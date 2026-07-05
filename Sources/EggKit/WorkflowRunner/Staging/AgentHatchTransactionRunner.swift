@@ -54,7 +54,7 @@ package struct AgentHatchTransactionRunner {
             processRunner: processRunner,
             fileManager: fileManager,
             homeDirectory: homeDirectory,
-            interaction: Terminal(),
+            interaction: GuardedTerminal(),
             isInteractive: false,
             override: true,
         )

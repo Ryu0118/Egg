@@ -11,7 +11,7 @@ package struct ValidateRunner {
     package init(
         mode: ValidateRunnerMode,
         fileManager: some FileManagerProtocol,
-        interaction: some InteractionProviding = Terminal(),
+        interaction: some InteractionProviding = GuardedTerminal(),
     ) {
         self.mode = mode
         self.fileManager = fileManager
