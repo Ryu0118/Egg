@@ -68,7 +68,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 0b3e6abff2b27aba804b090bb7532a13799e07726e17c0898566dddf8f0db99b
+  checksum: 7e1afc80561bc97120cd15d9e67dbf275181e6fc295924f59f17a9e7ff150268
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -107,7 +107,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 7119bc333e3dd58d5b6cb21c40fe940cc3a61f60070f087479164b1f7b901cf4
+  checksum: d8740e80ee54ceef50e4f6dab2601fa6dd3275dd3cccc7efce68ba7cf040c3aa
 - name: agents-project
   sources:
   - Package.swift

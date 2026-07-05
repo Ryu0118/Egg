@@ -234,7 +234,10 @@ package struct AgentHatchTransactionRunner {
         }
     }
 
-    /// Restores files captured in a rollback bundle from a prior ``apply(token:force:)``.
+    /// Restores files captured in a rollback bundle from a prior ``apply(token:force:)``,
+    /// then marks the transaction `rolledBack` in both the bundle manifest and
+    /// the transaction metadata — re-enabling ``apply(token:force:)`` for the
+    /// same token.
     ///
     /// Refuses when the bundle was already rolled back, and — unless `force` is
     /// set — when any target file no longer matches the content the apply left
@@ -246,16 +249,22 @@ package struct AgentHatchTransactionRunner {
     /// reports "rolledBack" would be a worse outcome than failing loudly.
     package func rollback(id rollbackId: String, force: Bool = false) async throws -> AgentHatchRollbackResult {
         try Self.validateIdentifier(rollbackId, kind: "rollback id")
-        let rollbackRoot = workingDirectory
-            .appending(path: ".egg/rollback")
-            .appending(path: rollbackId)
-        // The whole read-check-restore-rewrite sequence is one critical
-        // section: two concurrent rollbacks of the same id both read
+        let rollbackRoot = rollbackRoot(for: rollbackId)
+        // Lock ordering rule for every verb touching both domains: the
+        // transactions lock is the OUTER lock, the rollback lock the INNER —
+        // never the reverse, or two verbs could deadlock. rollbackId ==
+        // applyToken by construction, so the outer lock also serializes
+        // against apply/discard of the same transaction (both of which now
+        // read or delete metadata.json this rollback is about to rewrite).
+        // The inner lock is kept for the read-check-restore-rewrite sequence:
+        // two concurrent rollbacks of the same id both read
         // status == "applied" before either writes, so without a lock both
         // proceed to restore (harmless-ish for idempotent copies, but a
         // racing pruneEmptyDirectories can throw, and the final manifest
         // write — last writer wins — risks a reader observing torn JSON).
-        return try await TransactionLock.shared.withLock(directory: rollbackRoot, fileManager: fileManager) {
+        // It also excludes older egg binaries, which take only this lock.
+        return try await TransactionLock.shared.withLock(directory: store.directory(for: rollbackId), fileManager: fileManager) {
+            try await TransactionLock.shared.withLock(directory: rollbackRoot, fileManager: fileManager) {
             let manifestURL = rollbackRoot.appending(path: "manifest.json")
             let data = try fileManager.readFile(at: manifestURL)
             var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
@@ -317,12 +326,27 @@ package struct AgentHatchTransactionRunner {
             // must never observe a torn write.
             try (encoder.encode(manifest)).write(to: manifestURL, options: .atomic)
 
+            // Keep metadata.json — the status source of truth — in step with
+            // the manifest. An orphaned bundle (pre-unification discard removed
+            // the transaction dir) has no metadata; drop the empty shell the
+            // outer lock's directory creation left behind instead.
+            if try store.markRolledBackIfPresent(token: rollbackId) == nil {
+                try? fileManager.removeItem(at: store.directory(for: rollbackId))
+            }
+
             return AgentHatchRollbackResult(
                 status: "rolledBack",
                 rollbackId: rollbackId,
                 restoredChanges: manifest.changes.map(\.agentEntry),
             )
         }
+        }
+    }
+
+    private func rollbackRoot(for id: String) -> URL {
+        workingDirectory
+            .appending(path: ".egg/rollback")
+            .appending(path: id)
     }
 
     /// SHA-256 hex digest used to fingerprint applied file content.
@@ -626,9 +650,7 @@ package struct AgentHatchTransactionRunner {
     /// publishing the bundle. See ``PendingRollbackBundle``.
     private func prepareRollbackBundle(metadata: HatchTransactionMetadata, workRoot: URL) throws -> PendingRollbackBundle {
         let rollbackId = metadata.applyToken
-        let rollbackRoot = workingDirectory
-            .appending(path: ".egg/rollback")
-            .appending(path: rollbackId)
+        let rollbackRoot = rollbackRoot(for: rollbackId)
         let beforeRoot = rollbackRoot.appending(path: "before")
         try fileManager.createDirectory(at: beforeRoot, withIntermediateDirectories: true)
 
@@ -735,7 +757,7 @@ extension AgentHatchTransactionRunner {
             case let .notAGitRepository(path):
                 "'\(path)' is not a git repository. egg hatch needs git to scope and track changes safely. Run 'git init' first."
             case let .alreadyRolledBack(id):
-                "Rollback '\(id)' was already rolled back."
+                "Rollback '\(id)' was already rolled back. Re-apply with 'egg hatch apply \(id)' or delete the transaction with 'egg hatch discard \(id)'."
             case let .conflictingRollbackChanges(paths):
                 "Files changed since apply: \(paths.joined(separator: ", ")). Roll back anyway with --force (this overwrites those edits)."
             case let .missingRollbackBackup(id, paths):
