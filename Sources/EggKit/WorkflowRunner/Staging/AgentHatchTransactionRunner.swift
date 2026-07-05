@@ -257,13 +257,12 @@ package struct AgentHatchTransactionRunner {
     /// versions (whose discard removed only the transaction directory).
     package func discard(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
         try Self.validateIdentifier(token, kind: "apply token")
-        let bundleRoot = rollbackRoot(for: token)
-        // Lock ordering: transactions (outer) before rollback (inner) — the
-        // same fixed order rollback() takes; see the comment there.
-        return try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
-            try await TransactionLock.shared.withLock(directory: bundleRoot, fileManager: fileManager) {
-                try discardLocked(token: token, bundleRoot: bundleRoot, force: force)
-            }
+        return try await TransactionLock.shared.withLocks(
+            outer: store.directory(for: token),
+            inner: rollbackRoot(for: token),
+            fileManager: fileManager,
+        ) {
+            try discardLocked(token: token, bundleRoot: rollbackRoot(for: token), force: force)
         }
     }
 
@@ -344,21 +343,19 @@ package struct AgentHatchTransactionRunner {
     package func rollback(id rollbackId: String, force: Bool = false) async throws -> AgentHatchRollbackResult {
         try Self.validateIdentifier(rollbackId, kind: "rollback id")
         let rollbackRoot = rollbackRoot(for: rollbackId)
-        // Lock ordering rule for every verb touching both domains: the
-        // transactions lock is the OUTER lock, the rollback lock the INNER —
-        // never the reverse, or two verbs could deadlock. rollbackId ==
-        // applyToken by construction, so the outer lock also serializes
-        // against apply/discard of the same transaction (both of which now
-        // read or delete metadata.json this rollback is about to rewrite).
-        // The inner lock is kept for the read-check-restore-rewrite sequence:
-        // two concurrent rollbacks of the same id both read
-        // status == "applied" before either writes, so without a lock both
-        // proceed to restore (harmless-ish for idempotent copies, but a
-        // racing pruneEmptyDirectories can throw, and the final manifest
-        // write — last writer wins — risks a reader observing torn JSON).
-        // It also excludes older egg binaries, which take only this lock.
-        return try await TransactionLock.shared.withLock(directory: store.directory(for: rollbackId), fileManager: fileManager) {
-            try await TransactionLock.shared.withLock(directory: rollbackRoot, fileManager: fileManager) {
+        // Both per-token locks via withLocks. The whole
+        // read-check-restore-rewrite sequence is one critical section: two
+        // concurrent rollbacks of the same id both read status == "applied"
+        // before either writes, so without the locks both proceed to restore
+        // (harmless-ish for idempotent copies, but a racing
+        // pruneEmptyDirectories can throw, and the final manifest write —
+        // last writer wins — risks a reader observing torn JSON). The outer
+        // transactions lock additionally covers the metadata.json rewrite.
+        return try await TransactionLock.shared.withLocks(
+            outer: store.directory(for: rollbackId),
+            inner: rollbackRoot,
+            fileManager: fileManager,
+        ) {
             let manifestURL = rollbackRoot.appending(path: "manifest.json")
             let data = try fileManager.readFile(at: manifestURL)
             var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
@@ -437,7 +434,6 @@ package struct AgentHatchTransactionRunner {
                 rollbackId: rollbackId,
                 restoredChanges: manifest.changes.map(\.agentEntry),
             )
-        }
         }
     }
 
@@ -856,7 +852,10 @@ package struct AgentHatchTransactionRunner {
     /// discoverable to ``rollback(id:force:)``. Call only after the apply the
     /// bundle backs has actually succeeded.
     private func commitRollbackBundle(_ pending: PendingRollbackBundle) throws {
-        try pending.manifestData.write(to: pending.manifestURL)
+        // Atomic: transactions() reads manifests lock-free, so the initial
+        // publish must never be observable half-written — same invariant as
+        // every other metadata/manifest write.
+        try pending.manifestData.write(to: pending.manifestURL, options: .atomic)
     }
 
     private func makeToken(templateName: String) -> String {

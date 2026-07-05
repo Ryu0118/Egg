@@ -69,6 +69,29 @@ actor TransactionLock {
         return try await body()
     }
 
+    /// Takes two locks in the one fixed order every dual-domain hatch verb
+    /// must follow: the transactions directory (outer) first, the rollback
+    /// bundle directory (inner) second — never the reverse, or two verbs
+    /// could deadlock.
+    ///
+    /// A transaction's applyToken and rollbackId are the same value by
+    /// construction, so the outer lock serializes rollback, discard, and
+    /// apply of the same transaction against each other, while the inner
+    /// lock additionally excludes older egg binaries, which take only the
+    /// bundle lock.
+    func withLocks<T>(
+        outer: URL,
+        inner: URL,
+        fileManager: some FileManagerProtocol,
+        body: () async throws -> T,
+    ) async throws -> T {
+        try await withLock(directory: outer, fileManager: fileManager) {
+            try await withLock(directory: inner, fileManager: fileManager) {
+                try await body()
+            }
+        }
+    }
+
     private static func open(directory: URL, wait: TimeInterval?, fileManager: some FileManagerProtocol) async throws -> Int32 {
         let path = directory.appending(path: ".lock").path(percentEncoded: false)
         let deadline = wait.map { Date().addingTimeInterval($0) }
