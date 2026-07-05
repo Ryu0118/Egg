@@ -40,9 +40,16 @@ struct HatchPreviewCommand: AsyncParsableCommand {
         exactly what would change. Nothing is written to the working directory
         until you run 'egg hatch apply <token>'.
 
+        Templates may declare external write paths in config.yml's
+        sandbox.allowed_paths. Those are the template's request, not your
+        consent: preview fails fast listing them until you name each approved
+        path with --allow-write. Writes to approved paths happen during preview
+        and are not reverted by discard or rollback.
+
         Example:
           egg hatch preview MyTemplate --name App --enabled true
           egg hatch preview MyTemplate --exclude 'docs/**' --include dist/bundle.js
+          egg hatch preview MyTemplate --allow-write /Users/me/Documents/output
           egg hatch preview MyTemplate --no-sandbox --user-confirmed-no-sandbox
         """,
     )
@@ -62,6 +69,9 @@ struct HatchPreviewCommand: AsyncParsableCommand {
 
     @Flag(name: .long, help: "Confirms the user approved running preview lifecycle scripts without sandbox protection.")
     var userConfirmedNoSandbox = false
+
+    @Option(name: .long, parsing: .upToNextOption, help: "Consent to writes on a path the template declares in sandbox.allowed_paths (absolute path, repeatable).", completion: .directory)
+    var allowWrite: [String] = []
 
     @Option(name: .long, parsing: .upToNextOption, help: "Force normally-ignored paths into the change set (git pathspec).")
     var include: [String] = []
@@ -86,6 +96,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
             exclude: exclude,
             includeDiff: diff,
             sandboxDisabled: noSandbox && userConfirmedNoSandbox,
+            allowedWritePaths: allowWrite,
         )
         try CLIOutput.printJSON(result)
     }
