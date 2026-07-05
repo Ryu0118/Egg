@@ -122,6 +122,54 @@ struct TableRendererTests {
         """)
     }
 
+    @Test("wraps long cells inside their columns when a maximum table width is provided")
+    func wrapsRowsToFitMaximumWidth() {
+        let table = Table(
+            headers: ["name", "description"],
+            rows: [[
+                "SwiftPM Multi-Module iOS Project",
+                "Template for creating an iOS app project backed by a SwiftPM multi-module workspace",
+            ]],
+        )
+
+        let output = TableRenderer(maximumWidth: 48).render(table)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+
+        #expect(lines.allSatisfy { $0.terminalDisplayWidth <= 48 })
+        #expect(output == """
+        ┌──────────────────────┬───────────────────────┐
+        │ name                 │ description           │
+        ├──────────────────────┼───────────────────────┤
+        │ SwiftPM Multi-Module │ Template for creating │
+        │ iOS Project          │ an iOS app project    │
+        │                      │ backed by a SwiftPM   │
+        │                      │ multi-module          │
+        │                      │ workspace             │
+        └──────────────────────┴───────────────────────┘
+        """)
+    }
+
+    @Test("wraps CJK cells using terminal display width rather than character count")
+    func wrapsWideCharactersByDisplayWidth() {
+        let table = Table(
+            headers: ["名前", "説明"],
+            rows: [["日本語日本語", "短い説明"]],
+        )
+
+        let output = TableRenderer(maximumWidth: 19).render(table)
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+
+        #expect(lines.allSatisfy { $0.terminalDisplayWidth <= 19 })
+        #expect(output == """
+        ┌────────┬────────┐
+        │ 名前   │ 説明   │
+        ├────────┼────────┤
+        │ 日本語 │ 短い説 │
+        │ 日本語 │ 明     │
+        └────────┴────────┘
+        """)
+    }
+
     @Test("the Table result builder supports literal rows, conditional rows, and rows generated from a for-loop, producing headers and rows in declaration order")
     func buildsTableWithResultBuilder() {
         let includeLatin = true

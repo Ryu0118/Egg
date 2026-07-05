@@ -62,7 +62,7 @@ public struct Terminal: InteractionProviding {
 
     /// Writes a rendered table followed by a newline.
     public func writeTable(_ table: Table) {
-        output.write(tableRenderer.render(table) + "\n")
+        output.write(tableRenderer.render(table, maximumWidth: capabilities.width) + "\n")
     }
 
     /// Prompts until the user enters text that passes validation.

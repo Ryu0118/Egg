@@ -44,13 +44,14 @@ struct TerminalInteractiveTests {
         keys: [TerminalKey] = [],
         lines: [String] = [],
         isInteractive: Bool = true,
+        width: Int? = nil,
     ) -> (terminal: Terminal, output: CapturedOutput) {
         let output = CapturedOutput()
         let terminal = Terminal(
             input: ScriptedLineInput(lines),
             keyInput: ScriptedKeyInput(keys),
             output: output,
-            capabilities: TerminalCapabilities(isInteractive: isInteractive, supportsColor: false),
+            capabilities: TerminalCapabilities(isInteractive: isInteractive, supportsColor: false, width: width),
         )
         return (terminal, output)
     }
@@ -140,6 +141,25 @@ struct TerminalInteractiveTests {
 
         #expect(answer == "second")
         #expect(output.text.contains("1. first"))
+    }
+
+    @Test("writeTable wraps table rows to the detected terminal width")
+    func writeTableWrapsToTerminalWidth() {
+        let (terminal, output) = Self.makeTerminal(width: 24)
+
+        terminal.writeTable(Table(
+            headers: ["name", "description"],
+            rows: [["Project", "A project template"]],
+        ))
+
+        let lines = output.text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .dropLast()
+            .map(String.init)
+
+        #expect(lines.allSatisfy { $0.terminalDisplayWidth <= 24 })
+        #expect(output.text.contains("│ Project"))
+        #expect(output.text.contains("│ template"))
     }
 
     @Test("a choice prompt with a title and description renders both the title marker and indented description above the question")
