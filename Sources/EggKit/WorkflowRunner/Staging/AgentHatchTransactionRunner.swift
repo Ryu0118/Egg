@@ -161,7 +161,12 @@ package struct AgentHatchTransactionRunner {
         )
     }
 
-    /// Applies a previewed transaction to the real working directory.
+    /// Applies a previewed — or previously rolled-back — transaction to the
+    /// real working directory.
+    ///
+    /// A `rolledBack` transaction re-applies from its retained staging tree:
+    /// lifecycle scripts ran at preview time, so re-apply is a pure file copy,
+    /// and a fresh rollback bundle replaces the consumed one under the same id.
     ///
     /// Fails if the working directory drifted from the preview baseline unless
     /// `force` is set. Backs up pre-apply content before touching anything, but
@@ -172,16 +177,17 @@ package struct AgentHatchTransactionRunner {
     package func apply(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
         try Self.validateIdentifier(token, kind: "apply token")
         // The whole read-check-mutate sequence is one critical section: two
-        // concurrent applies of the same token both observing status ==
-        // .preview before either writes anything is a lost-update race
+        // concurrent applies of the same token both observing an applicable
+        // status before either writes anything is a lost-update race
         // (whichever finishes last wins, silently corrupting the other's
         // rollback bundle and working-directory writes). Locking per-token
         // means unrelated transactions never serialize against each other.
         return try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
             let metadata = try store.load(token: token)
-            guard metadata.status == .preview else {
-                throw Error.transactionNotPreview(token: token, status: metadata.status.rawValue)
+            guard metadata.status == .preview || metadata.status == .rolledBack else {
+                throw Error.transactionNotApplicable(token: token, status: metadata.status.rawValue)
             }
+            let isReapply = metadata.status == .rolledBack
 
             let reference = URL(filePath: metadata.referenceDirectory)
             let work = URL(filePath: metadata.workDirectory)
@@ -196,6 +202,12 @@ package struct AgentHatchTransactionRunner {
             if !conflicts.isEmpty, !force {
                 throw Error.conflictingWorkingDirectoryChanges(conflicts)
             }
+
+            // A consumed bundle from the previous apply would otherwise merge
+            // with the fresh backups under before/ and corrupt the new bundle.
+            // Safe unconditionally: for preview the directory normally doesn't
+            // exist, and a rolled-back bundle's restore already happened.
+            try fileManager.removeIfExists(rollbackRoot(for: metadata.applyToken))
 
             let pendingBundle = try prepareRollbackBundle(metadata: metadata, workRoot: work)
             do {
@@ -216,12 +228,19 @@ package struct AgentHatchTransactionRunner {
             try commitRollbackBundle(pendingBundle)
 
             let applied = try store.markApplied(token: token, rollbackId: pendingBundle.rollbackId)
+            var warnings = applied.warnings
+            if isReapply {
+                warnings.append(AgentTransactionWarning(
+                    code: "reapplied_after_rollback",
+                    message: "Transaction was re-applied after rollback. A fresh rollback bundle replaced the consumed one; the rollbackId is unchanged: \(pendingBundle.rollbackId).",
+                ))
+            }
             return AgentHatchApplyResult(
                 status: "applied",
                 applyToken: token,
                 rollbackId: pendingBundle.rollbackId,
                 appliedChanges: applied.changes.map(\.agentEntry),
-                warnings: applied.warnings,
+                warnings: warnings,
             )
         }
     }
@@ -738,7 +757,7 @@ package struct AgentHatchTransactionRunner {
 
 extension AgentHatchTransactionRunner {
     enum Error: LocalizedError, Equatable {
-        case transactionNotPreview(token: String, status: String)
+        case transactionNotApplicable(token: String, status: String)
         case conflictingWorkingDirectoryChanges([String])
         case notAGitRepository(path: String)
         case alreadyRolledBack(id: String)
@@ -750,8 +769,8 @@ extension AgentHatchTransactionRunner {
 
         var errorDescription: String? {
             switch self {
-            case let .transactionNotPreview(token, status):
-                "Transaction '\(token)' cannot be applied because its status is '\(status)'."
+            case let .transactionNotApplicable(token, status):
+                "Transaction '\(token)' cannot be applied because its status is '\(status)'. Only 'preview' and 'rolledBack' transactions can be applied; an 'applied' transaction must be rolled back first: egg hatch rollback \(token)."
             case let .conflictingWorkingDirectoryChanges(paths):
                 "Working directory changed since preview: \(paths.joined(separator: ", ")). Re-run preview or pass --force."
             case let .notAGitRepository(path):

@@ -120,6 +120,86 @@ struct AgentHatchLifecycleTests {
         #expect(metadata.rollbackId == "tx")
     }
 
+    @Test("Re-apply after rollback restores files, replaces the bundle, and warns")
+    func reapplyAfterRollbackRestoresFilesReplacesTheBundleAndWarns() async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        let runner = makeRunner(workingDirectory: root)
+
+        try writeTransaction(
+            token: "tx",
+            in: root,
+            status: .preview,
+            changes: [("hello.txt", "add")],
+            workFiles: ["hello.txt": "hello\n"],
+        )
+
+        let first = try await runner.apply(token: "tx")
+        #expect(first.status == "applied")
+        #expect(first.warnings.isEmpty)
+
+        _ = try await runner.rollback(id: "tx")
+        #expect(!fileManager.exists(root.appending(path: "hello.txt")))
+
+        // Plant a stale leftover in the consumed bundle: re-apply must replace
+        // the bundle wholesale, not merge fresh backups into it.
+        let staleBackup = root.appending(path: ".egg/rollback/tx/before/stale.txt")
+        try fileManager.writeText("stale\n", at: staleBackup)
+
+        let second = try await runner.apply(token: "tx")
+
+        #expect(second.status == "applied")
+        #expect(second.rollbackId == "tx")
+        #expect(second.warnings.contains { $0.code == "reapplied_after_rollback" })
+        #expect(try String(decoding: fileManager.readFile(at: root.appending(path: "hello.txt")), as: UTF8.self) == "hello\n")
+        #expect(!fileManager.exists(staleBackup))
+        #expect(try makeStore(workingDirectory: root).load(token: "tx").status == .applied)
+    }
+
+    @Test("A re-applied transaction can be rolled back again")
+    func aReappliedTransactionCanBeRolledBackAgain() async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        let runner = makeRunner(workingDirectory: root)
+
+        try writeTransaction(
+            token: "tx",
+            in: root,
+            status: .preview,
+            changes: [("hello.txt", "add")],
+            workFiles: ["hello.txt": "hello\n"],
+        )
+        _ = try await runner.apply(token: "tx")
+        _ = try await runner.rollback(id: "tx")
+        _ = try await runner.apply(token: "tx")
+
+        let result = try await runner.rollback(id: "tx")
+
+        #expect(result.status == "rolledBack")
+        #expect(!fileManager.exists(root.appending(path: "hello.txt")))
+        #expect(try makeStore(workingDirectory: root).load(token: "tx").status == .rolledBack)
+    }
+
+    @Test("Apply refuses an applied transaction and points at rollback")
+    func applyRefusesAnAppliedTransaction() async throws {
+        let root = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: root) }
+        let runner = makeRunner(workingDirectory: root)
+
+        try writeTransaction(
+            token: "tx",
+            in: root,
+            status: .preview,
+            changes: [("hello.txt", "add")],
+            workFiles: ["hello.txt": "hello\n"],
+        )
+        _ = try await runner.apply(token: "tx")
+
+        await #expect(throws: AgentHatchTransactionRunner.Error.transactionNotApplicable(token: "tx", status: "applied")) {
+            try await runner.apply(token: "tx")
+        }
+    }
+
     @Test("Rollback of an orphaned bundle succeeds and leaves no transaction shell behind")
     func rollbackOfAnOrphanedBundleLeavesNoTransactionShell() async throws {
         let root = try makeWorkspace()
