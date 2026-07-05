@@ -289,6 +289,16 @@ struct TemplateExpander {
         let transformedName = try await resolvingMacros(in: originalName, substituting: macros, with: outputs)
 
         if transformedName != originalName {
+            // A macro value substituted into a filename must remain a single path
+            // component. Without this guard a value like "../../etc" would let
+            // `appending(component:)` + `moveItem` write outside the template's
+            // output tree (path traversal). DirectoryNameValidationRule rejects
+            // empty, ".", "..", "/" and null bytes — exactly the escape vectors.
+            let nameRule = DirectoryNameValidationRule(error: "")
+            guard nameRule.validate(input: transformedName) else {
+                throw Error.invalidTransformedName(original: originalName, transformed: transformedName)
+            }
+
             let newPath = path.deletingLastPathComponent().appending(component: transformedName)
             try fileManager.moveItem(at: path, to: newPath)
         }
@@ -416,6 +426,7 @@ extension TemplateExpander {
     enum Error: LocalizedError, Equatable {
         case overwriteCancelled
         case existingFilesWouldBeOverwritten(files: [String])
+        case invalidTransformedName(original: String, transformed: String)
 
         var errorDescription: String? {
             switch self {
@@ -428,6 +439,13 @@ extension TemplateExpander {
                 }
                 message += "Use --override to overwrite existing files."
                 return message
+            case let .invalidTransformedName(original, transformed):
+                return """
+                Macro substitution in the name '\(original)' produced '\(transformed)', \
+                which is not a valid single path component. A macro value used in a \
+                file or directory name must not be empty, '.', '..', or contain '/' \
+                or null bytes.
+                """
             }
         }
     }

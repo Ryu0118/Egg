@@ -333,6 +333,30 @@ struct TemplateExpanderTests {
                 expectedError: .existingFilesWouldBeOverwritten(files: ["file.txt"]),
             ),
 
+            // Path traversal: a macro value containing "/" must not escape the tree
+            .failure(
+                "rejects filename macro value with path separators",
+                templateSetup: [
+                    .file(path: "___MODULE___.swift", content: "code"),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___MODULE___", description: "Module", value: .string("../../evil")),
+                ],
+                expectedError: .invalidTransformedName(original: "___MODULE___.swift", transformed: "../../evil.swift"),
+            ),
+
+            // Path traversal: a macro value resolving exactly to ".." must be rejected
+            .failure(
+                "rejects filename macro value resolving to dot-dot",
+                templateSetup: [
+                    .file(path: "___MODULE___", content: "code"),
+                ],
+                macros: [
+                    ResolvedMacro(name: "___MODULE___", description: "Module", value: .string("..")),
+                ],
+                expectedError: .invalidTransformedName(original: "___MODULE___", transformed: ".."),
+            ),
+
             // Error reports only leaf paths, not parent directories
             .failure(
                 "reports only leaf paths in conflict error",
