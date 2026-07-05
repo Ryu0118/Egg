@@ -7,6 +7,8 @@ AI agents.**
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)](https://developer.apple.com/macos/)
 
+**[Full API documentation →](https://ryu0118.github.io/Egg/documentation/eggkit/)**
+
 egg turns reusable templates into reviewed project changes. Define macros in
 `config.yml`, put `___MACRO_NAME___` placeholders in files or directories, then
 let a person or an agent preview, apply, and roll back the generated result.
