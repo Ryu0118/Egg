@@ -122,6 +122,7 @@ public struct MCPService: Sendable {
         includeDiff: Bool = false,
         disableSandbox: Bool = false,
         userConfirmedNoSandbox: Bool = false,
+        allowedWritePaths: [String] = [],
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -139,6 +140,7 @@ public struct MCPService: Sendable {
             exclude: exclude,
             includeDiff: includeDiff,
             sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
+            allowedWritePaths: allowedWritePaths,
         )
     }
 
@@ -156,6 +158,7 @@ public struct MCPService: Sendable {
         exclude: [String] = [],
         includeDiff: Bool = false,
         sandboxDisabled: Bool = false,
+        allowedWritePaths: [String] = [],
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -169,6 +172,7 @@ public struct MCPService: Sendable {
             exclude: exclude,
             includeDiff: includeDiff,
             sandboxDisabled: sandboxDisabled,
+            allowedWritePaths: allowedWritePaths,
         )
     }
 
@@ -400,6 +404,7 @@ public struct MCPService: Sendable {
         exclude: [String],
         includeDiff: Bool,
         sandboxDisabled: Bool,
+        allowedWritePaths: [String] = [],
     ) async throws -> AgentHatchPreviewResult {
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -411,6 +416,7 @@ public struct MCPService: Sendable {
             include: include,
             exclude: exclude,
             sandboxDisabled: sandboxDisabled,
+            allowedWritePaths: allowedWritePaths,
         )
 
         return try await runner.preview(includeDiff: includeDiff)
