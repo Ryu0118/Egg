@@ -38,12 +38,24 @@ The plugin includes the egg skills and MCP configuration.
 
 ## Codex
 
-The Codex plugin lives at `plugins/egg`.
+Add the marketplace, then install the plugin:
 
-For local development, `.agents/plugins/marketplace.json` exposes that plugin
-as a local marketplace entry. The Codex manifest is separate because Codex
-expects `plugins/egg/.codex-plugin/plugin.json`; the shared skills and MCP
-configuration still come from the Claude plugin bundle through symlinks.
+```sh
+codex plugin marketplace add Ryu0118/Egg
+codex plugin add egg@egg
+```
+
+To develop against a local clone, point the marketplace at the checkout:
+
+```sh
+git clone https://github.com/Ryu0118/Egg
+codex plugin marketplace add ./Egg
+codex plugin add egg@egg
+```
+
+Codex reads the manifest at `plugins/egg/.codex-plugin/plugin.json`. The shared
+skills and MCP configuration come from the same plugin bundle through symlinks,
+so Codex and Claude Code install the identical `egg` skills and tools.
 
 ## MCP
 

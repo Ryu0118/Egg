@@ -33,8 +33,20 @@ Install the plugin for your agent, then ask it to create or hatch templates.
 
 ### Codex
 
-This repository includes a Codex plugin at `plugins/egg` and a local marketplace
-entry at `.agents/plugins/marketplace.json` for development.
+Add the marketplace, then install the plugin:
+
+```sh
+codex plugin marketplace add Ryu0118/Egg
+codex plugin add egg@egg
+```
+
+To develop against a local clone instead, point the marketplace at the checkout:
+
+```sh
+git clone https://github.com/Ryu0118/Egg
+codex plugin marketplace add ./Egg
+codex plugin add egg@egg
+```
 
 The plugin provides:
 

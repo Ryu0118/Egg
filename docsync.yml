@@ -24,13 +24,14 @@ rules:
   - .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
   - .claude/plugins/egg/skills/egg-template/SKILL.md
   - plugins/egg/.codex-plugin/plugin.json
+  - .agents/plugins/marketplace.json
   - Sources/EggCLI/Commands/MCPCommand.swift
   - Sources/EggMCP/**/*.swift
   doc: README.md
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: 9502a19b4cbd8b44078a3a1280d37c8c1a0a0d319e4f1aa467caa7d228970480
+  checksum: b59e06de4b261b35d3aa873d42b54537e2dfdfe6f02bb95ffa44d66fc864cd4b
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -75,12 +76,13 @@ rules:
   - .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
   - .claude/plugins/egg/skills/egg-template/SKILL.md
   - plugins/egg/.codex-plugin/plugin.json
+  - .agents/plugins/marketplace.json
   - Sources/EggMCP/**/*.swift
   doc: Sources/EggKit/EggKit.docc/AgentSkillsAndPlugins.md
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 86e699836eae605efa8dbb7913d5e48e7a3a81ff14b357597b491fc373148df6
+  checksum: 991d20b8888f1516b06e95db217f306f37c2386c1850e0db054d34afc5724854
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
