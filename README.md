@@ -44,6 +44,7 @@ tool.
   - [Managing Templates (egg template)](#managing-templates-egg-template)
 - [Using egg with AI Agents](#using-egg-with-ai-agents)
   - [Claude Code Plugin](#claude-code-plugin)
+  - [Codex Plugin](#codex-plugin)
   - [Model Context Protocol (MCP)](#model-context-protocol-mcp)
   - [Skills for Codex and Other Agents](#skills-for-codex-and-other-agents)
 - [How Rollback Works](#how-rollback-works)
@@ -386,6 +387,23 @@ claude plugin install egg@egg
 
 Verify what a plugin bundle contains before installing it with
 `claude plugin validate`.
+
+### Codex Plugin
+
+This repo also includes a Codex plugin scaffold for local development and
+testing. The marketplace file lives at `.agents/plugins/marketplace.json` and
+points to `plugins/egg`.
+
+The Codex plugin keeps the Claude plugin as the source of truth for shared
+agent assets:
+
+- `plugins/egg/skills` symlinks to `.claude/plugins/egg/skills`
+- `plugins/egg/.mcp.json` symlinks to `.claude/plugins/egg/.mcp.json`
+
+Only the Codex manifest is separate, because Codex requires
+`plugins/egg/.codex-plugin/plugin.json`. When updating egg's agent guidance or
+MCP configuration, edit the files under `.claude/plugins/egg` and let the
+Codex plugin consume them through those symlinks.
 
 ### Model Context Protocol (MCP)
 

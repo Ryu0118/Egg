@@ -1,0 +1,35 @@
+{
+  "name": "egg",
+  "version": "0.2.0",
+  "description": "egg CLI usage guide, template authoring skills, and MCP integration for AI agents and humans.",
+  "author": {
+    "name": "Ryu0118"
+  },
+  "homepage": "https://github.com/Ryu0118/Egg",
+  "repository": "https://github.com/Ryu0118/Egg",
+  "license": "MIT",
+  "keywords": [
+    "scaffolding",
+    "templates",
+    "mcp",
+    "agent"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Egg",
+    "shortDescription": "Use egg templates and MCP tools from Codex.",
+    "longDescription": "Egg provides Codex with CLI usage guidance, template authoring skills, and the egg MCP server integration.",
+    "developerName": "Ryu0118",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Help me create an egg template.",
+      "Show me the egg CLI transaction flow.",
+      "Use the egg MCP tools for this project."
+    ]
+  }
+}
