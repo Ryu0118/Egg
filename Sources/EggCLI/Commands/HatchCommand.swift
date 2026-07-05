@@ -70,7 +70,7 @@ package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, Ha
     @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
     package var projectDirectory: String?
 
-    @Option(name: .long, help: "Directory to use as staging root (defaults to current directory). Use this when template outputs target a different directory.", completion: .directory)
+    @Option(name: .long, help: "Directory the staged changes are cloned from and applied back into, instead of the current directory. Use this when the template's hatch.output targets that other directory — generated files land there, not in the current directory.", completion: .directory)
     package var stagingRoot: String?
 
     @Option(name: .long, help: "Template picker style: 'list' for interactive selection, 'text' for text input.")

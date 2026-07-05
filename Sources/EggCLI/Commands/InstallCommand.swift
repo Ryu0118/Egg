@@ -72,6 +72,9 @@ package extension EggCommand.TemplateCommand {
                 guard let url else {
                     throw ValidationError("--json requires a source URL or path (interactive prompts need a TTY).")
                 }
+                guard [branch, tag, revision].compactMap(\.self).count <= 1 else {
+                    throw ValidationError("Only one of --branch, --tag, or --revision can be specified.")
+                }
                 let result = try await EggService(
                     fileManager: Self.fileManager,
                     projectDirectory: resolveProjectDirectory(),

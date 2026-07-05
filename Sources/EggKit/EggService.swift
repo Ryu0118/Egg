@@ -485,16 +485,26 @@ public struct EggService: Sendable {
 
     /// Parses source string to TemplateSource.
     private func parseTemplateSource(_ source: String, ref: String?) throws -> TemplateSource {
-        if source.hasPrefix("http://") || source.hasPrefix("https://") || source.contains("@") {
-            guard let gitURL = GitURLParser().parse(source) else {
-                throw EggServiceError.invalidGitURL(source)
-            }
-            // MCP uses ref as branch name (most common case)
-            let gitRef: GitRef? = ref.map { .branch($0) }
-            return .git(url: gitURL, ref: gitRef)
-        } else {
-            return .local(path: URL(filePath: source))
+        // GitURLParser knows every supported scheme (https, ssh, git, file,
+        // credentialed); anything it can't parse is a local filesystem path.
+        if let gitURL = GitURLParser().parse(source) {
+            return .git(url: gitURL, ref: ref.map(Self.gitRef(from:)))
         }
+        // Local sources copy the working tree as-is, so a ref cannot be
+        // honored — reject it loudly (matching the CLI validator) instead of
+        // silently installing HEAD when the caller believes they pinned one.
+        guard ref == nil else {
+            throw EggServiceError.refNotAllowedForLocalPath(source)
+        }
+        return .local(path: URL(filePath: source))
+    }
+
+    /// Maps the service's single `ref` string onto a GitRef: a 40-hex string
+    /// is a commit SHA; anything else works as `--branch`, which git accepts
+    /// for both branches and tags.
+    private static func gitRef(from ref: String) -> GitRef {
+        let isCommitSHA = ref.count == 40 && ref.allSatisfy(\.isHexDigit)
+        return isCommitSHA ? .revision(ref) : .branch(ref)
     }
 
     /// Parses include/exclude filters to TemplateFilter.
@@ -548,6 +558,7 @@ public struct EggService: Sendable {
 public enum EggServiceError: Error, LocalizedError, Sendable {
     case invalidLocation(String)
     case invalidGitURL(String)
+    case refNotAllowedForLocalPath(String)
     case sandboxPermissionRequired(paths: [String], templateName: String)
     case sandboxDisableRequiresConfirmation(templateName: String)
 
@@ -557,6 +568,8 @@ public enum EggServiceError: Error, LocalizedError, Sendable {
             "Invalid location '\(location)'. Must be 'global' or 'project'."
         case let .invalidGitURL(url):
             "Invalid Git URL: \(url)"
+        case let .refNotAllowedForLocalPath(source):
+            "A git ref cannot be used with the local path '\(source)': local sources copy the directory as-is. Use a git URL (e.g. file://\(source)) to install from a specific branch, tag, or commit."
         case let .sandboxPermissionRequired(paths, templateName):
             """
             ⚠️ SANDBOX EXTENDED WRITE ACCESS REQUIRED
