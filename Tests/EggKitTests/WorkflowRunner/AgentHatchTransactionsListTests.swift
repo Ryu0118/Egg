@@ -75,7 +75,7 @@ struct AgentHatchTransactionsListTests {
 
         #expect(result.status == "ok")
         #expect(result.transactions.map(\.token) == ["a-preview", "b-applied", "c-rolled"])
-        #expect(result.transactions.map(\.status) == ["preview", "applied", "rolledBack"])
+        #expect(result.transactions.map(\.status) == [.preview, .applied, .rolledBack])
         #expect(result.transactions.map(\.hasRollbackBundle) == [false, true, true])
         #expect(result.transactions.allSatisfy { $0.templateName == "t" })
         #expect(result.transactions.allSatisfy { $0.sizeBytes > 0 })
@@ -94,7 +94,7 @@ struct AgentHatchTransactionsListTests {
 
         #expect(result.transactions.map(\.token) == ["bad", "good"])
         let bad = result.transactions[0]
-        #expect(bad.status == "corrupt")
+        #expect(bad.status == .corrupt)
         #expect(bad.templateName == nil)
     }
 
@@ -108,7 +108,7 @@ struct AgentHatchTransactionsListTests {
 
         #expect(result.transactions.count == 1)
         let entry = try #require(result.transactions.first)
-        #expect(entry.status == "orphanedRollback")
+        #expect(entry.status == .orphanedRollback)
         #expect(entry.templateName == "orphan-template")
         #expect(entry.hasRollbackBundle)
     }

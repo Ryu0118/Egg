@@ -286,7 +286,7 @@ package struct AgentHatchTransactionRunner {
             if let metadata = try? store.load(token: token) {
                 summaries.append(AgentHatchTransactionSummary(
                     token: token,
-                    status: metadata.status.rawValue,
+                    status: AgentHatchTransactionStatus(rawValue: metadata.status.rawValue) ?? .corrupt,
                     templateName: metadata.templateName,
                     sizeBytes: sizeBytes,
                     hasRollbackBundle: hasBundle,
@@ -294,7 +294,7 @@ package struct AgentHatchTransactionRunner {
             } else {
                 summaries.append(AgentHatchTransactionSummary(
                     token: token,
-                    status: "corrupt",
+                    status: .corrupt,
                     templateName: nil,
                     sizeBytes: sizeBytes,
                     hasRollbackBundle: hasBundle,
@@ -312,7 +312,7 @@ package struct AgentHatchTransactionRunner {
                 .flatMap { try? JSONDecoder().decode(RollbackManifest.self, from: $0) }
             summaries.append(AgentHatchTransactionSummary(
                 token: id,
-                status: "orphanedRollback",
+                status: .orphanedRollback,
                 templateName: manifest?.templateName,
                 sizeBytes: directoryFootprint(of: bundleDir).byteCount,
                 hasRollbackBundle: true,
@@ -361,7 +361,7 @@ package struct AgentHatchTransactionRunner {
             var manifest = try JSONDecoder().decode(RollbackManifest.self, from: data)
             let beforeRoot = rollbackRoot.appending(path: "before")
 
-            guard manifest.status != "rolledBack" else {
+            guard manifest.status != .rolledBack else {
                 throw Error.alreadyRolledBack(id: rollbackId)
             }
 
@@ -410,7 +410,7 @@ package struct AgentHatchTransactionRunner {
                 }
             }
 
-            manifest.status = "rolledBack"
+            manifest.status = .rolledBack
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             // Atomic: a reader outside the lock (e.g. a status inspection)
@@ -448,6 +448,32 @@ package struct AgentHatchTransactionRunner {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// What a discard is aimed at, resolved before any authorization or
+    /// deletion happens.
+    private enum DiscardTarget {
+        case transaction(HatchTransactionMetadata)
+        /// metadata.json exists but cannot be decoded: whether an undoable
+        /// apply is at stake is unknowable.
+        case corruptTransaction
+        /// A rollback bundle with no transaction directory, left by a
+        /// pre-unification egg version. nil manifest means it too is corrupt.
+        case orphanedBundle(RollbackManifest?)
+        case missing
+    }
+
+    private func classifyDiscardTarget(token: String, bundleRoot: URL) -> DiscardTarget {
+        if store.metadataExists(token: token) {
+            guard let metadata = try? store.load(token: token) else { return .corruptTransaction }
+            return .transaction(metadata)
+        }
+        if fileManager.exists(bundleRoot.appending(path: "manifest.json")) {
+            let manifest = (try? fileManager.readFile(at: bundleRoot.appending(path: "manifest.json")))
+                .flatMap { try? JSONDecoder().decode(RollbackManifest.self, from: $0) }
+            return .orphanedBundle(manifest)
+        }
+        return .missing
+    }
+
     // Every deletion below unlinks the very lock files the caller is holding
     // (they live inside the deleted directories). TransactionLock's protocol
     // permits that only as the final act before release: each branch deletes
@@ -455,23 +481,8 @@ package struct AgentHatchTransactionRunner {
     private func discardLocked(token: String, bundleRoot: URL, force: Bool) throws -> AgentHatchApplyResult {
         let bundleExists = fileManager.exists(bundleRoot.appending(path: "manifest.json"))
 
-        if store.metadataExists(token: token) {
-            guard let metadata = try? store.load(token: token) else {
-                // Corrupt metadata: the status — and whether an undoable apply
-                // is at stake — is unknowable, so deleting needs explicit intent.
-                guard force else {
-                    throw Error.discardRequiresForce(token: token, status: "corrupt")
-                }
-                try store.discard(token: token)
-                try fileManager.removeIfExists(bundleRoot)
-                return AgentHatchApplyResult(
-                    status: "discarded",
-                    applyToken: token,
-                    rollbackId: bundleExists ? token : nil,
-                    appliedChanges: [],
-                    warnings: [],
-                )
-            }
+        switch classifyDiscardTarget(token: token, bundleRoot: bundleRoot) {
+        case let .transaction(metadata):
             guard metadata.status != .applied || force else {
                 throw Error.discardRequiresForce(token: token, status: metadata.status.rawValue)
             }
@@ -484,17 +495,27 @@ package struct AgentHatchTransactionRunner {
                 appliedChanges: metadata.changes.map(\.agentEntry),
                 warnings: metadata.warnings,
             )
-        }
 
-        if bundleExists {
-            // Orphaned bundle from a pre-unification discard. A nil manifest
-            // status means applied (legacy bundles), so it still guards an
-            // undoable apply and needs force.
-            let data = try fileManager.readFile(at: bundleRoot.appending(path: "manifest.json"))
-            let manifest = try? JSONDecoder().decode(RollbackManifest.self, from: data)
-            let manifestStatus = manifest?.status ?? "applied"
-            guard manifestStatus == "rolledBack" || force else {
-                throw Error.discardRequiresForce(token: token, status: manifest == nil ? "corrupt" : manifestStatus)
+        case .corruptTransaction:
+            guard force else {
+                throw Error.discardRequiresForce(token: token, status: "corrupt")
+            }
+            try store.discard(token: token)
+            try fileManager.removeIfExists(bundleRoot)
+            return AgentHatchApplyResult(
+                status: "discarded",
+                applyToken: token,
+                rollbackId: bundleExists ? token : nil,
+                appliedChanges: [],
+                warnings: [],
+            )
+
+        case let .orphanedBundle(manifest):
+            // A nil manifest status means applied (legacy bundles), so it
+            // still guards an undoable apply and needs force.
+            let manifestStatus = manifest?.status ?? .applied
+            guard manifestStatus == .rolledBack || force else {
+                throw Error.discardRequiresForce(token: token, status: manifest == nil ? "corrupt" : manifestStatus.rawValue)
             }
             try fileManager.removeIfExists(bundleRoot)
             // Drop the empty shell the outer lock's directory creation left.
@@ -506,10 +527,11 @@ package struct AgentHatchTransactionRunner {
                 appliedChanges: manifest.map { $0.changes.map(\.agentEntry) } ?? [],
                 warnings: [],
             )
-        }
 
-        try? fileManager.removeItem(at: store.directory(for: token))
-        throw Error.transactionNotFound(token: token)
+        case .missing:
+            try? fileManager.removeItem(at: store.directory(for: token))
+            throw Error.transactionNotFound(token: token)
+        }
     }
 
     /// Paths whose current content no longer matches what the apply left behind.
@@ -834,7 +856,7 @@ package struct AgentHatchTransactionRunner {
             applyToken: metadata.applyToken,
             templateName: metadata.templateName,
             workingDirectory: metadata.workingDirectory,
-            status: "applied",
+            status: .applied,
             changes: entries,
         )
         let encoder = JSONEncoder()
@@ -955,9 +977,10 @@ private struct RollbackManifest: Codable {
     let applyToken: String
     let templateName: String
     let workingDirectory: String
-    /// "applied" until rolled back, then "rolledBack". Legacy bundles without
-    /// the field decode as nil and are treated as applied.
-    var status: String?
+    /// `.applied` until rolled back, then `.rolledBack` — the same vocabulary
+    /// as the transaction metadata's status. Legacy bundles without the field
+    /// decode as nil and are treated as applied.
+    var status: HatchTransactionMetadata.Status?
     let changes: [RollbackChangeEntry]
 }
 

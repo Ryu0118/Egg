@@ -91,10 +91,22 @@ public struct AgentHatchTransactionsResult: Codable, Sendable, Equatable {
     }
 }
 
+/// Every state a listed transaction record can be in: the live state-machine
+/// statuses, plus the two states only the listing can surface.
+public enum AgentHatchTransactionStatus: String, Codable, Sendable, Equatable {
+    case preview
+    case applied
+    case rolledBack
+    /// metadata.json exists but cannot be decoded.
+    case corrupt
+    /// A rollback bundle whose transaction directory is gone — left by
+    /// pre-unification egg versions.
+    case orphanedRollback
+}
+
 public struct AgentHatchTransactionSummary: Codable, Sendable, Equatable {
     public let token: String
-    /// preview | applied | rolledBack | corrupt | orphanedRollback
-    public let status: String
+    public let status: AgentHatchTransactionStatus
     public let templateName: String?
     /// Disk footprint of the transaction directory plus its rollback bundle.
     public let sizeBytes: Int
@@ -102,7 +114,7 @@ public struct AgentHatchTransactionSummary: Codable, Sendable, Equatable {
 
     public init(
         token: String,
-        status: String,
+        status: AgentHatchTransactionStatus,
         templateName: String?,
         sizeBytes: Int,
         hasRollbackBundle: Bool,
