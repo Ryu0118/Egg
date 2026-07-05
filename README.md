@@ -155,11 +155,41 @@ egg template detail SwiftPackage
 
 ## Installation
 
-egg requires **macOS 26+** and **Swift 6.2**.
+```sh
+curl -fsSL https://raw.githubusercontent.com/Ryu0118/Egg/main/install.sh | bash
+```
+
+To update, run the same command. It skips the download if already up-to-date.
 
 ```sh
-git clone https://github.com/Ryu0118/egg.git
-cd egg
+# Install a specific version
+curl -fsSL https://raw.githubusercontent.com/Ryu0118/Egg/main/install.sh | VERSION=0.1.0 bash
+
+# Force reinstall
+curl -fsSL https://raw.githubusercontent.com/Ryu0118/Egg/main/install.sh | FORCE=1 bash
+```
+
+### Other methods
+
+#### Nest ([mtj0928/nest](https://github.com/mtj0928/nest))
+
+```sh
+nest install Ryu0118/Egg
+```
+
+#### Mise ([jdx/mise](https://github.com/jdx/mise))
+
+```sh
+mise use -g ubi:Ryu0118/Egg
+```
+
+#### Build from source
+
+Requires **macOS 26+** and **Swift 6.2**.
+
+```sh
+git clone https://github.com/Ryu0118/Egg.git
+cd Egg
 swift build -c release
 cp .build/release/egg /usr/local/bin/egg
 ```
@@ -169,9 +199,6 @@ Or run it directly:
 ```sh
 swift run egg -- --help
 ```
-
-Prebuilt universal binaries are attached to
-[GitHub Releases](https://github.com/Ryu0118/egg/releases).
 
 ## Documentation
 

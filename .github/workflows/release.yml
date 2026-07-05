@@ -1,39 +1,151 @@
-name: Upload Artifact Bundle to Release
+name: Publish Release
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
-  release:
-    runs-on: macos-26
-    permissions:
-      contents: write
+  preflight:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
+      - name: Validate version format
+        run: |
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "error: version must be in semver format (e.g. 0.2.0)" >&2
+            exit 1
+          fi
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Check tag does not already exist
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "error: tag $VERSION already exists" >&2
+            exit 1
+          fi
+        env:
+          VERSION: ${{ inputs.version }}
+
+  build-macos:
+    needs: preflight
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Bump Version.swift (build-time only)
+        run: |
+          sed -i '' "s/static let current = \".*\"/static let current = \"$VERSION\"/" \
+            Sources/EggCLI/Version.swift
+        env:
+          VERSION: ${{ inputs.version }}
+
       - name: Build Universal Binary
         run: swift build -c release --arch arm64 --arch x86_64
+
+      - name: Create Archive
+        run: |
+          cd .build/apple/Products/Release
+          tar -czvf "egg-${VERSION}-darwin-universal.tar.gz" egg
+          shasum -a 256 "egg-${VERSION}-darwin-universal.tar.gz" > "egg-${VERSION}-darwin-universal.tar.gz.sha256"
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Upload release archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: egg-darwin-universal
+          path: |
+            .build/apple/Products/Release/egg-${{ inputs.version }}-darwin-universal.tar.gz
+            .build/apple/Products/Release/egg-${{ inputs.version }}-darwin-universal.tar.gz.sha256
+          if-no-files-found: error
 
       - uses: giginet/github-action-artifactbundle@v2
         id: artifactbundle
         with:
           artifact_name: egg
 
-      - name: Upload Artifact Bundle to Release
-        # All GitHub context values are read as environment variables, never
-        # interpolated into the shell command text. github.event.release.body /
-        # tag_name are attacker-influenceable (a release body can be
-        # auto-generated from merged PR titles), so splicing them directly into
-        # `run:` would let ``$(...)``/backticks in a release body execute as
-        # shell in this contents:write, token-carrying job.
+      - name: Upload artifact bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: egg-artifactbundle
+          path: |
+            ${{ steps.artifactbundle.outputs.bundle_path }}
+          if-no-files-found: error
+
+  # Version bump + push only after the build succeeds.
+  commit-version:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.push.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Bump Version.swift
         run: |
-          gh release upload "${TAG_NAME}" "${BUNDLE_PATH}"
-          NEW_BODY="$(printf "%s\n\n**SHA256:** %s" "$BODY" "$SHA256")"
-          gh release edit "${TAG_NAME}" --notes "${NEW_BODY}"
+          sed -i "s/static let current = \".*\"/static let current = \"$VERSION\"/" \
+            Sources/EggCLI/Version.swift
         env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Commit and push
+        id: push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Sources/EggCLI/Version.swift
+          if git diff --cached --quiet; then
+            echo "Version.swift already at $VERSION, skipping commit"
+          else
+            git commit -m "chore: bump version to $VERSION"
+            git push origin main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ inputs.version }}
+
+  create-release:
+    needs: [commit-version, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.commit-version.outputs.commit_sha }}
+
+      - name: Download release archive
+        uses: actions/download-artifact@v6
+        with:
+          name: egg-darwin-universal
+          path: /tmp/release-assets
+
+      - name: Download artifact bundle
+        uses: actions/download-artifact@v6
+        with:
+          name: egg-artifactbundle
+          path: /tmp/release-assets
+
+      - name: Create GitHub Release with all assets
+        # GitHub context values are passed via env and never spliced into the
+        # shell command text. tag_name / version inputs are treated as data so
+        # ``$(...)``/backticks cannot execute in this contents:write job.
+        run: |
+          gh release create "$VERSION" \
+            /tmp/release-assets/* \
+            --target "$TARGET_SHA" \
+            --title "$VERSION" \
+            --generate-notes
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_SHA: ${{ needs.commit-version.outputs.commit_sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BODY: ${{ github.event.release.body }}
-          TAG_NAME: ${{ github.event.release.tag_name }}
-          BUNDLE_PATH: ${{ steps.artifactbundle.outputs.bundle_path }}
-          SHA256: ${{ steps.artifactbundle.outputs.bundle_sha256 }}
