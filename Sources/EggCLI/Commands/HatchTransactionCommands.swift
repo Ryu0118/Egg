@@ -168,11 +168,21 @@ struct HatchRollbackCommand: AsyncParsableCommand {
     }
 }
 
-/// `egg hatch discard <token>` — drop a previewed transaction without applying.
+/// `egg hatch discard <token>` — delete a transaction and its rollback bundle.
 struct HatchDiscardCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "discard",
-        abstract: "Discard a previewed hatch transaction without applying it; emits JSON.",
+        abstract: "Delete a hatch transaction and its rollback bundle; emits JSON.",
+        discussion: """
+        Deletes the transaction's records under .egg/ from any state, as a pair:
+        the staged transaction and its rollback bundle. Applied files in the
+        working directory are never touched.
+
+        What you lose depends on the status: a 'preview' loses only its staged
+        proposal, a 'rolledBack' transaction loses the option to re-apply, and
+        an 'applied' transaction loses its rollback bundle — the only way to
+        undo the apply — so that state requires --force.
+        """,
     )
 
     @OptionGroup var options: HatchTransactionOptions
@@ -180,9 +190,12 @@ struct HatchDiscardCommand: AsyncParsableCommand {
     @Argument(help: "The apply token to discard.")
     var token: String
 
+    @Flag(name: .long, help: "Discard an applied transaction, deleting its rollback bundle (the apply can no longer be undone).")
+    var force = false
+
     func run() async throws {
         let service = try await options.makeService()
-        let result = try await service.discardHatchTransaction(applyToken: token)
+        let result = try await service.discardHatchTransaction(applyToken: token, force: force)
         try CLIOutput.printJSON(result)
     }
 }

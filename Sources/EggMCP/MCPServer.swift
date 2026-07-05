@@ -184,7 +184,7 @@ public struct EggMCPServer {
         ),
         Tool(
             name: "egg_hatch_apply",
-            description: "Applies a transaction returned by egg_hatch_preview. This is the only MCP hatch tool that should write previewed changes to the project.",
+            description: "Applies a transaction returned by egg_hatch_preview. Also re-applies a rolled-back transaction with the same apply_token (a fresh rollback bundle replaces the consumed one). This is the only MCP hatch tool that should write previewed changes to the project.",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -206,7 +206,7 @@ public struct EggMCPServer {
         ),
         Tool(
             name: "egg_hatch_rollback",
-            description: "Rolls back an applied hatch transaction using the rollback_id returned by egg_hatch_apply.",
+            description: "Rolls back an applied hatch transaction using the rollback_id returned by egg_hatch_apply. After rollback the transaction can be re-applied with egg_hatch_apply using the same apply_token.",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -220,7 +220,7 @@ public struct EggMCPServer {
                     ]),
                     "force": .object([
                         "type": "boolean",
-                        "description": "Reserved for future conflict override behavior. Default: false.",
+                        "description": "Roll back even if files were hand-edited since the apply (overwrites those edits). Default: false.",
                     ]),
                 ]),
                 "required": .array(["rollback_id"]),
@@ -228,7 +228,7 @@ public struct EggMCPServer {
         ),
         Tool(
             name: "egg_hatch_discard",
-            description: "Discards a transaction returned by egg_hatch_preview without applying changes.",
+            description: "Deletes a hatch transaction and its rollback bundle from any state (preview, applied, rolledBack). Applied files in the working directory are never touched. For an 'applied' transaction, force: true is required because deleting removes the only way to undo the apply.",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -239,6 +239,10 @@ public struct EggMCPServer {
                     "working_directory": .object([
                         "type": "string",
                         "description": "Project directory that contains the .egg/transactions entry. Defaults to current working directory.",
+                    ]),
+                    "force": .object([
+                        "type": "boolean",
+                        "description": "Required when discarding an 'applied' transaction: deleting it removes the rollback bundle, so the apply can no longer be undone. Ask the user before setting this. Default: false.",
                     ]),
                 ]),
                 "required": .array(["apply_token"]),

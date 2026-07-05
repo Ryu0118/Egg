@@ -245,11 +245,25 @@ package struct AgentHatchTransactionRunner {
         }
     }
 
-    /// Drops a previewed transaction and its staging area without applying it.
-    package func discard(token: String) async throws -> AgentHatchApplyResult {
+    /// Deletes a transaction's records — `.egg/transactions/<token>/` and its
+    /// rollback bundle `.egg/rollback/<token>/` — as a pair, from any state.
+    ///
+    /// What is lost depends on the status: a `preview` loses only its staged
+    /// proposal, a `rolledBack` transaction loses the option to re-apply, and
+    /// an `applied` transaction loses its rollback bundle — the only way to
+    /// undo the apply — which is why that state requires `force`.
+    ///
+    /// Also accepts orphaned rollback bundles left by pre-unification egg
+    /// versions (whose discard removed only the transaction directory).
+    package func discard(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
         try Self.validateIdentifier(token, kind: "apply token")
+        let bundleRoot = rollbackRoot(for: token)
+        // Lock ordering: transactions (outer) before rollback (inner) — the
+        // same fixed order rollback() takes; see the comment there.
         return try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
-            try discardLocked(token: token)
+            try await TransactionLock.shared.withLock(directory: bundleRoot, fileManager: fileManager) {
+                try discardLocked(token: token, bundleRoot: bundleRoot, force: force)
+            }
         }
     }
 
@@ -373,16 +387,64 @@ package struct AgentHatchTransactionRunner {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
-    private func discardLocked(token: String) throws -> AgentHatchApplyResult {
-        let metadata = try store.load(token: token)
-        try store.discard(token: token)
-        return AgentHatchApplyResult(
-            status: "discarded",
-            applyToken: token,
-            rollbackId: nil,
-            appliedChanges: metadata.changes.map(\.agentEntry),
-            warnings: metadata.warnings,
-        )
+    private func discardLocked(token: String, bundleRoot: URL, force: Bool) throws -> AgentHatchApplyResult {
+        let bundleExists = fileManager.exists(bundleRoot.appending(path: "manifest.json"))
+
+        if store.metadataExists(token: token) {
+            guard let metadata = try? store.load(token: token) else {
+                // Corrupt metadata: the status — and whether an undoable apply
+                // is at stake — is unknowable, so deleting needs explicit intent.
+                guard force else {
+                    throw Error.discardRequiresForce(token: token, status: "corrupt")
+                }
+                try store.discard(token: token)
+                try fileManager.removeIfExists(bundleRoot)
+                return AgentHatchApplyResult(
+                    status: "discarded",
+                    applyToken: token,
+                    rollbackId: bundleExists ? token : nil,
+                    appliedChanges: [],
+                    warnings: [],
+                )
+            }
+            guard metadata.status != .applied || force else {
+                throw Error.discardRequiresForce(token: token, status: metadata.status.rawValue)
+            }
+            try store.discard(token: token)
+            try fileManager.removeIfExists(bundleRoot)
+            return AgentHatchApplyResult(
+                status: "discarded",
+                applyToken: token,
+                rollbackId: bundleExists ? token : nil,
+                appliedChanges: metadata.changes.map(\.agentEntry),
+                warnings: metadata.warnings,
+            )
+        }
+
+        if bundleExists {
+            // Orphaned bundle from a pre-unification discard. A nil manifest
+            // status means applied (legacy bundles), so it still guards an
+            // undoable apply and needs force.
+            let data = try fileManager.readFile(at: bundleRoot.appending(path: "manifest.json"))
+            let manifest = try? JSONDecoder().decode(RollbackManifest.self, from: data)
+            let manifestStatus = manifest?.status ?? "applied"
+            guard manifestStatus == "rolledBack" || force else {
+                throw Error.discardRequiresForce(token: token, status: manifest == nil ? "corrupt" : manifestStatus)
+            }
+            try fileManager.removeIfExists(bundleRoot)
+            // Drop the empty shell the outer lock's directory creation left.
+            try? fileManager.removeItem(at: store.directory(for: token))
+            return AgentHatchApplyResult(
+                status: "discarded",
+                applyToken: token,
+                rollbackId: token,
+                appliedChanges: manifest.map { $0.changes.map(\.agentEntry) } ?? [],
+                warnings: [],
+            )
+        }
+
+        try? fileManager.removeItem(at: store.directory(for: token))
+        throw Error.transactionNotFound(token: token)
     }
 
     /// Paths whose current content no longer matches what the apply left behind.
@@ -762,6 +824,8 @@ extension AgentHatchTransactionRunner {
         case notAGitRepository(path: String)
         case alreadyRolledBack(id: String)
         case conflictingRollbackChanges([String])
+        case discardRequiresForce(token: String, status: String)
+        case transactionNotFound(token: String)
         case missingRollbackBackup(id: String, paths: [String])
         case invalidIdentifier(kind: String, value: String)
         case writeConsentRequired(declaredPaths: [String])
@@ -779,6 +843,10 @@ extension AgentHatchTransactionRunner {
                 "Rollback '\(id)' was already rolled back. Re-apply with 'egg hatch apply \(id)' or delete the transaction with 'egg hatch discard \(id)'."
             case let .conflictingRollbackChanges(paths):
                 "Files changed since apply: \(paths.joined(separator: ", ")). Roll back anyway with --force (this overwrites those edits)."
+            case let .discardRequiresForce(token, status):
+                "Discarding transaction '\(token)' (status: '\(status)') deletes its rollback bundle — the only way to undo the apply. To undo the changes instead, run 'egg hatch rollback \(token)' first. To delete the records anyway and keep the applied files as they are, pass --force (CLI) or force: true (MCP)."
+            case let .transactionNotFound(token):
+                "No transaction or rollback bundle found for '\(token)'. Run 'egg hatch transactions' to list known transactions."
             case let .missingRollbackBackup(id, paths):
                 "Rollback bundle '\(id)' is missing its backup for: \(paths.joined(separator: ", ")). Refusing to restore only some files — nothing was changed."
             case let .invalidIdentifier(kind, value):

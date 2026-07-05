@@ -181,42 +181,17 @@ public struct MCPService: Sendable {
         workingDirectory: URL? = nil,
         force: Bool = false,
     ) async throws -> AgentHatchApplyResult {
-        let outputDir = workingDirectory ?? self.workingDirectory
-        let runner = AgentHatchTransactionRunner(
-            fileManager: fileManager,
-            workingDirectory: outputDir,
-            homeDirectory: homeDirectory,
-            templateDirectory: outputDir,
-            config: Config(
-                name: "transaction",
-                description: "Existing hatch transaction",
-                hatch: .init(output: "."),
-            ),
-            parsedMacros: [],
-        )
-
-        return try await runner.apply(token: applyToken, force: force)
+        try await makeTransactionRunner(workingDirectory: workingDirectory)
+            .apply(token: applyToken, force: force)
     }
 
     public func discardHatchTransaction(
         applyToken: String,
         workingDirectory: URL? = nil,
+        force: Bool = false,
     ) async throws -> AgentHatchApplyResult {
-        let outputDir = workingDirectory ?? self.workingDirectory
-        let runner = AgentHatchTransactionRunner(
-            fileManager: fileManager,
-            workingDirectory: outputDir,
-            homeDirectory: homeDirectory,
-            templateDirectory: outputDir,
-            config: Config(
-                name: "transaction",
-                description: "Existing hatch transaction",
-                hatch: .init(output: "."),
-            ),
-            parsedMacros: [],
-        )
-
-        return try await runner.discard(token: applyToken)
+        try await makeTransactionRunner(workingDirectory: workingDirectory)
+            .discard(token: applyToken, force: force)
     }
 
     public func rollbackHatchTransaction(
@@ -224,8 +199,16 @@ public struct MCPService: Sendable {
         workingDirectory: URL? = nil,
         force: Bool = false,
     ) async throws -> AgentHatchRollbackResult {
+        try await makeTransactionRunner(workingDirectory: workingDirectory)
+            .rollback(id: rollbackId, force: force)
+    }
+
+    /// Runner for operating on an already-persisted transaction: apply,
+    /// rollback, and discard only read state under `.egg/`, so they need no
+    /// template or macros — just the working directory.
+    private func makeTransactionRunner(workingDirectory: URL?) -> AgentHatchTransactionRunner {
         let outputDir = workingDirectory ?? self.workingDirectory
-        let runner = AgentHatchTransactionRunner(
+        return AgentHatchTransactionRunner(
             fileManager: fileManager,
             workingDirectory: outputDir,
             homeDirectory: homeDirectory,
@@ -237,8 +220,6 @@ public struct MCPService: Sendable {
             ),
             parsedMacros: [],
         )
-
-        return try await runner.rollback(id: rollbackId, force: force)
     }
 
     // MARK: - Create Template
