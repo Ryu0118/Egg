@@ -140,7 +140,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         }
 
         // Step 2: Collect macro values (may block on interactive user input)
-        let collectedMacroValues = collectMacroValues(macroInputs, config: config)
+        let collectedMacroValues = try collectMacroValues(macroInputs, config: config)
 
         // Ensure staging workspace is discarded on any failure
         do {
@@ -379,7 +379,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     ///   - inputs: The macro inputs (parsed from CLI or requiring interactive prompts)
     ///   - config: The template configuration containing macro definitions
     /// - Returns: Collected macro values ready for workspace-relative finalization
-    private func collectMacroValues(_ inputs: MacroInputs, config: Config) -> CollectedMacroValues {
+    private func collectMacroValues(_ inputs: MacroInputs, config: Config) throws -> CollectedMacroValues {
         switch inputs {
         case let .parsed(parsedMacros):
             // Pass through parsed macros for later validation
@@ -393,7 +393,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 homeDirectory: homeDirectory,
                 interaction: interaction,
             )
-            return .interactive(resolver.resolve())
+            return try .interactive(resolver.resolve())
         }
     }
 

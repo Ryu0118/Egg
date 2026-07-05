@@ -34,29 +34,29 @@ package struct MacroResolver {
     /// Resolves all macros defined in the config.
     ///
     /// - Returns: Array of resolved macros with concrete values
-    package func resolve() -> [ResolvedMacro] {
+    package func resolve() throws -> [ResolvedMacro] {
         guard let macros = config.macros else { return [] }
 
         var resolvedMacros: [ResolvedMacro] = []
 
         for macro in macros {
-            let resolvedMacro = promptForMacro(macro)
+            let resolvedMacro = try promptForMacro(macro)
             resolvedMacros.append(resolvedMacro)
         }
 
         return resolvedMacros
     }
 
-    private func promptForMacro(_ macro: Config.Macro) -> ResolvedMacro {
+    private func promptForMacro(_ macro: Config.Macro) throws -> ResolvedMacro {
         switch macro.type {
         case .string:
             promptForString(macro)
         case .boolean:
             promptForBoolean(macro)
         case .choice:
-            promptForChoice(macro)
+            try promptForChoice(macro)
         case .choices:
-            promptForChoices(macro)
+            try promptForChoices(macro)
         case .array:
             promptForArray(macro)
         case .path:
@@ -129,9 +129,9 @@ package struct MacroResolver {
         )
     }
 
-    private func promptForChoice(_ macro: Config.Macro) -> ResolvedMacro {
+    private func promptForChoice(_ macro: Config.Macro) throws -> ResolvedMacro {
         guard let choices = macro.choices, !choices.isEmpty else {
-            fatalError("Macro '\(macro.name)' is of type 'choice' but no choices are defined.")
+            throw Error.choiceTypeRequiresChoices(macro: macro.name)
         }
 
         let value = interaction.singleChoicePrompt(
@@ -147,9 +147,9 @@ package struct MacroResolver {
         )
     }
 
-    private func promptForChoices(_ macro: Config.Macro) -> ResolvedMacro {
+    private func promptForChoices(_ macro: Config.Macro) throws -> ResolvedMacro {
         guard let choices = macro.choices, !choices.isEmpty else {
-            fatalError("Macro '\(macro.name)' is of type 'choices' but no choices are defined.")
+            throw Error.choiceTypeRequiresChoices(macro: macro.name)
         }
 
         let values = interaction.multipleChoicePrompt(
@@ -259,5 +259,18 @@ package struct MacroResolver {
             description: macro.description,
             value: .path(absolutePath),
         )
+    }
+}
+
+extension MacroResolver {
+    enum Error: LocalizedError, Equatable {
+        case choiceTypeRequiresChoices(macro: String)
+
+        var errorDescription: String? {
+            switch self {
+            case let .choiceTypeRequiresChoices(macro):
+                "Macro '\(macro)' is of type 'choice' but no choices are defined in the configuration."
+            }
+        }
     }
 }

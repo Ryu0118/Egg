@@ -169,7 +169,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 homeDirectory: homeDirectory,
                 interaction: interaction,
             )
-            return resolver.resolve()
+            return try resolver.resolve()
         }
     }
 }
