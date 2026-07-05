@@ -135,6 +135,21 @@ The same flow is available through the built-in MCP server:
 egg mcp
 ```
 
+Every `egg template` subcommand also accepts `--json` to emit the same
+machine-readable result the MCP tools return, instead of the human-readable
+tables and status lines:
+
+```sh
+egg template list --json
+egg template detail SwiftPackage --json
+egg template create --name Widget --description "A widget" --location project --json
+```
+
+`--json` implies direct mode, so every value the command needs must be passed
+as a flag. And because agents pipe or close stdin, any command that would fall
+back to an interactive prompt without a TTY fails fast with the prompt's
+question and the flags to pass instead — it never hangs waiting for input.
+
 ## Template Basics
 
 Templates live in one of two places:

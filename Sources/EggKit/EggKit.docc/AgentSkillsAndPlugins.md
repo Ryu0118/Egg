@@ -76,3 +76,17 @@ Recommended agent flow:
 Macro keys over MCP use the exact names from `config.yml`, such as
 `___MODULE_NAME___`, not kebab-case CLI flags.
 
+## Structured CLI output
+
+An agent that drives the CLI rather than MCP gets the same structured results
+by passing `--json` to any `egg template` subcommand (`list`, `detail`,
+`create`, `delete`, `duplicate`, `move`, `validate`, `install`) — the flag
+prints the same Codable model the matching MCP tool returns, so there is no
+prose to parse. The hatch transaction commands (`preview`, `apply`, `rollback`,
+`discard`, `transactions`) already emit JSON by default.
+
+`--json` runs in direct mode, so every value must be supplied as a flag.
+Interactive prompts require a TTY: when stdin is piped or closed and a command
+would otherwise prompt, egg fails fast with the prompt's question and the flags
+to pass instead of hanging.
+
