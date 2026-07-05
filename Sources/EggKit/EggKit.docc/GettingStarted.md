@@ -167,6 +167,49 @@ can stamp generated files without asking you anything.
 That is the whole loop: **create → detail → hatch → inspect**. Everything else
 in egg is a refinement of these four moves.
 
+## Choosing your flow
+
+You just ran the simplest path. Before you go further it helps to see how egg's
+flows actually differ, because the common "humans use interactive, agents use
+transactions" shorthand hides the real picture. There are **two independent
+axes**, and you pick a point on each.
+
+**Axis 1 — how macro values are collected.**
+
+| | What happens | When |
+| --- | --- | --- |
+| Interactive | egg prompts you for each macro | You run `egg hatch` with no template name |
+| Resolved | egg reads values from flags you passed | You name the template: `egg hatch direct SwiftPackage --file-name Profile` |
+
+A human running `egg hatch direct <Template> --file-name X` is **not**
+interactive — the values are already resolved. Interactivity is just the UI egg
+falls back to when values are missing, not a "human mode."
+
+**Axis 2 — how changes reach disk.**
+
+| | What happens | How to get it |
+| --- | --- | --- |
+| Staged (transactional) | Changes are built in an isolated git-backed clone first, then committed on a separate step | Default for `hatch`; the explicit `preview` → `apply` flow |
+| Direct write | Changes are written to the working directory immediately, no undo | `egg hatch direct ... --no-staging` |
+
+The `preview` / `apply` / `rollback` / `discard` commands are just axis 2's
+staging split into named, JSON-emitting steps so a caller can inspect the change
+set before committing. They are not a different engine — same staging, different
+UI. See <doc:TransactionFlow>.
+
+**What this means for the two callers:**
+
+| Caller | Values | Changes | Notes |
+| --- | --- | --- | --- |
+| Human, quickest | Resolved via flags | Direct write (`--no-staging`) | What you did above; permanent, no rollback |
+| Human, careful | Interactive or resolved | Staged (default) | egg confirms before writing |
+| AI agent | Resolved (macro map) | Staged transaction | `preview` → inspect → `apply` → optional `rollback` |
+
+For agents the safe path is enforced, not just recommended: the MCP `egg_hatch`
+tool runs a **preview** unless the caller explicitly sets `apply_changes: true`.
+So an agent that forgets to preview still gets a no-write dry run, never a
+surprise edit to the working directory.
+
 ## Where to go next
 
 | You want to... | Read |

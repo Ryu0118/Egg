@@ -62,6 +62,8 @@ egg hatch                        # interactive: prompts for template and macros
 egg hatch direct MyTemplate ...  # applies inline, no preview/apply/token step
 ```
 
+Two things vary independently here, and conflating them is a common mistake: **how macro values are collected** (interactive prompts when a value is missing, vs. resolved from the flags you pass) and **how changes reach disk** (staged/transactional vs. direct write). `egg hatch direct <Template> --macro value ...` with every required flag supplied is *not* interactive — it runs unattended and just skips the preview/apply token step. Interactivity is only the fallback UI for missing values, not a "human mode."
+
 `egg hatch` with no subcommand drops straight into an interactive prompt (pick a template, answer for each macro). `egg hatch direct` accepts the same macro flags as `preview`/`apply` combined, plus:
 
 | Flag | Description |
