@@ -260,7 +260,7 @@ struct LifecycleStepRunnerTests {
                     ),
                     Config.LifecycleStep(
                         id: "conditional",
-                        if: "\"${{ pre_hatch.setup.outputs.ready }}\" === \"true\"",
+                        if: "${{ pre_hatch.setup.outputs.ready }} === true",
                         run: "echo \"executed=yes\"",
                     ),
                 ],
@@ -284,7 +284,7 @@ struct LifecycleStepRunnerTests {
                     ),
                     Config.LifecycleStep(
                         id: "build",
-                        if: "___DEBUG___ && \"${{ pre_hatch.setup.outputs.status }}\" === \"ready\"",
+                        if: "___DEBUG___ && ${{ pre_hatch.setup.outputs.status }} === \"ready\"",
                         run: "echo \"built=yes\"",
                     ),
                 ],

@@ -61,7 +61,13 @@ struct ConditionEvaluator {
 
     /// Replaces all `${{ phase.step-id.outputs.key }}` patterns with their values.
     ///
-    /// Step outputs are strings from stdout and are replaced directly without quoting.
+    /// Step outputs are untyped stdout text, so each value substitutes as a
+    /// JavaScript literal inferred from its spelling: `true`/`false`/`null`
+    /// and numbers stay raw, everything else becomes a quoted string. A raw
+    /// substitution of a string value would leave a bare identifier
+    /// (`release === "release"`) that throws a ReferenceError — while the
+    /// config validator models outputs as strings and accepts the condition,
+    /// so the unquoted rule made string comparisons impossible to write.
     ///
     /// Pattern components:
     /// - `phase`: pre_hatch or post_hatch
@@ -84,8 +90,7 @@ struct ConditionEvaluator {
             // Lookup value in storage
             let value = try await getOutputValue(phase: phase, stepId: stepId, key: key)
 
-            // Replace the entire pattern with the value directly (no quoting)
-            result.replaceSubrange(match.range, with: value)
+            result.replaceSubrange(match.range, with: MacroStringConverter.stepOutputToJavaScriptLiteral(value))
         }
 
         return result

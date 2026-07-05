@@ -44,9 +44,9 @@ extension ConfigValidator {
 
             for match in text.matches(of: Regexes.stepOutput) {
                 let content = String(match.1)
-                // Always treat as String (escape is needed)
-                let escapedContent = escapeStringForJS(content)
-                let replacement = "\"\(escapedContent)\""
+                // Model the output as a string literal — the runtime quotes
+                // string-valued outputs the same way, so validate and run agree.
+                let replacement = MacroStringConverter.escapeAndQuote(content)
 
                 let range = match.range
                 matches.append((range: range, replacement: replacement))
@@ -91,18 +91,14 @@ extension ConfigValidator {
 
             case .string, .path:
                 // String and path types: string literals
-                let defaultValue = macro.default?.stringValue ?? "test"
-                let escaped = escapeStringForJS(defaultValue)
-                return "\"\(escaped)\""
+                return MacroStringConverter.escapeAndQuote(macro.default?.stringValue ?? "test")
 
             case .choice:
                 // Choice type: string literal (use default value or first choice)
                 if let defaultValue = macro.default?.stringValue {
-                    let escaped = escapeStringForJS(defaultValue)
-                    return "\"\(escaped)\""
+                    return MacroStringConverter.escapeAndQuote(defaultValue)
                 } else if let choices = macro.choices, let firstChoice = choices.first {
-                    let escaped = escapeStringForJS(firstChoice)
-                    return "\"\(escaped)\""
+                    return MacroStringConverter.escapeAndQuote(firstChoice)
                 }
                 return "\"test\""
 
@@ -110,11 +106,11 @@ extension ConfigValidator {
                 // Choices type (multiple selection): array literal
                 if let defaultValue = macro.default {
                     // Convert to JS array format
-                    let arrayValues = defaultValue.arrayValue.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
+                    let arrayValues = defaultValue.arrayValue.map(MacroStringConverter.escapeAndQuote).joined(separator: ", ")
                     return "[\(arrayValues)]"
                 } else if let choices = macro.choices, !choices.isEmpty {
                     // Create array from choices
-                    let arrayValues = choices.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
+                    let arrayValues = choices.map(MacroStringConverter.escapeAndQuote).joined(separator: ", ")
                     return "[\(arrayValues)]"
                 }
                 return "[]"
@@ -123,20 +119,11 @@ extension ConfigValidator {
                 // Array type (free-form): array literal
                 if let defaultValue = macro.default {
                     // Convert to JS array format
-                    let arrayValues = defaultValue.arrayValue.map { "\"\(escapeStringForJS($0))\"" }.joined(separator: ", ")
+                    let arrayValues = defaultValue.arrayValue.map(MacroStringConverter.escapeAndQuote).joined(separator: ", ")
                     return "[\(arrayValues)]"
                 }
                 return "[]"
             }
-        }
-
-        private func escapeStringForJS(_ value: String) -> String {
-            value
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "\"", with: "\\\"")
-                .replacingOccurrences(of: "\n", with: "\\n")
-                .replacingOccurrences(of: "\r", with: "\\r")
-                .replacingOccurrences(of: "\t", with: "\\t")
         }
     }
 }

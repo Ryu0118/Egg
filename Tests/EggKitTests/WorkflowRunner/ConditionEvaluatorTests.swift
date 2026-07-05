@@ -175,10 +175,13 @@ struct ConditionEvaluatorTests {
                 expectation: .success(expectedResult: false),
             ),
 
-            // Step output evaluation (user quotes in condition)
+            // Step output evaluation. References are written bare — the
+            // evaluator infers the JS literal from the value's spelling
+            // (true/false/null and numbers stay raw, everything else is
+            // quoted), matching what the config validator accepts.
             TestCase(
                 description: "evaluates step output string comparison",
-                condition: "\"${{ pre_hatch.setup.outputs.status }}\" === \"success\"",
+                condition: "${{ pre_hatch.setup.outputs.status }} === \"success\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "success"]),
@@ -186,8 +189,35 @@ struct ConditionEvaluatorTests {
                 expectation: .success(expectedResult: true),
             ),
             TestCase(
+                description: "substitutes a boolean-spelled output as a raw JS boolean",
+                condition: "${{ pre_hatch.setup.outputs.enabled }} === true",
+                macros: [],
+                outputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["enabled": "true"]),
+                ],
+                expectation: .success(expectedResult: true),
+            ),
+            TestCase(
+                description: "substitutes a number-spelled output as a raw JS number",
+                condition: "${{ pre_hatch.setup.outputs.count }} > 3",
+                macros: [],
+                outputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["count": "5"]),
+                ],
+                expectation: .success(expectedResult: true),
+            ),
+            TestCase(
+                description: "quotes a string output containing spaces and quotes",
+                condition: "${{ pre_hatch.setup.outputs.msg }} === \"say \\\"hi\\\" now\"",
+                macros: [],
+                outputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["msg": "say \"hi\" now"]),
+                ],
+                expectation: .success(expectedResult: true),
+            ),
+            TestCase(
                 description: "evaluates step output with !== operator",
-                condition: "\"${{ pre_hatch.setup.outputs.status }}\" !== \"failed\"",
+                condition: "${{ pre_hatch.setup.outputs.status }} !== \"failed\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["status": "success"]),
@@ -196,7 +226,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "evaluates post_hatch output string",
-                condition: "\"${{ post_hatch.deploy.outputs.url }}\" === \"https://example.com\"",
+                condition: "${{ post_hatch.deploy.outputs.url }} === \"https://example.com\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .postHatch, stepId: "deploy", values: ["url": "https://example.com"]),
@@ -275,7 +305,7 @@ struct ConditionEvaluatorTests {
             // Mixed macro and output references
             TestCase(
                 description: "evaluates mixed macro and output - true result",
-                condition: "___DEBUG___ && \"${{ pre_hatch.setup.outputs.status }}\" === \"ready\"",
+                condition: "___DEBUG___ && ${{ pre_hatch.setup.outputs.status }} === \"ready\"",
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(true)),
                 ],
@@ -286,7 +316,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "evaluates mixed macro and output - false result",
-                condition: "___DEBUG___ && \"${{ pre_hatch.setup.outputs.status }}\" === \"failed\"",
+                condition: "___DEBUG___ && ${{ pre_hatch.setup.outputs.status }} === \"failed\"",
                 macros: [
                     ResolvedMacro(name: "___DEBUG___", description: "Debug", value: .boolean(true)),
                 ],
@@ -319,7 +349,7 @@ struct ConditionEvaluatorTests {
             // Error cases - undefined output reference
             TestCase(
                 description: "throws error for undefined output key",
-                condition: "\"${{ pre_hatch.setup.outputs.unknown }}\" === \"true\"",
+                condition: "${{ pre_hatch.setup.outputs.unknown }} === \"true\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
@@ -332,7 +362,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "throws error for undefined step ID",
-                condition: "\"${{ pre_hatch.unknown.outputs.version }}\" === \"1.0.0\"",
+                condition: "${{ pre_hatch.unknown.outputs.version }} === \"1.0.0\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
@@ -345,7 +375,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "throws error for undefined phase",
-                condition: "\"${{ invalid_phase.setup.outputs.version }}\" === \"1.0.0\"",
+                condition: "${{ invalid_phase.setup.outputs.version }} === \"1.0.0\"",
                 macros: [],
                 outputs: [],
                 expectation: .failure(expectedError: .undefinedOutputReference(
@@ -380,7 +410,7 @@ struct ConditionEvaluatorTests {
             // Edge cases
             TestCase(
                 description: "handles whitespace in output reference",
-                condition: "\"${{  pre_hatch.setup.outputs.version  }}\" === \"1.0.0\"",
+                condition: "${{  pre_hatch.setup.outputs.version  }} === \"1.0.0\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
@@ -389,7 +419,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "handles step ID with hyphens",
-                condition: "\"${{ pre_hatch.my-step-1.outputs.result }}\" === \"ok\"",
+                condition: "${{ pre_hatch.my-step-1.outputs.result }} === \"ok\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "my-step-1", values: ["result": "ok"]),
@@ -398,7 +428,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "handles output key with hyphens",
-                condition: "\"${{ pre_hatch.setup.outputs.src-dir }}\" === \"/tmp/src\"",
+                condition: "${{ pre_hatch.setup.outputs.src-dir }} === \"/tmp/src\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["src-dir": "/tmp/src"]),
@@ -407,7 +437,7 @@ struct ConditionEvaluatorTests {
             ),
             TestCase(
                 description: "handles output key with dots",
-                condition: "\"${{ pre_hatch.setup.outputs.app.name }}\" === \"MyApp\"",
+                condition: "${{ pre_hatch.setup.outputs.app.name }} === \"MyApp\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["app.name": "MyApp"]),
@@ -418,7 +448,7 @@ struct ConditionEvaluatorTests {
             // Cross-phase access
             TestCase(
                 description: "supports cross-phase output access",
-                condition: "\"${{ post_hatch.deploy.outputs.url }}\" === \"https://example.com\"",
+                condition: "${{ post_hatch.deploy.outputs.url }} === \"https://example.com\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
@@ -442,7 +472,7 @@ struct ConditionEvaluatorTests {
             // Multiple outputs
             TestCase(
                 description: "handles multiple output references",
-                condition: "\"${{ pre_hatch.setup.outputs.name }}\" === \"MyApp\" && \"${{ pre_hatch.setup.outputs.version }}\" === \"1.0.0\"",
+                condition: "${{ pre_hatch.setup.outputs.name }} === \"MyApp\" && ${{ pre_hatch.setup.outputs.version }} === \"1.0.0\"",
                 macros: [],
                 outputs: [
                     TestOutput(phase: .preHatch, stepId: "setup", values: ["name": "MyApp", "version": "1.0.0"]),

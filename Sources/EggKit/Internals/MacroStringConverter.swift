@@ -74,6 +74,24 @@ enum MacroStringConverter {
         }
     }
 
+    /// Converts a step-output string to a JavaScript literal.
+    ///
+    /// Step outputs are untyped text captured from a script's stdout, so the
+    /// JS type is inferred from the spelling: `true`/`false`/`null` and
+    /// number literals substitute as-is (keeping `${{ … }} === true`
+    /// comparisons working), anything else becomes a quoted, escaped string
+    /// literal — matching how the config validator models step outputs, so a
+    /// condition that validates also runs.
+    static func stepOutputToJavaScriptLiteral(_ value: String) -> String {
+        if value == "true" || value == "false" || value == "null" {
+            return value
+        }
+        if value.wholeMatch(of: /-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?/) != nil {
+            return value
+        }
+        return escapeAndQuote(value)
+    }
+
     /// Escapes and quotes a string for JavaScript evaluation.
     ///
     /// Escapes:

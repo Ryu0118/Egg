@@ -133,3 +133,22 @@ post_hatch:
 
 Use lifecycle hooks when generated files need package installation, code
 generation, formatting, or validation.
+
+### Conditions on step outputs
+
+An `if` expression can reference a prior step's output. Write the reference
+bare — egg substitutes it as a JavaScript literal inferred from the value's
+spelling (`true`/`false`/`null` and numbers stay raw, everything else becomes
+a quoted string), so string comparisons need no quoting around the reference:
+
+```yaml
+pre_hatch:
+  - id: probe
+    run: echo "kind=release"
+  - if: '${{ pre_hatch.probe.outputs.kind }} === "release"'
+    run: echo "release-only step"
+```
+
+Do not wrap the `${{ … }}` reference in quotes yourself — the substituted
+literal is already quoted when the value is a string, and the doubled quotes
+fail to parse.
