@@ -46,7 +46,7 @@ package struct Config: Codable, Equatable {
         self.postHatch = postHatch
     }
 
-    package enum CodingKeys: String, CodingKey {
+    package enum CodingKeys: String, CodingKey, CaseIterable {
         case name
         case description
         case version
@@ -68,7 +68,7 @@ package struct Config: Codable, Equatable {
             self.allowedPaths = allowedPaths
         }
 
-        package enum CodingKeys: String, CodingKey {
+        package enum CodingKeys: String, CodingKey, CaseIterable {
             case allowedPaths = "allowed_paths"
         }
     }
@@ -191,6 +191,15 @@ package struct Config: Codable, Equatable {
             self.validate = validate
             self.choices = choices
         }
+
+        package enum CodingKeys: String, CodingKey, CaseIterable {
+            case name
+            case description
+            case type
+            case `default`
+            case validate
+            case choices
+        }
     }
 
     /// Macro type
@@ -226,6 +235,12 @@ package struct Config: Codable, Equatable {
             self.if = `if`
             self.run = run
         }
+
+        package enum CodingKeys: String, CodingKey, CaseIterable {
+            case id
+            case `if`
+            case run
+        }
     }
 
     /// Template expansion configuration
@@ -242,6 +257,11 @@ package struct Config: Codable, Equatable {
         ) {
             self.output = output
             self.exclude = exclude
+        }
+
+        package enum CodingKeys: String, CodingKey, CaseIterable {
+            case output
+            case exclude
         }
     }
 
@@ -299,7 +319,7 @@ package struct Config: Codable, Equatable {
             self.paths = paths
         }
 
-        package enum CodingKeys: String, CodingKey {
+        package enum CodingKeys: String, CodingKey, CaseIterable {
             case `if`
             case paths
         }

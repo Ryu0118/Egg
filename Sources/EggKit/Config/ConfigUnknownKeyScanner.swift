@@ -8,16 +8,13 @@ import Yams
 /// the feature off with no signal. The scanner re-reads the raw YAML and
 /// reports every key that no part of the schema understands, so `template
 /// validate` can surface them as warnings.
+///
+/// The set of "known" keys at each level is derived from `Config`'s own
+/// `CodingKeys` (`CaseIterable`, so this can't drift from the actual
+/// `Decodable` implementation the way a hand-maintained key list would):
+/// add a field to `Config` and its `CodingKeys` case, and the scanner picks
+/// it up automatically with no change here.
 package struct ConfigUnknownKeyScanner {
-    private static let topLevelKeys: Set<String> = [
-        "name", "description", "version", "macros", "sandbox", "pre_hatch", "post_hatch", "hatch",
-    ]
-    private static let macroKeys: Set<String> = ["name", "description", "type", "default", "validate", "choices"]
-    private static let stepKeys: Set<String> = ["id", "if", "run"]
-    private static let hatchKeys: Set<String> = ["output", "exclude"]
-    private static let sandboxKeys: Set<String> = ["allowed_paths"]
-    private static let conditionalExcludeKeys: Set<String> = ["if", "paths"]
-
     package init() {}
 
     /// Warning strings for every unknown key in the YAML text, empty when
@@ -27,45 +24,54 @@ package struct ConfigUnknownKeyScanner {
         guard let root = (try? Yams.load(yaml: text)) as? [String: Any] else { return [] }
         var warnings: [String] = []
 
-        for key in root.keys.sorted() where !Self.topLevelKeys.contains(key) {
-            warnings.append("Unknown top-level key '\(key)' is ignored — egg only reads: \(Self.topLevelKeys.sorted().joined(separator: ", ")).")
-        }
+        reportUnknownKeys(in: root, knownKeys: Config.CodingKeys.self, context: "top-level", to: &warnings)
 
-        appendUnknownKeys(in: root["macros"], known: Self.macroKeys, context: "macros", to: &warnings)
-        appendUnknownKeys(in: root["pre_hatch"], known: Self.stepKeys, context: "pre_hatch", to: &warnings)
-        appendUnknownKeys(in: root["post_hatch"], known: Self.stepKeys, context: "post_hatch", to: &warnings)
+        appendUnknownKeysInEntries(root["macros"], knownKeys: Config.Macro.CodingKeys.self, context: "macros", to: &warnings)
+        appendUnknownKeysInEntries(root["pre_hatch"], knownKeys: Config.LifecycleStep.CodingKeys.self, context: "pre_hatch", to: &warnings)
+        appendUnknownKeysInEntries(root["post_hatch"], knownKeys: Config.LifecycleStep.CodingKeys.self, context: "post_hatch", to: &warnings)
 
         if let hatch = root["hatch"] as? [String: Any] {
-            for key in hatch.keys.sorted() where !Self.hatchKeys.contains(key) {
-                warnings.append("Unknown key '\(key)' in hatch is ignored — egg only reads: \(Self.hatchKeys.sorted().joined(separator: ", ")).")
-            }
+            reportUnknownKeys(in: hatch, knownKeys: Config.HatchConfig.CodingKeys.self, context: "hatch", to: &warnings)
             if let excludes = hatch["exclude"] as? [Any] {
                 for (index, rule) in excludes.enumerated() {
+                    // A plain-string exclude rule (Config.ExcludeRule.path) has no
+                    // keys to check; only the conditional-object form does.
                     guard let object = rule as? [String: Any] else { continue }
-                    for key in object.keys.sorted() where !Self.conditionalExcludeKeys.contains(key) {
-                        warnings.append("Unknown key '\(key)' in hatch.exclude[\(index)] is ignored — conditional rules only read: if, paths.")
-                    }
+                    reportUnknownKeys(in: object, knownKeys: Config.ConditionalExclude.CodingKeys.self, context: "hatch.exclude[\(index)]", to: &warnings)
                 }
             }
         }
 
         if let sandbox = root["sandbox"] as? [String: Any] {
-            for key in sandbox.keys.sorted() where !Self.sandboxKeys.contains(key) {
-                warnings.append("Unknown key '\(key)' in sandbox is ignored — egg only reads: allowed_paths.")
-            }
+            reportUnknownKeys(in: sandbox, knownKeys: Config.SandboxConfig.CodingKeys.self, context: "sandbox", to: &warnings)
         }
 
         return warnings
     }
 
-    private func appendUnknownKeys(in section: Any?, known: Set<String>, context: String, to warnings: inout [String]) {
+    private func appendUnknownKeysInEntries(
+        _ section: Any?,
+        knownKeys: (some CodingKey & CaseIterable).Type,
+        context: String,
+        to warnings: inout [String],
+    ) {
         guard let entries = section as? [Any] else { return }
         for (index, entry) in entries.enumerated() {
             guard let object = entry as? [String: Any] else { continue }
             let label = (object["name"] as? String).map { "\(context)[\(index)] ('\($0)')" } ?? "\(context)[\(index)]"
-            for key in object.keys.sorted() where !known.contains(key) {
-                warnings.append("Unknown key '\(key)' in \(label) is ignored — egg only reads: \(known.sorted().joined(separator: ", ")).")
-            }
+            reportUnknownKeys(in: object, knownKeys: knownKeys, context: label, to: &warnings)
+        }
+    }
+
+    private func reportUnknownKeys(
+        in object: [String: Any],
+        knownKeys: (some CodingKey & CaseIterable).Type,
+        context: String,
+        to warnings: inout [String],
+    ) {
+        let known = Set(knownKeys.allCases.map(\.stringValue))
+        for key in object.keys.sorted() where !known.contains(key) {
+            warnings.append("Unknown key '\(key)' in \(context) is ignored — egg only reads: \(known.sorted().joined(separator: ", ")).")
         }
     }
 }
