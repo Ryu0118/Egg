@@ -157,4 +157,34 @@ struct TransactionFlowTests {
         #expect(deleted.succeeded, Comment(rawValue: deleted.stderr))
         #expect(try json(deleted.stdout)["name"] as? String == "JsonTpl")
     }
+
+    @Test("install --json emits pure JSON, unpolluted by progress logs")
+    func installJSONEmitsPureJSON() async throws {
+        let runner = try await CLIRunner()
+        let root = try makeProjectWithTemplate()
+        defer { try? fileManager.removeItem(at: root) }
+
+        // A separate source directory holding two templates to install from.
+        let source = root.appending(path: "source")
+        for name in ["Alpha", "Beta"] {
+            let dir = source.appending(path: name)
+            try fileManager.createDirectory(at: dir.appending(path: "files"), withIntermediateDirectories: true)
+            try "name: \(name)\ndescription: d\nhatch:\n  output: .\n"
+                .write(to: dir.appending(path: "config.yml"), atomically: true, encoding: .utf8)
+            try "x\n".write(to: dir.appending(path: "files/x.txt"), atomically: true, encoding: .utf8)
+        }
+
+        // Direct mode logs "[info] ..." progress; --json must suppress all of
+        // it so stdout parses as a single JSON object.
+        let installed = try await runner.run(
+            "template", "install", source.path(percentEncoded: false),
+            "--exclude", "Beta", "--json",
+            workingDirectory: root,
+        )
+        #expect(installed.succeeded, Comment(rawValue: installed.stderr))
+        let object = try json(installed.stdout)
+        #expect(object["installed"] as? [String] == ["Alpha"])
+        let skipped = try #require(object["skipped"] as? [[String: Any]])
+        #expect(skipped.contains { $0["reason"] as? String == "excluded_by_filter" })
+    }
 }

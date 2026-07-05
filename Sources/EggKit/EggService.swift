@@ -380,6 +380,9 @@ public struct EggService: Sendable {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
+            // Direct mode logs progress lines; the service's callers put the
+            // encoded result on stdout, which must not be interleaved.
+            interaction: SilentInteraction(),
         )
 
         return try await runner.run()
