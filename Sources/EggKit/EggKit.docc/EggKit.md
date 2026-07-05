@@ -22,6 +22,7 @@ before changing a project.
 
 ### Getting Started
 
+- <doc:GettingStarted>
 - <doc:AgentSkillsAndPlugins>
 - <doc:TemplateConfig>
 - <doc:TransactionFlow>
