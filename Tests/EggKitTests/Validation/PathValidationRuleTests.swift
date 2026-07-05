@@ -11,6 +11,7 @@ struct PathValidationRuleTests {
         let rule = PathValidationRule(
             workingDirectory: Self.workingDirectory,
             homeDirectory: Self.homeDirectory,
+            allowsEmpty: testCase.allowsEmpty,
             error: "Invalid path",
         )
         let result = rule.validate(input: testCase.input)
@@ -20,6 +21,7 @@ struct PathValidationRuleTests {
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let input: String
+        var allowsEmpty: Bool = false
         let expected: Bool
 
         static let allCases: [TestCase] = [
@@ -60,6 +62,12 @@ struct PathValidationRuleTests {
                 description: "rejects empty input",
                 input: "",
                 expected: false,
+            ),
+            TestCase(
+                description: "accepts empty input when a default exists",
+                input: "",
+                allowsEmpty: true,
+                expected: true,
             ),
             TestCase(
                 description: "whitespace only resolves to working directory",

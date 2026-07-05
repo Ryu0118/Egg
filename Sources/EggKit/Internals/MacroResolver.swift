@@ -216,6 +216,7 @@ package struct MacroResolver {
         let pathValidationRule = PathValidationRule(
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
+            allowsEmpty: macro.default != nil,
             error: "Invalid path for \(macro.name)",
         )
 
