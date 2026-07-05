@@ -14,7 +14,7 @@ struct InstallHandler: ToolHandler {
         let ref = context.arguments.optionalString("ref")
         let projectDir = context.arguments.optionalString("project_directory").map { URL(filePath: $0) }
 
-        let service = MCPService(
+        let service = EggService(
             workingDirectory: nil,
             projectDirectory: projectDir,
         )

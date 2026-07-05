@@ -17,7 +17,7 @@ struct HatchPreviewHandler: ToolHandler {
         let userConfirmedNoSandbox = context.arguments.bool("user_confirmed_no_sandbox", default: false)
         let allowedWritePaths = context.arguments.optionalStringArray("allowed_write_paths") ?? []
 
-        let service = MCPService(
+        let service = EggService(
             workingDirectory: outputDir,
             projectDirectory: projectDir,
             additionalSearchPaths: searchPaths,

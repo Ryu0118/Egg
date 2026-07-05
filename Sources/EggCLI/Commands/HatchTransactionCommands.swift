@@ -16,8 +16,8 @@ struct HatchTransactionOptions: ParsableArguments {
 
     static let fileManager: any FileManagerProtocol = FileManager.default
 
-    func makeService() async throws -> MCPService {
-        try await MCPService(
+    func makeService() async throws -> EggService {
+        try await EggService(
             fileManager: Self.fileManager,
             workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
             projectDirectory: resolveProjectDirectory(),

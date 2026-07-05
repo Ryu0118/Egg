@@ -2,9 +2,13 @@ import FileManagerProtocol
 import Foundation
 import ProcessRunning
 
-/// Public API for MCP server integration.
-/// Provides high-level methods that MCP handlers can use without accessing internal types.
-public struct MCPService: Sendable {
+/// The application-service facade shared by every egg frontend.
+///
+/// Both the CLI (for its JSON-emitting paths: the hatch transaction flow and
+/// `--json` template commands) and the MCP server call these use-case methods
+/// and encode the same Codable result models — one source of truth for
+/// behavior and output shape, regardless of which frontend invoked it.
+public struct EggService: Sendable {
     private let fileManager: any FileManagerProtocol
     private let workingDirectory: URL
     private let homeDirectory: URL
@@ -77,7 +81,7 @@ public struct MCPService: Sendable {
 
         // If sandbox is being disabled, require explicit user confirmation
         if disableSandbox, !userConfirmedNoSandbox {
-            throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
+            throw EggServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
         }
 
         // Check if template has sandbox.allowed_paths - require interactive mode or explicit user permission
@@ -85,7 +89,7 @@ public struct MCPService: Sendable {
            let allowedPaths = template.config.sandbox?.allowedPaths,
            !allowedPaths.isEmpty
         {
-            throw MCPServiceError.sandboxPermissionRequired(
+            throw EggServiceError.sandboxPermissionRequired(
                 paths: allowedPaths,
                 templateName: templateName,
             )
@@ -416,7 +420,7 @@ public struct MCPService: Sendable {
         templateName: String,
     ) throws {
         if disableSandbox, !userConfirmedNoSandbox {
-            throw MCPServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
+            throw EggServiceError.sandboxDisableRequiresConfirmation(templateName: templateName)
         }
     }
 
@@ -458,7 +462,7 @@ public struct MCPService: Sendable {
             return .project(projectDirectory, workingDirectory: workingDirectory)
         default:
             if required {
-                throw MCPServiceError.invalidLocation(location)
+                throw EggServiceError.invalidLocation(location)
             }
             return nil
         }
@@ -472,7 +476,7 @@ public struct MCPService: Sendable {
         case "project":
             return .project
         default:
-            throw MCPServiceError.invalidLocation(location)
+            throw EggServiceError.invalidLocation(location)
         }
     }
 
@@ -480,7 +484,7 @@ public struct MCPService: Sendable {
     private func parseTemplateSource(_ source: String, ref: String?) throws -> TemplateSource {
         if source.hasPrefix("http://") || source.hasPrefix("https://") || source.contains("@") {
             guard let gitURL = GitURLParser().parse(source) else {
-                throw MCPServiceError.invalidGitURL(source)
+                throw EggServiceError.invalidGitURL(source)
             }
             // MCP uses ref as branch name (most common case)
             let gitRef: GitRef? = ref.map { .branch($0) }
@@ -538,7 +542,7 @@ public struct MCPService: Sendable {
 
 // MARK: - Errors
 
-public enum MCPServiceError: Error, LocalizedError, Sendable {
+public enum EggServiceError: Error, LocalizedError, Sendable {
     case invalidLocation(String)
     case invalidGitURL(String)
     case sandboxPermissionRequired(paths: [String], templateName: String)
@@ -588,3 +592,9 @@ extension Config.MacroDefaultValue {
         }
     }
 }
+
+@available(*, deprecated, renamed: "EggService", message: "MCPService was renamed: it is the shared application service for every frontend (CLI and MCP), not MCP-specific.")
+public typealias MCPService = EggService
+
+@available(*, deprecated, renamed: "EggServiceError")
+public typealias MCPServiceError = EggServiceError

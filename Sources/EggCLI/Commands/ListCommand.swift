@@ -16,6 +16,10 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
+
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable table.")
+        package var json = false
+
         package static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all available templates.",
@@ -26,6 +30,16 @@ package extension EggCommand.TemplateCommand {
         package init() {}
 
         package mutating func run() async throws {
+            if json {
+                let result = try await EggService(
+                    fileManager: Self.fileManager,
+                    projectDirectory: resolveProjectDirectory(),
+                    homeDirectory: CLIEnvironment.resolveHomeDirectory(),
+                    additionalSearchPaths: resolveTemplateSearchPaths(),
+                ).listTemplates(location: location?.rawValue)
+                try CLIOutput.printJSON(result)
+                return
+            }
             let workingDirectory = URL(filePath: Self.fileManager.currentDirectoryPath)
             let homeDirectory = CLIEnvironment.resolveHomeDirectory()
             try await ListRunner(

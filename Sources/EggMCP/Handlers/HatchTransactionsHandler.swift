@@ -8,7 +8,7 @@ struct HatchTransactionsHandler: ToolHandler {
         let includeSizes = context.arguments.bool("include_sizes", default: false)
         let workingDirectory = context.arguments.optionalString("working_directory").map { URL(filePath: $0) }
 
-        let service = MCPService(workingDirectory: workingDirectory)
+        let service = EggService(workingDirectory: workingDirectory)
         let result = service.listHatchTransactions(workingDirectory: workingDirectory, includeSizes: includeSizes)
 
         return try JSONEncoderHelper.encode(result)

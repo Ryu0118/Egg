@@ -9,7 +9,7 @@ struct ValidateHandler: ToolHandler {
     func execute(with context: ToolContext) async throws -> String {
         let templatePath = try context.arguments.requireString("template_path")
 
-        let service = MCPService()
+        let service = EggService()
 
         let result = try await service.validateTemplate(templatePath: templatePath)
 

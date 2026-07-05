@@ -12,7 +12,7 @@ struct CreateHandler: ToolHandler {
         let location = try context.arguments.requireString("location")
         let projectDir = context.arguments.optionalString("project_directory").map { URL(filePath: $0) }
 
-        let service = MCPService(
+        let service = EggService(
             workingDirectory: nil,
             projectDirectory: projectDir,
         )

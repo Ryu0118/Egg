@@ -13,7 +13,7 @@ struct DuplicateHandler: ToolHandler {
         let searchPaths = context.arguments.optionalStringArray("template_search_paths")?.map { URL(filePath: $0) } ?? []
         let projectDir = context.arguments.optionalString("project_directory").map { URL(filePath: $0) }
 
-        let service = MCPService(
+        let service = EggService(
             workingDirectory: nil,
             projectDirectory: projectDir,
             additionalSearchPaths: searchPaths,

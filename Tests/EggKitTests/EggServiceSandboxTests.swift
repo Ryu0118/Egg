@@ -11,7 +11,7 @@ struct MCPServiceSandboxTests {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }
 
-        let service = MCPService(
+        let service = EggService(
             fileManager: fileManager,
             workingDirectory: workspace.projectDirectory,
             projectDirectory: workspace.projectDirectory,
@@ -25,7 +25,7 @@ struct MCPServiceSandboxTests {
                 disableSandbox: true,
             )
             Issue.record("Expected sandbox disable confirmation error")
-        } catch let error as MCPServiceError {
+        } catch let error as EggServiceError {
             #expect(error.localizedDescription.contains("user_confirmed_no_sandbox: true"))
         }
     }
