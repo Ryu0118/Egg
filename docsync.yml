@@ -31,7 +31,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: b59e06de4b261b35d3aa873d42b54537e2dfdfe6f02bb95ffa44d66fc864cd4b
+  checksum: e0a7bb0da93e6542be8a3a4a81589017c2371ab6c29f023aebd879a4423b09fe
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -54,7 +54,7 @@ rules:
   doc: README.md
   message: DocC generation or GitHub Pages deployment changed - review README Documentation
     section and update the command or deployment description if needed.
-  checksum: e83a972c511ad32658722535b00ee0f0aa981746ba22ae6412e31f76ecc29dc2
+  checksum: dac1a7509f504d129faa1492954904a3d944806dd6dffca8f0576e62af132ed5
 - name: egg-cli-guide-sandbox
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -82,7 +82,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 991d20b8888f1516b06e95db217f306f37c2386c1850e0db054d34afc5724854
+  checksum: 8b3257b09c2dcaf792456be0532e7d38acad504380ac0d6451bc4eb1e54bf57c
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -118,4 +118,13 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 096aedd0ae6f52dc45521a3cfe57f5c55208abb0ae8568c6c82a5eed05a622a8
+  checksum: 9c30f5dfaa489bd595df33bfc762f4f1d521f7057dee1eb768d3568e32dc88e9
+excludes:
+- .build/**
+- '**/.build/**'
+- .swiftpm/**
+- '**/.swiftpm/**'
+- .nest/**
+- E2ETestsPackage/.build/**
+- .git/**
+- '**/.DS_Store'

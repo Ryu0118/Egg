@@ -202,14 +202,17 @@ swift run egg -- --help
 
 ## Documentation
 
-DocC documentation lives in `Sources/EggKit/EggKit.docc`.
+Full API documentation is published at
+[ryu0118.github.io/Egg/documentation/eggkit](https://ryu0118.github.io/Egg/documentation/eggkit/).
+
+The DocC catalog lives in `Sources/EggKit/EggKit.docc`.
 
 - `Agent Skills and Plugins` explains the Claude Code, Codex, skills, plugin,
   and MCP story.
 - `Template Config` documents `config.yml`, macro types, and Stencil files.
 - `Transaction Flow` documents preview/apply/rollback/discard.
 
-Generate the DocC archive with SwiftPM:
+Generate the archive locally with SwiftPM:
 
 ```sh
 make docs
