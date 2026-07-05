@@ -61,17 +61,22 @@ extension TemplateLocating {
         projectDirectory: URL,
         workingDirectory: URL,
     ) -> TemplateLocationType {
-        // Check custom paths first (highest priority)
+        // Check custom paths first (highest priority).
+        // Compare with isSamePath, not URL equality: the resolved template
+        // path can carry a trailing slash or the /private spelling, and an
+        // exact == miss silently fell through to the .project default —
+        // 'template delete --json' then reported location "project" for a
+        // template it deleted from ~/.eggs.
         for customPath in additionalSearchPaths {
             let customTemplatePath = template(templateName, type: .custom(customPath))
-            if templatePath == customTemplatePath {
+            if templatePath.isSamePath(to: customTemplatePath) {
                 return .custom(customPath)
             }
         }
 
         // Check global path
         let globalPath = template(templateName, type: .global)
-        if templatePath == globalPath {
+        if templatePath.isSamePath(to: globalPath) {
             return .global
         }
 
