@@ -43,6 +43,24 @@ Useful flags:
 | `--exclude <pathspec>` | Remove matching paths from the change set. |
 | `--output <dir>` | Override the template output directory. |
 
+### Sandbox threat model
+
+Lifecycle steps run under `sandbox-exec` with a write boundary: writes are
+allowed only inside the staging clone, on external paths the template declares
+in `sandbox.allowed_paths` *and* the caller consents to with `--allow-write`,
+and in the system temp directories (`/private/tmp`, `/private/var/folders`),
+which scripts need for scratch space and atomic writes. Writes to the real
+working directory and everywhere else are denied.
+
+The sandbox is deliberately **not** a confidentiality boundary: steps can read
+any file the user can read, and network access is allowed (dependency
+resolution and similar steps require it). Hatching a template therefore means
+running its code — only hatch templates from sources you trust. Script side
+effects that the sandbox permits (network traffic, temp-directory writes,
+consented external writes) happen at preview time and are not reverted by
+discard or rollback; the transaction machinery guarantees rollback only for
+the working-directory changes it applied.
+
 ## Apply
 
 `apply <applyToken>` writes the previewed changes to the real working directory
