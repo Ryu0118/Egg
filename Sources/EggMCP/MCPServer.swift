@@ -249,6 +249,20 @@ public struct EggMCPServer {
             ]),
         ),
         Tool(
+            name: "egg_hatch_transactions",
+            description: "Lists hatch transaction records under .egg/ with status (preview, applied, rolledBack, corrupt, orphanedRollback), template name, and disk usage — including orphaned rollback bundles left by older egg versions. Use egg_hatch_discard to delete entries that are no longer needed.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "working_directory": .object([
+                        "type": "string",
+                        "description": "Project directory that contains the .egg directory. Defaults to current working directory.",
+                    ]),
+                ]),
+                "required": .array([]),
+            ]),
+        ),
+        Tool(
             name: "egg_template_create",
             description: "Creates a new empty template with the specified name and description.",
             inputSchema: .object([

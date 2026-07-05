@@ -267,6 +267,67 @@ package struct AgentHatchTransactionRunner {
         }
     }
 
+    /// Lists every transaction record under `.egg/` — transactions and
+    /// orphaned rollback bundles alike — so leftovers are visible and can be
+    /// cleaned up with ``discard(token:force:)``.
+    ///
+    /// Read-only and lock-free: a torn read during a concurrent mutation can
+    /// at worst misreport one entry's status, which the next listing corrects.
+    /// Corrupt metadata surfaces as `"corrupt"` rather than failing the whole
+    /// listing; bundles without a transaction directory as `"orphanedRollback"`.
+    package func transactions() -> AgentHatchTransactionsResult {
+        var summaries: [AgentHatchTransactionSummary] = []
+
+        for token in store.tokens() {
+            let transactionDir = store.directory(for: token)
+            let bundleDir = rollbackRoot(for: token)
+            let hasBundle = fileManager.exists(bundleDir.appending(path: "manifest.json"))
+            let sizeBytes = directoryFootprint(of: transactionDir).byteCount
+                + (hasBundle ? directoryFootprint(of: bundleDir).byteCount : 0)
+            if let metadata = try? store.load(token: token) {
+                summaries.append(AgentHatchTransactionSummary(
+                    token: token,
+                    status: metadata.status.rawValue,
+                    templateName: metadata.templateName,
+                    sizeBytes: sizeBytes,
+                    hasRollbackBundle: hasBundle,
+                ))
+            } else {
+                summaries.append(AgentHatchTransactionSummary(
+                    token: token,
+                    status: "corrupt",
+                    templateName: nil,
+                    sizeBytes: sizeBytes,
+                    hasRollbackBundle: hasBundle,
+                ))
+            }
+        }
+
+        let knownTokens = Set(summaries.map(\.token))
+        let bundlesRoot = workingDirectory.appending(path: ".egg/rollback")
+        let bundleDirs = (try? fileManager.contentsOfDirectory(at: bundlesRoot, includingPropertiesForKeys: nil, options: [])) ?? []
+        for bundleDir in bundleDirs where fileManager.isDirectory(at: bundleDir) {
+            let id = bundleDir.lastPathComponent
+            guard !knownTokens.contains(id) else { continue }
+            let manifest = (try? fileManager.readFile(at: bundleDir.appending(path: "manifest.json")))
+                .flatMap { try? JSONDecoder().decode(RollbackManifest.self, from: $0) }
+            summaries.append(AgentHatchTransactionSummary(
+                token: id,
+                status: "orphanedRollback",
+                templateName: manifest?.templateName,
+                sizeBytes: directoryFootprint(of: bundleDir).byteCount,
+                hasRollbackBundle: true,
+            ))
+        }
+
+        return AgentHatchTransactionsResult(
+            status: "ok",
+            workingDirectory: workingDirectory.path(percentEncoded: false),
+            // Tokens start with an ISO timestamp, so this sorts chronologically.
+            transactions: summaries.sorted { $0.token < $1.token },
+        )
+    }
+
     /// Restores files captured in a rollback bundle from a prior ``apply(token:force:)``,
     /// then marks the transaction `rolledBack` in both the bundle manifest and
     /// the transaction metadata — re-enabling ``apply(token:force:)`` for the
@@ -654,21 +715,7 @@ package struct AgentHatchTransactionRunner {
     /// warning names the limit that fired and how to narrow the snapshot, rather
     /// than silently proceeding.
     private func snapshotSizeWarnings(for workspace: URL) -> [AgentTransactionWarning] {
-        var fileCount = 0
-        var byteCount = 0
-        if let enumerator = fileManager.enumerator(
-            at: workspace,
-            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
-            options: [],
-            errorHandler: nil,
-        ) {
-            while let item = enumerator.nextObject() as? URL {
-                let values = try? item.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
-                guard values?.isRegularFile == true else { continue }
-                fileCount += 1
-                byteCount += values?.fileSize ?? 0
-            }
-        }
+        let (fileCount, byteCount) = directoryFootprint(of: workspace)
 
         guard fileCount > Self.snapshotFileLimit || byteCount > Self.snapshotByteLimit else {
             return []
@@ -680,6 +727,25 @@ package struct AgentHatchTransactionRunner {
                 message: "Staging snapshot is large (\(fileCount) files, \(megabytes) MB). This usually means .gitignore is missing entries. Add them, or narrow the snapshot with --exclude.",
             ),
         ]
+    }
+
+    private func directoryFootprint(of directory: URL) -> (fileCount: Int, byteCount: Int) {
+        var fileCount = 0
+        var byteCount = 0
+        if let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+            options: [],
+            errorHandler: nil,
+        ) {
+            while let item = enumerator.nextObject() as? URL {
+                let values = try? item.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+                guard values?.isRegularFile == true else { continue }
+                fileCount += 1
+                byteCount += values?.fileSize ?? 0
+            }
+        }
+        return (fileCount, byteCount)
     }
 
     private func makeAgentChanges(_ summary: ChangeSummary) -> [AgentChangeEntry] {

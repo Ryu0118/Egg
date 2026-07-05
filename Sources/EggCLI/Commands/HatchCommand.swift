@@ -20,8 +20,9 @@ package struct HatchCommand: AsyncParsableCommand {
         Agent-first transaction flow (emits JSON):
           egg hatch preview <Template> [--macro value ...]   # propose changes + apply token
           egg hatch apply <token>                            # commit changes, record rollback
-          egg hatch rollback <id>                            # undo a prior apply
-          egg hatch discard <token>                          # drop a preview
+          egg hatch rollback <id>                            # undo a prior apply (re-apply with the same token)
+          egg hatch discard <token> [--force]                # delete a transaction and its rollback bundle
+          egg hatch transactions                             # list transaction records and their status
 
         Human / inline flow:
           egg hatch                         # interactive: prompts for template and macros
@@ -33,6 +34,7 @@ package struct HatchCommand: AsyncParsableCommand {
             HatchApplyCommand.self,
             HatchRollbackCommand.self,
             HatchDiscardCommand.self,
+            HatchTransactionsCommand.self,
         ],
         defaultSubcommand: HatchDirectCommand.self,
     )

@@ -75,6 +75,46 @@ public struct AgentHatchRollbackResult: Codable, Sendable, Equatable {
     }
 }
 
+public struct AgentHatchTransactionsResult: Codable, Sendable, Equatable {
+    public let status: String
+    public let workingDirectory: String
+    public let transactions: [AgentHatchTransactionSummary]
+
+    public init(
+        status: String,
+        workingDirectory: String,
+        transactions: [AgentHatchTransactionSummary],
+    ) {
+        self.status = status
+        self.workingDirectory = workingDirectory
+        self.transactions = transactions
+    }
+}
+
+public struct AgentHatchTransactionSummary: Codable, Sendable, Equatable {
+    public let token: String
+    /// preview | applied | rolledBack | corrupt | orphanedRollback
+    public let status: String
+    public let templateName: String?
+    /// Disk footprint of the transaction directory plus its rollback bundle.
+    public let sizeBytes: Int
+    public let hasRollbackBundle: Bool
+
+    public init(
+        token: String,
+        status: String,
+        templateName: String?,
+        sizeBytes: Int,
+        hasRollbackBundle: Bool,
+    ) {
+        self.token = token
+        self.status = status
+        self.templateName = templateName
+        self.sizeBytes = sizeBytes
+        self.hasRollbackBundle = hasRollbackBundle
+    }
+}
+
 public struct AgentChangeEntry: Codable, Sendable, Equatable {
     public let path: String
     public let kind: String

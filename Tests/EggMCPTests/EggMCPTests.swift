@@ -7,4 +7,12 @@ struct EggMCPTests {
     func eggMCPModuleIsImportable() {
         #expect(Bool(true))
     }
+
+    @Test("Every declared tool has a registered handler, and vice versa")
+    func everyDeclaredToolHasARegisteredHandler() async {
+        let declared = Set(EggMCPServer.tools.map(\.name))
+        let registered = await Set(ToolHandlerRegistry.shared.registeredToolNames)
+        #expect(declared == registered)
+        #expect(declared.contains("egg_hatch_transactions"))
+    }
 }

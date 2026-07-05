@@ -203,6 +203,12 @@ public struct MCPService: Sendable {
             .rollback(id: rollbackId, force: force)
     }
 
+    public func listHatchTransactions(
+        workingDirectory: URL? = nil,
+    ) -> AgentHatchTransactionsResult {
+        makeTransactionRunner(workingDirectory: workingDirectory).transactions()
+    }
+
     /// Runner for operating on an already-persisted transaction: apply,
     /// rollback, and discard only read state under `.egg/`, so they need no
     /// template or macros — just the working directory.

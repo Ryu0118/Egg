@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: a90ed3cfb2f7bfa5233532b5847cf5da25a4c6858899e329473f4a15a75c5261
+  checksum: c1c1f2a62ce3d385a1425863356f0cb18163fb8129a61be993daae926b03c359
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -31,7 +31,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: 7e2a29f63edd42a0d98a506f598a721d5c67ba867aec10938a4a89e53edf1f92
+  checksum: b864dd53780ebf4ef05bc7139c4c041d9ac30d9d70b08c69801fc2571fbd6313
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -68,7 +68,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 654ce202f43384b16832318ff4689327a80247d4c94d076b96fae861a14b0dcd
+  checksum: 711a18790958c3849a24efe96d68982f52391654240eba1975b659da6994fa63
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -82,7 +82,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 3a78997df0be095b55adfdd3785f9649574b56f8f5a44af011d106a153f6a714
+  checksum: b0cedb946cd8597aba503920aaeaf443af1519a1a0999b6ee52765cdcf913562
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -107,7 +107,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 91a01b93c6fe3b5bbb39ffbea108f6efa1c571fce341e1ee797ce572ebddd7cd
+  checksum: 92f31fd6960123c1bef7428f6fca450877777e9e7ed8aad0e9d5edf39f6acedf
 - name: agents-project
   sources:
   - Package.swift

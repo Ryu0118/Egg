@@ -168,6 +168,27 @@ struct HatchRollbackCommand: AsyncParsableCommand {
     }
 }
 
+/// `egg hatch transactions` — list every transaction record under `.egg/`.
+struct HatchTransactionsCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "transactions",
+        abstract: "List hatch transactions and their status; emits JSON.",
+        discussion: """
+        Lists every record under .egg/transactions and .egg/rollback with its
+        status (preview, applied, rolledBack, corrupt, or orphanedRollback),
+        template name, and disk footprint. Use 'egg hatch discard <token>' to
+        delete entries you no longer need.
+        """,
+    )
+
+    @OptionGroup var options: HatchTransactionOptions
+
+    func run() async throws {
+        let service = try await options.makeService()
+        try CLIOutput.printJSON(service.listHatchTransactions())
+    }
+}
+
 /// `egg hatch discard <token>` — delete a transaction and its rollback bundle.
 struct HatchDiscardCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
