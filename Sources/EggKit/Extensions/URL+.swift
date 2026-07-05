@@ -17,14 +17,24 @@ package extension URL {
     var normalizedPath: String {
         // Use resolvingSymlinksInPath() to get the canonical path.
         // This resolves symlinks AND normalizes case on case-insensitive filesystems (macOS APFS).
-        let path = resolvingSymlinksInPath().path(percentEncoded: false)
+        var path = resolvingSymlinksInPath().path(percentEncoded: false)
+
+        // resolvingSymlinksInPath() only canonicalizes components that exist
+        // on disk: an existing path spelled /private/var/… comes back as
+        // /var/…, but a not-yet-created path (e.g. a hatch output directory)
+        // keeps its /private prefix. Strip it for the well-known /private
+        // symlink roots so both spellings of the same location compare equal.
+        for root in ["/private/var", "/private/tmp", "/private/etc"] where path == root || path.hasPrefix(root + "/") {
+            path.removeFirst("/private".count)
+            break
+        }
+
         guard path != "/" else { return path }
 
-        var result = path
-        while result.hasSuffix("/"), result.count > 1 {
-            result.removeLast()
+        while path.hasSuffix("/"), path.count > 1 {
+            path.removeLast()
         }
-        return result
+        return path
     }
 
     /// Checks if this URL points to the same path as another URL.

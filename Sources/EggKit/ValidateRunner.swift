@@ -33,7 +33,7 @@ package struct ValidateRunner {
         config: Config,
         templatePath: URL,
     ) async -> ValidateResult {
-        let warnings = unknownKeyWarnings(templatePath: templatePath)
+        let warnings = warnings(config: config, templatePath: templatePath)
         do {
             try await validator.validate(config)
             return ValidateResult(
@@ -55,9 +55,16 @@ package struct ValidateRunner {
         }
     }
 
-    /// Keys the decoder silently ignored — a typo'd section means a feature
-    /// is off with no signal, so validate surfaces it even though decoding
-    /// succeeded.
+    /// Problems that don't make the config invalid but do silently disable
+    /// something: keys the decoder ignored (a typo'd section switches a
+    /// feature off with no signal) and macros whose CLI flag a hatch
+    /// subcommand's built-in flag shadows (the macro can never be passed on
+    /// that command line).
+    private func warnings(config: Config, templatePath: URL) -> [String] {
+        unknownKeyWarnings(templatePath: templatePath)
+            + HatchReservedFlags.collisionWarnings(for: config.macros ?? [])
+    }
+
     private func unknownKeyWarnings(templatePath: URL) -> [String] {
         let configURL = templatePath.appending(path: "config.yml")
         guard let data = try? fileManager.readFile(at: configURL),
@@ -77,7 +84,7 @@ package struct ValidateRunner {
         config: Config,
         templatePath: URL,
     ) async throws {
-        for warning in unknownKeyWarnings(templatePath: templatePath) {
+        for warning in warnings(config: config, templatePath: templatePath) {
             interaction.writeWarning(StyledText(warning))
         }
         do {

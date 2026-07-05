@@ -65,6 +65,13 @@ hatch:
 Macro names automatically become kebab-case CLI flags. For example,
 `___MODULE_NAME___` becomes `--module-name`.
 
+Avoid macro names whose flag collides with a built-in flag of `egg hatch
+preview` or `egg hatch direct` (for example `___OUTPUT___` → `--output`,
+which `preview` claims for itself): the built-in flag always wins, so the
+macro can never be provided on that command line. `egg template validate`
+warns about every such collision, including the `--no-<flag>` false form of
+boolean macros.
+
 ## Template Files
 
 egg supports two template engines.

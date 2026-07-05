@@ -52,6 +52,32 @@ struct URLRelativePathTests {
 
         #expect(result.path(percentEncoded: false) == "/Users/user/Projects")
     }
+
+    /// resolvingSymlinksInPath() only canonicalizes path components that exist,
+    /// so before the /private stripping in normalizedPath, a not-yet-created
+    /// child spelled /private/var/…/Out failed isUnder against its own parent
+    /// spelled /var/… — which made hatch reject every staging output directory
+    /// as a path escape.
+    @Test("a nonexistent /private/var path is under its existing /var parent")
+    func nonexistentPrivateVarChildIsUnderVarParent() throws {
+        let parent = FileManager.default.temporaryDirectory
+            .appending(path: "normalized-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: parent) }
+
+        let privateSpelledChild = URL(filePath: "/private" + parent.path(percentEncoded: false))
+            .appending(path: "does-not-exist-yet")
+
+        #expect(privateSpelledChild.isUnder(parent))
+    }
+
+    @Test("both spellings of the same /private symlink root normalize identically")
+    func privatePrefixNormalizesForNonexistentPaths() {
+        #expect(
+            URL(filePath: "/private/tmp/nonexistent-abc/x").normalizedPath
+                == URL(filePath: "/tmp/nonexistent-abc/x").normalizedPath,
+        )
+    }
 }
 
 extension URLRelativePathTests {

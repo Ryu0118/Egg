@@ -75,6 +75,13 @@ let package = Package(
             ],
         ),
         .testTarget(
+            name: "EggCLITests",
+            dependencies: [
+                "EggCLI",
+                "EggKit",
+            ],
+        ),
+        .testTarget(
             name: "EggMCPTests",
             dependencies: [
                 "EggMCP",

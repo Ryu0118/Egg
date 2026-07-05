@@ -69,7 +69,7 @@ egg scaffolds a ready-to-edit template for you:
 ```
 
 The generated `config.yml` already defines two macros, `___FILE_NAME___` and
-`___OUTPUT___`, with commented-out examples of hooks you can enable later:
+`___OUTPUT_DIR___`, with commented-out examples of hooks you can enable later:
 
 ```yaml
 name: SwiftPackage
@@ -79,12 +79,12 @@ macros:
   - name: ___FILE_NAME___
     description: The name of the file to be generated
     type: string
-  - name: ___OUTPUT___
-    description: Template output directory where generated files will be placed
-    type: path
+  - name: ___OUTPUT_DIR___
+    description: Output directory for generated files, relative to the project root
+    type: string
 
 hatch:
-  output: ___OUTPUT___
+  output: ___OUTPUT_DIR___
 ```
 
 The scaffolded `___FILE_NAME___View.swift` uses that macro in both its file name
@@ -116,10 +116,10 @@ ready-to-run example command:
 ```text
 Macros (2)
     1. --file-name   (type: string)  The name of the file to be generated
-    2. --output      (type: path)    Template output directory ...
+    2. --output-dir  (type: string)  Output directory for generated files ...
 
 Example Command
-    'egg hatch SwiftPackage --file-name "value" --output "./path/to/file"'
+    'egg hatch SwiftPackage --file-name "value" --output-dir "./path/to/file"'
 ```
 
 Each macro name becomes a kebab-case flag: `___FILE_NAME___` turns into
@@ -135,11 +135,11 @@ egg hatch
 ```
 
 You will be asked to pick `SwiftPackage`, then to supply `___FILE_NAME___` and
-`___OUTPUT___`. Prefer to pass everything up front? Use `direct` and name the
-macros as flags:
+`___OUTPUT_DIR___`. Prefer to pass everything up front? Use `direct` and name
+the macros as flags:
 
 ```sh
-egg hatch direct SwiftPackage --file-name Profile --output ./Sources
+egg hatch direct SwiftPackage --file-name Profile --output-dir ./Sources
 ```
 
 ## Step 6: Inspect the result

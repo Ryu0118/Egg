@@ -66,9 +66,9 @@ struct TemplateCreator {
           - name: ___FILE_NAME___
             description: The name of the file to be generated
             type: string
-          - name: ___OUTPUT___
-            description: Template output directory where generated files will be placed
-            type: path
+          - name: ___OUTPUT_DIR___
+            description: Output directory for generated files, relative to the project root
+            type: string
 
         #  - name: ___ITEM_NAME___
         #    description: Name of the item to generate
@@ -77,10 +77,10 @@ struct TemplateCreator {
         # pre_hatch:
         #  - id: compute-path
         #    run: |
-        #      ITEM_PATH="___OUTPUT___/items/___ITEM_NAME___"
+        #      ITEM_PATH="___OUTPUT_DIR___/items/___ITEM_NAME___"
         #      echo "item-path=$ITEM_PATH"
         hatch:
-          output: ___OUTPUT___
+          output: ___OUTPUT_DIR___
           exclude:
         #    - README.md
 
