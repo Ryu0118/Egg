@@ -75,7 +75,6 @@ rules:
         - kinds: [func]
           name_pattern: "^(buildBlock|buildExpression|buildOptional|buildEither|buildArray|appendLiteral|appendInterpolation)$"
     include:
-      - "Sources/Interaction/**"
       - "Sources/EggKit/WorkflowRunner/Staging/**"
     exclude:
       - "**/*Generated.swift"

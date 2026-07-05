@@ -1,5 +1,5 @@
 {
-  "originHash" : "683a2fc7c7c743ccd9c3e448c4fe84f05d22c7fe59ed414aace68d7089d8c8f2",
+  "originHash" : "28e91f1d667758427e6e168a1889e670f77c807deb0bc518e627f8f82ef7a3d5",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -125,6 +125,15 @@
       "state" : {
         "revision" : "b45d1f2ed151d057b54504d653e0da5552844e34",
         "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "swift-interaction",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Ryu0118/swift-interaction",
+      "state" : {
+        "revision" : "36830b9bc874ae26ae3f520d3671f10478eb77f1",
+        "version" : "0.1.0"
       }
     },
     {

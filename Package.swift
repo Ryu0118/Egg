@@ -11,9 +11,9 @@ let package = Package(
     products: [
         .executable(name: "egg", targets: ["egg"]),
         .library(name: "EggKit", targets: ["EggKit"]),
-        .library(name: "Interaction", targets: ["Interaction"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/Ryu0118/swift-interaction", from: "0.1.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
         .package(url: "https://github.com/Ryu0118/FileManagerProtocol", from: "0.1.0"),
         .package(url: "https://github.com/Ryu0118/ProcessRunning", from: "0.2.1"),
@@ -36,7 +36,7 @@ let package = Package(
             dependencies: [
                 "EggKit",
                 "EggMCP",
-                "Interaction",
+                .product(name: "Interaction", package: "swift-interaction"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
@@ -46,7 +46,7 @@ let package = Package(
         .target(
             name: "EggKit",
             dependencies: [
-                "Interaction",
+                .product(name: "Interaction", package: "swift-interaction"),
                 .product(name: "ProcessRunning", package: "ProcessRunning"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
                 .product(name: "Yams", package: "Yams"),
@@ -62,21 +62,11 @@ let package = Package(
                 .product(name: "MCP", package: "swift-sdk"),
             ],
         ),
-        .target(
-            name: "Interaction",
-            dependencies: [],
-        ),
-        .testTarget(
-            name: "InteractionTests",
-            dependencies: [
-                "Interaction",
-            ],
-        ),
         .testTarget(
             name: "EggKitTests",
             dependencies: [
                 "EggKit",
-                "Interaction",
+                .product(name: "Interaction", package: "swift-interaction"),
                 .product(name: "Yams", package: "Yams"),
                 .product(name: "FileManagerProtocol", package: "FileManagerProtocol"),
             ],
