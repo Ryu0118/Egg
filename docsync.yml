@@ -17,6 +17,20 @@ rules:
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
   checksum: 355b708c324b9a8a19294aced77d3b4d2ef8a0f6d9ca0dfe08ff94410ec6a158
+- name: egg-cli-guide-sandbox
+  sources:
+  - Sources/EggCLI/Commands/HatchTransactionCommands.swift
+  - Sources/EggCLI/Commands/HatchCommand.swift
+  - Sources/EggMCP/MCPServer.swift
+  - Sources/EggMCP/Handlers/HatchPreviewHandler.swift
+  - Sources/EggMCP/Handlers/HatchHandler.swift
+  - Sources/EggKit/WorkflowRunner/Staging/AgentHatchTransactionRunner.swift
+  - Sources/EggKit/WorkflowRunner/SandboxAllowedPathsResolver.swift
+  doc: .claude/plugins/egg/skills/egg-cli-guide/SKILL.md
+  message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
+    - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
+    usage changed.
+  checksum: 0b3e6abff2b27aba804b090bb7532a13799e07726e17c0898566dddf8f0db99b
 - name: agents-project
   sources:
   - Package.swift
