@@ -22,6 +22,7 @@ package struct AgentHatchTransactionRunner {
     private let parsedMacros: [ParsedMacroDefinition]
     private let pathFilter: GitStagingChangeDetector.PathFilter
     private let sandboxDisabled: Bool
+    private let allowedWritePaths: [String]
     private let store: HatchTransactionStore
     private let phaseRunner: PhaseRunner
 
@@ -36,6 +37,7 @@ package struct AgentHatchTransactionRunner {
         include: [String] = [],
         exclude: [String] = [],
         sandboxDisabled: Bool = false,
+        allowedWritePaths: [String] = [],
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -45,6 +47,7 @@ package struct AgentHatchTransactionRunner {
         self.config = config
         self.parsedMacros = parsedMacros
         self.sandboxDisabled = sandboxDisabled
+        self.allowedWritePaths = allowedWritePaths
         pathFilter = GitStagingChangeDetector.PathFilter(include: include, exclude: exclude)
         store = HatchTransactionStore(fileManager: fileManager, workingDirectory: workingDirectory)
         phaseRunner = PhaseRunner(
@@ -63,12 +66,16 @@ package struct AgentHatchTransactionRunner {
     /// When `includeDiff` is set, each change carries its unified diff so a
     /// caller can review the exact content before applying.
     package func preview(includeDiff: Bool = false) async throws -> AgentHatchPreviewResult {
-        if !sandboxDisabled,
-           let allowedPaths = config.sandbox?.allowedPaths,
-           !allowedPaths.isEmpty
-        {
-            throw LifecycleStepError.sandboxPermissionRequired(paths: allowedPaths)
-        }
+        // Macros are resolved up front (not inside runWorkflow) because the
+        // declared sandbox.allowed_paths may reference them, and the consent
+        // check below must fail fast — before any clone or script runs.
+        let validator = ParsedMacroDefinitionValidator(
+            config: config,
+            workingDirectory: workingDirectory,
+            homeDirectory: homeDirectory,
+        )
+        let resolvedMacros = try validator.validate(parsedMacros)
+        let grant = try await resolveWriteGrant(resolvedMacros: resolvedMacros)
 
         // git is required. The whole change model — staging snapshot, .gitignore
         // suppression, change detection — is built on the working directory being
@@ -99,13 +106,13 @@ package struct AgentHatchTransactionRunner {
         let detector = GitStagingChangeDetector(processRunner: processRunner, fileManager: fileManager)
         try await detector.recordBaseline(in: tempWork, filter: pathFilter)
         let snapshotWarnings = snapshotSizeWarnings(for: tempWork)
-        let outputPath = try await runWorkflow(in: tempWork)
+        let outputPath = try await runWorkflow(in: tempWork, resolvedMacros: resolvedMacros, allowedPaths: grant.granted)
         let summary = try await detector.changes(in: tempWork, filter: pathFilter)
         var changes = makeAgentChanges(summary)
         if includeDiff {
             changes = try await attachDiffs(to: changes, detector: detector, workspace: tempWork)
         }
-        let warnings = makeWarnings() + snapshotWarnings
+        let warnings = makeWarnings() + grant.warnings + snapshotWarnings
 
         // Only the final directory-materialization step is locked — cheap
         // insurance against a concurrent discard()/apply() enumerating or
@@ -378,14 +385,82 @@ package struct AgentHatchTransactionRunner {
         }
     }
 
-    private func runWorkflow(in workspace: URL) async throws -> URL {
-        let validator = ParsedMacroDefinitionValidator(
-            config: config,
-            workingDirectory: workingDirectory,
-            homeDirectory: homeDirectory,
-        )
-        let resolved = try validator.validate(parsedMacros)
-        let macros = remapPathMacros(resolved, from: workingDirectory, to: workspace)
+    /// Declared external write paths the caller consented to, plus any
+    /// warnings the consent resolution produced.
+    private struct WriteGrant {
+        let granted: [URL]
+        let warnings: [AgentTransactionWarning]
+
+        static let none = WriteGrant(granted: [], warnings: [])
+    }
+
+    /// Resolves which of the template's declared `sandbox.allowed_paths` are
+    /// actually writable in this preview run.
+    ///
+    /// The declaration in config.yml is the *template's* request, not the
+    /// caller's consent — a template must never gain external write access just
+    /// by declaring it. Consent is expressed by naming each path explicitly
+    /// (`--allow-write` / `allowed_write_paths`), and only paths that are both
+    /// declared and consented are granted:
+    ///
+    /// - consented but not declared → error (typo, or the template changed)
+    /// - declared but nothing consented → fail fast with the expanded list so
+    ///   the caller can ask the user and retry, before anything runs
+    /// - declared but only partially consented → proceed; unconsented paths
+    ///   stay denied by the sandbox, reported as a warning
+    private func resolveWriteGrant(resolvedMacros: [ResolvedMacro]) async throws -> WriteGrant {
+        let declared = try await SandboxAllowedPathsResolver(homeDirectory: homeDirectory)
+            .expandAllowedPaths(
+                config.sandbox?.allowedPaths,
+                macros: resolvedMacros,
+                workingDirectory: workingDirectory,
+            )
+        // --no-sandbox (already double-confirmed upstream) makes everything
+        // writable; per-path consent is moot.
+        guard !sandboxDisabled else { return .none }
+
+        let declaredPaths = declared.map { Self.normalizePath($0.path(percentEncoded: false)) }
+        let consented = allowedWritePaths.map(Self.normalizePath)
+
+        let undeclared = consented.filter { !declaredPaths.contains($0) }
+        guard undeclared.isEmpty else {
+            throw Error.writeConsentNotDeclared(paths: undeclared.sorted(), declaredPaths: declaredPaths.sorted())
+        }
+        guard declaredPaths.isEmpty || !consented.isEmpty else {
+            throw Error.writeConsentRequired(declaredPaths: declaredPaths.sorted())
+        }
+
+        let granted = zip(declared, declaredPaths)
+            .filter { consented.contains($0.1) }
+            .map(\.0)
+        var warnings: [AgentTransactionWarning] = []
+        if !granted.isEmpty {
+            warnings.append(AgentTransactionWarning(
+                code: "external_writes_immediate",
+                message: "Lifecycle scripts may write to consented external paths during preview. Those writes happen immediately and are not reverted by discard or rollback.",
+            ))
+        }
+        let denied = declaredPaths.filter { !consented.contains($0) }
+        if !denied.isEmpty {
+            warnings.append(AgentTransactionWarning(
+                code: "declared_paths_not_granted",
+                message: "Declared sandbox.allowed_paths without consent stay write-denied: \(denied.sorted().joined(separator: ", ")). Scripts touching them will fail.",
+            ))
+        }
+        return WriteGrant(granted: granted, warnings: warnings)
+    }
+
+    /// Normalizes a path for consent comparison: standardized, no trailing slash.
+    private static func normalizePath(_ raw: String) -> String {
+        var path = URL(filePath: raw).standardizedFileURL.path(percentEncoded: false)
+        while path.count > 1, path.hasSuffix("/") {
+            path.removeLast()
+        }
+        return path
+    }
+
+    private func runWorkflow(in workspace: URL, resolvedMacros: [ResolvedMacro], allowedPaths: [URL]) async throws -> URL {
+        let macros = remapPathMacros(resolvedMacros, from: workingDirectory, to: workspace)
         let outputs = StepOutputsStorage()
         let environment = [
             "EGG_WORKING_DIRECTORY": workspace.path(percentEncoded: false),
@@ -398,7 +473,7 @@ package struct AgentHatchTransactionRunner {
             .sandboxed(.staging(
                 root: workspace,
                 originalWorkingDirectory: workingDirectory,
-                allowedPaths: [],
+                allowedPaths: allowedPaths,
             ))
         }
 
@@ -648,6 +723,8 @@ extension AgentHatchTransactionRunner {
         case conflictingRollbackChanges([String])
         case missingRollbackBackup(id: String, paths: [String])
         case invalidIdentifier(kind: String, value: String)
+        case writeConsentRequired(declaredPaths: [String])
+        case writeConsentNotDeclared(paths: [String], declaredPaths: [String])
 
         var errorDescription: String? {
             switch self {
@@ -665,6 +742,27 @@ extension AgentHatchTransactionRunner {
                 "Rollback bundle '\(id)' is missing its backup for: \(paths.joined(separator: ", ")). Refusing to restore only some files — nothing was changed."
             case let .invalidIdentifier(kind, value):
                 "Invalid \(kind) '\(value)': must be a single path segment, not empty, and not '.' or '..'."
+            case let .writeConsentRequired(declaredPaths):
+                """
+                ⚠️ SANDBOX EXTENDED WRITE ACCESS REQUIRED
+
+                This template declares write access to paths outside the staging sandbox:
+                \(declaredPaths.map { "  - \($0)" }.joined(separator: "\n"))
+
+                Ask the user whether to allow writing to these exact paths. Do not decide yourself.
+                If the user approves, retry naming each approved path explicitly:
+                  CLI: egg hatch preview <template> ... \(declaredPaths.map { "--allow-write \($0)" }.joined(separator: " "))
+                  MCP: pass allowed_write_paths: [\(declaredPaths.map { "\"\($0)\"" }.joined(separator: ", "))]
+
+                Writes to approved paths happen during preview and are NOT reverted by discard or rollback.
+                Nothing has been executed yet.
+                """
+            case let .writeConsentNotDeclared(paths, declaredPaths):
+                """
+                Consented write paths are not declared by the template's sandbox.allowed_paths: \(paths.joined(separator: ", ")).
+                Only declared paths can be granted. Declared paths: \(declaredPaths.isEmpty ? "(none)" : declaredPaths.joined(separator: ", ")).
+                Check for typos, or update the template's config.yml if the template should write there.
+                """
             }
         }
     }

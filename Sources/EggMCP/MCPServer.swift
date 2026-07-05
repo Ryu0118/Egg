@@ -173,6 +173,11 @@ public struct EggMCPServer {
                         "type": "boolean",
                         "description": "Set to true only after the user explicitly approves previewing lifecycle scripts without sandbox protection.",
                     ]),
+                    "allowed_write_paths": .object([
+                        "type": "array",
+                        "items": .object(["type": "string"]),
+                        "description": "External paths (absolute) the user approved for write access. Each must appear in the template's declared sandbox.allowed_paths. When the preview fails with SANDBOX EXTENDED WRITE ACCESS REQUIRED, show the listed paths to the user, ask for approval, and retry with only the approved paths. Do not approve paths yourself. Writes to these paths happen during preview and are not reverted by discard/rollback.",
+                    ]),
                 ]),
                 "required": .array(["template_name"]),
             ]),
