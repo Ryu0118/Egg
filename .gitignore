@@ -11,4 +11,5 @@ DerivedData/
 .tmp-home/
 .serena
 .plan/
+docs/superpowers/
 remove_marks.py
