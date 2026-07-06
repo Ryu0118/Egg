@@ -52,11 +52,12 @@ package enum CLIEnvironment {
     ///
     /// Tests can set HOME to a temporary directory, so command code must not
     /// read `FileManager.default.homeDirectoryForCurrentUser` directly.
+    /// Delegates to `EggService`'s resolver so the CLI and every MCP handler
+    /// (which construct `EggService` without an explicit `homeDirectory` and
+    /// rely on its own fallback) can never resolve a different home for the
+    /// same `$HOME`.
     package static func resolveHomeDirectory() -> URL {
-        if let homePath = ProcessInfo.processInfo.environment["HOME"] {
-            return URL(filePath: homePath)
-        }
-        return FileManager.default.homeDirectoryForCurrentUser
+        EggService.resolveHomeDirectory()
     }
 }
 

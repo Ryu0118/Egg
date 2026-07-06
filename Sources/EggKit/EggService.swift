@@ -46,9 +46,25 @@ public struct EggService: Sendable {
     ) {
         self.fileManager = fileManager
         self.workingDirectory = workingDirectory ?? URL(filePath: FileManager.default.currentDirectoryPath)
-        self.homeDirectory = homeDirectory ?? FileManager.default.homeDirectoryForCurrentUser
+        self.homeDirectory = homeDirectory ?? Self.resolveHomeDirectory()
         self.projectDirectory = projectDirectory ?? self.workingDirectory
         self.additionalSearchPaths = additionalSearchPaths
+    }
+
+    /// The home directory, respecting the `HOME` environment variable.
+    ///
+    /// Every caller that omits `homeDirectory` falls back to this — MCP
+    /// handlers all construct `EggService` with no explicit home, so if this
+    /// read `FileManager.default.homeDirectoryForCurrentUser` (which ignores
+    /// `$HOME` on macOS) directly, an overridden `HOME` would make the CLI
+    /// and MCP resolve different `~/.eggs` directories for global templates.
+    /// Tests (and any sandboxed run) that set `HOME` to a temp directory
+    /// depend on this.
+    package static func resolveHomeDirectory() -> URL {
+        if let homePath = ProcessInfo.processInfo.environment["HOME"] {
+            return URL(filePath: homePath)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
     }
 }
 

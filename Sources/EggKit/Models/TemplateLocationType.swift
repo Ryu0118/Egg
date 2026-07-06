@@ -30,7 +30,7 @@ package enum TemplateLocationType: Codable, CustomStringConvertible, Equatable {
     package var dir: String {
         switch self {
         case .global:
-            return "~/.egg"
+            return "~/.eggs"
         case let .project(projectDirectory, workingDirectory):
             let relativePath = projectDirectory.relativePath(from: workingDirectory)
             return relativePath + "/.eggs"
