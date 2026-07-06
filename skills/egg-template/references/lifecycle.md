@@ -33,6 +33,8 @@ echo "key=value"
 | config.yml / Native files | `${{ pre_hatch.step-id.outputs.key }}` |
 | Stencil files | `{{ pre_hatch.step_id.outputs.key }}` |
 
+> **Stencil reserved names:** don't name an output key `count`, `first`, or `last` — Stencil's dictionary resolver treats those as built-in accessors (`.count`/`.first`/`.last`) and returns that instead of your value, silently. This is Stencil's own behavior, not egg's; it only affects `.stencil` files (`${{ }}` in config.yml/native files is unaffected).
+
 **Example:**
 ```yaml
 pre_hatch:

@@ -119,6 +119,11 @@ Step outputs are available in Stencil files with dot notation:
 // Version: {{ pre_hatch.setup.outputs.version }}
 ```
 
+> Note: don't name an output key `count`, `first`, or `last` — Stencil's
+> dictionary resolver treats those as built-in accessors and silently
+> returns that instead of your value. This is Stencil's own behavior and
+> only affects `.stencil` files.
+
 ## Lifecycle Hooks
 
 `pre_hatch` and `post_hatch` run shell steps around template expansion:
