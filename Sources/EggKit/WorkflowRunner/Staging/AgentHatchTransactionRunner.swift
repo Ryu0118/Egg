@@ -621,8 +621,13 @@ package struct AgentHatchTransactionRunner {
             guard metadata.status != .applied || force else {
                 throw Error.discardRequiresForce(token: token, status: metadata.status.rawValue)
             }
-            try store.discard(token: token)
+            // Bundle first: it holds the only rollback backup. removeItem
+            // recurses child-first, so a container it can't remove (e.g. a
+            // read-only parent) throws after already deleting the backup
+            // files inside — doing this second would leave that partial
+            // delete with no transaction record left to retry discard from.
             try fileManager.removeIfExists(bundleRoot)
+            try store.discard(token: token)
             return AgentHatchDiscardResult(
                 status: "discarded",
                 applyToken: token,
@@ -635,8 +640,8 @@ package struct AgentHatchTransactionRunner {
             guard force else {
                 throw Error.discardRequiresForce(token: token, status: "corrupt")
             }
-            try store.discard(token: token)
             try fileManager.removeIfExists(bundleRoot)
+            try store.discard(token: token)
             return AgentHatchDiscardResult(
                 status: "discarded",
                 applyToken: token,
@@ -1039,7 +1044,12 @@ package struct AgentHatchTransactionRunner {
     /// `rollback` accept them from a caller (CLI arg or MCP tool argument), so a
     /// value like `"../../etc"` must be rejected before it reaches a file path.
     private static func validateIdentifier(_ value: String, kind: String) throws {
-        guard !value.isEmpty, !value.contains("/"), !value.contains("\\"), value != ".", value != ".." else {
+        // 255 bytes is the filename-component limit on APFS and most POSIX
+        // filesystems; past it, FileManager surfaces its own raw Cocoa "file
+        // name is invalid" error instead of this one.
+        guard !value.isEmpty, value.utf8.count <= 255,
+              !value.contains("/"), !value.contains("\\"), value != ".", value != ".."
+        else {
             throw Error.invalidIdentifier(kind: kind, value: value)
         }
     }

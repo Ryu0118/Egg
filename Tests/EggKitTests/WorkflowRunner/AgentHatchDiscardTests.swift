@@ -183,4 +183,38 @@ struct AgentHatchDiscardTests {
         #expect(result.status == "discarded")
         #expect(!fileManager.exists(transactionDir(root, "bad")))
     }
+
+    /// A bundle container whose parent (`.egg/rollback`) is unwritable can't
+    /// be rmdir'd even after its contents are unlinked — `FileManager.removeItem`
+    /// recurses child-first, so `manifest.json`/`before/` are already gone by
+    /// the time that throws. If the transaction directory were deleted first
+    /// (the pre-fix order), this failure would leave nothing at all: no
+    /// rollback bundle AND no transaction record, so `egg hatch transactions`
+    /// couldn't even show the token existed. Deleting the bundle first means a
+    /// failure here still leaves the transaction record behind — the token
+    /// stays visible and discard remains retriable, instead of vanishing.
+    @Test("A bundle whose container can't be removed leaves the transaction record intact")
+    func unremovableBundleContainerLeavesTransactionRecordIntact() async throws {
+        let root = try makeWorkspace()
+        defer {
+            try? fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bundleDir(root, "tx").deletingLastPathComponent().path(percentEncoded: false))
+            try? fileManager.removeItem(at: root)
+        }
+        try writeTransaction(token: "tx", in: root, status: .applied)
+        try writeBundle(id: "tx", in: root, status: "applied")
+        let rollbackParent = bundleDir(root, "tx").deletingLastPathComponent()
+        try fileManager.setAttributes([.posixPermissions: 0o555], ofItemAtPath: rollbackParent.path(percentEncoded: false))
+
+        await #expect(throws: (any Error).self) {
+            try await makeRunner(workingDirectory: root).discard(token: "tx", force: true)
+        }
+
+        // The bundle's own children are gone (removeItem got that far)...
+        #expect(!fileManager.exists(bundleDir(root, "tx").appending(path: "manifest.json")))
+        // ...but the transaction record survived, so the token is still
+        // discoverable and discard can be retried once permissions are fixed.
+        #expect(fileManager.exists(transactionDir(root, "tx")))
+        let metadata = try makeStore(workingDirectory: root).load(token: "tx")
+        #expect(metadata.status == .applied)
+    }
 }
