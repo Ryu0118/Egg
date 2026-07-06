@@ -24,6 +24,7 @@ package struct AgentHatchTransactionRunner {
     private let sandboxDisabled: Bool
     private let allowedWritePaths: [String]
     private let allowLargeStaging: Bool
+    private let allowNonGitStaging: Bool
     private let stagingFileLimit: Int
     private let store: HatchTransactionStore
     private let phaseRunner: PhaseRunner
@@ -41,6 +42,7 @@ package struct AgentHatchTransactionRunner {
         sandboxDisabled: Bool = false,
         allowedWritePaths: [String] = [],
         allowLargeStaging: Bool = false,
+        allowNonGitStaging: Bool = false,
         stagingFileLimit: Int = StagingPreflight.defaultFileLimit,
     ) {
         self.processRunner = processRunner
@@ -53,6 +55,7 @@ package struct AgentHatchTransactionRunner {
         self.sandboxDisabled = sandboxDisabled
         self.allowedWritePaths = allowedWritePaths
         self.allowLargeStaging = allowLargeStaging
+        self.allowNonGitStaging = allowNonGitStaging
         self.stagingFileLimit = stagingFileLimit
         pathFilter = GitStagingChangeDetector.PathFilter(include: include, exclude: exclude)
         store = HatchTransactionStore(fileManager: fileManager, workingDirectory: workingDirectory)
@@ -83,37 +86,56 @@ package struct AgentHatchTransactionRunner {
         let resolvedMacros = try validator.validate(parsedMacros)
         let grant = try await resolveWriteGrant(resolvedMacros: resolvedMacros)
 
-        // git is required. The whole change model — staging snapshot, .gitignore
-        // suppression, change detection — is built on the working directory being
-        // a git repository. There is no full-copy fallback: an agent cannot answer
-        // an interactive "this may be slow, proceed?" prompt, and copying an
-        // un-scoped directory (node_modules, .build, …) is exactly what we avoid.
-        guard let repositoryRoot = await GitRepositoryChecker(processRunner: processRunner).repositoryRoot(of: workingDirectory) else {
-            throw Error.notAGitRepository(path: workingDirectory.path(percentEncoded: false))
-        }
-
-        // Running from a subdirectory of the repository is legal, but every
-        // relative path — hatch.output above all — resolves against the
-        // subdirectory, not the repository root. That mismatch is silent and
-        // lands files in the wrong place, so the result says it out loud.
+        // Staging strongly prefers git: the change model — staging snapshot,
+        // .gitignore suppression of build artifacts, scoped change detection —
+        // rides on it. A non-git directory is stageable with explicit consent
+        // (`allowNonGitStaging`): the refusal below reports the resolved
+        // directory and its measured size, so an agent can inspect the facts
+        // and decide, the way a human answers the interactive prompt.
+        let preflight = StagingPreflight(processRunner: processRunner, fileManager: fileManager)
         var contextWarnings: [AgentTransactionWarning] = []
-        if !workingDirectory.isSamePath(to: repositoryRoot) {
-            contextWarnings.append(AgentTransactionWarning(
-                code: "subdirectory_of_repository",
-                message: "The working directory is a subdirectory of the git repository at \(repositoryRoot.path(percentEncoded: false)). Staging and relative output paths (hatch.output) resolve against the subdirectory, not the repository root — run from the root if the template should target it.",
-            ))
-        }
 
-        // Cost is per-file (two APFS clones of every tracked/unignored file),
-        // so a huge repository is refused up front with the escape hatches
-        // named, instead of silently grinding for minutes. The count comes
-        // from the same `git ls-files` enumeration the cloner performs.
-        if !allowLargeStaging {
-            let fileCount = try await StagingPreflight(processRunner: processRunner, fileManager: fileManager)
-                .countGitCloneableFiles(in: workingDirectory)
-            guard fileCount <= stagingFileLimit else {
+        if let repositoryRoot = await GitRepositoryChecker(processRunner: processRunner).repositoryRoot(of: workingDirectory) {
+            // Running from a subdirectory of the repository is legal, but every
+            // relative path — hatch.output above all — resolves against the
+            // subdirectory, not the repository root. That mismatch is silent and
+            // lands files in the wrong place, so the result says it out loud.
+            if !workingDirectory.isSamePath(to: repositoryRoot) {
+                contextWarnings.append(AgentTransactionWarning(
+                    code: "subdirectory_of_repository",
+                    message: "The working directory is a subdirectory of the git repository at \(repositoryRoot.path(percentEncoded: false)). Staging and relative output paths (hatch.output) resolve against the subdirectory, not the repository root — run from the root if the template should target it.",
+                ))
+            }
+
+            // Cost is per-file (two APFS clones of every tracked/unignored file),
+            // so a huge repository is refused up front with the escape hatches
+            // named, instead of silently grinding for minutes. The count comes
+            // from the same `git ls-files` enumeration the cloner performs.
+            if !allowLargeStaging {
+                let fileCount = try await preflight.countGitCloneableFiles(in: workingDirectory)
+                guard fileCount <= stagingFileLimit else {
+                    throw Error.stagingTooLarge(fileCount: fileCount, limit: stagingFileLimit)
+                }
+            }
+        } else {
+            // Without git there is no .gitignore filtering: the clone copies
+            // every file, build artifacts and caches included, and change
+            // detection will report script-generated artifacts as changes.
+            let (fileCount, isExact) = preflight.countAllFiles(in: workingDirectory, cap: stagingFileLimit)
+            guard allowNonGitStaging else {
+                throw Error.nonGitStagingRequiresConsent(
+                    path: workingDirectory.path(percentEncoded: false),
+                    fileCount: fileCount,
+                    isExact: isExact,
+                )
+            }
+            guard fileCount <= stagingFileLimit || allowLargeStaging else {
                 throw Error.stagingTooLarge(fileCount: fileCount, limit: stagingFileLimit)
             }
+            contextWarnings.append(AgentTransactionWarning(
+                code: "non_git_staging",
+                message: "'\(workingDirectory.path(percentEncoded: false))' is not a git repository: every file was copied into staging and script-generated artifacts (build directories, caches) will be reported as changes. Run 'git init' there so staging follows .gitignore.",
+            ))
         }
 
         let token = makeToken(templateName: config.name)
@@ -1046,6 +1068,7 @@ extension AgentHatchTransactionRunner {
         case writeConsentRequired(declaredPaths: [String])
         case writeConsentNotDeclared(paths: [String], declaredPaths: [String])
         case stagingTooLarge(fileCount: Int, limit: Int)
+        case nonGitStagingRequiresConsent(path: String, fileCount: Int, isExact: Bool)
 
         var errorDescription: String? {
             switch self {
@@ -1069,6 +1092,8 @@ extension AgentHatchTransactionRunner {
                 "Rollback bundle '\(id)' is missing its backup for: \(paths.joined(separator: ", ")). Refusing to restore only some files — nothing was changed."
             case let .invalidIdentifier(kind, value):
                 "Invalid \(kind) '\(value)': must be a single path segment, not empty, and not '.' or '..'."
+            case let .nonGitStagingRequiresConsent(path, fileCount, isExact):
+                "'\(path)' is not a git repository. Staging it would copy all \(fileCount)\(isExact ? "" : "+") files in that directory — no .gitignore filtering, so build artifacts and caches are included — twice (workspace + reference). Recommended: run 'git init' in '\(path)' so staging follows .gitignore. To proceed anyway, retry with --allow-non-git-staging (allow_non_git_staging over MCP); a count above the large-staging guard additionally needs --allow-large-staging. For a direct write without preview/rollback, use 'egg hatch direct --no-staging'."
             case let .stagingTooLarge(fileCount, limit):
                 "Staging would clone \(fileCount) files (guard limit: \(limit)) — twice, once for the workspace and once for the reference copy. Scope it down by previewing against a smaller directory (--output <subdir> on the CLI, staging_root over MCP), write directly with 'egg hatch direct <template> --no-staging' (no preview/rollback), or pass --allow-large-staging (allow_large_staging over MCP) to proceed anyway."
             case let .writeConsentRequired(declaredPaths):

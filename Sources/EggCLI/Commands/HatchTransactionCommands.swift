@@ -89,6 +89,9 @@ struct HatchPreviewCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Proceed even when staging would clone more files than the large-repository guard allows.")
     var allowLargeStaging = false
 
+    @Flag(name: .long, help: "Stage a non-git directory after reviewing the refusal's reported file count. No .gitignore filtering applies; prefer 'git init' in the target.")
+    var allowNonGitStaging = false
+
     @OptionGroup var options: HatchTransactionOptions
 
     func run() async throws {
@@ -105,6 +108,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
             sandboxDisabled: noSandbox && userConfirmedNoSandbox,
             allowedWritePaths: allowWrite,
             allowLargeStaging: allowLargeStaging,
+            allowNonGitStaging: allowNonGitStaging,
         )
         try CLIOutput.printJSON(result)
     }

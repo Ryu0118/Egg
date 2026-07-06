@@ -84,6 +84,32 @@ extension MCPServiceSandboxTests {
         } catch let error as EggServiceError {
             #expect(error.localizedDescription.contains("use_staging: false"))
             #expect(error.localizedDescription.contains("git init"))
+            #expect(error.localizedDescription.contains("allow_non_git_staging"))
+            #expect(error.localizedDescription.contains("files"), "the refusal must report the measured size")
         }
+    }
+
+    @Test("allow_non_git_staging stages the non-git directory and applies the template")
+    func consentedNonGitStagedHatchSucceeds() async throws {
+        let workspace = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+        try fileManager.writeText("hello\n", at: workspace.projectDirectory.appending(path: ".eggs/SandboxedPreview/Made.txt"))
+
+        let service = EggService(
+            fileManager: fileManager,
+            workingDirectory: workspace.projectDirectory,
+            projectDirectory: workspace.projectDirectory,
+            homeDirectory: workspace.homeDirectory,
+        )
+
+        _ = try await service.hatchTemplate(
+            templateName: "SandboxedPreview",
+            macros: [:],
+            useStaging: true,
+            applyChanges: true,
+            allowNonGitStaging: true,
+        )
+
+        #expect(fileManager.exists(workspace.projectDirectory.appending(path: "Made.txt")))
     }
 }

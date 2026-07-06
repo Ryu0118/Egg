@@ -33,9 +33,14 @@ egg hatch discard <applyToken> [--force]
 egg hatch transactions
 ```
 
-The working directory must be a git repository — the staged change model is
-built on git, and `preview` fails fast with "not a git repository" otherwise.
-In a fresh directory, run `git init` first. Run from the repository root
+The working directory should be a git repository — the staged change model
+rides on git, and `.gitignore` scopes what counts as a change. In a fresh
+directory, run `git init` first. A non-git directory is stageable with
+explicit consent: `preview` refuses it with the resolved directory and its
+measured file count, and `--allow-non-git-staging` (`allow_non_git_staging`
+over MCP) proceeds — every file is then copied with no `.gitignore`
+filtering, and script-generated artifacts appear as changes (the result
+carries a `non_git_staging` warning). Prefer `git init`. Run from the repository root
 unless you mean to scope everything to a subdirectory: staging and relative
 `hatch.output` paths resolve against the current directory, and the preview
 result carries a `subdirectory_of_repository` warning when they differ.

@@ -17,6 +17,7 @@ package struct HatchRunner {
     private let sandboxDisabled: Bool
     private let applyChanges: Bool
     private let stagingRoot: URL?
+    private let stagingConsentPrecollected: Bool
     private let pickerStyle: TemplatePickerStyle
 
     package init(
@@ -33,6 +34,7 @@ package struct HatchRunner {
         sandboxDisabled: Bool = false,
         applyChanges: Bool = false,
         stagingRoot: URL? = nil,
+        stagingConsentPrecollected: Bool = false,
         pickerStyle: TemplatePickerStyle = .list,
     ) {
         self.mode = mode
@@ -47,6 +49,7 @@ package struct HatchRunner {
         self.sandboxDisabled = sandboxDisabled
         self.applyChanges = applyChanges
         self.stagingRoot = stagingRoot
+        self.stagingConsentPrecollected = stagingConsentPrecollected
         self.pickerStyle = pickerStyle
         templateFinder = TemplatesFinder(
             fileManager: fileManager,
@@ -173,6 +176,7 @@ package struct HatchRunner {
                 sandboxDisabled: sandboxDisabled,
                 applyChanges: applyChanges,
                 stagingRoot: stagingRoot,
+                stagingConsentPrecollected: stagingConsentPrecollected,
             )
         } else {
             interaction.writeWarning("Running in direct mode. filesystem changes are permanent")

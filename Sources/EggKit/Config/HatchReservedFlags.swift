@@ -24,6 +24,7 @@ package enum HatchReservedFlags {
         "user-confirmed-no-sandbox",
         "allow-write",
         "allow-large-staging",
+        "allow-non-git-staging",
         "include",
         "exclude",
         "output",

@@ -18,6 +18,7 @@ struct HatchHandler: ToolHandler {
         let disableSandbox = context.arguments.bool("disable_sandbox", default: false)
         let userConfirmedNoSandbox = context.arguments.bool("user_confirmed_no_sandbox", default: false)
         let allowLargeStaging = context.arguments.bool("allow_large_staging", default: false)
+        let allowNonGitStaging = context.arguments.bool("allow_non_git_staging", default: false)
 
         let service = EggService(
             workingDirectory: outputDir,
@@ -34,6 +35,7 @@ struct HatchHandler: ToolHandler {
                 disableSandbox: disableSandbox,
                 userConfirmedNoSandbox: userConfirmedNoSandbox,
                 allowLargeStaging: allowLargeStaging,
+                allowNonGitStaging: allowNonGitStaging,
             )
             return try JSONEncoderHelper.encode(result)
         }
@@ -47,6 +49,8 @@ struct HatchHandler: ToolHandler {
             stagingRoot: stagingRoot,
             disableSandbox: disableSandbox,
             userConfirmedNoSandbox: userConfirmedNoSandbox,
+            allowLargeStaging: allowLargeStaging,
+            allowNonGitStaging: allowNonGitStaging,
         )
 
         return try JSONEncoderHelper.encode(result)

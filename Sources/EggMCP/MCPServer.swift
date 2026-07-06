@@ -89,6 +89,10 @@ public struct EggMCPServer {
                         "type": "boolean",
                         "description": "Proceed even when staging would clone more files than the large-repository guard allows. Prefer scoping with staging_root instead. Default: false.",
                     ]),
+                    "allow_non_git_staging": .object([
+                        "type": "boolean",
+                        "description": "Stage a non-git directory after reviewing the refusal's reported file count. No .gitignore filtering applies — prefer running 'git init' in the target. Default: false.",
+                    ]),
                     "project_directory": .object([
                         "type": "string",
                         "description": "Project directory path.",
@@ -168,6 +172,10 @@ public struct EggMCPServer {
                     "allow_large_staging": .object([
                         "type": "boolean",
                         "description": "Proceed even when staging would clone more files than the large-repository guard allows. Prefer a smaller output_directory instead. Default: false.",
+                    ]),
+                    "allow_non_git_staging": .object([
+                        "type": "boolean",
+                        "description": "Stage a non-git directory after reviewing the refusal's reported file count. No .gitignore filtering applies — prefer running 'git init' in the target. Default: false.",
                     ]),
                     "include_diff": .object([
                         "type": "boolean",

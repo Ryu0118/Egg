@@ -17,6 +17,7 @@ struct HatchPreviewHandler: ToolHandler {
         let userConfirmedNoSandbox = context.arguments.bool("user_confirmed_no_sandbox", default: false)
         let allowedWritePaths = context.arguments.optionalStringArray("allowed_write_paths") ?? []
         let allowLargeStaging = context.arguments.bool("allow_large_staging", default: false)
+        let allowNonGitStaging = context.arguments.bool("allow_non_git_staging", default: false)
 
         let service = EggService(
             workingDirectory: outputDir,
@@ -35,6 +36,7 @@ struct HatchPreviewHandler: ToolHandler {
             userConfirmedNoSandbox: userConfirmedNoSandbox,
             allowedWritePaths: allowedWritePaths,
             allowLargeStaging: allowLargeStaging,
+            allowNonGitStaging: allowNonGitStaging,
         )
 
         return try JSONEncoderHelper.encode(result)

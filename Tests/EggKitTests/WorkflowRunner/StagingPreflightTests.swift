@@ -149,6 +149,78 @@ struct StagingPreflightTests {
         #expect(!fromRoot.warnings.contains { $0.code == "subdirectory_of_repository" })
     }
 
+    @Test("a non-git preview refuses with the resolved directory and measured file count")
+    func nonGitPreviewRefusesWithFacts() async throws {
+        let workspace = try makeNonGitWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+
+        do {
+            _ = try await makeRunner(workspace: workspace, stagingFileLimit: StagingPreflight.defaultFileLimit).preview()
+            Issue.record("expected nonGitStagingRequiresConsent")
+        } catch let error as AgentHatchTransactionRunner.Error {
+            guard case let .nonGitStagingRequiresConsent(path, fileCount, _) = error else {
+                Issue.record("expected nonGitStagingRequiresConsent, got \(error)")
+                return
+            }
+            #expect(path.contains(workspace.workingDirectory.lastPathComponent))
+            #expect(fileCount == 2)
+            let message = error.localizedDescription
+            #expect(message.contains("--allow-non-git-staging"))
+            #expect(message.contains("git init"))
+        }
+    }
+
+    @Test("with consent, the full transaction cycle works on a non-git directory")
+    func consentedNonGitTransactionCycleWorks() async throws {
+        let workspace = try makeNonGitWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+
+        let runner = makeNonGitRunner(workspace: workspace, allowNonGitStaging: true)
+        let preview = try await runner.preview()
+        #expect(preview.warnings.contains { $0.code == "non_git_staging" })
+        #expect(preview.changes.contains { $0.path == "Generated.txt" })
+
+        let applied = try await runner.apply(token: preview.applyToken)
+        #expect(applied.status == "applied")
+        #expect(fileManager.exists(workspace.workingDirectory.appending(path: "Generated.txt")))
+
+        let rolledBack = try await runner.rollback(id: preview.applyToken)
+        #expect(rolledBack.status == "rolledBack")
+        #expect(!fileManager.exists(workspace.workingDirectory.appending(path: "Generated.txt")))
+    }
+
+    /// A working directory that is deliberately NOT a git repository,
+    /// holding two plain files and a trivial template beside it.
+    private func makeNonGitWorkspace() throws -> Workspace {
+        let base = try fileManager.makeTemporaryDirectory(prefix: "StagingPreflightNonGit")
+        let workingDirectory = base.appending(path: "work")
+        try fileManager.createDirectory(at: workingDirectory, withIntermediateDirectories: true)
+        try fileManager.writeText("one\n", at: workingDirectory.appending(path: "one.txt"))
+        try fileManager.writeText("two\n", at: workingDirectory.appending(path: "two.txt"))
+        return Workspace(
+            root: base,
+            workingDirectory: workingDirectory,
+            homeDirectory: base.appending(path: "home"),
+            templateDirectory: base.appending(path: "template"),
+        )
+    }
+
+    private func makeNonGitRunner(workspace: Workspace, allowNonGitStaging: Bool) -> AgentHatchTransactionRunner {
+        try? fileManager.createDirectory(at: workspace.homeDirectory, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(at: workspace.templateDirectory, withIntermediateDirectories: true)
+        try? fileManager.writeText("generated\n", at: workspace.templateDirectory.appending(path: "Generated.txt"))
+        return AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: workspace.workingDirectory,
+            homeDirectory: workspace.homeDirectory,
+            templateDirectory: workspace.templateDirectory,
+            config: Config(name: "T", description: "d", hatch: .init(output: ".")),
+            parsedMacros: [],
+            sandboxDisabled: true,
+            allowNonGitStaging: allowNonGitStaging,
+        )
+    }
+
     // MARK: - Fixtures
 
     private struct Workspace {

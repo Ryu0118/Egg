@@ -15,10 +15,13 @@ egg hatch discard <applyToken> [--force]
 egg hatch transactions
 ```
 
-The working directory must be a git repository: the whole change model —
-staging clone, `.gitignore` suppression, change detection — is built on git,
-and `preview` fails fast with "not a git repository" otherwise. Run `git init`
-first in a fresh directory.
+The working directory should be a git repository: the change model —
+staging clone, `.gitignore` suppression, change detection — rides on git.
+Run `git init` first in a fresh directory. A non-git directory can be staged
+with explicit consent: `preview` refuses it with the directory and its
+measured file count, and `--allow-non-git-staging` proceeds — every file is
+copied with no `.gitignore` filtering, and the result carries a
+`non_git_staging` warning.
 
 Every transaction moves through one state machine, recorded in
 `.egg/transactions/<token>/metadata.json` — the single source of truth for

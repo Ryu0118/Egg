@@ -55,6 +55,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     private let workspaceWatcher: any DirectoryWatching
     private let workingDirectoryWatcher: any DirectoryWatching
     private let stagingRoot: URL?
+    private let stagingConsentPrecollected: Bool
 
     init(
         processRunner: any ProcessRunning,
@@ -69,6 +70,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         workspaceWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         workingDirectoryWatcher: some DirectoryWatching = FSEventsDirectoryWatcher(),
         stagingRoot: URL? = nil,
+        stagingConsentPrecollected: Bool = false,
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -79,6 +81,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         self.overrideConflicts = overrideConflicts
         self.sandboxDisabled = sandboxDisabled
         self.stagingRoot = stagingRoot
+        self.stagingConsentPrecollected = stagingConsentPrecollected
         // Determine confirmation mode from flags
         if overrideConflicts {
             confirmationMode = .alwaysApply
@@ -123,6 +126,10 @@ struct StagingWorkflowRunner: WorkflowRunning {
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
+            // Service mode collects every staging consent as parameters
+            // before this point; reaching a prompt here would exit the
+            // process instead of asking.
+            requireGitRepository: !stagingConsentPrecollected,
             interaction: interaction,
         )
 

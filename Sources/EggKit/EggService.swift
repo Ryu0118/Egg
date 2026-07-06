@@ -78,6 +78,8 @@ public struct EggService: Sendable {
         stagingRoot: URL? = nil,
         disableSandbox: Bool = false,
         userConfirmedNoSandbox: Bool = false,
+        allowLargeStaging: Bool = false,
+        allowNonGitStaging: Bool = false,
     ) async throws -> HatchResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -98,18 +100,45 @@ public struct EggService: Sendable {
             )
         }
 
-        // Staged hatching of a non-git directory clones *everything* in it,
-        // which the human flow gates behind an interactive confirmation.
         // Service mode has no prompt channel — reaching one exits the
-        // process, killing the MCP server mid-request — so refuse up front
-        // with the alternatives named. The check targets the directory the
-        // staging actually clones (stagingRoot when given).
+        // process, killing the MCP server mid-request — so every consent the
+        // human flow collects interactively is collected here, up front, as
+        // parameters: staging a non-git directory (copies everything, no
+        // .gitignore filtering) needs allow_non_git_staging, and a clone
+        // above the size guard needs allow_large_staging. The refusals carry
+        // the resolved directory and its measured size so the caller can
+        // inspect the facts and decide. With the checks done, the runner is
+        // told consent is pre-collected and the prompts stay unreachable.
         if useStaging {
             let stagingBase = stagingRoot ?? outputDir
-            guard await GitRepositoryChecker(processRunner: ProcessRunner()).isGitRepository(stagingBase) else {
-                throw EggServiceError.stagedHatchRequiresGitRepository(
-                    path: stagingBase.path(percentEncoded: false),
-                )
+            let preflight = StagingPreflight(fileManager: fileManager)
+            if await GitRepositoryChecker(processRunner: ProcessRunner()).isGitRepository(stagingBase) {
+                if !allowLargeStaging {
+                    let fileCount = try await preflight.countGitCloneableFiles(in: stagingBase)
+                    guard fileCount <= StagingPreflight.defaultFileLimit else {
+                        throw EggServiceError.stagedHatchTooLarge(
+                            path: stagingBase.path(percentEncoded: false),
+                            fileCount: fileCount,
+                            limit: StagingPreflight.defaultFileLimit,
+                        )
+                    }
+                }
+            } else {
+                let (fileCount, isExact) = preflight.countAllFiles(in: stagingBase)
+                guard allowNonGitStaging else {
+                    throw EggServiceError.stagedHatchRequiresGitRepository(
+                        path: stagingBase.path(percentEncoded: false),
+                        fileCount: fileCount,
+                        isExact: isExact,
+                    )
+                }
+                guard fileCount <= StagingPreflight.defaultFileLimit || allowLargeStaging else {
+                    throw EggServiceError.stagedHatchTooLarge(
+                        path: stagingBase.path(percentEncoded: false),
+                        fileCount: fileCount,
+                        limit: StagingPreflight.defaultFileLimit,
+                    )
+                }
             }
         }
 
@@ -133,6 +162,7 @@ public struct EggService: Sendable {
             sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
             applyChanges: applyChanges,
             stagingRoot: stagingRoot,
+            stagingConsentPrecollected: true,
         )
 
         return try await runner.runMcp(template: template, parsedMacros: parsedMacros)
@@ -150,6 +180,7 @@ public struct EggService: Sendable {
         userConfirmedNoSandbox: Bool = false,
         allowedWritePaths: [String] = [],
         allowLargeStaging: Bool = false,
+        allowNonGitStaging: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -170,6 +201,7 @@ public struct EggService: Sendable {
             sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
             allowedWritePaths: allowedWritePaths,
             allowLargeStaging: allowLargeStaging,
+            allowNonGitStaging: allowNonGitStaging,
         )
     }
 
@@ -189,6 +221,7 @@ public struct EggService: Sendable {
         sandboxDisabled: Bool = false,
         allowedWritePaths: [String] = [],
         allowLargeStaging: Bool = false,
+        allowNonGitStaging: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -204,6 +237,7 @@ public struct EggService: Sendable {
             sandboxDisabled: sandboxDisabled,
             allowedWritePaths: allowedWritePaths,
             allowLargeStaging: allowLargeStaging,
+            allowNonGitStaging: allowNonGitStaging,
         )
     }
 
@@ -444,6 +478,7 @@ public struct EggService: Sendable {
         sandboxDisabled: Bool,
         allowedWritePaths: [String] = [],
         allowLargeStaging: Bool = false,
+        allowNonGitStaging: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -461,6 +496,7 @@ public struct EggService: Sendable {
             sandboxDisabled: sandboxDisabled,
             allowedWritePaths: allowedWritePaths,
             allowLargeStaging: allowLargeStaging,
+            allowNonGitStaging: allowNonGitStaging,
         )
 
         return try await runner.preview(includeDiff: includeDiff)
@@ -610,14 +646,17 @@ public enum EggServiceError: Error, LocalizedError, Sendable {
     case refNotAllowedForLocalPath(String)
     case sandboxPermissionRequired(paths: [String], templateName: String)
     case sandboxDisableRequiresConfirmation(templateName: String)
-    case stagedHatchRequiresGitRepository(path: String)
+    case stagedHatchRequiresGitRepository(path: String, fileCount: Int, isExact: Bool)
+    case stagedHatchTooLarge(path: String, fileCount: Int, limit: Int)
 
     public var errorDescription: String? {
         switch self {
         case let .invalidLocation(location):
             "Invalid location '\(location)'. Must be 'global' or 'project'."
-        case let .stagedHatchRequiresGitRepository(path):
-            "'\(path)' is not a git repository, and a staged hatch of a non-git directory copies every file in it — which needs an interactive confirmation this service mode has no channel for. Run 'git init' there first, or pass use_staging: false to write directly (no preview or rollback)."
+        case let .stagedHatchRequiresGitRepository(path, fileCount, isExact):
+            "'\(path)' is not a git repository. A staged hatch would copy all \(fileCount)\(isExact ? "" : "+") files in that directory — no .gitignore filtering, so build artifacts and caches are included — twice. Recommended: run 'git init' in '\(path)' so staging follows .gitignore. To proceed anyway, pass allow_non_git_staging: true (a count above the size guard additionally needs allow_large_staging: true), or pass use_staging: false to write directly (no preview or rollback)."
+        case let .stagedHatchTooLarge(path, fileCount, limit):
+            "Staging '\(path)' would clone \(fileCount) files (guard limit: \(limit)) — twice. Scope it down with staging_root pointing at a smaller directory, pass allow_large_staging: true to proceed anyway, or pass use_staging: false to write directly."
         case let .invalidGitURL(url):
             "Invalid Git URL: \(url)"
         case let .refNotAllowedForLocalPath(source):

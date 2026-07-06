@@ -46,8 +46,11 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
 
         // Check if source is a git repository
         guard await gitRepositoryChecker.isGitRepository(source) else {
-            // Fall back to APFS cloning for non-git directories
-            try await apfsCloner.clone(from: source, to: destination)
+            // Fall back to APFS cloning for non-git directories — entry by
+            // entry, so egg's own .egg records stay out of the clone here
+            // too (the whole-directory clone used to re-copy every prior
+            // preview's records, compounding on each run).
+            try await cloneAllEntries(from: source, to: destination)
             return
         }
 
@@ -97,6 +100,18 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
             }
 
             try await apfsCloner.clone(from: sourceFile, to: destFile)
+        }
+    }
+
+    /// Clones every top-level entry of a non-git directory except egg's own
+    /// `.egg` bookkeeping. APFS clones directories recursively, so one call
+    /// per entry keeps the copy-on-write efficiency of the old
+    /// whole-directory clone.
+    private func cloneAllEntries(from source: URL, to destination: URL) async throws {
+        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+        let entries = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
+        for entry in entries where entry.lastPathComponent != ".egg" {
+            try await apfsCloner.clone(from: entry, to: destination.appending(path: entry.lastPathComponent))
         }
     }
 
