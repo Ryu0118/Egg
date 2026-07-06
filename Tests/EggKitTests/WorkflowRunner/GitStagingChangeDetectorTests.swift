@@ -96,3 +96,58 @@ struct GitStagingChangeDetectorTests {
         #expect(summary.allPaths.isEmpty)
     }
 }
+
+/// A nested git repository (a vendored checkout in the cloned tree, or one a
+/// lifecycle script creates mid-run) made `git add -A` fatal with exit 128
+/// ("does not have a commit checked out") and killed the whole preview. The
+/// detector must treat nested repositories as opaque, like git itself does.
+extension GitStagingChangeDetectorTests {
+    @Test("a commitless nested git repository present at baseline neither fatals nor appears in changes")
+    func nestedRepositoryAtBaselineIsExcluded() async throws {
+        let (root, fileManager) = try makeWorkspace(prefix: "GitStagingNested")
+        defer { try? fileManager.removeItem(at: root) }
+        try fileManager.writeText("real\n", at: root.appending(path: "real.txt"))
+        try initializeBareNestedRepository(at: root.appending(path: "inner"), fileManager: fileManager)
+
+        let detector = detector(fileManager)
+        try await detector.recordBaseline(in: root)
+        try fileManager.writeText("new\n", at: root.appending(path: "added.txt"))
+
+        let summary = try await detector.changes(in: root)
+        #expect(summary.added == ["added.txt"])
+        #expect(!summary.added.contains { $0.hasPrefix("inner") })
+    }
+
+    @Test("a nested git repository created after the baseline neither fatals nor appears in changes")
+    func nestedRepositoryCreatedByWorkflowIsExcluded() async throws {
+        let (root, fileManager) = try makeWorkspace(prefix: "GitStagingNestedLate")
+        defer { try? fileManager.removeItem(at: root) }
+        try fileManager.writeText("real\n", at: root.appending(path: "real.txt"))
+
+        let detector = detector(fileManager)
+        try await detector.recordBaseline(in: root)
+
+        // Simulates a lifecycle script cloning a dependency mid-run.
+        try initializeBareNestedRepository(at: root.appending(path: "cloned-dep"), fileManager: fileManager)
+        try fileManager.writeText("new\n", at: root.appending(path: "added.txt"))
+
+        let summary = try await detector.changes(in: root)
+        #expect(summary.added == ["added.txt"])
+        #expect(!summary.added.contains { $0.hasPrefix("cloned-dep") })
+    }
+
+    /// `git init`s a directory with no commits — the exact state that fatals `git add -A`.
+    private func initializeBareNestedRepository(at directory: URL, fileManager: any FileManagerProtocol) throws {
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let process = Process()
+        process.executableURL = URL(filePath: "/usr/bin/git")
+        process.arguments = ["init", "--quiet"]
+        process.currentDirectoryURL = directory
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            struct GitInitFailed: Error {}
+            throw GitInitFailed()
+        }
+    }
+}

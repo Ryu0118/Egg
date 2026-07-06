@@ -72,6 +72,10 @@ struct GitStagingChangeDetector {
 
     /// Returns what the workflow changed since ``recordBaseline(in:filter:)``.
     func changes(in workspace: URL, filter: PathFilter = PathFilter()) async throws -> ChangeSummary {
+        // A lifecycle script may have cloned something (a dependency checkout,
+        // for example) since the baseline — refresh the structural excludes so
+        // the new nested repository can't fatal the stage below.
+        try writeStructuralExcludes(in: workspace)
         try await stageAll(in: workspace, filter: filter)
 
         var arguments = ["diff", "--cached", "--name-status", "-z", "--no-renames", "HEAD"]
@@ -120,7 +124,35 @@ struct GitStagingChangeDetector {
 
     private func writeStructuralExcludes(in workspace: URL) throws {
         let excludeFile = workspace.appending(path: ".git/info/exclude")
-        try fileManager.writeText(".egg/\n", at: excludeFile)
+        let lines = [".egg/"] + nestedRepositoryPaths(in: workspace).map { "/\($0)/" }
+        try fileManager.writeText(lines.joined(separator: "\n") + "\n", at: excludeFile)
+    }
+
+    /// Directories under `workspace` that are themselves git repositories
+    /// (holding a `.git` directory or gitfile), relative to the workspace.
+    ///
+    /// The parent repository treats a nested repository as an opaque gitlink,
+    /// and `git add -A` fatals outright on one with no commit checked out
+    /// ("does not have a commit checked out") — a vendored checkout in the
+    /// working directory or a dependency a lifecycle script cloned are both
+    /// everyday cases. Excluding them structurally keeps the staging repo's
+    /// view identical to how git itself scopes the parent repository.
+    private func nestedRepositoryPaths(in workspace: URL) -> [String] {
+        guard let enumerator = fileManager.enumerator(
+            at: workspace,
+            includingPropertiesForKeys: nil,
+        ) else { return [] }
+
+        var paths: [String] = []
+        for case let url as URL in enumerator {
+            guard url.lastPathComponent == ".git" else { continue }
+            let parent = url.deletingLastPathComponent()
+            // The workspace root's own .git is the staging repo itself.
+            guard !parent.isSamePath(to: workspace) else { continue }
+            paths.append(parent.relativePath(from: workspace))
+            enumerator.skipDescendants()
+        }
+        return paths.sorted()
     }
 
     @discardableResult
