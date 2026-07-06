@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: b938bb732ccd9182144fd8348b57bd6f7290838fc571efb00c7e7ee8374c4317
+  checksum: 1acb3545dcb3b601bfd5c13e3909e136e074fca14f46703f218722b7b42f83c4
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -44,7 +44,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: c52fd31a2914055997631fb3ec58c5233ed928d899c00597cadbbb1b40398505
+  checksum: 8a42613c2e784c144cb78ffde77bb31fbbbcc156a7d87739d9be80b618f940ce
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -95,7 +95,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: c52fd31a2914055997631fb3ec58c5233ed928d899c00597cadbbb1b40398505
+  checksum: 8a42613c2e784c144cb78ffde77bb31fbbbcc156a7d87739d9be80b618f940ce
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
