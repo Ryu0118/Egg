@@ -9,6 +9,16 @@ import ProcessRunning
 /// and encode the same Codable result models — one source of truth for
 /// behavior and output shape, regardless of which frontend invoked it.
 ///
+/// **Why this exists alongside the `Runner` types.** The CLI's interactive
+/// paths (`egg hatch`, `egg template create` with no `--json`) call a
+/// `Runner` directly, because they need to prompt — `ListRunner`,
+/// `CreateRunner`, etc. `EggService` exists only for the non-interactive,
+/// machine-readable paths (`--json`, and every MCP tool): it is the one
+/// place that resolves a request into a `Runner` call and encodes the result,
+/// so the CLI's `--json` output and the MCP tool's output can't drift apart.
+/// If you're calling into egg from human-driven, prompt-friendly code, go
+/// through a `Runner` directly instead of adding a method here.
+///
 /// `EggService` itself is a thin router: each method resolves a `Template`
 /// or parses a request, then hands off to the `Runner` type that owns the
 /// actual domain logic (`ListRunner`, `HatchRunner`,
@@ -16,7 +26,10 @@ import ProcessRunning
 /// into separate files — `EggService+Templates.swift` (CRUD: list, detail,
 /// create, delete, duplicate, move, validate, install) and
 /// `EggService+Hatch.swift` (the hatch/preview/apply/rollback/discard
-/// transaction flow) — so each file's diff stays scoped to one concern.
+/// transaction flow) — so each file's diff stays scoped to one concern. This
+/// split is organizational only: before it, all 16 methods sat in one
+/// 699-line file, which read like a god object despite `EggService` itself
+/// being correctly scoped (a router, not a place where domain logic lives).
 public struct EggService: Sendable {
     let fileManager: any FileManagerProtocol
     let workingDirectory: URL
