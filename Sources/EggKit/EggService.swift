@@ -123,7 +123,7 @@ public struct EggService: Sendable {
         templateName: String,
         macros: [String: Any],
         outputDirectory: URL? = nil,
-        stagingRoot _: URL? = nil,
+        stagingRoot: URL? = nil,
         include: [String] = [],
         exclude: [String] = [],
         includeDiff: Bool = false,
@@ -143,6 +143,7 @@ public struct EggService: Sendable {
             template: template,
             parsedMacros: parsedMacros,
             outputDir: outputDir,
+            stagingRoot: stagingRoot,
             include: include,
             exclude: exclude,
             includeDiff: includeDiff,
@@ -413,6 +414,7 @@ public struct EggService: Sendable {
         template: Template,
         parsedMacros: [ParsedMacroDefinition],
         outputDir: URL,
+        stagingRoot: URL? = nil,
         include: [String],
         exclude: [String],
         includeDiff: Bool,
@@ -421,7 +423,11 @@ public struct EggService: Sendable {
     ) async throws -> AgentHatchPreviewResult {
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
-            workingDirectory: outputDir,
+            // stagingRoot means the same as in the direct flow: the directory
+            // the staging clones from and applies back into. The transaction
+            // records (.egg) live there too, so a follow-up apply must name
+            // it as its working_directory.
+            workingDirectory: stagingRoot ?? outputDir,
             homeDirectory: homeDirectory,
             templateDirectory: template.path,
             config: template.config,

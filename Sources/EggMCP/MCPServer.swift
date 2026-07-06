@@ -83,7 +83,7 @@ public struct EggMCPServer {
                     ]),
                     "staging_root": .object([
                         "type": "string",
-                        "description": "Directory to use as staging root. Use this when template outputs target a different directory than the working directory.",
+                        "description": "Directory the staging clones from and applies back into, instead of the working directory. Use this when template outputs target a different directory, or to scope staging to a subdirectory of a large repository. In the default preview mode the transaction records (.egg) are stored under this directory — pass the same path as working_directory to egg_hatch_apply.",
                     ]),
                     "project_directory": .object([
                         "type": "string",
