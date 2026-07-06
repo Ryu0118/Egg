@@ -59,6 +59,33 @@ public struct AgentHatchApplyResult: Codable, Sendable, Equatable {
     }
 }
 
+public struct AgentHatchDiscardResult: Codable, Sendable, Equatable {
+    public let status: String
+    public let applyToken: String
+    public let rollbackId: String?
+
+    /// The changes the transaction had recorded, whatever its state at
+    /// discard time — a rolledBack transaction's changes are not applied
+    /// anywhere, so this must not be called "appliedChanges".
+    public let discardedChanges: [AgentChangeEntry]
+
+    public let warnings: [AgentTransactionWarning]
+
+    public init(
+        status: String,
+        applyToken: String,
+        rollbackId: String?,
+        discardedChanges: [AgentChangeEntry],
+        warnings: [AgentTransactionWarning] = [],
+    ) {
+        self.status = status
+        self.applyToken = applyToken
+        self.rollbackId = rollbackId
+        self.discardedChanges = discardedChanges
+        self.warnings = warnings
+    }
+}
+
 public struct AgentHatchRollbackResult: Codable, Sendable, Equatable {
     public let status: String
     public let rollbackId: String

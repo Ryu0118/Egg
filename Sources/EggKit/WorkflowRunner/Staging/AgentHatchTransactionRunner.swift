@@ -263,7 +263,7 @@ package struct AgentHatchTransactionRunner {
     ///
     /// Also accepts orphaned rollback bundles left by pre-unification egg
     /// versions (whose discard removed only the transaction directory).
-    package func discard(token: String, force: Bool = false) async throws -> AgentHatchApplyResult {
+    package func discard(token: String, force: Bool = false) async throws -> AgentHatchDiscardResult {
         try Self.validateIdentifier(token, kind: "apply token")
         return try await TransactionLock.shared.withLocks(
             outer: store.directory(for: token),
@@ -519,7 +519,7 @@ package struct AgentHatchTransactionRunner {
     /// (they live inside the deleted directories). TransactionLock's protocol
     /// permits that only as the final act before release: each branch deletes
     /// and then immediately returns or throws, with no guarded work after.
-    private func discardLocked(token: String, bundleRoot: URL, force: Bool) throws -> AgentHatchApplyResult {
+    private func discardLocked(token: String, bundleRoot: URL, force: Bool) throws -> AgentHatchDiscardResult {
         let bundleExists = fileManager.exists(bundleRoot.appending(path: "manifest.json"))
 
         switch classifyDiscardTarget(token: token, bundleRoot: bundleRoot) {
@@ -529,11 +529,11 @@ package struct AgentHatchTransactionRunner {
             }
             try store.discard(token: token)
             try fileManager.removeIfExists(bundleRoot)
-            return AgentHatchApplyResult(
+            return AgentHatchDiscardResult(
                 status: "discarded",
                 applyToken: token,
                 rollbackId: bundleExists ? token : nil,
-                appliedChanges: metadata.changes.map(\.agentEntry),
+                discardedChanges: metadata.changes.map(\.agentEntry),
                 warnings: metadata.warnings,
             )
 
@@ -543,11 +543,11 @@ package struct AgentHatchTransactionRunner {
             }
             try store.discard(token: token)
             try fileManager.removeIfExists(bundleRoot)
-            return AgentHatchApplyResult(
+            return AgentHatchDiscardResult(
                 status: "discarded",
                 applyToken: token,
                 rollbackId: bundleExists ? token : nil,
-                appliedChanges: [],
+                discardedChanges: [],
                 warnings: [],
             )
 
@@ -561,11 +561,11 @@ package struct AgentHatchTransactionRunner {
             try fileManager.removeIfExists(bundleRoot)
             // Drop the empty shell the outer lock's directory creation left.
             removeLockShell(at: store.directory(for: token))
-            return AgentHatchApplyResult(
+            return AgentHatchDiscardResult(
                 status: "discarded",
                 applyToken: token,
                 rollbackId: token,
-                appliedChanges: manifest.map { $0.changes.map(\.agentEntry) } ?? [],
+                discardedChanges: manifest.map { $0.changes.map(\.agentEntry) } ?? [],
                 warnings: [],
             )
 

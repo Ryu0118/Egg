@@ -15,6 +15,11 @@ egg hatch discard <applyToken> [--force]
 egg hatch transactions
 ```
 
+The working directory must be a git repository: the whole change model —
+staging clone, `.gitignore` suppression, change detection — is built on git,
+and `preview` fails fast with "not a git repository" otherwise. Run `git init`
+first in a fresh directory.
+
 Every transaction moves through one state machine, recorded in
 `.egg/transactions/<token>/metadata.json` — the single source of truth for
 status:

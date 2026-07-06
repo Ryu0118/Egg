@@ -193,7 +193,7 @@ public struct EggService: Sendable {
         applyToken: String,
         workingDirectory: URL? = nil,
         force: Bool = false,
-    ) async throws -> AgentHatchApplyResult {
+    ) async throws -> AgentHatchDiscardResult {
         try await makeTransactionRunner(workingDirectory: workingDirectory)
             .discard(token: applyToken, force: force)
     }

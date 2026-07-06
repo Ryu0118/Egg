@@ -33,6 +33,10 @@ egg hatch discard <applyToken> [--force]
 egg hatch transactions
 ```
 
+The working directory must be a git repository — the staged change model is
+built on git, and `preview` fails fast with "not a git repository" otherwise.
+In a fresh directory, run `git init` first.
+
 Every transaction moves through one state machine, recorded in
 `.egg/transactions/<token>/metadata.json`. The `applyToken` and `rollbackId`
 are always the same value:

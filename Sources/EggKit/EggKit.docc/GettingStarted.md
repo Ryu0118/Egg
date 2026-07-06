@@ -54,9 +54,14 @@ Templates live in one of two places:
 
 ## Step 3: Create your first template
 
-Create a project-local template called `SwiftPackage`.
+Create a project-local template called `SwiftPackage`. Work inside a git
+repository — every staged hatch (the default `egg hatch`, and the
+`preview`/`apply` flow) builds its change set with git and refuses to run
+outside one. If you are following along in a scratch directory, initialize it
+first:
 
 ```sh
+git init
 egg template create --name SwiftPackage --description "A minimal Swift package" --location project
 ```
 
