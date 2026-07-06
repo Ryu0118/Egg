@@ -98,6 +98,21 @@ public struct EggService: Sendable {
             )
         }
 
+        // Staged hatching of a non-git directory clones *everything* in it,
+        // which the human flow gates behind an interactive confirmation.
+        // Service mode has no prompt channel — reaching one exits the
+        // process, killing the MCP server mid-request — so refuse up front
+        // with the alternatives named. The check targets the directory the
+        // staging actually clones (stagingRoot when given).
+        if useStaging {
+            let stagingBase = stagingRoot ?? outputDir
+            guard await GitRepositoryChecker(processRunner: ProcessRunner()).isGitRepository(stagingBase) else {
+                throw EggServiceError.stagedHatchRequiresGitRepository(
+                    path: stagingBase.path(percentEncoded: false),
+                )
+            }
+        }
+
         // Convert macros dict to ParsedMacroDefinition array
         let parsedMacros = parseMacros(macros, for: template)
 
@@ -109,6 +124,10 @@ public struct EggService: Sendable {
             additionalSearchPaths: additionalSearchPaths,
             fileManager: fileManager,
             processRunner: ProcessRunner(),
+            // Progress banners must not interleave with the JSON-RPC stream —
+            // '🔒 Creating staging workspace…' on stdout corrupts the protocol
+            // before the client sees any response.
+            interaction: SilentInteraction(),
             useStaging: useStaging,
             overrideConflicts: true,
             sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
@@ -591,11 +610,14 @@ public enum EggServiceError: Error, LocalizedError, Sendable {
     case refNotAllowedForLocalPath(String)
     case sandboxPermissionRequired(paths: [String], templateName: String)
     case sandboxDisableRequiresConfirmation(templateName: String)
+    case stagedHatchRequiresGitRepository(path: String)
 
     public var errorDescription: String? {
         switch self {
         case let .invalidLocation(location):
             "Invalid location '\(location)'. Must be 'global' or 'project'."
+        case let .stagedHatchRequiresGitRepository(path):
+            "'\(path)' is not a git repository, and a staged hatch of a non-git directory copies every file in it — which needs an interactive confirmation this service mode has no channel for. Run 'git init' there first, or pass use_staging: false to write directly (no preview or rollback)."
         case let .invalidGitURL(url):
             "Invalid Git URL: \(url)"
         case let .refNotAllowedForLocalPath(source):

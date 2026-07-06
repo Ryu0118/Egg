@@ -55,3 +55,35 @@ struct MCPServiceSandboxTests {
         let homeDirectory: URL
     }
 }
+
+/// Over MCP there is no prompt channel: reaching the human flow's non-git
+/// confirmation exits the process and kills the server mid-request. The
+/// service must refuse a staged hatch of a non-git directory up front with
+/// a structured, actionable error instead.
+extension MCPServiceSandboxTests {
+    @Test("a staged hatch of a non-git directory throws instead of reaching the process-killing prompt")
+    func stagedHatchOnNonGitDirectoryThrows() async throws {
+        let workspace = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+
+        let service = EggService(
+            fileManager: fileManager,
+            workingDirectory: workspace.projectDirectory,
+            projectDirectory: workspace.projectDirectory,
+            homeDirectory: workspace.homeDirectory,
+        )
+
+        do {
+            _ = try await service.hatchTemplate(
+                templateName: "SandboxedPreview",
+                macros: [:],
+                useStaging: true,
+                applyChanges: true,
+            )
+            Issue.record("expected stagedHatchRequiresGitRepository")
+        } catch let error as EggServiceError {
+            #expect(error.localizedDescription.contains("use_staging: false"))
+            #expect(error.localizedDescription.contains("git init"))
+        }
+    }
+}
