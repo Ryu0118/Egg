@@ -37,6 +37,12 @@ package extension EggCommand.TemplateCommand {
                     homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                 ).validateTemplate(templatePath: templatePath)
                 try CLIOutput.printJSON(result)
+                // Same failure signal as the human mode: a caller that only
+                // checks the exit code must not read an invalid template as
+                // success just because it asked for JSON.
+                guard result.isValid else {
+                    throw ExitCode.failure
+                }
                 return
             }
             let mode = try await validate()

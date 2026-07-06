@@ -41,6 +41,9 @@ public struct EggService: Sendable {
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
             fileManager: fileManager,
+            // Skipped-template diagnostics must not interleave with the JSON
+            // body this path exists to emit.
+            interaction: SilentInteraction(),
         )
 
         return try await runner.runMcp(location: locationType)

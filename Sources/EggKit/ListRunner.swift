@@ -28,12 +28,16 @@ package struct ListRunner {
         self.additionalSearchPaths = additionalSearchPaths
         self.hideDescription = hideDescription
         self.interaction = interaction
+        // Propagate the runner's interaction: the finder logs a diagnostic for
+        // every broken sibling config.yml it skips, and with its own default
+        // terminal that lands on stdout — corrupting the --json contract.
         finder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
+            interaction: interaction,
         )
     }
 
@@ -54,12 +58,16 @@ package struct ListRunner {
         self.additionalSearchPaths = additionalSearchPaths
         self.hideDescription = hideDescription
         self.interaction = interaction
+        // Propagate the runner's interaction: the finder logs a diagnostic for
+        // every broken sibling config.yml it skips, and with its own default
+        // terminal that lands on stdout — corrupting the --json contract.
         finder = TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             additionalSearchPaths: additionalSearchPaths,
+            interaction: interaction,
         )
     }
 
