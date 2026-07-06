@@ -88,8 +88,20 @@ package struct AgentHatchTransactionRunner {
         // a git repository. There is no full-copy fallback: an agent cannot answer
         // an interactive "this may be slow, proceed?" prompt, and copying an
         // un-scoped directory (node_modules, .build, …) is exactly what we avoid.
-        guard await GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory) else {
+        guard let repositoryRoot = await GitRepositoryChecker(processRunner: processRunner).repositoryRoot(of: workingDirectory) else {
             throw Error.notAGitRepository(path: workingDirectory.path(percentEncoded: false))
+        }
+
+        // Running from a subdirectory of the repository is legal, but every
+        // relative path — hatch.output above all — resolves against the
+        // subdirectory, not the repository root. That mismatch is silent and
+        // lands files in the wrong place, so the result says it out loud.
+        var contextWarnings: [AgentTransactionWarning] = []
+        if !workingDirectory.isSamePath(to: repositoryRoot) {
+            contextWarnings.append(AgentTransactionWarning(
+                code: "subdirectory_of_repository",
+                message: "The working directory is a subdirectory of the git repository at \(repositoryRoot.path(percentEncoded: false)). Staging and relative output paths (hatch.output) resolve against the subdirectory, not the repository root — run from the root if the template should target it.",
+            ))
         }
 
         // Cost is per-file (two APFS clones of every tracked/unignored file),
@@ -115,6 +127,7 @@ package struct AgentHatchTransactionRunner {
                 resolvedMacros: resolvedMacros,
                 grant: grant,
                 includeDiff: includeDiff,
+                contextWarnings: contextWarnings,
             )
         } catch {
             // Nothing observable was committed — metadata.json is written
@@ -141,6 +154,7 @@ package struct AgentHatchTransactionRunner {
         resolvedMacros: [ResolvedMacro],
         grant: WriteGrant,
         includeDiff: Bool,
+        contextWarnings: [AgentTransactionWarning] = [],
     ) async throws -> AgentHatchPreviewResult {
         let tempWork = tempBase.appending(path: "work")
         let tempReference = tempBase.appending(path: "reference")
@@ -166,7 +180,7 @@ package struct AgentHatchTransactionRunner {
         if includeDiff {
             changes = try await attachDiffs(to: changes, detector: detector, workspace: tempWork)
         }
-        let warnings = makeWarnings() + grant.warnings + snapshotWarnings
+        let warnings = makeWarnings() + grant.warnings + snapshotWarnings + contextWarnings
 
         // Only the final directory-materialization step is locked — cheap
         // insurance against a concurrent discard()/apply() enumerating or

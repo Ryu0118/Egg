@@ -35,7 +35,10 @@ egg hatch transactions
 
 The working directory must be a git repository — the staged change model is
 built on git, and `preview` fails fast with "not a git repository" otherwise.
-In a fresh directory, run `git init` first.
+In a fresh directory, run `git init` first. Run from the repository root
+unless you mean to scope everything to a subdirectory: staging and relative
+`hatch.output` paths resolve against the current directory, and the preview
+result carries a `subdirectory_of_repository` warning when they differ.
 
 **Staging scope and cost.** `preview` clones the working directory twice
 (workspace + reference). Only git-tracked files and untracked files not

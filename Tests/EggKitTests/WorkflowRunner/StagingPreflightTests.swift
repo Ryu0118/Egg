@@ -124,6 +124,31 @@ struct StagingPreflightTests {
         )
     }
 
+    @Test("previewing from a subdirectory of the repository warns; from the root it doesn't")
+    func subdirectoryPreviewWarns() async throws {
+        let workspace = try makePreviewWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+        let subdirectory = workspace.workingDirectory.appending(path: "nested/deeper")
+        try fileManager.createDirectory(at: subdirectory, withIntermediateDirectories: true)
+
+        let fromSubdirectory = try await makeRunner(
+            workspace: Workspace(
+                root: workspace.root,
+                workingDirectory: subdirectory,
+                homeDirectory: workspace.homeDirectory,
+                templateDirectory: workspace.templateDirectory,
+            ),
+            stagingFileLimit: StagingPreflight.defaultFileLimit,
+        ).preview()
+        #expect(fromSubdirectory.warnings.contains { $0.code == "subdirectory_of_repository" })
+
+        let fromRoot = try await makeRunner(
+            workspace: workspace,
+            stagingFileLimit: StagingPreflight.defaultFileLimit,
+        ).preview()
+        #expect(!fromRoot.warnings.contains { $0.code == "subdirectory_of_repository" })
+    }
+
     // MARK: - Fixtures
 
     private struct Workspace {
