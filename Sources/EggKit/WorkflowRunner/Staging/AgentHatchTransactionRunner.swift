@@ -213,6 +213,15 @@ package struct AgentHatchTransactionRunner {
             return metadata
         }
 
+        // The transaction records live under this runner's workingDirectory.
+        // When that differs from the caller's process cwd (preview ran with
+        // --output/staging_root), a bare `egg hatch apply <token>` from cwd
+        // cannot find them — so the suggested commands must carry
+        // --working-directory, not just hope the caller cd's first.
+        let workingDirectoryArgument = workingDirectory.isSamePath(to: URL(filePath: fileManager.currentDirectoryPath))
+            ? ""
+            : " --working-directory '\(workingDirectory.path(percentEncoded: false))'"
+
         return AgentHatchPreviewResult(
             applyToken: token,
             templateName: config.name,
@@ -223,8 +232,8 @@ package struct AgentHatchTransactionRunner {
             changes: changes,
             warnings: warnings,
             nextCommands: AgentTransactionCommands(
-                apply: "egg hatch apply \(token)",
-                discard: "egg hatch discard \(token)",
+                apply: "egg hatch apply \(token)\(workingDirectoryArgument)",
+                discard: "egg hatch discard \(token)\(workingDirectoryArgument)",
             ),
         )
     }
@@ -1053,7 +1062,7 @@ extension AgentHatchTransactionRunner {
             case let .discardRequiresForce(token, status):
                 "Discarding transaction '\(token)' (status: '\(status)') deletes its rollback bundle — the only way to undo the apply. To undo the changes instead, run 'egg hatch rollback \(token)' first. To delete the records anyway and keep the applied files as they are, pass --force (CLI) or force: true (MCP)."
             case let .transactionNotFound(token):
-                "No transaction or rollback bundle found for '\(token)'. Run 'egg hatch transactions' to list known transactions."
+                "No transaction or rollback bundle found for '\(token)'. Run 'egg hatch transactions' to list known transactions. If the preview ran with --output <dir> (or staging_root over MCP), its records live under that directory — pass --working-directory <dir> (working_directory over MCP)."
             case let .corruptTransactionRecord(token):
                 "Transaction '\(token)' has a corrupt record on disk and cannot be applied or rolled back. Delete its records with 'egg hatch discard \(token) --force', then re-run preview."
             case let .missingRollbackBackup(id, paths):

@@ -11,6 +11,9 @@ struct HatchTransactionOptions: ParsableArguments {
     @Option(name: .long, help: "Directory where project templates are located (defaults to current directory).", completion: .directory)
     var projectDirectory: String?
 
+    @Option(name: .long, help: "Directory that contains the .egg transaction records (defaults to the current directory). Pass the same directory a preview ran with --output <dir> — its records live there.", completion: .directory)
+    var workingDirectory: String?
+
     @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
     var templateSearchPaths: [String] = []
 
@@ -19,7 +22,8 @@ struct HatchTransactionOptions: ParsableArguments {
     func makeService() async throws -> EggService {
         try await EggService(
             fileManager: Self.fileManager,
-            workingDirectory: URL(filePath: Self.fileManager.currentDirectoryPath),
+            workingDirectory: workingDirectory.map { resolveCLIPath($0, relativeToDirectory: Self.fileManager.currentDirectoryPath) }
+                ?? URL(filePath: Self.fileManager.currentDirectoryPath),
             projectDirectory: resolveProjectDirectory(),
             homeDirectory: CLIEnvironment.resolveHomeDirectory(),
             additionalSearchPaths: resolveTemplateSearchPaths(),
@@ -90,7 +94,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
     func run() async throws {
         try validateSandboxOptions()
         let service = try await options.makeService()
-        let outputDirectory = output.map { URL(filePath: $0, relativeTo: URL(filePath: HatchTransactionOptions.fileManager.currentDirectoryPath)).standardizedFileURL }
+        let outputDirectory = output.map { resolveCLIPath($0, relativeToDirectory: HatchTransactionOptions.fileManager.currentDirectoryPath) }
         let result = try await service.previewHatchTemplate(
             templateName: templateName,
             macroArguments: macros,

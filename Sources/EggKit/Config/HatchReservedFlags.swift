@@ -28,6 +28,7 @@ package enum HatchReservedFlags {
         "exclude",
         "output",
         "project-directory",
+        "working-directory",
         "template-search-paths",
     ]
 

@@ -27,7 +27,7 @@ This is the flow to use by default. Every command below is non-interactive and e
 
 ```sh
 egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff] [--allow-write <path> ...] [--allow-large-staging] [--no-sandbox --user-confirmed-no-sandbox]
-egg hatch apply <applyToken> [--force]
+egg hatch apply <applyToken> [--force] [--working-directory <dir>]
 egg hatch rollback <rollbackId> [--force]
 egg hatch discard <applyToken> [--force]
 egg hatch transactions
@@ -65,7 +65,7 @@ applied ──discard --force──▶ deleted (records only; applied files stay
 - **`preview`** stages the template in an isolated clone and reports the proposed `changes`, any `warnings`, and an `applyToken`. Nothing is written to the working directory yet.
   - `--include <pathspec>` forces a normally git-ignored path into the change set.
   - `--exclude <pathspec>` drops matching paths from the change set.
-  - `--output <dir>` sets the directory the generated output targets. It is also the directory staging clones from and applies back into — use it to scope staging to a subdirectory of a large repository (the transaction records land under it).
+  - `--output <dir>` sets the directory the generated output targets. It is also the directory staging clones from and applies back into — use it to scope staging to a subdirectory of a large repository (the transaction records land under it). Follow the returned `nextCommands` verbatim: they carry the matching `--working-directory <dir>` that apply/rollback/discard need to find those records.
   - `--diff` includes each change's unified diff in the response (off by default).
   - `--allow-write <path>` (repeatable) consents to lifecycle-script writes on an external path the template declares in `config.yml`'s `sandbox.allowed_paths`. If a template declares such paths and none are consented, preview fails fast (before running anything) listing the expanded paths; show them to the user, ask for approval, and retry naming only the approved paths. Consenting to an undeclared path is an error. Writes to approved paths happen during preview and are not reverted by discard/rollback.
   - `--no-sandbox` disables the `sandbox-exec` guard around lifecycle scripts during preview only when paired with `--user-confirmed-no-sandbox` after explicit user approval. The command stays non-interactive and does not classify script contents. Prefer `--allow-write` for declared paths; reserve `--no-sandbox` for cases the sandbox cannot express.
