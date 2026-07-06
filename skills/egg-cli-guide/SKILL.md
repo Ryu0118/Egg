@@ -26,7 +26,7 @@ Project-local templates take precedence over global ones.
 This is the flow to use by default. Every command below is non-interactive and emits JSON on stdout.
 
 ```sh
-egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff] [--allow-write <path> ...] [--no-sandbox --user-confirmed-no-sandbox]
+egg hatch preview <template> [--macro-name value ...] [--include <pathspec>] [--exclude <pathspec>] [--output <dir>] [--diff] [--allow-write <path> ...] [--allow-large-staging] [--no-sandbox --user-confirmed-no-sandbox]
 egg hatch apply <applyToken> [--force]
 egg hatch rollback <rollbackId> [--force]
 egg hatch discard <applyToken> [--force]
@@ -36,6 +36,17 @@ egg hatch transactions
 The working directory must be a git repository — the staged change model is
 built on git, and `preview` fails fast with "not a git repository" otherwise.
 In a fresh directory, run `git init` first.
+
+**Staging scope and cost.** `preview` clones the working directory twice
+(workspace + reference). Only git-tracked files and untracked files not
+covered by `.gitignore` are cloned, each as an APFS copy-on-write clone — so
+the cost is per *file count*, not bytes. Above 20,000 files preview refuses
+with a `stagingTooLarge` error naming the options: scope the clone to a
+subdirectory with `--output <subdir>` (CLI) / `staging_root` (MCP), write
+directly with `egg hatch direct <template> --no-staging` (no preview or
+rollback), or pass `--allow-large-staging` / `allow_large_staging: true` to
+proceed anyway. Prefer scoping; only bypass the guard when the user
+understands the wait.
 
 Every transaction moves through one state machine, recorded in
 `.egg/transactions/<token>/metadata.json`. The `applyToken` and `rollbackId`
@@ -51,7 +62,7 @@ applied ──discard --force──▶ deleted (records only; applied files stay
 - **`preview`** stages the template in an isolated clone and reports the proposed `changes`, any `warnings`, and an `applyToken`. Nothing is written to the working directory yet.
   - `--include <pathspec>` forces a normally git-ignored path into the change set.
   - `--exclude <pathspec>` drops matching paths from the change set.
-  - `--output <dir>` sets the directory the generated output targets.
+  - `--output <dir>` sets the directory the generated output targets. It is also the directory staging clones from and applies back into — use it to scope staging to a subdirectory of a large repository (the transaction records land under it).
   - `--diff` includes each change's unified diff in the response (off by default).
   - `--allow-write <path>` (repeatable) consents to lifecycle-script writes on an external path the template declares in `config.yml`'s `sandbox.allowed_paths`. If a template declares such paths and none are consented, preview fails fast (before running anything) listing the expanded paths; show them to the user, ask for approval, and retry naming only the approved paths. Consenting to an undeclared path is an error. Writes to approved paths happen during preview and are not reverted by discard/rollback.
   - `--no-sandbox` disables the `sandbox-exec` guard around lifecycle scripts during preview only when paired with `--user-confirmed-no-sandbox` after explicit user approval. The command stays non-interactive and does not classify script contents. Prefer `--allow-write` for declared paths; reserve `--no-sandbox` for cases the sandbox cannot express.

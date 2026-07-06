@@ -39,6 +39,14 @@ so one identifier names the whole lifecycle.
 `preview` creates an isolated staging area, expands the template, runs lifecycle
 steps, and reports the proposed changes.
 
+The staging area is two clones of the working directory (workspace +
+reference), covering git-tracked files plus untracked files that aren't
+gitignored, each as an APFS copy-on-write clone — the cost scales with file
+count, not bytes. Above 20,000 files preview refuses with a
+`stagingTooLarge` error; scope the clone with `--output <subdir>` (CLI) or
+`staging_root` (MCP), fall back to `egg hatch direct --no-staging`, or pass
+`--allow-large-staging` to proceed anyway.
+
 Useful flags:
 
 | Flag | Purpose |
