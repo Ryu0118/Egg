@@ -40,6 +40,38 @@ struct ConfigUnknownKeyScannerTests {
         #expect(ConfigUnknownKeyScanner().unknownKeyWarnings(inYAML: yaml).isEmpty)
     }
 
+    @Test("an unquoted leading '!' in an if condition is flagged as a swallowed condition")
+    func unquotedBangConditionIsFlagged() {
+        let yaml = """
+        name: T
+        description: d
+        pre_hatch:
+          - if: !___X___
+            run: echo hi
+        hatch:
+          output: .
+        """
+        let warnings = ConfigUnknownKeyScanner().swallowedConditionWarnings(inYAML: yaml)
+        #expect(warnings.count == 1)
+        #expect(warnings[0].contains("pre_hatch[0]"))
+        #expect(warnings[0].contains("quote it"))
+    }
+
+    @Test("a quoted '!' condition and an absent if produce no swallowed-condition warning")
+    func quotedBangAndAbsentIfAreClean() {
+        let yaml = """
+        name: T
+        description: d
+        pre_hatch:
+          - if: "!___X___"
+            run: echo hi
+          - run: echo unconditional
+        hatch:
+          output: .
+        """
+        #expect(ConfigUnknownKeyScanner().swallowedConditionWarnings(inYAML: yaml).isEmpty)
+    }
+
     @Test("Every Config.CodingKeys case name round-trips as an accepted top-level key")
     func topLevelCodingKeysAreAllAccepted() {
         for key in Config.CodingKeys.allCases {

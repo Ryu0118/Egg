@@ -136,13 +136,13 @@ extension ConfigValidator {
 
         private func validateChoiceType(_ macro: Config.Macro, context: String) -> [Error] {
             guard let choices = macro.choices else {
-                return [.choiceTypeMissingChoices(context: context, name: macro.name)]
+                return [.choiceTypeMissingChoices(context: context, name: macro.name, type: macro.type.rawValue)]
             }
 
             var errors: [Error] = []
 
             if choices.isEmpty {
-                errors += [.choiceTypeEmptyChoices(context: context, name: macro.name)]
+                errors += [.choiceTypeEmptyChoices(context: context, name: macro.name, type: macro.type.rawValue)]
             }
 
             if let defaultValue = macro.default?.stringValue, !choices.contains(defaultValue) {
@@ -159,13 +159,13 @@ extension ConfigValidator {
 
         private func validateChoicesType(_ macro: Config.Macro, context: String) -> [Error] {
             guard let choices = macro.choices else {
-                return [.choiceTypeMissingChoices(context: context, name: macro.name)]
+                return [.choiceTypeMissingChoices(context: context, name: macro.name, type: macro.type.rawValue)]
             }
 
             var errors: [Error] = []
 
             if choices.isEmpty {
-                errors += [.choiceTypeEmptyChoices(context: context, name: macro.name)]
+                errors += [.choiceTypeEmptyChoices(context: context, name: macro.name, type: macro.type.rawValue)]
             }
 
             if let defaultValue = macro.default {

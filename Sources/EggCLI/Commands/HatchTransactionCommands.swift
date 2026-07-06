@@ -51,7 +51,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
         and are not reverted by discard or rollback.
 
         Example:
-          egg hatch preview MyTemplate --name App --enabled true
+          egg hatch preview MyTemplate --name App --enabled
           egg hatch preview MyTemplate --exclude 'docs/**' --include dist/bundle.js
           egg hatch preview MyTemplate --allow-write /Users/me/Documents/output
           egg hatch preview MyTemplate --no-sandbox --user-confirmed-no-sandbox

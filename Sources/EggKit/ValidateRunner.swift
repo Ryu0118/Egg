@@ -61,16 +61,19 @@ package struct ValidateRunner {
     /// subcommand's built-in flag shadows (the macro can never be passed on
     /// that command line).
     private func warnings(config: Config, templatePath: URL) -> [String] {
-        unknownKeyWarnings(templatePath: templatePath)
+        rawYAMLWarnings(templatePath: templatePath)
             + HatchReservedFlags.collisionWarnings(for: config.macros ?? [])
     }
 
-    private func unknownKeyWarnings(templatePath: URL) -> [String] {
+    /// Warnings only the raw YAML can reveal: keys the decoder ignored and
+    /// `if` conditions a YAML tag silently swallowed.
+    private func rawYAMLWarnings(templatePath: URL) -> [String] {
         let configURL = templatePath.appending(path: "config.yml")
         guard let data = try? fileManager.readFile(at: configURL),
               let text = String(data: data, encoding: .utf8)
         else { return [] }
-        return ConfigUnknownKeyScanner().unknownKeyWarnings(inYAML: text)
+        let scanner = ConfigUnknownKeyScanner()
+        return scanner.unknownKeyWarnings(inYAML: text) + scanner.swallowedConditionWarnings(inYAML: text)
     }
 
     private func extractValidationErrors(from error: Swift.Error) -> [String] {

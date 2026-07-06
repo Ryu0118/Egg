@@ -44,7 +44,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: f6cac4a21addd485a217a89b1c1e31627528c1768771504138a3824c7a414d5b
+  checksum: 042fec5360f730dfd5cc77b940ca22b1ae07e0a93318c81ed8fb1e9180e017d3
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -68,7 +68,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 9e3e0455a5646ef6c4ab29321de9df998a70cedbac51603b391767a213af3564
+  checksum: 586ed9c71430e5163097261a74fd154c90eb7f05fd07766d6328cc6a8c5381ec
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -95,7 +95,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: f6cac4a21addd485a217a89b1c1e31627528c1768771504138a3824c7a414d5b
+  checksum: 042fec5360f730dfd5cc77b940ca22b1ae07e0a93318c81ed8fb1e9180e017d3
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -107,7 +107,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: c64fa04e1eaf6a4eee6ebb2c272a99be1460457a1c924610234f546f324ddeab
+  checksum: 8327f4b9f424f233684450e72f07e45e6ca8911b0ffb7c216ba0edf4889dd1c7
 - name: agents-project
   sources:
   - Package.swift

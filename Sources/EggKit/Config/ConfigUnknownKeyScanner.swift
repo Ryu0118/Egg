@@ -49,6 +49,44 @@ package struct ConfigUnknownKeyScanner {
         return warnings
     }
 
+    /// Warnings for `if` conditions the decoder silently swallowed.
+    ///
+    /// An unquoted leading `!` is a YAML *tag*, so `if: !___X___` decodes the
+    /// condition as empty/absent — and since `LifecycleStep.if` is optional,
+    /// the step silently runs unconditionally instead of failing validation.
+    package func swallowedConditionWarnings(inYAML text: String) -> [String] {
+        guard let root = (try? Yams.load(yaml: text)) as? [String: Any] else { return [] }
+        var warnings: [String] = []
+
+        for section in ["pre_hatch", "post_hatch"] {
+            guard let entries = root[section] as? [Any] else { continue }
+            for (index, entry) in entries.enumerated() {
+                guard let object = entry as? [String: Any] else { continue }
+                appendSwallowedConditionWarning(for: object, context: "\(section)[\(index)]", to: &warnings)
+            }
+        }
+
+        if let hatch = root["hatch"] as? [String: Any], let excludes = hatch["exclude"] as? [Any] {
+            for (index, rule) in excludes.enumerated() {
+                guard let object = rule as? [String: Any] else { continue }
+                appendSwallowedConditionWarning(for: object, context: "hatch.exclude[\(index)]", to: &warnings)
+            }
+        }
+
+        return warnings
+    }
+
+    /// Flags an `if` key whose value didn't survive YAML parsing as a
+    /// non-empty string — the condition is gone with no signal.
+    private func appendSwallowedConditionWarning(for object: [String: Any], context: String, to warnings: inout [String]) {
+        guard object.keys.contains("if") else { return }
+        if (object["if"] as? String)?.isEmpty != false {
+            warnings.append(
+                "'if' in \(context) decodes as empty, so the condition is silently dropped. If the expression starts with '!', quote it (if: \"!___X___\") — unquoted, YAML reads '!' as a tag.",
+            )
+        }
+    }
+
     private func appendUnknownKeysInEntries(
         _ section: Any?,
         knownKeys: (some CodingKey & CaseIterable).Type,

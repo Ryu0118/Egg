@@ -8,8 +8,8 @@ extension ConfigValidator {
         case invalidMacroNameFormat(context: String, name: String)
         case reservedMacroName(context: String, name: String)
         case duplicateMacroName(context: String, name: String)
-        case choiceTypeMissingChoices(context: String, name: String)
-        case choiceTypeEmptyChoices(context: String, name: String)
+        case choiceTypeMissingChoices(context: String, name: String, type: String)
+        case choiceTypeEmptyChoices(context: String, name: String, type: String)
         case choiceDefaultValueNotInChoices(context: String, name: String, defaultValue: String, choices: [String])
         case arrayDefaultValueNotInChoices(context: String, name: String, value: String, choices: [String])
         case booleanDefaultValueInvalid(context: String, name: String, defaultValue: String)
@@ -45,10 +45,10 @@ extension ConfigValidator {
                 "\(context): Macro name '\(name)' is reserved for built-in macros and cannot be used."
             case let .duplicateMacroName(context, name):
                 "\(context): Duplicate macro name '\(name)'."
-            case let .choiceTypeMissingChoices(context, name):
-                "\(context): Macro '\(name)' of type 'choice' must have 'choices' defined."
-            case let .choiceTypeEmptyChoices(context, name):
-                "\(context): Macro '\(name)' of type 'choice' must have at least one choice."
+            case let .choiceTypeMissingChoices(context, name, type):
+                "\(context): Macro '\(name)' of type '\(type)' must have 'choices' defined."
+            case let .choiceTypeEmptyChoices(context, name, type):
+                "\(context): Macro '\(name)' of type '\(type)' must have at least one choice."
             case let .choiceDefaultValueNotInChoices(context, name, defaultValue, choices):
                 "\(context): Macro '\(name)' default value '\(defaultValue)' must be one of the choices: \(choices.joined(separator: ", "))."
             case let .arrayDefaultValueNotInChoices(context, name, value, choices):
@@ -68,7 +68,7 @@ extension ConfigValidator {
             case let .lifecycleStepIdInvalidCharacters(context, id):
                 "\(context): Step ID '\(id)' contains invalid characters. Only alphanumeric characters, hyphens, and underscores are allowed."
             case let .lifecycleStepConditionEmpty(context):
-                "\(context): Conditional expression cannot be empty."
+                "\(context): Conditional expression cannot be empty. If the expression starts with '!', quote it (if: \"!___X___\") — unquoted, YAML reads '!' as a tag and the value decodes as empty."
             case let .lifecycleStepRunEmpty(context):
                 "\(context): 'run' command cannot be empty."
             case .hatchOutputEmpty:
@@ -76,7 +76,7 @@ extension ConfigValidator {
             case let .excludePathEmpty(context):
                 "\(context): Exclude path cannot be empty."
             case let .excludeConditionEmpty(context):
-                "\(context): Conditional expression cannot be empty."
+                "\(context): Conditional expression cannot be empty. If the expression starts with '!', quote it (if: \"!___X___\") — unquoted, YAML reads '!' as a tag and the value decodes as empty."
             case let .excludePathsEmpty(context):
                 "\(context): Conditional exclude must have at least one path."
             case let .excludeConditionalPathEmpty(context, pathIndex):

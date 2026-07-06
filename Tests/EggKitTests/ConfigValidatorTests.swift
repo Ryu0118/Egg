@@ -339,7 +339,7 @@ struct ConfigValidatorTests {
                     Config.Macro(name: "___CHOICE___", description: "desc", type: .choice, choices: nil),
                 ]),
                 expected: .failure([
-                    .choiceTypeMissingChoices(context: "macros[0]", name: "___CHOICE___"),
+                    .choiceTypeMissingChoices(context: "macros[0]", name: "___CHOICE___", type: "choice"),
                 ]),
             ),
             TestCase(
@@ -348,7 +348,7 @@ struct ConfigValidatorTests {
                     Config.Macro(name: "___CHOICE___", description: "desc", type: .choice, choices: []),
                 ]),
                 expected: .failure([
-                    .choiceTypeEmptyChoices(context: "macros[0]", name: "___CHOICE___"),
+                    .choiceTypeEmptyChoices(context: "macros[0]", name: "___CHOICE___", type: "choice"),
                 ]),
             ),
             TestCase(
@@ -608,5 +608,28 @@ struct ConfigValidatorTests {
             hatch: hatch,
             postHatch: postHatch,
         )
+    }
+}
+
+/// The missing-choices error used to hardcode "type 'choice'" even for a
+/// `choices` macro — the message must name the macro's actual type.
+extension ConfigValidatorTests {
+    @Test("a choices-type macro missing its choices reports type 'choices', not 'choice'")
+    func choicesTypeErrorNamesItsOwnType() async {
+        let config = Config(
+            name: "T",
+            description: "d",
+            macros: [Config.Macro(name: "___MULTI___", description: "d", type: .choices, choices: nil)],
+            hatch: .init(output: "."),
+        )
+
+        do {
+            try await ConfigValidator().validate(config)
+            Issue.record("expected validation failure")
+        } catch {
+            let message = (error as? CombinedError)?.errors.map(\.localizedDescription).joined() ?? error.localizedDescription
+            #expect(message.contains("'choices'"))
+            #expect(!message.contains("of type 'choice' "))
+        }
     }
 }
