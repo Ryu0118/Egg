@@ -126,10 +126,10 @@ struct StagingWorkflowRunner: WorkflowRunning {
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirectoryWatcher,
             processRunner: processRunner,
-            // Service mode collects every staging consent as parameters
-            // before this point; reaching a prompt here would exit the
-            // process instead of asking.
-            requireGitRepository: !stagingConsentPrecollected,
+            // Consent (git-ness, size, non-git override) was already
+            // resolved by the caller through StagingFeasibility when
+            // stagingConsentPrecollected is set — see its doc comment.
+            skipStagingPrompts: stagingConsentPrecollected,
             interaction: interaction,
         )
 

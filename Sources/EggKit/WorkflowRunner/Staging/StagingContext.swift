@@ -110,7 +110,7 @@ actor StagingContext {
         workingDirectoryWatcher: some DirectoryWatching,
         processRunner: some ProcessRunning,
         directoryCloner: some DirectoryCloning = GitTrackedDirectoryCloner(),
-        requireGitRepository: Bool = true,
+        skipStagingPrompts: Bool = false,
         interaction: some InteractionProviding = GuardedTerminal(),
     ) async throws -> StagingContext {
         do {
@@ -119,8 +119,13 @@ actor StagingContext {
             let workDirectory = workspaceBaseDirectory.appending(path: "work")
             let referenceDirectory = workspaceBaseDirectory.appending(path: "reference")
 
+            // `skipStagingPrompts` silences BOTH prompts below (non-git
+            // consent and large-repository confirmation) — a caller that has
+            // already resolved consent through StagingFeasibility, the way
+            // EggService's MCP path does, since reaching either prompt here
+            // would exit the process instead of asking.
             let readyToCopyToStaging: Bool
-            if !requireGitRepository {
+            if skipStagingPrompts {
                 readyToCopyToStaging = true
             } else if await !(GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
                 // Without git there is no gitignore filtering: the clone

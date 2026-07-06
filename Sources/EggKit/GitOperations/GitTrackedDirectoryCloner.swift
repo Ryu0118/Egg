@@ -110,7 +110,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     private func cloneAllEntries(from source: URL, to destination: URL) async throws {
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         let entries = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
-        for entry in entries where entry.lastPathComponent != ".egg" {
+        for entry in entries where entry.lastPathComponent != EggBookkeeping.directoryName {
             try await apfsCloner.clone(from: entry, to: destination.appending(path: entry.lastPathComponent))
         }
     }
@@ -172,7 +172,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     /// True for egg's own `.egg/` transaction/rollback records — never part
     /// of a staging clone, exactly like `.git` is never part of git's view.
     private func isEggBookkeepingPath(_ path: String) -> Bool {
-        path == ".egg" || path == ".egg/" || path.hasPrefix(".egg/")
+        path == EggBookkeeping.directoryName || path == "\(EggBookkeeping.directoryName)/" || path.hasPrefix("\(EggBookkeeping.directoryName)/")
     }
 
     /// Parses NUL-separated file paths from git ls-files output.

@@ -124,7 +124,7 @@ struct GitStagingChangeDetector {
 
     private func writeStructuralExcludes(in workspace: URL) throws {
         let excludeFile = workspace.appending(path: ".git/info/exclude")
-        let lines = [".egg/"] + nestedRepositoryPaths(in: workspace).map { "/\($0)/" }
+        let lines = ["\(EggBookkeeping.directoryName)/"] + nestedRepositoryPaths(in: workspace).map { "/\($0)/" }
         try fileManager.writeText(lines.joined(separator: "\n") + "\n", at: excludeFile)
     }
 

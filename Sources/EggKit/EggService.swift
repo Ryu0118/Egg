@@ -105,40 +105,32 @@ public struct EggService: Sendable {
         // human flow collects interactively is collected here, up front, as
         // parameters: staging a non-git directory (copies everything, no
         // .gitignore filtering) needs allow_non_git_staging, and a clone
-        // above the size guard needs allow_large_staging. The refusals carry
-        // the resolved directory and its measured size so the caller can
-        // inspect the facts and decide. With the checks done, the runner is
-        // told consent is pre-collected and the prompts stay unreachable.
+        // above the size guard needs allow_large_staging. The decision itself
+        // is StagingFeasibility, shared with AgentHatchTransactionRunner's
+        // agent-facing preview() so the two entry points can't drift on what
+        // "too large" or "needs consent" means. With the check done, the
+        // runner is told consent is pre-collected and its own (prompt-based)
+        // check stays unreachable.
         if useStaging {
             let stagingBase = stagingRoot ?? outputDir
-            let preflight = StagingPreflight(fileManager: fileManager)
-            if await GitRepositoryChecker(processRunner: ProcessRunner()).isGitRepository(stagingBase) {
-                if !allowLargeStaging {
-                    let fileCount = try await preflight.countGitCloneableFiles(in: stagingBase)
-                    guard fileCount <= StagingPreflight.defaultFileLimit else {
-                        throw EggServiceError.stagedHatchTooLarge(
-                            path: stagingBase.path(percentEncoded: false),
-                            fileCount: fileCount,
-                            limit: StagingPreflight.defaultFileLimit,
-                        )
-                    }
-                }
-            } else {
-                let (fileCount, isExact) = preflight.countAllFiles(in: stagingBase)
-                guard allowNonGitStaging else {
-                    throw EggServiceError.stagedHatchRequiresGitRepository(
-                        path: stagingBase.path(percentEncoded: false),
-                        fileCount: fileCount,
-                        isExact: isExact,
-                    )
-                }
-                guard fileCount <= StagingPreflight.defaultFileLimit || allowLargeStaging else {
-                    throw EggServiceError.stagedHatchTooLarge(
-                        path: stagingBase.path(percentEncoded: false),
-                        fileCount: fileCount,
-                        limit: StagingPreflight.defaultFileLimit,
-                    )
-                }
+            let feasibility = StagingFeasibility(fileManager: fileManager)
+            let processRunner = ProcessRunner()
+            let facts = try await feasibility.facts(for: stagingBase, processRunner: processRunner)
+            switch feasibility.decide(facts: facts, allowLargeStaging: allowLargeStaging, allowNonGitStaging: allowNonGitStaging) {
+            case .proceed:
+                break
+            case let .nonGitConsentRequired(fileCount, isExact):
+                throw EggServiceError.stagedHatchRequiresGitRepository(
+                    path: stagingBase.path(percentEncoded: false),
+                    fileCount: fileCount,
+                    isExact: isExact,
+                )
+            case let .tooLarge(fileCount, limit):
+                throw EggServiceError.stagedHatchTooLarge(
+                    path: stagingBase.path(percentEncoded: false),
+                    fileCount: fileCount,
+                    limit: limit,
+                )
             }
         }
 

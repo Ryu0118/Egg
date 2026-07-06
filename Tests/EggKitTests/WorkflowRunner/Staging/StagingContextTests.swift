@@ -26,7 +26,7 @@ struct StagingContextTests {
             workspaceWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             workingDirectoryWatcher: ScanningDirectoryWatcher(fileManager: fileManager),
             processRunner: ProcessRunner(),
-            requireGitRepository: false,
+            skipStagingPrompts: true,
             interaction: TestInteraction(),
         )
 

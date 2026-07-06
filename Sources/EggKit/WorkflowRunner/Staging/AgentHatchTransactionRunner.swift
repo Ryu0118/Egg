@@ -92,7 +92,12 @@ package struct AgentHatchTransactionRunner {
         // (`allowNonGitStaging`): the refusal below reports the resolved
         // directory and its measured size, so an agent can inspect the facts
         // and decide, the way a human answers the interactive prompt.
-        let preflight = StagingPreflight(processRunner: processRunner, fileManager: fileManager)
+        //
+        // The decision itself (git? how many files? within the guard?) is
+        // shared with EggService.hatchTemplate's MCP path via
+        // StagingFeasibility, so the two entry points can't drift apart on
+        // what "too large" or "needs consent" means — only the error type
+        // each throws differs.
         var contextWarnings: [AgentTransactionWarning] = []
 
         if let repositoryRoot = await GitRepositoryChecker(processRunner: processRunner).repositoryRoot(of: workingDirectory) {
@@ -106,36 +111,26 @@ package struct AgentHatchTransactionRunner {
                     message: "The working directory is a subdirectory of the git repository at \(repositoryRoot.path(percentEncoded: false)). Staging and relative output paths (hatch.output) resolve against the subdirectory, not the repository root — run from the root if the template should target it.",
                 ))
             }
+        }
 
-            // Cost is per-file (two APFS clones of every tracked/unignored file),
-            // so a huge repository is refused up front with the escape hatches
-            // named, instead of silently grinding for minutes. The count comes
-            // from the same `git ls-files` enumeration the cloner performs.
-            if !allowLargeStaging {
-                let fileCount = try await preflight.countGitCloneableFiles(in: workingDirectory)
-                guard fileCount <= stagingFileLimit else {
-                    throw Error.stagingTooLarge(fileCount: fileCount, limit: stagingFileLimit)
-                }
+        let feasibility = StagingFeasibility(processRunner: processRunner, fileManager: fileManager)
+        let facts = try await feasibility.facts(for: workingDirectory, processRunner: processRunner, countCap: stagingFileLimit)
+        switch feasibility.decide(facts: facts, allowLargeStaging: allowLargeStaging, allowNonGitStaging: allowNonGitStaging, limit: stagingFileLimit) {
+        case let .proceed(warnings):
+            if warnings.contains(.nonGitStaging) {
+                contextWarnings.append(AgentTransactionWarning(
+                    code: "non_git_staging",
+                    message: "'\(workingDirectory.path(percentEncoded: false))' is not a git repository: every file was copied into staging and script-generated artifacts (build directories, caches) will be reported as changes. Run 'git init' there so staging follows .gitignore.",
+                ))
             }
-        } else {
-            // Without git there is no .gitignore filtering: the clone copies
-            // every file, build artifacts and caches included, and change
-            // detection will report script-generated artifacts as changes.
-            let (fileCount, isExact) = preflight.countAllFiles(in: workingDirectory, cap: stagingFileLimit)
-            guard allowNonGitStaging else {
-                throw Error.nonGitStagingRequiresConsent(
-                    path: workingDirectory.path(percentEncoded: false),
-                    fileCount: fileCount,
-                    isExact: isExact,
-                )
-            }
-            guard fileCount <= stagingFileLimit || allowLargeStaging else {
-                throw Error.stagingTooLarge(fileCount: fileCount, limit: stagingFileLimit)
-            }
-            contextWarnings.append(AgentTransactionWarning(
-                code: "non_git_staging",
-                message: "'\(workingDirectory.path(percentEncoded: false))' is not a git repository: every file was copied into staging and script-generated artifacts (build directories, caches) will be reported as changes. Run 'git init' there so staging follows .gitignore.",
-            ))
+        case let .nonGitConsentRequired(fileCount, isExact):
+            throw Error.nonGitStagingRequiresConsent(
+                path: workingDirectory.path(percentEncoded: false),
+                fileCount: fileCount,
+                isExact: isExact,
+            )
+        case let .tooLarge(fileCount, limit):
+            throw Error.stagingTooLarge(fileCount: fileCount, limit: limit)
         }
 
         let token = makeToken(templateName: config.name)

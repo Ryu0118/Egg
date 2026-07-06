@@ -56,7 +56,7 @@ struct StagingPreflight {
         var count = 0
         for case let url as URL in enumerator {
             // egg's own records are never cloned, so they must not count.
-            if url.lastPathComponent == ".egg" {
+            if url.lastPathComponent == EggBookkeeping.directoryName {
                 enumerator.skipDescendants()
                 continue
             }

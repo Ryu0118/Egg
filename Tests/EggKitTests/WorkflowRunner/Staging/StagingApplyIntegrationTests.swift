@@ -49,7 +49,7 @@ struct StagingApplyIntegrationTests {
             workspaceWatcher: workspaceWatcher,
             workingDirectoryWatcher: workingDirWatcher,
             processRunner: ProcessRunner(),
-            requireGitRepository: false,
+            skipStagingPrompts: true,
             interaction: TestInteraction(),
         )
 

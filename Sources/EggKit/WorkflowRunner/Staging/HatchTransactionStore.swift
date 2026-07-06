@@ -11,7 +11,7 @@ struct HatchTransactionStore {
     }
 
     var root: URL {
-        workingDirectory.appending(path: ".egg/transactions")
+        workingDirectory.appending(path: "\(EggBookkeeping.directoryName)/transactions")
     }
 
     /// The directory for a given transaction token, e.g. for
