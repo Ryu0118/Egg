@@ -78,6 +78,52 @@ struct StagingPreflightTests {
         #expect(result.changes.contains { $0.path == "Generated.txt" })
     }
 
+    @Test("a failed preview leaves no temp clone and no transaction shell behind")
+    func failedPreviewLeavesNoDebris() async throws {
+        let workspace = try makePreviewWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+        try fileManager.createDirectory(at: workspace.homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: workspace.templateDirectory, withIntermediateDirectories: true)
+        try fileManager.writeText("generated\n", at: workspace.templateDirectory.appending(path: "Generated.txt"))
+
+        // A pre_hatch step that exits nonzero fails the preview after the
+        // temp clone was created — the exact window that used to leak.
+        let runner = AgentHatchTransactionRunner(
+            fileManager: fileManager,
+            workingDirectory: workspace.workingDirectory,
+            homeDirectory: workspace.homeDirectory,
+            templateDirectory: workspace.templateDirectory,
+            config: Config(
+                name: "LeakProbe",
+                description: "d",
+                preHatch: [Config.LifecycleStep(run: "exit 7")],
+                hatch: .init(output: "."),
+            ),
+            parsedMacros: [],
+            sandboxDisabled: true,
+        )
+
+        await #expect(throws: (any Swift.Error).self) {
+            _ = try await runner.preview()
+        }
+
+        let leakedClones = (try? fileManager.contentsOfDirectory(
+            at: FileManager.default.temporaryDirectory,
+            includingPropertiesForKeys: nil,
+            options: [],
+        ))?.filter { $0.lastPathComponent.hasPrefix("egg-agent-") && $0.lastPathComponent.contains("-leakprobe-") } ?? []
+        #expect(leakedClones.isEmpty, "temp staging clone must be removed on failure: \(leakedClones)")
+        #expect(
+            !fileManager.exists(workspace.workingDirectory.appending(path: ".egg/transactions")) ||
+                (try? fileManager.contentsOfDirectory(
+                    at: workspace.workingDirectory.appending(path: ".egg/transactions"),
+                    includingPropertiesForKeys: nil,
+                    options: [],
+                ))?.isEmpty == true,
+            "no transaction shell may remain after a failed preview",
+        )
+    }
+
     // MARK: - Fixtures
 
     private struct Workspace {

@@ -106,6 +106,42 @@ package struct AgentHatchTransactionRunner {
 
         let token = makeToken(templateName: config.name)
         let tempBase = try fileManager.makeTemporaryDirectory(prefix: "egg-agent-\(token)")
+
+        do {
+            // Stage in the temp clone and materialize the transaction record.
+            return try await materializePreview(
+                token: token,
+                tempBase: tempBase,
+                resolvedMacros: resolvedMacros,
+                grant: grant,
+                includeDiff: includeDiff,
+            )
+        } catch {
+            // Nothing observable was committed — metadata.json is written
+            // last, inside the lock — so leave no debris behind: without
+            // this, every failed preview (a broken lifecycle script, a
+            // read-only .egg, a failed clone) leaked the temp clone in
+            // TMPDIR and, past the lock step, an empty transaction shell.
+            try? fileManager.removeItem(at: tempBase)
+            let transactionDirectory = store.directory(for: token)
+            if !fileManager.exists(transactionDirectory.appending(path: "metadata.json")) {
+                try? fileManager.removeItem(at: transactionDirectory)
+            }
+            throw error
+        }
+    }
+
+    /// Clones the working directory into `tempBase`, runs the template
+    /// workflow there, and materializes the transaction record under
+    /// `.egg/transactions/<token>` — the staging half of `preview`, split
+    /// out so the caller can guarantee cleanup on any failure.
+    private func materializePreview(
+        token: String,
+        tempBase: URL,
+        resolvedMacros: [ResolvedMacro],
+        grant: WriteGrant,
+        includeDiff: Bool,
+    ) async throws -> AgentHatchPreviewResult {
         let tempWork = tempBase.appending(path: "work")
         let tempReference = tempBase.appending(path: "reference")
 
