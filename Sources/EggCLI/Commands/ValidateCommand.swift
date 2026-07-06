@@ -58,7 +58,12 @@ package extension EggCommand.TemplateCommand {
                     fileManager: Self.fileManager,
                 ).validate()
             } catch {
-                throw ValidationError(error.localizedDescription)
+                // A broken template is a validation *result*, not a usage
+                // mistake: report it plainly and exit 1. Wrapping in
+                // ArgumentParser's ValidationError printed the command usage
+                // and exited 64, burying the actual problem.
+                CLIOutput.printError(error.localizedDescription)
+                throw ExitCode.failure
             }
         }
     }

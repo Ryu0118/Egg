@@ -50,7 +50,7 @@ package enum ConfigLoaderError: Error, LocalizedError {
         case let .configNotFound(path):
             "config.yml not found at path: \(path)"
         case let .decodingFailed(path, underlying):
-            "Failed to decode config.yml at \(path): \(underlying.localizedDescription)"
+            "Failed to decode config.yml at \(path): \(ConfigDecodingErrorFormatter.message(for: underlying))"
         }
     }
 }

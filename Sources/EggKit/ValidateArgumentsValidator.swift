@@ -1,11 +1,9 @@
 import FileManagerProtocol
 import Foundation
-import Yams
 
 package struct ValidateArgumentsValidator {
     private let templatePath: String
     private let fileManager: any FileManagerProtocol
-    private let decoder = YAMLDecoder()
 
     package init(
         templatePath: String,
@@ -17,18 +15,16 @@ package struct ValidateArgumentsValidator {
 
     package func validate() async throws -> ValidateRunnerMode {
         let templateURL = URL(filePath: templatePath)
-        let configPath = templateURL.appendingPathComponent("config.yml")
 
-        guard fileManager.exists(configPath) else {
-            throw Error.configNotFound(path: configPath.path)
-        }
-
-        guard fileManager.isDirectory(at: templateURL) else {
+        if fileManager.exists(templateURL), !fileManager.isDirectory(at: templateURL) {
             throw Error.notADirectory(path: templatePath)
         }
 
-        let data = try fileManager.readFile(at: configPath)
-        let config = try decoder.decode(Config.self, from: data)
+        // ConfigLoader owns the exists/read/decode sequence and formats
+        // decode failures with the exact key path, so validate reports
+        // "missing required key 'hatch.output'" instead of Foundation's
+        // bare "The data couldn't be read because it is missing."
+        let config = try ConfigLoader(fileManager: fileManager).load(from: templateURL)
 
         return .direct(
             config: config,
@@ -37,13 +33,10 @@ package struct ValidateArgumentsValidator {
     }
 
     enum Error: LocalizedError {
-        case configNotFound(path: String)
         case notADirectory(path: String)
 
         var errorDescription: String? {
             switch self {
-            case let .configNotFound(path):
-                "config.yml not found at path: \(path)"
             case let .notADirectory(path):
                 "Path is not a directory: \(path)"
             }

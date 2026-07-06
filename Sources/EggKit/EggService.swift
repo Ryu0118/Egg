@@ -350,7 +350,22 @@ public struct EggService: Sendable {
     public func validateTemplate(templatePath: String) async throws -> ValidateResult {
         let path = URL(filePath: templatePath)
         let configLoader = ConfigLoader(fileManager: fileManager)
-        let config = try configLoader.load(from: path)
+        let config: Config
+        do {
+            config = try configLoader.load(from: path)
+        } catch let error as ConfigLoaderError {
+            // An undecodable config is a validation *result*, not a tool
+            // failure: report it as invalid with the formatted decode
+            // message. A missing config.yml stays a thrown error — that's a
+            // wrong path, not a broken template.
+            guard case .decodingFailed = error else { throw error }
+            return ValidateResult(
+                templateName: path.lastPathComponent,
+                templatePath: path.path(percentEncoded: false),
+                isValid: false,
+                errors: [error.localizedDescription],
+            )
+        }
 
         let runner = ValidateRunner(
             mode: .mcp(config: config, templatePath: path),
