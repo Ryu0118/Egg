@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 8c94315f9856a5fd43654564b11faafc19d3005dd8eac7588eb72db81d8f21d9
+  checksum: 36432a12983fa8663eacddaddb1be91486c94bbda2d33433f85561adc7e56e58
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
