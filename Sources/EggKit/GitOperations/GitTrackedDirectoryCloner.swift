@@ -104,6 +104,14 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
     /// exactly the set `clone(from:to:)` copies. `StagingPreflight` uses the
     /// same enumeration to size a clone before starting it.
     ///
+    /// egg's own `.egg/` bookkeeping is excluded outright, the way git
+    /// excludes `.git` from its own operations. `.egg` is untracked and its
+    /// `transactions/*/work` trees are git repositories of their own, so
+    /// `ls-files` reports each as a single entry while a directory clone
+    /// copies the whole tree — every preview then re-cloned all prior
+    /// previews' records (which nest their own `.egg` snapshots), compounding
+    /// ~3x per preview until two user files became millions of staged ones.
+    ///
     /// Runs `git ls-files -c -o --exclude-standard` to get:
     /// - `-c`: Cached (tracked) files
     /// - `-o`: Other (untracked) files
@@ -143,6 +151,13 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
 
         let outputString = String(decoding: result.standardOutput, as: UTF8.self)
         return parseNullSeparatedPaths(outputString)
+            .filter { !isEggBookkeepingPath($0) }
+    }
+
+    /// True for egg's own `.egg/` transaction/rollback records — never part
+    /// of a staging clone, exactly like `.git` is never part of git's view.
+    private func isEggBookkeepingPath(_ path: String) -> Bool {
+        path == ".egg" || path == ".egg/" || path.hasPrefix(".egg/")
     }
 
     /// Parses NUL-separated file paths from git ls-files output.

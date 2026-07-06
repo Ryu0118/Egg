@@ -42,7 +42,8 @@ result carries a `subdirectory_of_repository` warning when they differ.
 
 **Staging scope and cost.** `preview` clones the working directory twice
 (workspace + reference). Only git-tracked files and untracked files not
-covered by `.gitignore` are cloned, each as an APFS copy-on-write clone — so
+covered by `.gitignore` are cloned (egg's own `.egg/` records are always
+excluded, like git excludes `.git`), each as an APFS copy-on-write clone — so
 the cost is per *file count*, not bytes. Above 20,000 files preview refuses
 with a `stagingTooLarge` error naming the options: scope the clone to a
 subdirectory with `--output <subdir>` (CLI) / `staging_root` (MCP), write
