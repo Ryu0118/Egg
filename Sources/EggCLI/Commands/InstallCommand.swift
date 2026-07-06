@@ -59,6 +59,11 @@ package extension EggCommand.TemplateCommand {
                 egg template install ~/Projects/templates
                 egg template install /path/to/templates
 
+            Recognized source layouts (same for Git and local sources):
+              <dir>/config.yml            the directory itself is one template
+              <dir>/<name>/config.yml     one template per subdirectory
+              <dir>/.eggs/<name>/config.yml   a project checkout's own templates
+
             Note: --branch, --tag, and --revision options are only valid for Git sources.
             """,
         )

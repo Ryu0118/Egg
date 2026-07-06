@@ -334,9 +334,9 @@ extension InstallRunner {
             case let .noTemplatesFound(source):
                 switch source {
                 case let .git(url, _):
-                    "No valid templates found in repository: \(url.original)"
+                    "No valid templates found in repository: \(url.original). egg looks for <root>/config.yml, <root>/<name>/config.yml, and <root>/.eggs/<name>/config.yml."
                 case let .local(path):
-                    "No valid templates found in directory: \(path.path(percentEncoded: false))"
+                    "No valid templates found in directory: \(path.path(percentEncoded: false)). egg looks for <dir>/config.yml, <dir>/<name>/config.yml, and <dir>/.eggs/<name>/config.yml."
                 }
             }
         }

@@ -201,3 +201,52 @@ struct TemplateDiscovererTests {
         }
     }
 }
+
+/// `template install <dir>` must accept every directory shape `template
+/// validate <dir>` accepts. Before the direct and `.eggs` layout support,
+/// only `<dir>/<name>/config.yml` was discoverable: pointing install at a
+/// template directory itself, or at a project checkout carrying `.eggs/`,
+/// reported "no valid templates found" for templates validate called valid.
+extension TemplateDiscovererTests {
+    @Test("a directory that itself contains config.yml is one template named by config.name")
+    func rootConfigIsASingleTemplate() async throws {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "template-discoverer-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
+        try "name: Imported\ndescription: d\nhatch:\n  output: .\n"
+            .write(to: tempDir.appending(path: "config.yml"), atomically: true, encoding: .utf8)
+
+        let templates = try await TemplateDiscoverer(fileManager: fileManager).discoverTemplates(in: tempDir)
+
+        #expect(templates.map(\.name) == ["Imported"])
+    }
+
+    @Test("a directory with a broken root config.yml throws instead of reporting no templates")
+    func brokenRootConfigThrows() async throws {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "template-discoverer-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
+        try "name: T\ndescription: d\nhatch: {}\n"
+            .write(to: tempDir.appending(path: "config.yml"), atomically: true, encoding: .utf8)
+
+        await #expect(throws: TemplateDiscoverer.Error.self) {
+            _ = try await TemplateDiscoverer(fileManager: fileManager).discoverTemplates(in: tempDir)
+        }
+    }
+
+    @Test("templates under <dir>/.eggs are discovered alongside plain subdirectories")
+    func eggsConventionIsScanned() async throws {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "template-discoverer-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
+        let plain = tempDir.appending(path: "Plain")
+        let inEggs = tempDir.appending(path: ".eggs/FromEggs")
+        try fileManager.createDirectory(at: plain, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: inEggs, withIntermediateDirectories: true)
+        try "name: Plain\ndescription: d\nhatch:\n  output: .\n"
+            .write(to: plain.appending(path: "config.yml"), atomically: true, encoding: .utf8)
+        try "name: FromEggs\ndescription: d\nhatch:\n  output: .\n"
+            .write(to: inEggs.appending(path: "config.yml"), atomically: true, encoding: .utf8)
+
+        let templates = try await TemplateDiscoverer(fileManager: fileManager).discoverTemplates(in: tempDir)
+
+        #expect(templates.map(\.name).sorted() == ["FromEggs", "Plain"])
+    }
+}
