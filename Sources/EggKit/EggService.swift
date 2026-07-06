@@ -130,6 +130,7 @@ public struct EggService: Sendable {
         disableSandbox: Bool = false,
         userConfirmedNoSandbox: Bool = false,
         allowedWritePaths: [String] = [],
+        allowLargeStaging: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -149,6 +150,7 @@ public struct EggService: Sendable {
             includeDiff: includeDiff,
             sandboxDisabled: disableSandbox && userConfirmedNoSandbox,
             allowedWritePaths: allowedWritePaths,
+            allowLargeStaging: allowLargeStaging,
         )
     }
 
@@ -167,6 +169,7 @@ public struct EggService: Sendable {
         includeDiff: Bool = false,
         sandboxDisabled: Bool = false,
         allowedWritePaths: [String] = [],
+        allowLargeStaging: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let outputDir = outputDirectory ?? workingDirectory
         let template = try await findTemplate(templateName, workingDirectory: outputDir)
@@ -181,6 +184,7 @@ public struct EggService: Sendable {
             includeDiff: includeDiff,
             sandboxDisabled: sandboxDisabled,
             allowedWritePaths: allowedWritePaths,
+            allowLargeStaging: allowLargeStaging,
         )
     }
 
@@ -420,6 +424,7 @@ public struct EggService: Sendable {
         includeDiff: Bool,
         sandboxDisabled: Bool,
         allowedWritePaths: [String] = [],
+        allowLargeStaging: Bool = false,
     ) async throws -> AgentHatchPreviewResult {
         let runner = AgentHatchTransactionRunner(
             fileManager: fileManager,
@@ -436,6 +441,7 @@ public struct EggService: Sendable {
             exclude: exclude,
             sandboxDisabled: sandboxDisabled,
             allowedWritePaths: allowedWritePaths,
+            allowLargeStaging: allowLargeStaging,
         )
 
         return try await runner.preview(includeDiff: includeDiff)

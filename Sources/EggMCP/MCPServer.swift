@@ -85,6 +85,10 @@ public struct EggMCPServer {
                         "type": "string",
                         "description": "Directory the staging clones from and applies back into, instead of the working directory. Use this when template outputs target a different directory, or to scope staging to a subdirectory of a large repository. In the default preview mode the transaction records (.egg) are stored under this directory — pass the same path as working_directory to egg_hatch_apply.",
                     ]),
+                    "allow_large_staging": .object([
+                        "type": "boolean",
+                        "description": "Proceed even when staging would clone more files than the large-repository guard allows. Prefer scoping with staging_root instead. Default: false.",
+                    ]),
                     "project_directory": .object([
                         "type": "string",
                         "description": "Project directory path.",
@@ -160,6 +164,10 @@ public struct EggMCPServer {
                         "type": "array",
                         "items": .object(["type": "string"]),
                         "description": "Git pathspecs to exclude from the change set (e.g. docs/**).",
+                    ]),
+                    "allow_large_staging": .object([
+                        "type": "boolean",
+                        "description": "Proceed even when staging would clone more files than the large-repository guard allows. Prefer a smaller output_directory instead. Default: false.",
                     ]),
                     "include_diff": .object([
                         "type": "boolean",

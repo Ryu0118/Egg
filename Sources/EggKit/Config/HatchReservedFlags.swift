@@ -23,6 +23,7 @@ package enum HatchReservedFlags {
         "no-sandbox",
         "user-confirmed-no-sandbox",
         "allow-write",
+        "allow-large-staging",
         "include",
         "exclude",
         "output",

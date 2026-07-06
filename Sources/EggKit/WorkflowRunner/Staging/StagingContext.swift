@@ -119,19 +119,36 @@ actor StagingContext {
             let workDirectory = workspaceBaseDirectory.appending(path: "work")
             let referenceDirectory = workspaceBaseDirectory.appending(path: "reference")
 
-            let readyToCopyToStaging: Bool =
-                if !requireGitRepository {
-                    true
-                } else if await !(GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
-                    // If not under git management, copying all directories may take a very long time.
-                    // Proceed anyway? Or consider using --no-staging mode instead.
-                    interaction.yesOrNoChoicePrompt(
-                        title: "Copying All Files May Take Time",
-                        question: "The working directory is not under git management. Copying all directories may take a very long time. Proceed anyway? (Consider using --no-staging mode instead)",
+            let readyToCopyToStaging: Bool
+            if !requireGitRepository {
+                readyToCopyToStaging = true
+            } else if await !(GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory)) {
+                // Without git there is no gitignore filtering: the clone
+                // copies *everything*, build artifacts and caches included.
+                // Count first (capped, so the count itself stays cheap) and
+                // put the real number in the prompt instead of a data-blind
+                // "may take a very long time".
+                let (count, isExact) = StagingPreflight(processRunner: processRunner, fileManager: fileManager)
+                    .countAllFiles(in: workingDirectory)
+                readyToCopyToStaging = interaction.yesOrNoChoicePrompt(
+                    title: "Copying All Files May Take Time",
+                    question: "The working directory is not under git management, so staging would copy all \(count)\(isExact ? "" : "+") files — including build artifacts and caches. Proceed anyway? (Consider using --no-staging mode instead)",
+                )
+            } else {
+                // Git-tracked staging is scoped, but the cost is still one
+                // APFS clone per file, twice — surface big repositories
+                // instead of silently grinding.
+                let fileCount = try await StagingPreflight(processRunner: processRunner, fileManager: fileManager)
+                    .countGitCloneableFiles(in: workingDirectory)
+                if fileCount > StagingPreflight.defaultFileLimit {
+                    readyToCopyToStaging = interaction.yesOrNoChoicePrompt(
+                        title: "Large Repository",
+                        question: "Staging will clone \(fileCount) git-tracked files (twice: workspace + reference). This may take a while. Proceed? (Consider --staging-root <subdir> or --no-staging instead)",
                     )
                 } else {
-                    true
+                    readyToCopyToStaging = true
                 }
+            }
 
             // If not ready, throw StagingContext.Error.userAborted here.
             guard readyToCopyToStaging else {

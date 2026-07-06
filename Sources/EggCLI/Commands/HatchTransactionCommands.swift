@@ -82,6 +82,9 @@ struct HatchPreviewCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Directory the generated output targets (defaults to current directory).", completion: .directory)
     var output: String?
 
+    @Flag(name: .long, help: "Proceed even when staging would clone more files than the large-repository guard allows.")
+    var allowLargeStaging = false
+
     @OptionGroup var options: HatchTransactionOptions
 
     func run() async throws {
@@ -97,6 +100,7 @@ struct HatchPreviewCommand: AsyncParsableCommand {
             includeDiff: diff,
             sandboxDisabled: noSandbox && userConfirmedNoSandbox,
             allowedWritePaths: allowWrite,
+            allowLargeStaging: allowLargeStaging,
         )
         try CLIOutput.printJSON(result)
     }

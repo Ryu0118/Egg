@@ -52,7 +52,7 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         }
 
         // Get list of tracked and untracked (but not ignored) files
-        let files = try await listGitTrackedFiles(in: source)
+        let files = try await cloneableFiles(in: source)
 
         guard !files.isEmpty else {
             // No files to clone, just create the destination directory
@@ -100,13 +100,15 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         }
     }
 
-    /// Lists git-tracked files and untracked files that aren't ignored.
+    /// Lists git-tracked files and untracked files that aren't ignored —
+    /// exactly the set `clone(from:to:)` copies. `StagingPreflight` uses the
+    /// same enumeration to size a clone before starting it.
     ///
     /// Runs `git ls-files -c -o --exclude-standard` to get:
     /// - `-c`: Cached (tracked) files
     /// - `-o`: Other (untracked) files
     /// - `--exclude-standard`: Respect .gitignore, .git/info/exclude, etc.
-    private func listGitTrackedFiles(in directory: URL) async throws -> [String] {
+    func cloneableFiles(in directory: URL) async throws -> [String] {
         let arguments = [
             "ls-files",
             "-c", // Cached (tracked) files

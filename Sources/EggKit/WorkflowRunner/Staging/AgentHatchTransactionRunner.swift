@@ -23,6 +23,8 @@ package struct AgentHatchTransactionRunner {
     private let pathFilter: GitStagingChangeDetector.PathFilter
     private let sandboxDisabled: Bool
     private let allowedWritePaths: [String]
+    private let allowLargeStaging: Bool
+    private let stagingFileLimit: Int
     private let store: HatchTransactionStore
     private let phaseRunner: PhaseRunner
 
@@ -38,6 +40,8 @@ package struct AgentHatchTransactionRunner {
         exclude: [String] = [],
         sandboxDisabled: Bool = false,
         allowedWritePaths: [String] = [],
+        allowLargeStaging: Bool = false,
+        stagingFileLimit: Int = StagingPreflight.defaultFileLimit,
     ) {
         self.processRunner = processRunner
         self.fileManager = fileManager
@@ -48,6 +52,8 @@ package struct AgentHatchTransactionRunner {
         self.parsedMacros = parsedMacros
         self.sandboxDisabled = sandboxDisabled
         self.allowedWritePaths = allowedWritePaths
+        self.allowLargeStaging = allowLargeStaging
+        self.stagingFileLimit = stagingFileLimit
         pathFilter = GitStagingChangeDetector.PathFilter(include: include, exclude: exclude)
         store = HatchTransactionStore(fileManager: fileManager, workingDirectory: workingDirectory)
         phaseRunner = PhaseRunner(
@@ -84,6 +90,18 @@ package struct AgentHatchTransactionRunner {
         // un-scoped directory (node_modules, .build, …) is exactly what we avoid.
         guard await GitRepositoryChecker(processRunner: processRunner).isGitRepository(workingDirectory) else {
             throw Error.notAGitRepository(path: workingDirectory.path(percentEncoded: false))
+        }
+
+        // Cost is per-file (two APFS clones of every tracked/unignored file),
+        // so a huge repository is refused up front with the escape hatches
+        // named, instead of silently grinding for minutes. The count comes
+        // from the same `git ls-files` enumeration the cloner performs.
+        if !allowLargeStaging {
+            let fileCount = try await StagingPreflight(processRunner: processRunner, fileManager: fileManager)
+                .countGitCloneableFiles(in: workingDirectory)
+            guard fileCount <= stagingFileLimit else {
+                throw Error.stagingTooLarge(fileCount: fileCount, limit: stagingFileLimit)
+            }
         }
 
         let token = makeToken(templateName: config.name)
@@ -968,6 +986,7 @@ extension AgentHatchTransactionRunner {
         case invalidIdentifier(kind: String, value: String)
         case writeConsentRequired(declaredPaths: [String])
         case writeConsentNotDeclared(paths: [String], declaredPaths: [String])
+        case stagingTooLarge(fileCount: Int, limit: Int)
 
         var errorDescription: String? {
             switch self {
@@ -991,6 +1010,8 @@ extension AgentHatchTransactionRunner {
                 "Rollback bundle '\(id)' is missing its backup for: \(paths.joined(separator: ", ")). Refusing to restore only some files — nothing was changed."
             case let .invalidIdentifier(kind, value):
                 "Invalid \(kind) '\(value)': must be a single path segment, not empty, and not '.' or '..'."
+            case let .stagingTooLarge(fileCount, limit):
+                "Staging would clone \(fileCount) files (guard limit: \(limit)) — twice, once for the workspace and once for the reference copy. Scope it down by previewing against a smaller directory (--output <subdir> on the CLI, staging_root over MCP), write directly with 'egg hatch direct <template> --no-staging' (no preview/rollback), or pass --allow-large-staging (allow_large_staging over MCP) to proceed anyway."
             case let .writeConsentRequired(declaredPaths):
                 """
                 ⚠️ SANDBOX EXTENDED WRITE ACCESS REQUIRED
