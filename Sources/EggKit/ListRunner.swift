@@ -178,21 +178,21 @@ package struct ListRunner {
 
         if hideDescription {
             interaction.writeTable(
-                Table(
-                    headers: ["name"],
-                    rows: list.reduce(into: [[String]]()) { partialResult, template in
-                        partialResult.append([template.config.name])
-                    },
-                ),
+                Table {
+                    TableHeader("name")
+                    for template in list {
+                        TableRow(template.config.name)
+                    }
+                },
             )
         } else {
             interaction.writeTable(
-                Table(
-                    headers: ["name", "description"],
-                    rows: list.reduce(into: [[String]]()) { partialResult, template in
-                        partialResult.append([template.config.name, template.config.description])
-                    },
-                ),
+                Table {
+                    TableHeader("name", "description")
+                    for template in list {
+                        TableRow(template.config.name, template.config.description)
+                    }
+                },
             )
         }
     }
