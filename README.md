@@ -169,6 +169,42 @@ Every template has a `config.yml` file. The important keys are:
 | `hatch.exclude` | Conditional file or directory exclusions. |
 | `post_hatch` | Shell steps after file expansion. |
 
+Here is a minimal `config.yml` that exercises every key in the table above:
+
+```yaml
+name: SwiftPackage
+description: A minimal Swift package
+
+macros:
+  - name: ___MODULE_NAME___
+    description: The Swift module name
+    type: string
+    validate: "^[A-Z][A-Za-z0-9]*$"
+  - name: ___INIT_GIT___
+    description: Run git init after generating the project
+    type: boolean
+    default: false
+
+pre_hatch:
+  - id: setup
+    run: |
+      echo "root=./___MODULE_NAME___"
+
+hatch:
+  output: ${{ pre_hatch.setup.outputs.root }}
+  exclude:
+    - ".DS_Store"
+    - if: ___INIT_GIT___ === false
+      paths: [".gitignore"]
+
+post_hatch:
+  - if: ___INIT_GIT___
+    run: |
+      git init
+      git add .
+      git commit -m "Initial commit"
+```
+
 Run this to see the exact flags a template accepts:
 
 ```sh
