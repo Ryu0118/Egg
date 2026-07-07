@@ -147,13 +147,13 @@ struct StagingWorkflowRunner: WorkflowRunning {
         }
 
         // Step 2: Collect macro values (may block on interactive user input)
-        let collectedMacroValues = try collectMacroValues(macroInputs, config: config)
+        let collectedMacroValues = try await collectMacroValues(macroInputs, config: config)
 
         // Ensure staging workspace is discarded on any failure
         do {
             // Step 4: Resolve macros with workspace root as working directory
             // This is critical for path-type macros to resolve correctly
-            let macros = try finalizeMacros(collectedMacroValues, config: config, workspaceRoot: staging.root)
+            let macros = try await finalizeMacros(collectedMacroValues, config: config, workspaceRoot: staging.root)
 
             // Expand and validate sandbox.allowed_paths
             let sandboxResolver = SandboxAllowedPathsResolver(
@@ -386,7 +386,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
     ///   - inputs: The macro inputs (parsed from CLI or requiring interactive prompts)
     ///   - config: The template configuration containing macro definitions
     /// - Returns: Collected macro values ready for workspace-relative finalization
-    private func collectMacroValues(_ inputs: MacroInputs, config: Config) throws -> CollectedMacroValues {
+    private func collectMacroValues(_ inputs: MacroInputs, config: Config) async throws -> CollectedMacroValues {
         switch inputs {
         case let .parsed(parsedMacros):
             // Pass through parsed macros for later validation
@@ -400,7 +400,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 homeDirectory: homeDirectory,
                 interaction: interaction,
             )
-            return try .interactive(resolver.resolve())
+            return try await .interactive(resolver.resolve())
         }
     }
 
@@ -419,7 +419,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
         _ collected: CollectedMacroValues,
         config: Config,
         workspaceRoot: URL,
-    ) throws -> [ResolvedMacro] {
+    ) async throws -> [ResolvedMacro] {
         // The directory that was cloned into the staging workspace
         let clonedDirectory = stagingRoot ?? workingDirectory
 
@@ -432,7 +432,7 @@ struct StagingWorkflowRunner: WorkflowRunning {
                 workingDirectory: clonedDirectory,
                 homeDirectory: homeDirectory,
             )
-            let resolvedMacros = try validator.validate(parsedMacros)
+            let resolvedMacros = try await validator.validate(parsedMacros)
             // Remap path macros to staging workspace
             return remapPathMacros(resolvedMacros, from: clonedDirectory, to: workspaceRoot)
         case let .interactive(resolvedMacros):

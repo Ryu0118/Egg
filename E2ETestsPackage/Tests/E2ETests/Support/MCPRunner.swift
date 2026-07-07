@@ -116,13 +116,6 @@ actor MCPRunner {
         }
     }
 
-    /// Resolves a still-pending waiter with a timeout error. A no-op if the
-    /// response already arrived and removed the waiter first.
-    private func timeOut(_ id: Int) {
-        guard let waiter = waiters.removeValue(forKey: id) else { return }
-        waiter.resume(throwing: Error.timedOut(waitingFor: id))
-    }
-
     /// Calls an MCP tool and returns `(isError, text)` — the text content of
     /// the first content block, plus whether the server flagged an error.
     func callTool(_ name: String, arguments: [String: Any]) async throws -> (isError: Bool, text: String) {
@@ -138,6 +131,13 @@ actor MCPRunner {
         let (isError, text) = try await callTool(name, arguments: arguments)
         guard !isError else { throw Error.malformedResponse("tool \(name) errored: \(text)") }
         return try JSONValue.decode(text)
+    }
+
+    /// Resolves a still-pending waiter with a timeout error. A no-op if the
+    /// response already arrived and removed the waiter first.
+    private func timeOut(_ id: Int) {
+        guard let waiter = waiters.removeValue(forKey: id) else { return }
+        waiter.resume(throwing: Error.timedOut(waitingFor: id))
     }
 
     // MARK: - Private

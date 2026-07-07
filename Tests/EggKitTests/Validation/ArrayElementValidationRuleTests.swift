@@ -1,14 +1,15 @@
 @testable import EggKit
+import Interaction
 import Testing
 
 struct ArrayElementValidationRuleTests {
     @Test(arguments: TestCase.allCases)
-    func validate(_ testCase: TestCase) {
-        let rule = ArrayElementValidationRule(
+    func validate(_ testCase: TestCase) async {
+        let rule = ValidationRule.arrayElement(
             elementPattern: testCase.pattern,
             error: "Test error",
         )
-        let result = rule.validate(input: testCase.input)
+        let result = await rule(testCase.input) == nil
         #expect(result == testCase.expected)
     }
 

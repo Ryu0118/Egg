@@ -83,7 +83,7 @@ package struct AgentHatchTransactionRunner {
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
         )
-        let resolvedMacros = try validator.validate(parsedMacros)
+        let resolvedMacros = try await validator.validate(parsedMacros)
         let grant = try await resolveWriteGrant(resolvedMacros: resolvedMacros)
 
         // Staging strongly prefers git: the change model — staging snapshot,
@@ -159,100 +159,6 @@ package struct AgentHatchTransactionRunner {
             }
             throw error
         }
-    }
-
-    /// Clones the working directory into `tempBase`, runs the template
-    /// workflow there, and materializes the transaction record under
-    /// `.egg/transactions/<token>` — the staging half of `preview`, split
-    /// out so the caller can guarantee cleanup on any failure.
-    private func materializePreview(
-        token: String,
-        tempBase: URL,
-        resolvedMacros: [ResolvedMacro],
-        grant: WriteGrant,
-        includeDiff: Bool,
-        contextWarnings: [AgentTransactionWarning] = [],
-    ) async throws -> AgentHatchPreviewResult {
-        let tempWork = tempBase.appending(path: "work")
-        let tempReference = tempBase.appending(path: "reference")
-
-        let cloner = GitTrackedDirectoryCloner(
-            processRunner: processRunner,
-            fileManager: fileManager,
-        )
-
-        async let cloneWork: () = try cloner.clone(from: workingDirectory, to: tempWork)
-        async let cloneReference: () = try cloner.clone(from: workingDirectory, to: tempReference)
-        _ = try await (cloneWork, cloneReference)
-
-        // Record a git baseline on the cloned tree, run the workflow, then ask
-        // git what changed. The clone carries the project's tracked .gitignore,
-        // so script-generated artifacts are suppressed without any hardcoded list.
-        let detector = GitStagingChangeDetector(processRunner: processRunner, fileManager: fileManager)
-        try await detector.recordBaseline(in: tempWork, filter: pathFilter)
-        let snapshotWarnings = snapshotSizeWarnings(for: tempWork)
-        let outputPath = try await runWorkflow(in: tempWork, resolvedMacros: resolvedMacros, allowedPaths: grant.granted)
-        let summary = try await detector.changes(in: tempWork, filter: pathFilter)
-        var changes = makeAgentChanges(summary)
-        if includeDiff {
-            changes = try await attachDiffs(to: changes, detector: detector, workspace: tempWork)
-        }
-        let warnings = makeWarnings() + grant.warnings + snapshotWarnings + contextWarnings
-
-        // Only the final directory-materialization step is locked — cheap
-        // insurance against a concurrent discard()/apply() enumerating or
-        // cleaning up .egg/transactions/ at the same moment. The expensive
-        // clone + workflow run above stays unlocked so concurrent previews
-        // (of the same or different templates) don't serialize against each
-        // other; each gets its own uniquely-tokened transaction directory, so
-        // there's no shared mutable state until this point.
-        let metadata = try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
-            let transactionDirectory = try store.createDirectory(for: token)
-            let workDestination = transactionDirectory.appending(path: "work")
-            let referenceDestination = transactionDirectory.appending(path: "reference")
-            try fileManager.moveItem(at: tempWork, to: workDestination)
-            try fileManager.moveItem(at: tempReference, to: referenceDestination)
-            try? fileManager.removeItem(at: tempBase)
-
-            let metadata = HatchTransactionMetadata(
-                applyToken: token,
-                status: .preview,
-                templateName: config.name,
-                workingDirectory: workingDirectory.path(percentEncoded: false),
-                outputDirectory: remapOutputPath(outputPath, from: workDestination),
-                workDirectory: workDestination.path(percentEncoded: false),
-                referenceDirectory: referenceDestination.path(percentEncoded: false),
-                changes: changes.map(StoredChangeEntry.init),
-                warnings: warnings,
-                rollbackId: nil,
-            )
-            try store.save(metadata)
-            return metadata
-        }
-
-        // The transaction records live under this runner's workingDirectory.
-        // When that differs from the caller's process cwd (preview ran with
-        // --output/staging_root), a bare `egg hatch apply <token>` from cwd
-        // cannot find them — so the suggested commands must carry
-        // --working-directory, not just hope the caller cd's first.
-        let workingDirectoryArgument = workingDirectory.isSamePath(to: URL(filePath: fileManager.currentDirectoryPath))
-            ? ""
-            : " --working-directory '\(workingDirectory.path(percentEncoded: false))'"
-
-        return AgentHatchPreviewResult(
-            applyToken: token,
-            templateName: config.name,
-            workingDirectory: workingDirectory.path(percentEncoded: false),
-            outputDirectory: metadata.outputDirectory,
-            strategy: "project_staging",
-            rollbackGuarantee: "scoped",
-            changes: changes,
-            warnings: warnings,
-            nextCommands: AgentTransactionCommands(
-                apply: "egg hatch apply \(token)\(workingDirectoryArgument)",
-                discard: "egg hatch discard \(token)\(workingDirectoryArgument)",
-            ),
-        )
     }
 
     /// Applies a previewed — or previously rolled-back — transaction to the
@@ -559,6 +465,105 @@ package struct AgentHatchTransactionRunner {
         }
     }
 
+    /// SHA-256 hex digest used to fingerprint applied file content.
+    static func sha256(of data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Clones the working directory into `tempBase`, runs the template
+    /// workflow there, and materializes the transaction record under
+    /// `.egg/transactions/<token>` — the staging half of `preview`, split
+    /// out so the caller can guarantee cleanup on any failure.
+    private func materializePreview(
+        token: String,
+        tempBase: URL,
+        resolvedMacros: [ResolvedMacro],
+        grant: WriteGrant,
+        includeDiff: Bool,
+        contextWarnings: [AgentTransactionWarning] = [],
+    ) async throws -> AgentHatchPreviewResult {
+        let tempWork = tempBase.appending(path: "work")
+        let tempReference = tempBase.appending(path: "reference")
+
+        let cloner = GitTrackedDirectoryCloner(
+            processRunner: processRunner,
+            fileManager: fileManager,
+        )
+
+        async let cloneWork: () = try cloner.clone(from: workingDirectory, to: tempWork)
+        async let cloneReference: () = try cloner.clone(from: workingDirectory, to: tempReference)
+        _ = try await (cloneWork, cloneReference)
+
+        // Record a git baseline on the cloned tree, run the workflow, then ask
+        // git what changed. The clone carries the project's tracked .gitignore,
+        // so script-generated artifacts are suppressed without any hardcoded list.
+        let detector = GitStagingChangeDetector(processRunner: processRunner, fileManager: fileManager)
+        try await detector.recordBaseline(in: tempWork, filter: pathFilter)
+        let snapshotWarnings = snapshotSizeWarnings(for: tempWork)
+        let outputPath = try await runWorkflow(in: tempWork, resolvedMacros: resolvedMacros, allowedPaths: grant.granted)
+        let summary = try await detector.changes(in: tempWork, filter: pathFilter)
+        var changes = makeAgentChanges(summary)
+        if includeDiff {
+            changes = try await attachDiffs(to: changes, detector: detector, workspace: tempWork)
+        }
+        let warnings = makeWarnings() + grant.warnings + snapshotWarnings + contextWarnings
+
+        // Only the final directory-materialization step is locked — cheap
+        // insurance against a concurrent discard()/apply() enumerating or
+        // cleaning up .egg/transactions/ at the same moment. The expensive
+        // clone + workflow run above stays unlocked so concurrent previews
+        // (of the same or different templates) don't serialize against each
+        // other; each gets its own uniquely-tokened transaction directory, so
+        // there's no shared mutable state until this point.
+        let metadata = try await TransactionLock.shared.withLock(directory: store.directory(for: token), fileManager: fileManager) {
+            let transactionDirectory = try store.createDirectory(for: token)
+            let workDestination = transactionDirectory.appending(path: "work")
+            let referenceDestination = transactionDirectory.appending(path: "reference")
+            try fileManager.moveItem(at: tempWork, to: workDestination)
+            try fileManager.moveItem(at: tempReference, to: referenceDestination)
+            try? fileManager.removeItem(at: tempBase)
+
+            let metadata = HatchTransactionMetadata(
+                applyToken: token,
+                status: .preview,
+                templateName: config.name,
+                workingDirectory: workingDirectory.path(percentEncoded: false),
+                outputDirectory: remapOutputPath(outputPath, from: workDestination),
+                workDirectory: workDestination.path(percentEncoded: false),
+                referenceDirectory: referenceDestination.path(percentEncoded: false),
+                changes: changes.map(StoredChangeEntry.init),
+                warnings: warnings,
+                rollbackId: nil,
+            )
+            try store.save(metadata)
+            return metadata
+        }
+
+        // The transaction records live under this runner's workingDirectory.
+        // When that differs from the caller's process cwd (preview ran with
+        // --output/staging_root), a bare `egg hatch apply <token>` from cwd
+        // cannot find them — so the suggested commands must carry
+        // --working-directory, not just hope the caller cd's first.
+        let workingDirectoryArgument = workingDirectory.isSamePath(to: URL(filePath: fileManager.currentDirectoryPath))
+            ? ""
+            : " --working-directory '\(workingDirectory.path(percentEncoded: false))'"
+
+        return AgentHatchPreviewResult(
+            applyToken: token,
+            templateName: config.name,
+            workingDirectory: workingDirectory.path(percentEncoded: false),
+            outputDirectory: metadata.outputDirectory,
+            strategy: "project_staging",
+            rollbackGuarantee: "scoped",
+            changes: changes,
+            warnings: warnings,
+            nextCommands: AgentTransactionCommands(
+                apply: "egg hatch apply \(token)\(workingDirectoryArgument)",
+                discard: "egg hatch discard \(token)\(workingDirectoryArgument)",
+            ),
+        )
+    }
+
     private func rollbackRoot(for id: String) -> URL {
         workingDirectory
             .appending(path: ".egg/rollback")
@@ -576,11 +581,6 @@ package struct AgentHatchTransactionRunner {
         if contents.allSatisfy({ $0 == ".lock" }) {
             try? fileManager.removeItem(at: directory)
         }
-    }
-
-    /// SHA-256 hex digest used to fingerprint applied file content.
-    static func sha256(of data: Data) -> String {
-        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// What a discard is aimed at, resolved before any authorization or

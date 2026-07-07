@@ -71,7 +71,7 @@ package struct HatchRunner {
             }
 
             // Select template based on picker style
-            let selectedOption = try selectTemplate(from: options)
+            let selectedOption = try await selectTemplate(from: options)
 
             let workflowRunner = makeWorkflowRunner()
 
@@ -103,7 +103,7 @@ package struct HatchRunner {
     /// - Parameter options: Available templates with their locations
     /// - Returns: The selected template with location
     /// - Throws: ``Error/templateNotFound(_:)`` if text input doesn't match any template
-    private func selectTemplate(from options: [TemplateWithLocation]) throws -> TemplateWithLocation {
+    private func selectTemplate(from options: [TemplateWithLocation]) async throws -> TemplateWithLocation {
         switch pickerStyle {
         case .list:
             return interaction.singleChoicePrompt(
@@ -114,7 +114,7 @@ package struct HatchRunner {
             )
         case .text:
             let availableNames = options.map(\.template.config.name).joined(separator: ", ")
-            let templateName = interaction.textPrompt(
+            let templateName = await interaction.textPrompt(
                 title: "Template Name (\(availableNames))",
                 prompt: "Enter the template name:",
                 collapsesOnAnswer: true,

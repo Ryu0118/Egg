@@ -32,8 +32,8 @@ struct TemplatesFinder {
         )
     }
 
-    func exists(_ name: String) -> Bool {
-        (try? validTemplateDirectory(name)) != nil
+    func exists(_ name: String) async -> Bool {
+        await (try? validTemplateDirectory(name)) != nil
     }
 
     func fetchTemplate(_ name: String) async throws -> Template {
@@ -43,7 +43,7 @@ struct TemplatesFinder {
         }
 
         // Fallback to directory name for backwards compatibility
-        guard let templateDir = try validTemplateDirectory(name) else {
+        guard let templateDir = try await validTemplateDirectory(name) else {
             throw Error.noTemplatesFound(name: name)
         }
 
@@ -111,7 +111,7 @@ struct TemplatesFinder {
         return templates
     }
 
-    func validTemplateDirectory(_ name: String) throws -> URL? {
+    func validTemplateDirectory(_ name: String) async throws -> URL? {
         // A template name becomes a path component (global/.eggs/<name>,
         // project/.eggs/<name>, or a custom search path's own <name>).
         // URL.appending(component:) does not sanitize '/' or '..', so an
@@ -120,7 +120,7 @@ struct TemplatesFinder {
         // hatch's template resolution) funnels through this function, so
         // this single check protects all of them. Reuses the same rule new
         // template names are already validated against.
-        guard DirectoryNameValidationRule(error: "").validate(input: name) else {
+        guard await ValidationRule.directoryName(error: "")(name) == nil else {
             throw Error.invalidTemplateName(name: name)
         }
 

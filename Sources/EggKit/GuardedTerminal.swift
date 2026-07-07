@@ -32,9 +32,9 @@ public struct GuardedTerminal: InteractionProviding {
         base.writeTable(table)
     }
 
-    public func readText(_ prompt: TextPrompt) -> String {
+    public func readText(_ prompt: TextPrompt) async -> String {
         guardInteractive(question: prompt.message.plainText)
-        return base.readText(prompt)
+        return await base.readText(prompt)
     }
 
     public func confirm(_ prompt: ConfirmationPrompt) -> Bool {

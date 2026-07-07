@@ -22,7 +22,7 @@ struct HatchTransactionOptions: ParsableArguments {
     func makeService() async throws -> EggService {
         try await EggService(
             fileManager: Self.fileManager,
-            workingDirectory: workingDirectory.map { resolveCLIPath($0, relativeToDirectory: Self.fileManager.currentDirectoryPath) }
+            workingDirectory: workingDirectory.map { CLIPath.resolve($0, relativeToDirectory: Self.fileManager.currentDirectoryPath) }
                 ?? URL(filePath: Self.fileManager.currentDirectoryPath),
             projectDirectory: resolveProjectDirectory(),
             homeDirectory: CLIEnvironment.resolveHomeDirectory(),
@@ -36,6 +36,41 @@ extension HatchTransactionOptions: HasProjectDirectory, HasTemplateSearchPaths {
 /// `egg hatch preview` — run a template in a staging clone and emit the proposed
 /// changes plus an apply token as JSON, without touching the working directory.
 struct HatchPreviewCommand: AsyncParsableCommand {
+    @Argument(help: "The name of the template to preview.")
+    var templateName: String
+
+    /// User-defined macro values, captured as unrecognized options (e.g. --name value).
+    @Argument(parsing: .allUnrecognized, help: "User-defined macro values (e.g. --macro value).")
+    var macros: [String] = []
+
+    @Flag(name: .long, help: "Include the unified diff of each change in the output.")
+    var diff = false
+
+    @Flag(name: .long, help: "Disable sandbox-exec safety guard for preview lifecycle scripts. Requires --user-confirmed-no-sandbox.")
+    var noSandbox = false
+
+    @Flag(name: .long, help: "Confirms the user approved running preview lifecycle scripts without sandbox protection.")
+    var userConfirmedNoSandbox = false
+
+    @Flag(name: .long, help: "Proceed even when staging would clone more files than the large-repository guard allows.")
+    var allowLargeStaging = false
+
+    @Flag(name: .long, help: "Stage a non-git directory after reviewing the refusal's reported file count. No .gitignore filtering applies; prefer 'git init' in the target.")
+    var allowNonGitStaging = false
+
+    @Option(name: .long, parsing: .upToNextOption, help: "Consent to writes on a path the template declares in sandbox.allowed_paths (absolute path, repeatable).", completion: .directory)
+    var allowWrite: [String] = []
+
+    @Option(name: .long, parsing: .upToNextOption, help: "Force normally-ignored paths into the change set (git pathspec).")
+    var include: [String] = []
+
+    @Option(name: .long, parsing: .upToNextOption, help: "Exclude paths from the change set (git pathspec).")
+    var exclude: [String] = []
+
+    @Option(name: .long, help: "Directory the generated output targets (defaults to current directory).", completion: .directory)
+    var output: String?
+
+    @OptionGroup var options: HatchTransactionOptions
     static let configuration = CommandConfiguration(
         commandName: "preview",
         abstract: "Preview a hatch as a transaction; emits JSON with an apply token.",
@@ -58,46 +93,10 @@ struct HatchPreviewCommand: AsyncParsableCommand {
         """,
     )
 
-    @Argument(help: "The name of the template to preview.")
-    var templateName: String
-
-    /// User-defined macro values, captured as unrecognized options (e.g. --name value).
-    @Argument(parsing: .allUnrecognized, help: "User-defined macro values (e.g. --macro value).")
-    var macros: [String] = []
-
-    @Flag(name: .long, help: "Include the unified diff of each change in the output.")
-    var diff = false
-
-    @Flag(name: .long, help: "Disable sandbox-exec safety guard for preview lifecycle scripts. Requires --user-confirmed-no-sandbox.")
-    var noSandbox = false
-
-    @Flag(name: .long, help: "Confirms the user approved running preview lifecycle scripts without sandbox protection.")
-    var userConfirmedNoSandbox = false
-
-    @Option(name: .long, parsing: .upToNextOption, help: "Consent to writes on a path the template declares in sandbox.allowed_paths (absolute path, repeatable).", completion: .directory)
-    var allowWrite: [String] = []
-
-    @Option(name: .long, parsing: .upToNextOption, help: "Force normally-ignored paths into the change set (git pathspec).")
-    var include: [String] = []
-
-    @Option(name: .long, parsing: .upToNextOption, help: "Exclude paths from the change set (git pathspec).")
-    var exclude: [String] = []
-
-    @Option(name: .long, help: "Directory the generated output targets (defaults to current directory).", completion: .directory)
-    var output: String?
-
-    @Flag(name: .long, help: "Proceed even when staging would clone more files than the large-repository guard allows.")
-    var allowLargeStaging = false
-
-    @Flag(name: .long, help: "Stage a non-git directory after reviewing the refusal's reported file count. No .gitignore filtering applies; prefer 'git init' in the target.")
-    var allowNonGitStaging = false
-
-    @OptionGroup var options: HatchTransactionOptions
-
     func run() async throws {
         try validateSandboxOptions()
         let service = try await options.makeService()
-        let outputDirectory = output.map { resolveCLIPath($0, relativeToDirectory: HatchTransactionOptions.fileManager.currentDirectoryPath) }
+        let outputDirectory = output.map { CLIPath.resolve($0, relativeToDirectory: HatchTransactionOptions.fileManager.currentDirectoryPath) }
         let result = try await service.previewHatchTemplate(
             templateName: templateName,
             macroArguments: macros,

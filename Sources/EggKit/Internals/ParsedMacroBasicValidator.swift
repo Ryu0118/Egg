@@ -1,4 +1,5 @@
 import Foundation
+import Interaction
 
 /// Performs basic validation of parsed macro definitions without path resolution.
 ///
@@ -18,14 +19,14 @@ struct ParsedMacroBasicValidator {
     ///
     /// - Parameter parsedMacroDefinitions: The parsed macro definitions to validate
     /// - Throws: `CombinedError` containing all validation errors
-    func validate(_ parsedMacroDefinitions: [ParsedMacroDefinition]) throws {
+    func validate(_ parsedMacroDefinitions: [ParsedMacroDefinition]) async throws {
         let providedMacroNames = Set(parsedMacroDefinitions.map(\.macro))
 
         var errors: [Error] = []
 
         // Validate provided macros
         for parsed in parsedMacroDefinitions {
-            if let error = validateBasic(parsed) {
+            if let error = await validateBasic(parsed) {
                 errors.append(error)
             }
         }
@@ -43,7 +44,7 @@ struct ParsedMacroBasicValidator {
         }
     }
 
-    private func validateBasic(_ parsed: ParsedMacroDefinition) -> Error? {
+    private func validateBasic(_ parsed: ParsedMacroDefinition) async -> Error? {
         // Check if macro exists in config
         guard let configMacro = config.macros?.first(where: { $0.name == parsed.macro }) else {
             return .unknownMacro(macro: parsed.macro)
@@ -55,12 +56,12 @@ struct ParsedMacroBasicValidator {
         }
 
         // Validate choice type
-        if let error = validateChoice(parsed.values, configMacro: configMacro, macroName: parsed.macro) {
+        if let error = await validateChoice(parsed.values, configMacro: configMacro, macroName: parsed.macro) {
             return error
         }
 
         // Validate regex pattern (for non-path types)
-        if configMacro.type != .path, let error = validateRegex(parsed.values, configMacro: configMacro, macroName: parsed.macro) {
+        if configMacro.type != .path, let error = await validateRegex(parsed.values, configMacro: configMacro, macroName: parsed.macro) {
             return error
         }
 
@@ -91,17 +92,17 @@ struct ParsedMacroBasicValidator {
         return nil
     }
 
-    private func validateChoice(_ values: [String], configMacro: Config.Macro, macroName: String) -> Error? {
+    private func validateChoice(_ values: [String], configMacro: Config.Macro, macroName: String) async -> Error? {
         guard configMacro.type == .choice || configMacro.type == .choices else { return nil }
 
         guard let choices = configMacro.choices, !choices.isEmpty else {
             return .choiceTypeRequiresChoices(macro: macroName)
         }
 
-        let validationRule = ChoiceValidationRule(choices: choices, error: "Value not in choices")
+        let validationRule = ValidationRule.choice(choices: choices, error: "Value not in choices")
 
         for value in values {
-            if !validationRule.validate(input: value) {
+            if await validationRule(value) != nil {
                 return .valueNotInChoices(macro: macroName, value: value, choices: choices)
             }
         }
@@ -109,17 +110,17 @@ struct ParsedMacroBasicValidator {
         return nil
     }
 
-    private func validateRegex(_ values: [String], configMacro: Config.Macro, macroName: String) -> Error? {
+    private func validateRegex(_ values: [String], configMacro: Config.Macro, macroName: String) async -> Error? {
         guard let regexPattern = configMacro.validate else { return nil }
 
         guard (try? NSRegularExpression(pattern: regexPattern)) != nil else {
             return .invalidRegexPattern(macro: macroName, pattern: regexPattern)
         }
 
-        let validationRule = RegexPatternValidationRule(pattern: regexPattern, error: "Value does not match pattern")
+        let validationRule = ValidationRule.regexPattern(regexPattern, error: "Value does not match pattern")
 
         for value in values {
-            if !validationRule.validate(input: value) {
+            if await validationRule(value) != nil {
                 return .valueDoesNotMatchRegex(macro: macroName, value: value, pattern: regexPattern)
             }
         }

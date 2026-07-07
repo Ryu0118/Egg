@@ -11,14 +11,14 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Delete the template without confirmation.")
         package var force: Bool = false
 
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and deletes without confirmation.")
+        package var json = false
+
         @Option(name: .long, help: "Directory containing the template to delete (defaults to current directory).", completion: .directory)
         package var projectDirectory: String?
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
-
-        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and deletes without confirmation.")
-        package var json = false
 
         package static let configuration = CommandConfiguration(
             commandName: "delete",

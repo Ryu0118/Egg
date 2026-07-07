@@ -7,8 +7,8 @@ struct ConfigValidator {
     func validate(_ config: Config) async throws {
         var allErrors: [Error] = []
 
-        let templateNameErrors = Config.templateNameValidationRules.validate(config.name).map { Error.validationRuleError($0) }
-        let descriptionErrors = Config.descriptionValidationRules.validate(config.description).map { Error.validationRuleError($0) }
+        let templateNameErrors = await Config.templateNameValidationRules.validate(config.name).map { Error.validationRuleError($0) }
+        let descriptionErrors = await Config.descriptionValidationRules.validate(config.description).map { Error.validationRuleError($0) }
 
         allErrors += templateNameErrors + descriptionErrors
 

@@ -1,5 +1,6 @@
 @testable import EggKit
 import Foundation
+import Interaction
 import Testing
 
 struct PathValidationRuleTests {
@@ -7,14 +8,14 @@ struct PathValidationRuleTests {
     static let homeDirectory = URL(filePath: "/Users/test")
 
     @Test(arguments: TestCase.allCases)
-    func validate(_ testCase: TestCase) {
-        let rule = PathValidationRule(
+    func validate(_ testCase: TestCase) async {
+        let rule = ValidationRule.path(
             workingDirectory: Self.workingDirectory,
             homeDirectory: Self.homeDirectory,
             allowsEmpty: testCase.allowsEmpty,
             error: "Invalid path",
         )
-        let result = rule.validate(input: testCase.input)
+        let result = await rule(testCase.input) == nil
         #expect(result == testCase.expected)
     }
 

@@ -292,10 +292,10 @@ struct TemplateExpander {
             // A macro value substituted into a filename must remain a single path
             // component. Without this guard a value like "../../etc" would let
             // `appending(component:)` + `moveItem` write outside the template's
-            // output tree (path traversal). DirectoryNameValidationRule rejects
-            // empty, ".", "..", "/" and null bytes — exactly the escape vectors.
-            let nameRule = DirectoryNameValidationRule(error: "")
-            guard nameRule.validate(input: transformedName) else {
+            // output tree (path traversal). .directoryName rejects empty,
+            // ".", "..", "/" and null bytes — exactly the escape vectors.
+            let nameRule = ValidationRule.directoryName(error: "")
+            guard await nameRule(transformedName) == nil else {
                 throw Error.invalidTransformedName(original: originalName, transformed: transformedName)
             }
 

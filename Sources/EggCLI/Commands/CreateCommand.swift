@@ -8,6 +8,9 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Skip the creation of the config.yml file.")
         package var skipConfig: Bool = false
 
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires --name, --description, and --location.")
+        package var json = false
+
         @Option(name: .long, help: "Directory to create the template in.", completion: .directory)
         package var projectDirectory: String?
 
@@ -23,9 +26,6 @@ package extension EggCommand.TemplateCommand {
             completion: .list(["global", "project"]),
         )
         package var location: TemplateLocationType.Kind?
-
-        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires --name, --description, and --location.")
-        package var json = false
 
         package static let configuration = CommandConfiguration(
             commandName: "create",

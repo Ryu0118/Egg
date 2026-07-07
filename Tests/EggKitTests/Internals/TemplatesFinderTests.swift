@@ -426,7 +426,7 @@ struct TemplatesFinderTests {
     }
 
     @Test("exists(_:) returns true for a template only present in a custom search path and false for a name that matches nothing")
-    func existsReturnsTrueForCustomPathTemplate() throws {
+    func existsReturnsTrueForCustomPathTemplate() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-exists-test")
 
@@ -461,12 +461,12 @@ struct TemplatesFinderTests {
             additionalSearchPaths: [customPath],
         )
 
-        #expect(finder.exists("CustomOnlyTemplate") == true)
-        #expect(finder.exists("NonExistentTemplate") == false)
+        await #expect(finder.exists("CustomOnlyTemplate") == true)
+        await #expect(finder.exists("NonExistentTemplate") == false)
     }
 
     @Test("validTemplateDirectory(_:) finds a custom root-level template by its config.yml name even though it differs from the directory name")
-    func validTemplateDirectoryResolvesCustomRootTemplateByConfigName() throws {
+    func validTemplateDirectoryResolvesCustomRootTemplateByConfigName() async throws {
         let fileManager: any FileManagerProtocol = FileManager.default
         let tempDir = try fileManager.makeTemporaryDirectory(prefix: "templates-finder-root-valid-test")
 
@@ -498,7 +498,7 @@ struct TemplatesFinderTests {
             additionalSearchPaths: [customTemplateDir],
         )
 
-        let resolved = try finder.validTemplateDirectory("DirectTemplate")
+        let resolved = try await finder.validTemplateDirectory("DirectTemplate")
         #expect(resolved == customTemplateDir)
     }
 

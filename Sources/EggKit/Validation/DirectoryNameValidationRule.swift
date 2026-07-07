@@ -1,33 +1,26 @@
 import Foundation
 import Interaction
 
-package struct DirectoryNameValidationRule: PredicateValidationRule {
-    package let error: ValidationError
+package extension ValidationRule {
+    /// Rejects input that can't be used as a single path component on macOS/Unix.
+    static func directoryName(error: String) -> ValidationRule {
+        ValidationRule { input in
+            guard !input.isEmpty else { return ValidationError(error) }
 
-    package init(error: String) {
-        self.error = ValidationError(error)
-    }
+            let reservedNames = [".", ".."]
+            if reservedNames.contains(input) {
+                return ValidationError(error)
+            }
 
-    package func validate(input: String) -> Bool {
-        // Check if input is empty
-        guard !input.isEmpty else { return false }
+            if input.contains("/") || input.contains("\0") {
+                return ValidationError(error)
+            }
 
-        // Reserved names on macOS/Unix
-        let reservedNames = [".", ".."]
-        if reservedNames.contains(input) {
-            return false
+            if input.first?.isWhitespace == true {
+                return ValidationError(error)
+            }
+
+            return nil
         }
-
-        // Check for invalid characters (macOS: only / and null character are forbidden)
-        if input.contains("/") || input.contains("\0") {
-            return false
-        }
-
-        // Check if name starts with whitespace (can cause issues)
-        if input.first?.isWhitespace == true {
-            return false
-        }
-
-        return true
     }
 }

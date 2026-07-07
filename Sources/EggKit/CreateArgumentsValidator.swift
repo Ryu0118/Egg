@@ -54,12 +54,12 @@ package struct CreateArgumentsValidator {
             throw Error.missingFields(missing: requiredFields, provided: [])
         }
 
-        guard !templatesFinder.exists(name) else {
+        guard await !templatesFinder.exists(name) else {
             throw Error.templateAlreadyExists
         }
 
-        let templateNameErrors = Config.templateNameValidationRules.validate(name)
-        let templateDescriptionErrors = Config.templateNameValidationRules.validate(description)
+        let templateNameErrors = await Config.templateNameValidationRules.validate(name)
+        let templateDescriptionErrors = await Config.templateNameValidationRules.validate(description)
 
         let argumentValidationErrors = templateNameErrors + templateDescriptionErrors
         if !argumentValidationErrors.isEmpty {

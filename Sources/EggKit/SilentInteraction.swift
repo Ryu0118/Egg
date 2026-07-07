@@ -13,8 +13,8 @@ struct SilentInteraction: InteractionProviding {
 
     func writeTable(_: Table) {}
 
-    func readText(_ prompt: TextPrompt) -> String {
-        prompts.readText(prompt)
+    func readText(_ prompt: TextPrompt) async -> String {
+        await prompts.readText(prompt)
     }
 
     func confirm(_ prompt: ConfirmationPrompt) -> Bool {

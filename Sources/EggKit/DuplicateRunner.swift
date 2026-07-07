@@ -75,7 +75,7 @@ package struct DuplicateRunner {
         // traversal name (e.g. '../../../etc/evil') would copy the whole
         // source template tree to an arbitrary path before the config-name
         // validation below ever runs.
-        guard DirectoryNameValidationRule(error: "").validate(input: newName) else {
+        guard await ValidationRule.directoryName(error: "")(newName) == nil else {
             throw Error.invalidNewName(name: newName)
         }
 
@@ -167,7 +167,7 @@ package struct DuplicateRunner {
             defaultName: defaultNewName,
         )
 
-        let newDescription = promptForNewDescription(
+        let newDescription = await promptForNewDescription(
             defaultDescription: defaultNewDescription,
         )
 
@@ -177,14 +177,14 @@ package struct DuplicateRunner {
     private func promptForNewName(
         defaultName: String,
     ) async throws -> String {
-        let newName = interaction.textPrompt(
+        let newName = await interaction.textPrompt(
             title: "New Template Name",
             prompt: "Enter the name for the duplicated template (default: \(defaultName)):",
             collapsesOnAnswer: true,
             validationRules: [
-                NonEmptyRule(message: "Template name cannot be empty."),
-                DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
-                LengthValidationRule.templateName,
+                .nonEmpty(message: "Template name cannot be empty."),
+                .directoryName(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
+                .templateNameLength,
             ],
         )
 
@@ -194,7 +194,7 @@ package struct DuplicateRunner {
             newName
         }
 
-        guard !templatesFinder.exists(finalNewName) else {
+        guard await !templatesFinder.exists(finalNewName) else {
             throw Error.targetAlreadyExists(name: finalNewName)
         }
 
@@ -203,14 +203,14 @@ package struct DuplicateRunner {
 
     private func promptForNewDescription(
         defaultDescription: String,
-    ) -> String {
-        let newDescription = interaction.textPrompt(
+    ) async -> String {
+        let newDescription = await interaction.textPrompt(
             title: "New Template Description",
             prompt: "Enter the description for the duplicated template (default: \(defaultDescription)):",
             collapsesOnAnswer: true,
             validationRules: [
-                NonEmptyRule(message: "Description cannot be empty."),
-                LengthValidationRule.description,
+                .nonEmpty(message: "Description cannot be empty."),
+                .descriptionLength,
             ],
         )
 

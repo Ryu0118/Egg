@@ -1,31 +1,25 @@
 import Foundation
 import Interaction
 
-/// Validates that each element in a comma-separated array matches a regex pattern.
-package struct ArrayElementValidationRule: PredicateValidationRule {
-    package let error: ValidationError
-    private let elementPattern: String
+package extension ValidationRule {
+    /// Validates that each element in a comma-separated array matches a regex pattern.
+    static func arrayElement(elementPattern: String, error: String) -> ValidationRule {
+        ValidationRule { input in
+            let parser = ArrayInputParser()
+            let elements = parser.parseFromInteractive(input)
 
-    package init(elementPattern: String, error: String) {
-        self.elementPattern = elementPattern
-        self.error = ValidationError(error)
-    }
-
-    package func validate(input: String) -> Bool {
-        let parser = ArrayInputParser()
-        let elements = parser.parseFromInteractive(input)
-
-        guard let regex = try? NSRegularExpression(pattern: elementPattern) else {
-            return false
-        }
-
-        for element in elements {
-            let range = NSRange(element.startIndex..., in: element)
-            guard regex.firstMatch(in: element, range: range) != nil else {
-                return false
+            guard let regex = try? NSRegularExpression(pattern: elementPattern) else {
+                return ValidationError(error)
             }
-        }
 
-        return true
+            for element in elements {
+                let range = NSRange(element.startIndex..., in: element)
+                guard regex.firstMatch(in: element, range: range) != nil else {
+                    return ValidationError(error)
+                }
+            }
+
+            return nil
+        }
     }
 }

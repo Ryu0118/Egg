@@ -108,7 +108,7 @@ package struct HatchDirectCommand: AsyncParsableCommand, HasProjectDirectory, Ha
 
     private func resolveStagingRoot() -> URL? {
         guard let stagingRoot else { return nil }
-        return resolveCLIPath(stagingRoot, relativeToDirectory: Self.fileManager.currentDirectoryPath)
+        return CLIPath.resolve(stagingRoot, relativeToDirectory: Self.fileManager.currentDirectoryPath)
     }
 
     private func validate() async throws -> HatchRunnerMode {

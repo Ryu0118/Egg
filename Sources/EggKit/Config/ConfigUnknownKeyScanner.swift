@@ -32,14 +32,7 @@ package struct ConfigUnknownKeyScanner {
 
         if let hatch = root["hatch"] as? [String: Any] {
             reportUnknownKeys(in: hatch, knownKeys: Config.HatchConfig.CodingKeys.self, context: "hatch", to: &warnings)
-            if let excludes = hatch["exclude"] as? [Any] {
-                for (index, rule) in excludes.enumerated() {
-                    // A plain-string exclude rule (Config.ExcludeRule.path) has no
-                    // keys to check; only the conditional-object form does.
-                    guard let object = rule as? [String: Any] else { continue }
-                    reportUnknownKeys(in: object, knownKeys: Config.ConditionalExclude.CodingKeys.self, context: "hatch.exclude[\(index)]", to: &warnings)
-                }
-            }
+            appendUnknownKeysInExcludes(hatch["exclude"], to: &warnings)
         }
 
         if let sandbox = root["sandbox"] as? [String: Any] {
@@ -98,6 +91,16 @@ package struct ConfigUnknownKeyScanner {
             guard let object = entry as? [String: Any] else { continue }
             let label = (object["name"] as? String).map { "\(context)[\(index)] ('\($0)')" } ?? "\(context)[\(index)]"
             reportUnknownKeys(in: object, knownKeys: knownKeys, context: label, to: &warnings)
+        }
+    }
+
+    private func appendUnknownKeysInExcludes(_ excludes: Any?, to warnings: inout [String]) {
+        guard let excludes = excludes as? [Any] else { return }
+        for (index, rule) in excludes.enumerated() {
+            // A plain-string exclude rule (Config.ExcludeRule.path) has no
+            // keys to check; only the conditional-object form does.
+            guard let object = rule as? [String: Any] else { continue }
+            reportUnknownKeys(in: object, knownKeys: Config.ConditionalExclude.CodingKeys.self, context: "hatch.exclude[\(index)]", to: &warnings)
         }
     }
 

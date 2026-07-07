@@ -44,28 +44,28 @@ package struct CreateRunner {
     package func run() async throws {
         switch mode {
         case .interactive:
-            let templateName = interaction.textPrompt(
+            let templateName = await interaction.textPrompt(
                 title: "Template name",
                 prompt: "How would you like to name your template?",
                 collapsesOnAnswer: true,
                 validationRules: [
-                    NonEmptyRule(message: "Project name cannot be empty."),
-                    DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
-                    LengthValidationRule.templateName,
+                    .nonEmpty(message: "Project name cannot be empty."),
+                    .directoryName(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
+                    .templateNameLength,
                 ],
             )
 
-            guard !templatesFinder.exists(templateName) else {
+            guard await !templatesFinder.exists(templateName) else {
                 throw Error.templateAlreadyExists
             }
 
-            let description = interaction.textPrompt(
+            let description = await interaction.textPrompt(
                 title: "Template description",
                 prompt: "Please enter a description for your template.",
                 collapsesOnAnswer: true,
                 validationRules: [
-                    NonEmptyRule(message: "Description cannot be empty."),
-                    LengthValidationRule.description,
+                    .nonEmpty(message: "Description cannot be empty."),
+                    .descriptionLength,
                 ],
             )
 
@@ -122,13 +122,13 @@ package struct CreateRunner {
         // thanks to `name` also being validated as config.name), but that's
         // a fragile coincidence, not a guarantee — reject it outright before
         // any filesystem mutation is even attempted.
-        guard DirectoryNameValidationRule(error: "").validate(input: name) else {
+        guard await ValidationRule.directoryName(error: "")(name) == nil else {
             throw Error.invalidName(name: name)
         }
 
         let locationConcreteType = location.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
 
-        guard !templatesFinder.exists(name) else {
+        guard await !templatesFinder.exists(name) else {
             throw Error.templateAlreadyExists
         }
 

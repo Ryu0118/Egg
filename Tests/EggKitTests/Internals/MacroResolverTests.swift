@@ -22,35 +22,35 @@ struct MacroResolverTests {
     /// via `fatalError`. It must now surface a recoverable thrown error before
     /// any prompt is attempted.
     @Test
-    func choiceMacroWithoutChoicesThrows() throws {
+    func choiceMacroWithoutChoicesThrows() async throws {
         let resolver = makeResolver(
             macro: Config.Macro(name: "___MODE___", description: "Mode", type: .choice),
         )
 
-        #expect(throws: MacroResolver.Error.choiceTypeRequiresChoices(macro: "___MODE___")) {
-            try resolver.resolve()
+        await #expect(throws: MacroResolver.Error.choiceTypeRequiresChoices(macro: "___MODE___")) {
+            try await resolver.resolve()
         }
     }
 
     @Test
-    func choicesMacroWithoutChoicesThrows() throws {
+    func choicesMacroWithoutChoicesThrows() async throws {
         let resolver = makeResolver(
             macro: Config.Macro(name: "___FEATURES___", description: "Features", type: .choices),
         )
 
-        #expect(throws: MacroResolver.Error.choiceTypeRequiresChoices(macro: "___FEATURES___")) {
-            try resolver.resolve()
+        await #expect(throws: MacroResolver.Error.choiceTypeRequiresChoices(macro: "___FEATURES___")) {
+            try await resolver.resolve()
         }
     }
 
     @Test
-    func choiceMacroWithEmptyChoicesThrows() throws {
+    func choiceMacroWithEmptyChoicesThrows() async throws {
         let resolver = makeResolver(
             macro: Config.Macro(name: "___MODE___", description: "Mode", type: .choice, choices: []),
         )
 
-        #expect(throws: MacroResolver.Error.choiceTypeRequiresChoices(macro: "___MODE___")) {
-            try resolver.resolve()
+        await #expect(throws: MacroResolver.Error.choiceTypeRequiresChoices(macro: "___MODE___")) {
+            try await resolver.resolve()
         }
     }
 }
