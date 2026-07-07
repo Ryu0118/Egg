@@ -51,6 +51,26 @@ hatch:
 | `hatch.exclude` | No | Rules to skip files or folders, optionally conditional. |
 | `post_hatch` | No | Lifecycle steps after template expansion. |
 
+## Excluding Files
+
+`hatch.exclude` entries are glob patterns matched against the output path.
+Each entry is either a bare string, or an object that only excludes those
+paths when a condition holds:
+
+```yaml
+hatch:
+  output: "."
+  exclude:
+    - "*.tmp"
+    - if: "___INCLUDE_TESTS___ === false"
+      paths:
+        - "Tests/**"
+```
+
+The conditional form uses the same `if` expression language as lifecycle
+steps, described below under Conditions on step outputs, and can reference
+macros and prior step outputs the same way.
+
 ## Macro Types
 
 | Type | CLI example | Purpose |
@@ -157,3 +177,24 @@ pre_hatch:
 Do not wrap the `${{ … }}` reference in quotes yourself — the substituted
 literal is already quoted when the value is a string, and the doubled quotes
 fail to parse.
+
+## Validating a Config
+
+`egg template validate <path>` (see <doc:ManagingTemplates>) runs the same
+checks `hatch` runs before ever touching the template, so a broken config
+fails fast instead of mid-expansion. It checks, among other things:
+
+- Macro names are unique, match the `___UPPER_SNAKE_CASE___` pattern, and
+  don't collide with a built-in macro name (<doc:BuiltInMacros>).
+- `choices` is only set on `choice`/`choices` macros, and `validate` is
+  only set on `string`/`array` macros.
+- A macro's `default` matches its `validate` regex, and its `choices`
+  when the type is `choice`/`choices`.
+- Every `___MACRO___` reference inside `pre_hatch`/`post_hatch` `run`/`if`
+  strings, `hatch.output`, and `hatch.exclude` conditions names either a
+  declared macro or a built-in one — an undefined reference is an error,
+  not a silent no-op.
+- Every `if` expression (lifecycle steps and conditional `hatch.exclude`
+  rules) evaluates to a boolean once macros and step outputs are expanded.
+- No declared macro's kebab-case CLI flag collides with a built-in `hatch`
+  flag such as `--output` (see Macro Types above).

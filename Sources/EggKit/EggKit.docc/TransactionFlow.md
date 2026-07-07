@@ -78,6 +78,25 @@ consented external writes) happen at preview time and are not reverted by
 discard or rollback; the transaction machinery guarantees rollback only for
 the working-directory changes it applied.
 
+### Consenting to `sandbox.allowed_paths`
+
+A template's `sandbox.allowed_paths` entries support macros and `~`/`$HOME`
+expansion; any entry that doesn't resolve to an absolute path is dropped
+with a warning rather than silently granted. Once resolved, egg still won't
+open write access on its own — consent is collected separately, and how
+depends on the caller:
+
+- **Interactive** (`egg hatch`, `egg hatch direct`): egg lists the resolved
+  paths and prompts to allow or decline. Declining continues in
+  sandbox-only mode — lifecycle steps still run, just without write access
+  to those paths.
+- **Non-interactive** (`--json`, MCP `egg_hatch_preview`): there's no prompt
+  channel, so any non-empty `allowed_paths` is refused outright with a
+  `sandboxPermissionRequired` error listing the paths. The caller must
+  re-run with explicit approval — `--allow-write` on the CLI, or
+  `allowed_write_paths` over MCP — naming only the paths it has confirmed
+  with the user.
+
 ## Apply
 
 `apply <applyToken>` writes the previewed changes to the real working directory
