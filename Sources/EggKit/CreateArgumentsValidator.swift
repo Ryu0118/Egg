@@ -59,7 +59,7 @@ package struct CreateArgumentsValidator {
         }
 
         let templateNameErrors = await Config.templateNameValidationRules.validate(name)
-        let templateDescriptionErrors = await Config.templateNameValidationRules.validate(description)
+        let templateDescriptionErrors = await Config.descriptionValidationRules.validate(description)
 
         let argumentValidationErrors = templateNameErrors + templateDescriptionErrors
         if !argumentValidationErrors.isEmpty {
