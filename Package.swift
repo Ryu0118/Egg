@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "EggKit", targets: ["EggKit"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/Ryu0118/swift-interaction", from: "0.1.0"),
+        .package(url: "https://github.com/Ryu0118/swift-interaction", from: "0.2.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.6.2"),
         .package(url: "https://github.com/Ryu0118/FileManagerProtocol", from: "0.1.0"),
         .package(url: "https://github.com/Ryu0118/ProcessRunning", from: "0.2.1"),
