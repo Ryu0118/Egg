@@ -27,3 +27,7 @@ before changing a project.
 - <doc:TemplateConfig>
 - <doc:TransactionFlow>
 
+### Reference
+
+- <doc:BuiltInMacros>
+
