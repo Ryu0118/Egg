@@ -26,6 +26,7 @@ before changing a project.
 - <doc:AgentSkillsAndPlugins>
 - <doc:TemplateConfig>
 - <doc:TransactionFlow>
+- <doc:ManagingTemplates>
 
 ### Reference
 
