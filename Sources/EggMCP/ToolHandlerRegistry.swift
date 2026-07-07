@@ -21,8 +21,10 @@ public actor ToolHandlerRegistry {
         MoveHandler.toolName: MoveHandler(),
         InstallHandler.toolName: InstallHandler(),
 
-        // Hatch handler
-        HatchHandler.toolName: HatchHandler(),
+        // Hatch handler — transaction flow only (preview/apply/rollback/
+        // discard/transactions). No one-shot hatch: MCP has no prompt
+        // channel, so a one-shot apply can't collect the confirmations the
+        // interactive CLI flow (`egg hatch direct`) gets from a human.
         HatchPreviewHandler.toolName: HatchPreviewHandler(),
         HatchApplyHandler.toolName: HatchApplyHandler(),
         HatchRollbackHandler.toolName: HatchRollbackHandler(),

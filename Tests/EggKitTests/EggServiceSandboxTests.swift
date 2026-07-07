@@ -59,9 +59,11 @@ struct MCPServiceSandboxTests {
 /// Over MCP there is no prompt channel: reaching the human flow's non-git
 /// confirmation exits the process and kills the server mid-request. The
 /// service must refuse a staged hatch of a non-git directory up front with
-/// a structured, actionable error instead.
+/// a structured, actionable error instead. MCP only exposes the transaction
+/// flow (preview/apply), so this is exercised through previewHatchTemplate —
+/// the same StagingFeasibility guard previewHatchTemplate and apply share.
 extension MCPServiceSandboxTests {
-    @Test("a staged hatch of a non-git directory throws instead of reaching the process-killing prompt")
+    @Test("previewing a staged hatch of a non-git directory throws instead of reaching the process-killing prompt")
     func stagedHatchOnNonGitDirectoryThrows() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }
@@ -74,22 +76,20 @@ extension MCPServiceSandboxTests {
         )
 
         do {
-            _ = try await service.hatchTemplate(
+            _ = try await service.previewHatchTemplate(
                 templateName: "SandboxedPreview",
                 macros: [:],
-                useStaging: true,
-                applyChanges: true,
             )
-            Issue.record("expected stagedHatchRequiresGitRepository")
-        } catch let error as EggServiceError {
-            #expect(error.localizedDescription.contains("use_staging: false"))
+            Issue.record("expected nonGitStagingRequiresConsent")
+        } catch let error as AgentHatchTransactionRunner.Error {
+            #expect(error.localizedDescription.contains("--no-staging"))
             #expect(error.localizedDescription.contains("git init"))
-            #expect(error.localizedDescription.contains("allow_non_git_staging"))
+            #expect(error.localizedDescription.contains("allow-non-git-staging"))
             #expect(error.localizedDescription.contains("files"), "the refusal must report the measured size")
         }
     }
 
-    @Test("allow_non_git_staging stages the non-git directory and applies the template")
+    @Test("allow_non_git_staging previews, and apply stages the non-git directory and applies the template")
     func consentedNonGitStagedHatchSucceeds() async throws {
         let workspace = try makeWorkspace()
         defer { try? fileManager.removeItem(at: workspace.root) }
@@ -102,13 +102,12 @@ extension MCPServiceSandboxTests {
             homeDirectory: workspace.homeDirectory,
         )
 
-        _ = try await service.hatchTemplate(
+        let preview = try await service.previewHatchTemplate(
             templateName: "SandboxedPreview",
             macros: [:],
-            useStaging: true,
-            applyChanges: true,
             allowNonGitStaging: true,
         )
+        _ = try await service.applyHatchTransaction(applyToken: preview.applyToken)
 
         #expect(fileManager.exists(workspace.projectDirectory.appending(path: "Made.txt")))
     }

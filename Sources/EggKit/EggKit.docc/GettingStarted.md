@@ -210,10 +210,10 @@ UI. See <doc:TransactionFlow>.
 | Human, careful | Interactive or resolved | Staged (default) | egg confirms before writing |
 | AI agent | Resolved (macro map) | Staged transaction | `preview` → inspect → `apply` → optional `rollback` |
 
-For agents the safe path is enforced, not just recommended: the MCP `egg_hatch`
-tool runs a **preview** unless the caller explicitly sets `apply_changes: true`.
-So an agent that forgets to preview still gets a no-write dry run, never a
-surprise edit to the working directory.
+For agents the safe path is enforced, not just offered: MCP only exposes the
+transaction flow (`egg_hatch_preview` → inspect → `egg_hatch_apply`). There is
+no one-shot MCP tool that writes on the first call, so an agent can never skip
+straight to a surprise edit of the working directory.
 
 ## Where to go next
 

@@ -31,7 +31,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: 3d9e45652841deafe75a495ba0105bff0852dd0816edeee797fdf363c18e586e
+  checksum: 98bf9646c444683da5ac38c8e9b2812d50f90b99fe2a3098d3bee7cd1918848a
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -61,14 +61,13 @@ rules:
   - Sources/EggCLI/Commands/HatchCommand.swift
   - Sources/EggMCP/MCPServer.swift
   - Sources/EggMCP/Handlers/HatchPreviewHandler.swift
-  - Sources/EggMCP/Handlers/HatchHandler.swift
   - Sources/EggKit/WorkflowRunner/Staging/AgentHatchTransactionRunner.swift
   - Sources/EggKit/WorkflowRunner/SandboxAllowedPathsResolver.swift
   doc: skills/egg-cli-guide/SKILL.md
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 84b2141ae4d75ffdd20efca9e02dc4880d9f567691a95d903232db84bdfcf5c9
+  checksum: 20713759582a3dff629a8a5e0a640fdb141557c41aa650188baab7f0efcf6649
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -82,7 +81,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 603754c98c7875ed677b1aad30870691158e4b9b1bd2a13f87f1fc8d0b5750fe
+  checksum: 556ca89b9e586df704c7a920f03ad9f6f1eccd54e55f5708802883f83d5f84f2
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -107,7 +106,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: a94e4269d9e7171a3cc24eaa09938e64ba78c04645e064f3dff1ddf3eecdb4e3
+  checksum: 3c226e32ea7aa494dfe65b0a83fd7c5d570dc646a5d5f83215a84db48d0b6b2a
 - name: agents-project
   sources:
   - Package.swift
@@ -118,7 +117,7 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: cb3e3bccf9d29d9ceee5615d0fa2f78d43d5f2ef64559c4976f347aa925985a5
+  checksum: fbb885b6136633d7067adf3f5adeba8d62cdd99151c3ddd4bc13d84449349ced
 excludes:
 - .build/**
 - '**/.build/**'

@@ -3,11 +3,11 @@ import FileManagerProtocol
 import Foundation
 import Testing
 
-/// The MCP `egg_hatch` tool declares `staging_root`, and its default
-/// (preview) path used to drop the parameter on the floor — the service
-/// signature swallowed it with `stagingRoot _:`. These prove preview honors
-/// it with the direct flow's semantics: the staging clones from and applies
-/// back into that directory, and the transaction records live under it.
+/// The MCP `egg_hatch_preview` tool declares `staging_root`, which used to
+/// drop the parameter on the floor — the service signature swallowed it with
+/// `stagingRoot _:`. These prove preview honors it with the direct flow's
+/// semantics: the staging clones from and applies back into that directory,
+/// and the transaction records live under it.
 @Suite("EggService.previewHatchTemplate honors stagingRoot")
 struct EggServiceStagingRootTests {
     private let fileManager: some FileManagerProtocol = FileManager.default

@@ -51,5 +51,4 @@ package struct HatchArgumentsValidator {
 package enum HatchRunnerMode {
     case interactive
     case direct(template: Template, parsedMacros: [ParsedMacroDefinition])
-    case mcp(template: Template, parsedMacros: [ParsedMacroDefinition])
 }

@@ -77,7 +77,7 @@ struct MCPTransportTests {
                 "egg_template_list", "egg_template_detail", "egg_template_create",
                 "egg_template_delete", "egg_template_duplicate", "egg_template_move",
                 "egg_template_validate", "egg_template_install",
-                "egg_hatch", "egg_hatch_preview", "egg_hatch_apply",
+                "egg_hatch_preview", "egg_hatch_apply",
                 "egg_hatch_rollback", "egg_hatch_discard", "egg_hatch_transactions",
             ]
             #expect(names == expected)
@@ -196,34 +196,6 @@ struct MCPTransportTests {
             _ = try await mcp.callToolJSON("egg_hatch_discard", arguments: [
                 "apply_token": token, "working_directory": cwd,
             ])
-        }
-    }
-
-    @Test("the legacy egg_hatch tool previews by default and writes only with apply_changes")
-    func legacyHatchToolPreviewsByDefault() async throws {
-        let root = try makeProject(template: demoTemplate)
-        defer { try? fileManager.removeItem(at: root) }
-        let cwd = root.path(percentEncoded: false)
-
-        try await withMCPRunner { mcp in
-            // Default: no writes to the working directory.
-            let previewed = try await mcp.callTool("egg_hatch", arguments: [
-                "template_name": "Demo",
-                "output_directory": cwd,
-                "project_directory": cwd,
-            ])
-            #expect(!previewed.isError, Comment(rawValue: previewed.text))
-            #expect(!exists(root.appending(path: "files/hello.txt")))
-
-            // apply_changes: true materializes the files.
-            let applied = try await mcp.callTool("egg_hatch", arguments: [
-                "template_name": "Demo",
-                "output_directory": cwd,
-                "project_directory": cwd,
-                "apply_changes": true,
-            ])
-            #expect(!applied.isError, Comment(rawValue: applied.text))
-            #expect(exists(root.appending(path: "files/hello.txt")))
         }
     }
 
