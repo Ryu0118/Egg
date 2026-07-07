@@ -1,14 +1,15 @@
 import Foundation
+import Interaction
 
 struct ParsedMacroDefinitionValidator {
     let config: Config
     let workingDirectory: URL
     let homeDirectory: URL
 
-    func validate(_ parsedMacroDefinitions: [ParsedMacroDefinition]) throws -> [ResolvedMacro] {
+    func validate(_ parsedMacroDefinitions: [ParsedMacroDefinition]) async throws -> [ResolvedMacro] {
         let providedMacroNames = Set(parsedMacroDefinitions.map(\.macro))
 
-        let allResults = validateProvidedMacros(parsedMacroDefinitions)
+        let allResults = await validateProvidedMacros(parsedMacroDefinitions)
             + validateMissingMacrosWithDefaults(providedMacroNames: providedMacroNames)
             + validateMissingRequiredMacros(providedMacroNames: providedMacroNames)
 
@@ -17,18 +18,20 @@ struct ParsedMacroDefinitionValidator {
         return extractResolvedMacros(from: allResults)
     }
 
-    private func validateProvidedMacros(_ parsedMacroDefinitions: [ParsedMacroDefinition]) -> [Result<ResolvedMacro, Error>] {
-        parsedMacroDefinitions.map { validate($0, isFromDefault: false) }
+    private func validateProvidedMacros(_ parsedMacroDefinitions: [ParsedMacroDefinition]) async -> [Result<ResolvedMacro, Error>] {
+        var results: [Result<ResolvedMacro, Error>] = []
+        for parsedMacroDefinition in parsedMacroDefinitions {
+            await results.append(validate(parsedMacroDefinition, isFromDefault: false))
+        }
+        return results
     }
 
-    private func validateMissingMacrosWithDefaults(providedMacroNames: Set<String>) -> [Result<ResolvedMacro, Error>] {
-        (config.macros ?? [])
-            .filter { configMacro in
-                configMacro.default != nil && !providedMacroNames.contains(configMacro.name)
-            }
-            .map { configMacro in
-                validateMacroWithDefault(configMacro)
-            }
+    private func validateMissingMacrosWithDefaults(providedMacroNames: Set<String>) async -> [Result<ResolvedMacro, Error>] {
+        var results: [Result<ResolvedMacro, Error>] = []
+        for configMacro in config.macros ?? [] where configMacro.default != nil && !providedMacroNames.contains(configMacro.name) {
+            await results.append(validateMacroWithDefault(configMacro))
+        }
+        return results
     }
 
     private func validateMissingRequiredMacros(providedMacroNames: Set<String>) -> [Result<ResolvedMacro, Error>] {
@@ -69,7 +72,7 @@ struct ParsedMacroDefinitionValidator {
     private func validate(
         _ parsedMacroDefinition: ParsedMacroDefinition,
         isFromDefault _: Bool,
-    ) -> Result<ResolvedMacro, Error> {
+    ) async -> Result<ResolvedMacro, Error> {
         // Find the macro definition in config
         guard let configMacro = findConfigMacro(for: parsedMacroDefinition) else {
             return .failure(.unknownMacro(macro: parsedMacroDefinition.macro))
@@ -78,14 +81,14 @@ struct ParsedMacroDefinitionValidator {
         // Use provided values (no default resolution here since defaults are handled separately)
         let resolvedValues = parsedMacroDefinition.values
 
-        return validateAndResolve(
+        return await validateAndResolve(
             values: resolvedValues,
             configMacro: configMacro,
             macroName: parsedMacroDefinition.macro,
         )
     }
 
-    private func validateMacroWithDefault(_ configMacro: Config.Macro) -> Result<ResolvedMacro, Error> {
+    private func validateMacroWithDefault(_ configMacro: Config.Macro) async -> Result<ResolvedMacro, Error> {
         guard let defaultValue = configMacro.default else {
             return .failure(.missingDefaultValue(macro: configMacro.name))
         }
@@ -98,7 +101,7 @@ struct ParsedMacroDefinitionValidator {
             [defaultValue.stringValue]
         }
 
-        return validateAndResolve(
+        return await validateAndResolve(
             values: resolvedValues,
             configMacro: configMacro,
             macroName: configMacro.name,
@@ -111,19 +114,19 @@ struct ParsedMacroDefinitionValidator {
         configMacro: Config.Macro,
         macroName: String,
         isFromDefault: Bool = false,
-    ) -> Result<ResolvedMacro, Error> {
+    ) async -> Result<ResolvedMacro, Error> {
         // Validate value count
         if let error = validateValueCount(values, configMacro: configMacro, macroName: macroName, isFromDefault: isFromDefault) {
             return .failure(error)
         }
 
         // Validate choice type
-        if let error = validateChoice(values, configMacro: configMacro, macroName: macroName) {
+        if let error = await validateChoice(values, configMacro: configMacro, macroName: macroName) {
             return .failure(error)
         }
 
         // Validate regex pattern
-        if let error = validateRegex(values, configMacro: configMacro, macroName: macroName) {
+        if let error = await validateRegex(values, configMacro: configMacro, macroName: macroName) {
             return .failure(error)
         }
 
@@ -166,7 +169,7 @@ struct ParsedMacroDefinitionValidator {
         return nil
     }
 
-    private func validateChoice(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) -> Error? {
+    private func validateChoice(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) async -> Error? {
         guard configMacro.type == .choice || configMacro.type == .choices else {
             return nil
         }
@@ -175,14 +178,13 @@ struct ParsedMacroDefinitionValidator {
             return .choiceTypeRequiresChoices(macro: macroName)
         }
 
-        // Use ChoiceValidationRule for validation
-        let validationRule = ChoiceValidationRule(
+        let validationRule = ValidationRule.choice(
             choices: choices,
             error: "Value not in choices",
         )
 
         for value in resolvedValues {
-            if !validationRule.validate(input: value) {
+            if await validationRule(value) != nil {
                 return .valueNotInChoices(
                     macro: macroName,
                     value: value,
@@ -194,14 +196,13 @@ struct ParsedMacroDefinitionValidator {
         return nil
     }
 
-    private func validateRegex(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) -> Error? {
+    private func validateRegex(_ resolvedValues: [String], configMacro: Config.Macro, macroName: String) async -> Error? {
         guard let regexPattern = configMacro.validate else {
             return nil
         }
 
-        // Use RegexPatternValidationRule for validation
-        let validationRule = RegexPatternValidationRule(
-            pattern: regexPattern,
+        let validationRule = ValidationRule.regexPattern(
+            regexPattern,
             error: "Value does not match pattern",
         )
 
@@ -211,7 +212,7 @@ struct ParsedMacroDefinitionValidator {
         }
 
         for value in resolvedValues {
-            if !validationRule.validate(input: value) {
+            if await validationRule(value) != nil {
                 return .valueDoesNotMatchRegex(
                     macro: macroName,
                     value: value,

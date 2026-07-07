@@ -1,33 +1,27 @@
 import Foundation
 import Interaction
 
-package struct LengthValidationRule: PredicateValidationRule {
-    package let error: ValidationError
-
-    private let minLength: Int
-    private let maxLength: Int
-
-    package init(minLength: Int, maxLength: Int, error: String) {
-        self.minLength = minLength
-        self.maxLength = maxLength
-        self.error = ValidationError(error)
+package extension ValidationRule {
+    /// Requires the input's character count to fall within `minLength...maxLength`.
+    static func length(minLength: Int, maxLength: Int, error: String) -> ValidationRule {
+        ValidationRule { input in
+            (minLength ... maxLength).contains(input.count) ? nil : ValidationError(error)
+        }
     }
 
-    package func validate(input: String) -> Bool {
-        let length = input.count
-        return length >= minLength && length <= maxLength
+    static var templateNameLength: ValidationRule {
+        .length(
+            minLength: 1,
+            maxLength: 100,
+            error: "Template name must be between 1 and 100 characters.",
+        )
     }
-}
 
-extension LengthValidationRule {
-    static let templateName: Self = LengthValidationRule(
-        minLength: 1,
-        maxLength: 100,
-        error: "Template name must be between 1 and 100 characters.",
-    )
-    static let description: Self = LengthValidationRule(
-        minLength: 1,
-        maxLength: 5000,
-        error: "Description must be between 1 and 5000 characters.",
-    )
+    static var descriptionLength: ValidationRule {
+        .length(
+            minLength: 1,
+            maxLength: 5000,
+            error: "Description must be between 1 and 5000 characters.",
+        )
+    }
 }

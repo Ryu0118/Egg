@@ -38,7 +38,7 @@ package struct OpenArgumentsValidator {
             return .interactive
         }
 
-        guard let templatePath = try templatesFinder.validTemplateDirectory(templateName) else {
+        guard let templatePath = try await templatesFinder.validTemplateDirectory(templateName) else {
             throw Error.templateNotFound(name: templateName)
         }
 

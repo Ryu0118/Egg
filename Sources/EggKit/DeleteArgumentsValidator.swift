@@ -40,7 +40,7 @@ package struct DeleteArgumentsValidator {
         }
 
         // Check in all locations (custom, global, project)
-        guard let path = try templatesFinder.validTemplateDirectory(templateName) else {
+        guard let path = try await templatesFinder.validTemplateDirectory(templateName) else {
             throw Error.templateNotFound(name: templateName)
         }
 

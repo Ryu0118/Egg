@@ -81,7 +81,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
         templateDirectory: URL,
     ) async throws -> URL {
         // Resolve macros (for non-staging execution, use real working directory)
-        let macros = try resolveMacros(macroInputs, config: config)
+        let macros = try await resolveMacros(macroInputs, config: config)
 
         // Expand and validate sandbox.allowed_paths
         let sandboxResolver = SandboxAllowedPathsResolver(
@@ -151,7 +151,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
     ///   - config: The template configuration containing macro definitions
     /// - Returns: Array of resolved macros
     /// - Throws: Validation errors for parsed macros
-    private func resolveMacros(_ inputs: MacroInputs, config: Config) throws -> [ResolvedMacro] {
+    private func resolveMacros(_ inputs: MacroInputs, config: Config) async throws -> [ResolvedMacro] {
         switch inputs {
         case let .parsed(parsedMacros):
             // Resolve parsed macros with real working directory
@@ -161,7 +161,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 workingDirectory: workingDirectory,
                 homeDirectory: homeDirectory,
             )
-            return try validator.validate(parsedMacros)
+            return try await validator.validate(parsedMacros)
         case .interactive:
             let resolver = MacroResolver(
                 config: config,
@@ -169,7 +169,7 @@ struct LifecycleWorkflowRunner: WorkflowRunning {
                 homeDirectory: homeDirectory,
                 interaction: interaction,
             )
-            return try resolver.resolve()
+            return try await resolver.resolve()
         }
     }
 }

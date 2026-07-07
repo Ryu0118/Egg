@@ -4,7 +4,7 @@ import Testing
 
 struct ParsedMacroDefinitionValidatorTests {
     @Test(arguments: TestCase.allCases)
-    func validate(_ testCase: TestCase) throws {
+    func validate(_ testCase: TestCase) async throws {
         let workingDirectory = URL(filePath: "/tmp/test")
         let homeDirectory = URL(filePath: "/Users/testuser")
         let validator = ParsedMacroDefinitionValidator(
@@ -15,11 +15,11 @@ struct ParsedMacroDefinitionValidatorTests {
 
         switch testCase.expected {
         case let .success(expectedMacros):
-            let result = try validator.validate(testCase.parsedMacros)
+            let result = try await validator.validate(testCase.parsedMacros)
             #expect(result == expectedMacros)
         case let .failure(expectedErrors):
             do {
-                _ = try validator.validate(testCase.parsedMacros)
+                _ = try await validator.validate(testCase.parsedMacros)
                 #expect(Bool(false), "Expected errors \(expectedErrors)")
             } catch {
                 guard let combinedError = error as? CombinedError else {

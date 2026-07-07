@@ -42,7 +42,7 @@ package struct HatchArgumentsValidator {
         // Perform basic validation (without path resolution)
         // Path resolution will be done by the workflow runner after staging area creation
         let validator = ParsedMacroBasicValidator(config: template.config)
-        try validator.validate(parsedMacros)
+        try await validator.validate(parsedMacros)
 
         return .direct(template: template, parsedMacros: parsedMacros)
     }

@@ -34,23 +34,23 @@ package struct MacroResolver {
     /// Resolves all macros defined in the config.
     ///
     /// - Returns: Array of resolved macros with concrete values
-    package func resolve() throws -> [ResolvedMacro] {
+    package func resolve() async throws -> [ResolvedMacro] {
         guard let macros = config.macros else { return [] }
 
         var resolvedMacros: [ResolvedMacro] = []
 
         for macro in macros {
-            let resolvedMacro = try promptForMacro(macro)
+            let resolvedMacro = try await promptForMacro(macro)
             resolvedMacros.append(resolvedMacro)
         }
 
         return resolvedMacros
     }
 
-    private func promptForMacro(_ macro: Config.Macro) throws -> ResolvedMacro {
+    private func promptForMacro(_ macro: Config.Macro) async throws -> ResolvedMacro {
         switch macro.type {
         case .string:
-            promptForString(macro)
+            await promptForString(macro)
         case .boolean:
             promptForBoolean(macro)
         case .choice:
@@ -58,26 +58,26 @@ package struct MacroResolver {
         case .choices:
             try promptForChoices(macro)
         case .array:
-            promptForArray(macro)
+            await promptForArray(macro)
         case .path:
-            promptForPath(macro)
+            await promptForPath(macro)
         }
     }
 
-    private func promptForString(_ macro: Config.Macro) -> ResolvedMacro {
-        var validationRules: [any Interaction.ValidationRule] = []
+    private func promptForString(_ macro: Config.Macro) async -> ResolvedMacro {
+        var validationRules: [ValidationRule] = []
 
         // Only require non-empty if there's no default value
         if macro.default == nil {
             validationRules.append(
-                NonEmptyRule(message: "\(macro.name) cannot be empty."),
+                .nonEmpty(message: "\(macro.name) cannot be empty."),
             )
         }
 
         if let validatePattern = macro.validate {
             validationRules.append(
-                RegexPatternValidationRule(
-                    pattern: validatePattern,
+                .regexPattern(
+                    validatePattern,
                     error: "Value does not match the required pattern: '\(validatePattern)'",
                 ),
             )
@@ -90,7 +90,7 @@ package struct MacroResolver {
             macro.description
         }
 
-        let value = interaction.textPrompt(
+        let value = await interaction.textPrompt(
             title: "\(macro.name)",
             prompt: StyledText(promptMessage),
             collapsesOnAnswer: true,
@@ -165,14 +165,14 @@ package struct MacroResolver {
         )
     }
 
-    private func promptForArray(_ macro: Config.Macro) -> ResolvedMacro {
+    private func promptForArray(_ macro: Config.Macro) async -> ResolvedMacro {
         // Build validation rules for array elements
-        var validationRules: [any Interaction.ValidationRule] = []
+        var validationRules: [ValidationRule] = []
 
         if let validatePattern = macro.validate {
             // Create a custom validation rule that validates each comma-separated element
             validationRules.append(
-                ArrayElementValidationRule(
+                .arrayElement(
                     elementPattern: validatePattern,
                     error: "One or more values do not match the required pattern: '\(validatePattern)'",
                 ),
@@ -186,7 +186,7 @@ package struct MacroResolver {
             "\(macro.description) (comma-separated)"
         }
 
-        let input = interaction.textPrompt(
+        let input = await interaction.textPrompt(
             title: "\(macro.name)",
             prompt: StyledText(promptMessage),
             collapsesOnAnswer: true,
@@ -212,20 +212,20 @@ package struct MacroResolver {
         )
     }
 
-    private func promptForPath(_ macro: Config.Macro) -> ResolvedMacro {
-        let pathValidationRule = PathValidationRule(
+    private func promptForPath(_ macro: Config.Macro) async -> ResolvedMacro {
+        let pathValidationRule = ValidationRule.path(
             workingDirectory: workingDirectory,
             homeDirectory: homeDirectory,
             allowsEmpty: macro.default != nil,
             error: "Invalid path for \(macro.name)",
         )
 
-        var validationRules: [any Interaction.ValidationRule] = []
+        var validationRules: [ValidationRule] = []
 
         // Only require non-empty if there's no default value
         if macro.default == nil {
             validationRules.append(
-                NonEmptyRule(message: "\(macro.name) cannot be empty."),
+                .nonEmpty(message: "\(macro.name) cannot be empty."),
             )
         }
 
@@ -238,7 +238,7 @@ package struct MacroResolver {
             macro.description
         }
 
-        let pathString = interaction.textPrompt(
+        let pathString = await interaction.textPrompt(
             title: "\(macro.name)",
             prompt: StyledText(promptMessage),
             collapsesOnAnswer: true,

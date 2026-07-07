@@ -11,7 +11,7 @@ struct TestInteraction: InteractionProviding {
 
     func writeTable(_: Table) {}
 
-    func readText(_: TextPrompt) -> String {
+    func readText(_: TextPrompt) async -> String {
         preconditionFailure("TestInteraction.readText was called without a configured answer.")
     }
 

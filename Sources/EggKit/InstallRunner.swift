@@ -105,7 +105,7 @@ package struct InstallRunner {
 
     private func runInteractiveMode() async throws -> InstallResult {
         // Prompt for repository URL
-        let urlString = interaction.textPrompt(
+        let urlString = await interaction.textPrompt(
             title: "Repository URL",
             prompt: "Enter the Git repository URL:",
             description: "HTTPS (https://...) or SSH (git@...) URL of the repository",
@@ -116,7 +116,7 @@ package struct InstallRunner {
         }
 
         // Prompt for ref (optional)
-        let ref = promptForRef()
+        let ref = await promptForRef()
 
         // Prompt for location
         let location = promptForLocation()
@@ -147,7 +147,7 @@ package struct InstallRunner {
         return try await installTemplates(selectedTemplates, to: location)
     }
 
-    private func promptForRef() -> GitRef? {
+    private func promptForRef() async -> GitRef? {
         let options = ["Default branch", "Specific branch", "Tag", "Commit SHA"]
         let selected = interaction.singleChoicePrompt(
             title: "Git Reference",
@@ -160,21 +160,21 @@ package struct InstallRunner {
         case "Default branch":
             return nil
         case "Specific branch":
-            let branch = interaction.textPrompt(
+            let branch = await interaction.textPrompt(
                 title: "Branch Name",
                 prompt: "Enter the branch name:",
                 description: "The branch to clone from",
             )
             return .branch(branch)
         case "Tag":
-            let tag = interaction.textPrompt(
+            let tag = await interaction.textPrompt(
                 title: "Tag Name",
                 prompt: "Enter the tag name:",
                 description: "The tag to clone from",
             )
             return .tag(tag)
         case "Commit SHA":
-            let sha = interaction.textPrompt(
+            let sha = await interaction.textPrompt(
                 title: "Commit SHA",
                 prompt: "Enter the commit SHA:",
                 description: "The commit to checkout",

@@ -2,18 +2,18 @@ import Foundation
 import Interaction
 
 extension Config {
-    static var templateNameValidationRules: [any ValidationRule] {
+    static var templateNameValidationRules: [ValidationRule] {
         [
-            NonEmptyRule(message: "Project name cannot be empty."),
-            DirectoryNameValidationRule(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
-            LengthValidationRule.templateName,
+            .nonEmpty(message: "Project name cannot be empty."),
+            .directoryName(error: "Invalid directory name. Cannot contain '/' or start with whitespace."),
+            .templateNameLength,
         ]
     }
 
-    static var descriptionValidationRules: [any ValidationRule] {
+    static var descriptionValidationRules: [ValidationRule] {
         [
-            NonEmptyRule(message: "Description cannot be empty."),
-            LengthValidationRule.description,
+            .nonEmpty(message: "Description cannot be empty."),
+            .descriptionLength,
         ]
     }
 }
