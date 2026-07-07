@@ -76,6 +76,34 @@ Recommended agent flow:
 Macro keys over MCP use the exact names from `config.yml`, such as
 `___MODULE_NAME___`, not kebab-case CLI flags.
 
+### Tools
+
+Every tool maps one-to-one to an `egg` CLI subcommand and returns the same
+JSON that subcommand's `--json` flag would print.
+
+| Tool | CLI equivalent |
+| --- | --- |
+| `egg_template_list` | `egg template list --json` |
+| `egg_template_detail` | `egg template detail --json` |
+| `egg_template_create` | `egg template create --json` |
+| `egg_template_delete` | `egg template delete --json` |
+| `egg_template_duplicate` | `egg template duplicate --json` |
+| `egg_template_move` | `egg template move --json` |
+| `egg_template_validate` | `egg template validate --json` |
+| `egg_template_install` | `egg template install --json` |
+| `egg_hatch_preview` | `egg hatch preview` |
+| `egg_hatch_apply` | `egg hatch apply` |
+| `egg_hatch_rollback` | `egg hatch rollback` |
+| `egg_hatch_discard` | `egg hatch discard` |
+| `egg_hatch_transactions` | `egg hatch transactions` |
+
+There is no one-shot hatch tool: `egg_hatch_preview` only stages a
+transaction, and `egg_hatch_apply` is the sole tool that writes to the
+project. See <doc:ManagingTemplates> for what each `egg_template_*`
+subcommand does and <doc:TransactionFlow> for the full preview/apply/
+rollback/discard lifecycle, including the sandbox consent flow
+`egg_hatch_preview` enforces via `allowed_write_paths`.
+
 ## Structured CLI output
 
 An agent that drives the CLI rather than MCP gets the same structured results
