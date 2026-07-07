@@ -140,19 +140,12 @@ actor StagingContext {
                     question: "The working directory is not under git management, so staging would copy all \(count)\(isExact ? "" : "+") files — including build artifacts and caches. Proceed anyway? (Consider using --no-staging mode instead)",
                 )
             } else {
-                // Git-tracked staging is scoped, but the cost is still one
-                // APFS clone per file, twice — surface big repositories
-                // instead of silently grinding.
-                let fileCount = try await StagingPreflight(processRunner: processRunner, fileManager: fileManager)
-                    .countGitCloneableFiles(in: workingDirectory)
-                if fileCount > StagingPreflight.defaultFileLimit {
-                    readyToCopyToStaging = interaction.yesOrNoChoicePrompt(
-                        title: "Large Repository",
-                        question: "Staging will clone \(fileCount) git-tracked files (twice: workspace + reference). This may take a while. Proceed? (Consider --staging-root <subdir> or --no-staging instead)",
-                    )
-                } else {
-                    readyToCopyToStaging = true
-                }
+                readyToCopyToStaging = try await confirmGitTrackedStagingSize(
+                    workingDirectory: workingDirectory,
+                    processRunner: processRunner,
+                    fileManager: fileManager,
+                    interaction: interaction,
+                )
             }
 
             // If not ready, throw StagingContext.Error.userAborted here.
@@ -324,6 +317,27 @@ actor StagingContext {
         // root is /tmp/egg-staging-{uuid}/work, so parent is /tmp/egg-staging-{uuid}
         let workspaceBaseDirectory = root.deletingLastPathComponent()
         try? fileManager.removeItem(at: workspaceBaseDirectory)
+    }
+
+    /// Prompts for confirmation when a git-tracked staging clone exceeds `StagingPreflight.defaultFileLimit`.
+    ///
+    /// Git-tracked staging is scoped, but the cost is still one APFS clone per
+    /// file, twice — surface big repositories instead of silently grinding.
+    private static func confirmGitTrackedStagingSize(
+        workingDirectory: URL,
+        processRunner: some ProcessRunning,
+        fileManager: some FileManagerProtocol,
+        interaction: some InteractionProviding,
+    ) async throws -> Bool {
+        let fileCount = try await StagingPreflight(processRunner: processRunner, fileManager: fileManager)
+            .countGitCloneableFiles(in: workingDirectory)
+        guard fileCount > StagingPreflight.defaultFileLimit else {
+            return true
+        }
+        return interaction.yesOrNoChoicePrompt(
+            title: "Large Repository",
+            question: "Staging will clone \(fileCount) git-tracked files (twice: workspace + reference). This may take a while. Proceed? (Consider --staging-root <subdir> or --no-staging instead)",
+        )
     }
 }
 

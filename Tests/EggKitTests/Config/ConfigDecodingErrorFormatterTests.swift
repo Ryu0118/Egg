@@ -5,7 +5,7 @@ import Yams
 /// The formatter must name the failing key path — Foundation's raw
 /// DecodingError messages ("The data couldn't be read because it is
 /// missing.") give a template author nothing to act on.
-@Suite("ConfigDecodingErrorFormatter")
+@Suite("Formats config.yml decoding errors with the failing key path instead of Foundation's raw message")
 struct ConfigDecodingErrorFormatterTests {
     private func decodeFailureMessage(_ yaml: String) -> String {
         do {

@@ -103,18 +103,6 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         }
     }
 
-    /// Clones every top-level entry of a non-git directory except egg's own
-    /// `.egg` bookkeeping. APFS clones directories recursively, so one call
-    /// per entry keeps the copy-on-write efficiency of the old
-    /// whole-directory clone.
-    private func cloneAllEntries(from source: URL, to destination: URL) async throws {
-        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
-        let entries = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
-        for entry in entries where entry.lastPathComponent != EggBookkeeping.directoryName {
-            try await apfsCloner.clone(from: entry, to: destination.appending(path: entry.lastPathComponent))
-        }
-    }
-
     /// Lists git-tracked files and untracked files that aren't ignored —
     /// exactly the set `clone(from:to:)` copies. `StagingPreflight` uses the
     /// same enumeration to size a clone before starting it.
@@ -167,6 +155,18 @@ struct GitTrackedDirectoryCloner: DirectoryCloning {
         let outputString = String(decoding: result.standardOutput, as: UTF8.self)
         return parseNullSeparatedPaths(outputString)
             .filter { !isEggBookkeepingPath($0) }
+    }
+
+    /// Clones every top-level entry of a non-git directory except egg's own
+    /// `.egg` bookkeeping. APFS clones directories recursively, so one call
+    /// per entry keeps the copy-on-write efficiency of the old
+    /// whole-directory clone.
+    private func cloneAllEntries(from source: URL, to destination: URL) async throws {
+        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+        let entries = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil, options: [])
+        for entry in entries where entry.lastPathComponent != EggBookkeeping.directoryName {
+            try await apfsCloner.clone(from: entry, to: destination.appending(path: entry.lastPathComponent))
+        }
     }
 
     /// True for egg's own `.egg/` transaction/rollback records — never part

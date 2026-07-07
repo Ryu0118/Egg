@@ -14,6 +14,9 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: [.short, .long], help: "Overwrite existing templates.")
         package var force: Bool = false
 
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a source URL/path, and overwrites existing templates.")
+        package var json = false
+
         @Option(name: [.short, .long], help: "Install from specific branch (Git sources only).")
         package var branch: String?
 
@@ -31,9 +34,6 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, help: "Project directory.", completion: .directory)
         package var projectDirectory: String?
-
-        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a source URL/path, and overwrites existing templates.")
-        package var json = false
 
         package static let configuration = CommandConfiguration(
             commandName: "install",

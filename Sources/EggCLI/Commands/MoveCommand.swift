@@ -11,6 +11,9 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Overwrite if target template already exists.")
         package var force: Bool = false
 
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and --to, and overwrites an existing target.")
+        package var json = false
+
         @Option(name: .long, help: "Target location (project or global).")
         package var to: TemplateLocationType.Kind?
 
@@ -19,9 +22,6 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
-
-        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable output. Requires a template name and --to, and overwrites an existing target.")
-        package var json = false
 
         package static let configuration = CommandConfiguration(
             commandName: "move",

@@ -4,16 +4,19 @@ import FileManagerProtocol
 import Foundation
 import Interaction
 
-/// Resolves a possibly-relative CLI path argument against a base directory
-/// (the current working directory unless stated otherwise).
-///
-/// The base URL must carry `.isDirectory`: URL's RFC 3986 relative
-/// resolution otherwise treats a base without a trailing slash as a *file*
-/// and replaces its last path component — `/T/repo` + `"sub"` resolved to
-/// `/T/sub`, which broke every relative path option (`--output`,
-/// `--project-directory`, `--staging-root`, `--template-search-paths`).
-package func resolveCLIPath(_ path: String, relativeToDirectory base: String) -> URL {
-    URL(filePath: path, relativeTo: URL(filePath: base, directoryHint: .isDirectory)).standardizedFileURL
+/// Helpers for resolving CLI path arguments.
+package enum CLIPath {
+    /// Resolves a possibly-relative CLI path argument against a base directory
+    /// (the current working directory unless stated otherwise).
+    ///
+    /// The base URL must carry `.isDirectory`: URL's RFC 3986 relative
+    /// resolution otherwise treats a base without a trailing slash as a *file*
+    /// and replaces its last path component — `/T/repo` + `"sub"` resolved to
+    /// `/T/sub`, which broke every relative path option (`--output`,
+    /// `--project-directory`, `--staging-root`, `--template-search-paths`).
+    package static func resolve(_ path: String, relativeToDirectory base: String) -> URL {
+        URL(filePath: path, relativeTo: URL(filePath: base, directoryHint: .isDirectory)).standardizedFileURL
+    }
 }
 
 package protocol HasProjectDirectory {
@@ -24,7 +27,7 @@ package protocol HasProjectDirectory {
 package extension HasProjectDirectory {
     func resolveProjectDirectory() async throws -> URL {
         if let projectDirectory {
-            resolveCLIPath(projectDirectory, relativeToDirectory: Self.fileManager.currentDirectoryPath)
+            CLIPath.resolve(projectDirectory, relativeToDirectory: Self.fileManager.currentDirectoryPath)
         } else {
             URL(filePath: Self.fileManager.currentDirectoryPath)
         }
@@ -39,7 +42,7 @@ package protocol HasTemplateSearchPaths {
 package extension HasTemplateSearchPaths {
     func resolveTemplateSearchPaths() -> [URL] {
         templateSearchPaths.map { path in
-            resolveCLIPath(path, relativeToDirectory: Self.fileManager.currentDirectoryPath)
+            CLIPath.resolve(path, relativeToDirectory: Self.fileManager.currentDirectoryPath)
         }
     }
 }

@@ -8,6 +8,9 @@ package extension EggCommand.TemplateCommand {
         @Flag(name: .long, help: "Hide the description column in the output.")
         package var hideDescription: Bool = false
 
+        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable table.")
+        package var json = false
+
         @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
         package var location: TemplateLocationType.Kind?
 
@@ -16,9 +19,6 @@ package extension EggCommand.TemplateCommand {
 
         @Option(name: .long, parsing: .upToNextOption, help: "Additional directories to search for templates.", completion: .directory)
         package var templateSearchPaths: [String] = []
-
-        @Flag(name: .long, help: "Emit machine-readable JSON on stdout instead of the human-readable table.")
-        package var json = false
 
         package static let configuration = CommandConfiguration(
             commandName: "list",

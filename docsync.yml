@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: a47855ee0cb82b645e007065b1893d0c54851d1e33867b065b269f806ba01ce3
+  checksum: 5e2c0ab6195e1c450cb9edc44d12dba36e07d11316cf308fe4cdea1adcbedff2
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -44,7 +44,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: 532d733030381f1dabd725513e4a76f16c3973f6e0ca80f4a830b45e4eb72cfb
+  checksum: dd0f0fb0172ff3234fcca217adca122b023d9f76f1ce755f8f8654a9da86f146
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -54,7 +54,7 @@ rules:
   doc: README.md
   message: DocC generation or GitHub Pages deployment changed - review README Documentation
     section and update the command or deployment description if needed.
-  checksum: 0c04106d2b66b686aadb28a1a83ee77e7490c937ee7a20c133ad88bce2839243
+  checksum: fb7fd395c678392d820a3e412aa89d9bf388c0ab9850c806b09e2e4c9d4b7cfc
 - name: egg-cli-guide-sandbox
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -67,7 +67,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 20713759582a3dff629a8a5e0a640fdb141557c41aa650188baab7f0efcf6649
+  checksum: 6554c28f274f05bf6a582c8f57a784be345b283074f5219e03749fab0f6cde77
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -94,7 +94,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: 532d733030381f1dabd725513e4a76f16c3973f6e0ca80f4a830b45e4eb72cfb
+  checksum: dd0f0fb0172ff3234fcca217adca122b023d9f76f1ce755f8f8654a9da86f146
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -106,7 +106,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 3c226e32ea7aa494dfe65b0a83fd7c5d570dc646a5d5f83215a84db48d0b6b2a
+  checksum: 2cae795365660cd5030f3576cacfbdeef181af40dbd1068dbf90a3e12592bdba
 - name: agents-project
   sources:
   - Package.swift
@@ -117,7 +117,7 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: fbb885b6136633d7067adf3f5adeba8d62cdd99151c3ddd4bc13d84449349ced
+  checksum: 3ea823167da89b6bd87b7c09c472fc7912b69d342542c00c215baa99703ce97b
 excludes:
 - .build/**
 - '**/.build/**'
