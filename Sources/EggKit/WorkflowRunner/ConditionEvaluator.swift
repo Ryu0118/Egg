@@ -8,7 +8,7 @@ import JavaScriptCore
 /// `&&`, `||`, and array methods like `.includes()`.
 ///
 /// **IMPORTANT**: ConditionEvaluator uses different quoting rules than VariableResolver:
-/// - VariableResolver (for `run` fields): Direct string replacement, NO quoting
+/// - VariableResolver (for `run` fields): Single-quoted shell-safe substitution
 /// - ConditionEvaluator (for `if` fields): Type-aware quoting for JavaScript evaluation
 struct ConditionEvaluator {
     let macros: [ResolvedMacro]

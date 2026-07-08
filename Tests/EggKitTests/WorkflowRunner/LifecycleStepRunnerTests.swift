@@ -143,7 +143,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "build",
                         if: nil,
-                        run: "echo \"build-version=${{ pre_hatch.setup.outputs.version }}\"",
+                        run: "echo build-version=${{ pre_hatch.setup.outputs.version }}",
                     ),
                 ],
                 macros: [],
@@ -162,7 +162,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "echo-name",
                         if: nil,
-                        run: "echo \"project-name=___PROJECT_NAME___\"",
+                        run: "echo project-name=___PROJECT_NAME___",
                     ),
                 ],
                 macros: [
@@ -236,7 +236,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "deploy",
                         if: nil,
-                        run: "echo \"deployed-version=${{ pre_hatch.setup.outputs.version }}\"",
+                        run: "echo deployed-version=${{ pre_hatch.setup.outputs.version }}",
                     ),
                 ],
                 macros: [],
@@ -495,7 +495,7 @@ struct LifecycleStepRunnerTests {
                     Config.LifecycleStep(
                         id: "combined",
                         if: nil,
-                        run: "echo \"result=___PROJECT_NAME___:$EGG_WORKSPACE_ROOT\"",
+                        run: "echo result=___PROJECT_NAME___:$EGG_WORKSPACE_ROOT",
                     ),
                 ],
                 macros: [

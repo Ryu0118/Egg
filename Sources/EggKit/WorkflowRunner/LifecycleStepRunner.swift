@@ -179,7 +179,7 @@ struct LifecycleStepRunner {
             outputs: outputs,
             builtInMacroContext: builtInMacroContext,
         )
-        return try await resolver.resolve(runCommand)
+        return try await resolver.resolve(runCommand, destination: .shellCommand)
     }
 
     /// Formats a step label for logging purposes.

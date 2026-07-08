@@ -6,11 +6,17 @@ import Foundation
 /// - **Shell mode**: For use in shell scripts (no quoting)
 /// - **JavaScript mode**: For use in JS evaluation (type-aware quoting)
 enum MacroStringConverter {
-    /// Converts a macro value to a string for shell scripts (no quoting).
+    /// Converts a macro value to its raw (unquoted) string representation.
+    ///
+    /// Used both for plain-text substitution (file content templates) and, via
+    /// `shellQuote`, as the input to a shell-quoted substitution (`run:` commands) —
+    /// see `VariableResolver.Destination`. This function itself applies no escaping,
+    /// so callers that substitute into a shell command MUST wrap the result in
+    /// `shellQuote` themselves.
     ///
     /// Conversion rules:
     /// - `.string(s)` → `s`
-    /// - `.boolean(b)` → `"true"` or `"false"`
+    /// - `.boolean(b)` → `true` or `false`
     /// - `.choice(c)` → `c`
     /// - `.choices(c)` → Comma-separated string (e.g., `"iOS, macOS"`)
     /// - `.array(a)` → Comma-separated string (e.g., `"item1, item2"`)
@@ -22,20 +28,31 @@ enum MacroStringConverter {
     ) -> String {
         switch value {
         case let .string(s):
-            return s
+            s
         case let .boolean(b):
-            return b ? "true" : "false"
+            b ? "true" : "false"
         case let .choice(c):
-            return c
+            c
         case let .choices(c):
-            return c.joined(separator: ", ")
+            c.joined(separator: ", ")
         case let .array(elements):
-            return elements.joined(separator: ", ")
+            elements.joined(separator: ", ")
         case let .path(p):
             // Resolve path relative to working directory to ensure absolute path
-            let absolutePath = resolvePath(p, workingDirectory: workingDirectory, homeDirectory: homeDirectory)
-            return normalizeTrailingSlash(absolutePath.path(percentEncoded: false))
+            normalizeTrailingSlash(
+                resolvePath(p, workingDirectory: workingDirectory, homeDirectory: homeDirectory)
+                    .path(percentEncoded: false),
+            )
         }
+    }
+
+    /// Wraps a string in single quotes for safe, literal substitution into a POSIX shell command.
+    ///
+    /// Single quotes suppress all shell metacharacter interpretation inside the value;
+    /// an embedded `'` is closed, escaped as `\'`, and reopened (`'\''`), the standard
+    /// POSIX idiom for putting a literal single quote inside a single-quoted string.
+    static func shellQuote(_ string: String) -> String {
+        "'" + string.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     /// Converts a macro value to a JavaScript literal with type-aware quoting.

@@ -148,7 +148,7 @@ struct LifecycleWorkflowRunnerTests {
                 ],
                 hatchConfig: Config.HatchConfig(output: "."),
                 postHatchSteps: [
-                    Config.LifecycleStep(run: "echo \"Project: ${{ pre_hatch.info.outputs.name }}\" > info.txt"),
+                    Config.LifecycleStep(run: "echo Project: ${{ pre_hatch.info.outputs.name }} > info.txt"),
                 ],
                 verifications: [
                     .fileExists(path: "info.txt"),
