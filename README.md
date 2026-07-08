@@ -15,12 +15,14 @@ let a person or an agent preview, apply, and roll back the generated result.
 
 ## Features
 
-- 🤖 **Agent-native workflows** — Agent Skills, Claude Code/Codex plugins,
-  and MCP tools give assistants the context they need.
-- 🔍 **Preview before apply** — every scaffold can be staged and inspected
-  before it touches your working tree.
-- 🧩 **Typed templates** — native placeholders and Stencil files support simple
-  replacements, conditionals, and loops.
+- 🧩 **Typed template engine** — native placeholders and Stencil files support
+  simple replacements, conditionals, and loops.
+- ⚙️ **Programmable lifecycle** — `pre_hatch`/`post_hatch` shell steps run
+  around generation, and later steps can reference earlier outputs.
+- 🔁 **Reversible transactions** — every scaffold can be previewed, applied,
+  and rolled back or discarded, so nothing you generate is one-way.
+- 🤖 **Agent integration surface** — Agent Skills, Claude Code/Codex plugins,
+  an MCP server, and `--json` output give assistants a structured way in.
 
 ## Quick Start for Agents
 
