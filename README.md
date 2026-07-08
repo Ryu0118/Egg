@@ -1,7 +1,6 @@
 # 🥚 egg
 
-**Agent-ready project scaffolding for humans, Claude Code, Codex, and other
-AI agents.**
+**A project scaffolding tool for AI agents and humans.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Swift](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](https://swift.org)
