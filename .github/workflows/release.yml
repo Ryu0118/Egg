@@ -8,8 +8,10 @@ on:
         required: true
         type: string
 
+# Default read-only; only the jobs that push a commit or publish a release
+# get contents: write, so a compromised step in preflight/build cannot write.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   preflight:
@@ -68,7 +70,7 @@ jobs:
             .build/apple/Products/Release/egg-${{ inputs.version }}-darwin-universal.tar.gz.sha256
           if-no-files-found: error
 
-      - uses: giginet/github-action-artifactbundle@v2
+      - uses: giginet/github-action-artifactbundle@97117bc42b44f33e0d04b543b815ad9f3079f25e # v2
         id: artifactbundle
         with:
           artifact_name: egg
@@ -85,6 +87,8 @@ jobs:
   commit-version:
     needs: build-macos
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       commit_sha: ${{ steps.push.outputs.sha }}
     steps:
