@@ -268,7 +268,11 @@ struct TemplateExpander {
         let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
 
         for item in contents {
-            let isDirectory = fileManager.isDirectory(at: item)
+            // isDirectory(at:) follows symlinks, so recursing here would walk
+            // into a link's real target and rename files outside the staging
+            // tree. Renaming the link itself below is fine — moveItem moves
+            // the link, not its target.
+            let isDirectory = !fileManager.isSymbolicLink(at: item) && fileManager.isDirectory(at: item)
 
             // Process children first (depth-first)
             if isDirectory {
@@ -392,6 +396,15 @@ struct TemplateExpander {
         for item in contents {
             let relativePath = item.relativePath(from: root)
             result.append((item, relativePath))
+
+            // Never recurse through a symlink: isDirectory(at:) follows links,
+            // so a template shipping `evil -> /outside` would make this walk
+            // enumerate — and removeExcludedFiles delete — real files outside
+            // the staging tree. The link itself stays listed so an exclusion
+            // pattern can still remove it as a single entry.
+            if fileManager.isSymbolicLink(at: item) {
+                continue
+            }
 
             let isDirectory = fileManager.isDirectory(at: item)
             if isDirectory {

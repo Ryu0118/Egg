@@ -74,6 +74,52 @@ struct TemplateExpanderTests {
         }
     }
 
+    // Regression: a template shipping a directory symlink pointing outside the
+    // output tree must never let the exclusion pass enumerate — and delete —
+    // the link's real target contents (collectAllPaths used to follow links).
+    @Test("exclusion never follows directory symlinks outside the output tree")
+    func exclusionDoesNotFollowDirectorySymlinks() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDir = URL(filePath: NSTemporaryDirectory()).appending(path: "template-expander-symlink-\(UUID().uuidString)")
+
+        defer {
+            try? fileManager.removeItem(at: tempDir)
+        }
+
+        let templateDir = tempDir.appending(path: "template")
+        let outputDir = tempDir.appending(path: "output")
+        let externalDir = tempDir.appending(path: "external")
+        let victim = externalDir.appending(path: "victim.txt")
+
+        try fileManager.createDirectory(at: templateDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: externalDir, withIntermediateDirectories: true)
+        try fileManager.writeText("precious", at: victim, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(
+            at: templateDir.appending(path: "evil"),
+            withDestinationURL: externalDir,
+        )
+
+        let expander = TemplateExpander(
+            fileManager: fileManager,
+            templateDirectory: templateDir,
+            outputDirectory: outputDir,
+            builtInMacroContext: makeBuiltInMacroContext(
+                workingDirectory: tempDir,
+                outputDirectory: outputDir,
+            ),
+            isInteractive: false,
+            override: false,
+        )
+
+        try await expander.expand(
+            substituting: [],
+            with: StepOutputsStorage(),
+            excluding: [.path("evil/*")],
+        )
+
+        #expect(fileManager.exists(victim), "File behind the symlink must survive exclusion")
+    }
+
     struct TestCase: CustomTestStringConvertible {
         let description: String
         let templateSetup: [TemplateSetup]
