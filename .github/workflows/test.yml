@@ -79,6 +79,9 @@ jobs:
     name: E2E Tests
     needs: unit-tests
     runs-on: macos-26
+    # A wedged runner or a hung E2E process otherwise blocks the run for the
+    # 360-minute default; a clean build + full suite fits well inside 30.
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
