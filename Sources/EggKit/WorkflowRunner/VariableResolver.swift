@@ -8,22 +8,40 @@ import Foundation
 ///
 /// The two-pass design ensures macros are fully resolved before output references,
 /// preventing ambiguity and enabling macros to be used in output reference patterns.
+///
+/// This resolver is shared by two very different consumers, distinguished by `resolve(_:destination:)`:
+/// - `NativeTemplateEngine` renders plain file content — substituted values must appear verbatim.
+/// - `LifecycleStepRunner` builds a `/bin/sh -c` command string — substituted values must be
+///   shell-quoted, since they may originate from an untrusted MCP caller's `macros` argument
+///   or from a step's captured stdout, and raw substitution would let shell metacharacters
+///   (`;`, `$()`, backticks, `|`) escape the intended single argument.
 struct VariableResolver {
+    /// Where the resolved text will be used, which determines whether substituted
+    /// values need shell quoting.
+    enum Destination {
+        /// Plain-text output (e.g. template file content) — substitute values verbatim.
+        case text
+        /// A `/bin/sh -c` command string — substitute values as shell-quoted literals.
+        case shellCommand
+    }
+
     let macros: [ResolvedMacro]
     let outputs: StepOutputsStorage
     let builtInMacroContext: BuiltInMacroContext
 
     /// Resolves all variables in the given text.
     ///
-    /// - Parameter text: Text containing variable references to resolve
+    /// - Parameters:
+    ///   - text: Text containing variable references to resolve
+    ///   - destination: Whether the result is plain text or a shell command (default `.text`)
     /// - Returns: Text with all variables resolved
     /// - Throws: `LifecycleStepError.undefinedOutputReference` if an output reference cannot be resolved
-    func resolve(_ text: String) async throws -> String {
+    func resolve(_ text: String, destination: Destination = .text) async throws -> String {
         var result = resolveBuiltInMacros(text)
 
-        result = resolveMacros(result)
+        result = resolveMacros(result, destination: destination)
 
-        result = try await resolveStepOutputs(result)
+        result = try await resolveStepOutputs(result, destination: destination)
 
         return result
     }
@@ -34,13 +52,19 @@ struct VariableResolver {
     }
 
     /// Replaces all `___MACRO_NAME___` patterns with their resolved values.
-    private func resolveMacros(_ text: String) -> String {
+    ///
+    /// For `.shellCommand`, each value is wrapped in single quotes (see
+    /// `MacroStringConverter.shellQuote`) so it substitutes as one literal shell word —
+    /// templates should NOT wrap `___MACRO___` in their own quotes in a `run:` command;
+    /// the substitution is already a safe, standalone shell token.
+    private func resolveMacros(_ text: String, destination: Destination) -> String {
         macros.reduce(text) { result, macro in
-            let stringValue = MacroStringConverter.toShellString(
+            let rawValue = MacroStringConverter.toShellString(
                 macro.value,
                 workingDirectory: builtInMacroContext.workingDirectory,
                 homeDirectory: builtInMacroContext.homeDirectory,
             )
+            let stringValue = destination == .shellCommand ? MacroStringConverter.shellQuote(rawValue) : rawValue
             return result.replacingOccurrences(of: macro.name, with: stringValue)
         }
     }
@@ -53,7 +77,7 @@ struct VariableResolver {
     /// - `key`: output key name (alphanumeric, hyphens, underscores, dots)
     ///
     /// - Throws: `LifecycleStepError.undefinedOutputReference` if output not found
-    private func resolveStepOutputs(_ text: String) async throws -> String {
+    private func resolveStepOutputs(_ text: String, destination: Destination) async throws -> String {
         let regex = Regexes.stepOutputDetailed
         var result = text
 
@@ -67,9 +91,10 @@ struct VariableResolver {
 
             // Lookup value in storage
             let value = try await getOutputValue(from: outputs, phase: phase, stepId: stepId, key: key)
+            let stringValue = destination == .shellCommand ? MacroStringConverter.shellQuote(value) : value
 
             // Replace the entire pattern with the resolved value
-            result.replaceSubrange(match.range, with: value)
+            result.replaceSubrange(match.range, with: stringValue)
         }
 
         return result

@@ -257,7 +257,7 @@ struct StagingWorkflowRunnerTests {
                     Config.LifecycleStep(id: "info", run: "echo name=TestProject"),
                 ],
                 postHatchSteps: [
-                    Config.LifecycleStep(run: "echo \"Project: ${{ pre_hatch.info.outputs.name }}\" > info.txt"),
+                    Config.LifecycleStep(run: "echo Project: ${{ pre_hatch.info.outputs.name }} > info.txt"),
                 ],
                 verifications: [
                     .fileExists(path: "info.txt"),
