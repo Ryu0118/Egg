@@ -61,8 +61,22 @@ struct CrashResilienceTests {
         process.standardError = FileHandle.nullDevice
         try process.run()
         try await Task.sleep(for: .milliseconds(delay))
-        kill(process.processIdentifier, SIGKILL)
-        process.waitUntilExit()
+        let pid = process.processIdentifier
+        kill(pid, SIGKILL)
+        // waitUntilExit can miss the termination of a child SIGKILLed this
+        // soon after launch (Foundation's termination source may not be armed
+        // yet) and then spins its runloop forever — observed hanging both the
+        // CI and local suites for 60+ minutes. Wait on the pid directly:
+        // kill(pid, 0) fails with ESRCH once the process is fully gone. The
+        // deadline turns a pathological leftover zombie into a bounded test
+        // failure instead of an infinite hang.
+        let deadline = ContinuousClock.now.advanced(by: .seconds(30))
+        while kill(pid, 0) == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        if kill(pid, 0) == 0 {
+            Issue.record("egg process \(pid) still present 30s after SIGKILL")
+        }
     }
 
     /// The recovery invariants that must hold after any kill:
