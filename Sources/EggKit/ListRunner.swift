@@ -150,8 +150,15 @@ package struct ListRunner {
 
             // Display custom path templates first
             for customPath in additionalSearchPaths {
+                // Both sides must be standardized before comparing: the finder
+                // returns filesystem-real paths (/private/tmp/...), while CLI
+                // arguments arrive standardized (/tmp/...). standardizedFileURL
+                // strips the /private prefix for /tmp, /var and /etc, so raw
+                // hasPrefix never matches and custom templates silently vanish
+                // from the listing.
                 let customTemplates = list.custom.filter { template in
-                    template.path.path(percentEncoded: false).hasPrefix(customPath.path(percentEncoded: false))
+                    template.path.standardizedFileURL.path(percentEncoded: false)
+                        .hasPrefix(customPath.standardizedFileURL.path(percentEncoded: false))
                 }
                 if !customTemplates.isEmpty {
                     table(for: customTemplates, in: .custom(customPath))
