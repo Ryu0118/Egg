@@ -81,6 +81,7 @@ run_cmd() {
 main() {
   command -v curl >/dev/null 2>&1 || error "curl is required but not found"
   command -v tar >/dev/null 2>&1 || error "tar is required but not found"
+  command -v shasum >/dev/null 2>&1 || error "shasum is required but not found"
 
   local platform version archive_url download_dir
 
@@ -117,9 +118,29 @@ main() {
 
   download_dir="$(mktemp -d)"
 
-  if ! curl -fsSL "$archive_url" | tar xz -C "$download_dir"; then
+  local archive_name="${BIN_NAME}-${version}-${platform}.tar.gz"
+
+  if ! curl -fsSL -o "$download_dir/$archive_name" "$archive_url"; then
     rm -rf "$download_dir"
-    error "failed to download or extract $BIN_NAME $version"
+    error "failed to download $BIN_NAME $version"
+  fi
+
+  # Every release publishes a shasum(1)-format checksum next to the archive.
+  # Verifying it defends against a tampered release asset (assets are mutable
+  # after publishing) and partial/corrupt downloads.
+  if ! curl -fsSL -o "$download_dir/$archive_name.sha256" "$archive_url.sha256"; then
+    rm -rf "$download_dir"
+    error "failed to download checksum for $BIN_NAME $version"
+  fi
+
+  if ! (cd "$download_dir" && shasum -a 256 -c "$archive_name.sha256" >/dev/null 2>&1); then
+    rm -rf "$download_dir"
+    error "checksum verification failed for $archive_name"
+  fi
+
+  if ! tar xzf "$download_dir/$archive_name" -C "$download_dir"; then
+    rm -rf "$download_dir"
+    error "failed to extract $BIN_NAME $version"
   fi
 
   if [ ! -f "$download_dir/$BIN_NAME" ]; then
