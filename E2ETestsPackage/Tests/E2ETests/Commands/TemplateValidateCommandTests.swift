@@ -85,7 +85,7 @@ struct TemplateValidateCommandTests {
             TestCase(
                 description: "fails when config.yml is missing",
                 configContent: nil,
-                expected: .failure(errorContains: "Error"),
+                expected: .failure(errorContains: "[error]"),
             ),
             TestCase(
                 description: "fails when config.yml has invalid YAML syntax",
@@ -93,7 +93,7 @@ struct TemplateValidateCommandTests {
                 name: InvalidTemplate
                 description: [invalid yaml
                 """,
-                expected: .failure(errorContains: "Error"),
+                expected: .failure(errorContains: "[error]"),
             ),
             TestCase(
                 description: "fails when required field is missing",
@@ -102,7 +102,7 @@ struct TemplateValidateCommandTests {
                 hatch:
                   output: .
                 """,
-                expected: .failure(errorContains: "Error"),
+                expected: .failure(errorContains: "[error]"),
             ),
         ]
 
