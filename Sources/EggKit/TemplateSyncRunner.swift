@@ -240,43 +240,19 @@ package struct TemplateSyncRunner {
         )
 
         if dryRun {
-            return (
-                SyncEntryResult(
-                    url: lockKey,
-                    requirement: requirement.description,
-                    resolvedVersion: resolution.version?.description,
-                    resolvedRevision: resolution.revision,
-                    reusedLock: resolution.reusedLock,
-                ),
-                newLockEntry,
-            )
+            return (gitEntryResult(lockKey: lockKey, requirement: requirement, resolution: resolution), newLockEntry)
         }
 
         do {
-            let tempDir = try fileManager.makeTemporaryDirectory(prefix: "egg-sync-")
-            defer { try? fileManager.removeItem(at: tempDir) }
-
-            // Install from the exact resolved revision, not the tag/branch:
-            // byte-exact reproducibility even if a tag is re-pointed upstream.
-            try await gitCloner.clone(url: url, to: tempDir, ref: .revision(resolution.revision))
-            let installOutcome = try await installTemplates(
-                from: tempDir,
+            let outcome = try await cloneAndInstall(
+                url: url,
+                resolution: resolution,
                 entry: entry,
                 location: location,
                 claimedNames: &claimedNames,
             )
-
             return (
-                SyncEntryResult(
-                    url: lockKey,
-                    requirement: requirement.description,
-                    resolvedVersion: resolution.version?.description,
-                    resolvedRevision: resolution.revision,
-                    reusedLock: resolution.reusedLock,
-                    installed: installOutcome.installed,
-                    skipped: installOutcome.skipped,
-                    failed: installOutcome.failed,
-                ),
+                gitEntryResult(lockKey: lockKey, requirement: requirement, resolution: resolution, outcome: outcome),
                 newLockEntry,
             )
         } catch {
@@ -284,17 +260,54 @@ package struct TemplateSyncRunner {
             // The remote could not be fetched at the resolved revision;
             // keep the previous pin rather than recording an uninstalled one.
             return (
-                SyncEntryResult(
-                    url: lockKey,
-                    requirement: requirement.description,
-                    resolvedVersion: resolution.version?.description,
-                    resolvedRevision: resolution.revision,
-                    reusedLock: resolution.reusedLock,
-                    failed: [SyncFailure(name: nil, error: error)],
+                gitEntryResult(
+                    lockKey: lockKey,
+                    requirement: requirement,
+                    resolution: resolution,
+                    outcome: InstallOutcome(failed: [SyncFailure(name: nil, error: error)]),
                 ),
                 previousLockEntry,
             )
         }
+    }
+
+    private func cloneAndInstall(
+        url: GitURL,
+        resolution: Resolution,
+        entry: ManifestEntry,
+        location: TemplateLocationType,
+        claimedNames: inout [String: String],
+    ) async throws -> InstallOutcome {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "egg-sync-")
+        defer { try? fileManager.removeItem(at: tempDir) }
+
+        // Install from the exact resolved revision, not the tag/branch:
+        // byte-exact reproducibility even if a tag is re-pointed upstream.
+        try await gitCloner.clone(url: url, to: tempDir, ref: .revision(resolution.revision))
+        return try await installTemplates(
+            from: tempDir,
+            entry: entry,
+            location: location,
+            claimedNames: &claimedNames,
+        )
+    }
+
+    private func gitEntryResult(
+        lockKey: String,
+        requirement: VersionRequirement,
+        resolution: Resolution,
+        outcome: InstallOutcome = InstallOutcome(),
+    ) -> SyncEntryResult {
+        SyncEntryResult(
+            url: lockKey,
+            requirement: requirement.description,
+            resolvedVersion: resolution.version?.description,
+            resolvedRevision: resolution.revision,
+            reusedLock: resolution.reusedLock,
+            installed: outcome.installed,
+            skipped: outcome.skipped,
+            failed: outcome.failed,
+        )
     }
 
     private func resolve(
