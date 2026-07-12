@@ -77,6 +77,7 @@ struct MCPTransportTests {
                 "egg_template_list", "egg_template_detail", "egg_template_create",
                 "egg_template_delete", "egg_template_duplicate", "egg_template_move",
                 "egg_template_validate", "egg_template_install",
+                "egg_template_sync", "egg_template_update",
                 "egg_hatch_preview", "egg_hatch_apply",
                 "egg_hatch_rollback", "egg_hatch_discard", "egg_hatch_transactions",
             ]
