@@ -369,6 +369,48 @@ public struct EggMCPServer {
                 "required": .array(["source", "location"]),
             ]),
         ),
+        Tool(
+            name: "egg_template_sync",
+            description: "Installs templates declared in egg.yml manifests, honoring egg-lock.yml. Locked resolutions are reused while they satisfy the manifest requirement.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "scope": .object([
+                        "type": "string",
+                        "description": "Which manifest to sync: 'global' or 'project'. Omit to sync every manifest that exists.",
+                    ]),
+                    "dry_run": .object([
+                        "type": "boolean",
+                        "description": "Resolve and report without installing or writing the lockfile.",
+                    ]),
+                    "project_directory": .object([
+                        "type": "string",
+                        "description": "Project directory path.",
+                    ]),
+                ]),
+            ]),
+        ),
+        Tool(
+            name: "egg_template_update",
+            description: "Re-resolves egg.yml manifests to the latest eligible versions (from: ranges move to the highest satisfying tag, branch: entries to the branch tip) and rewrites egg-lock.yml.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "scope": .object([
+                        "type": "string",
+                        "description": "Which manifest to update: 'global' or 'project'. Omit to update every manifest that exists.",
+                    ]),
+                    "dry_run": .object([
+                        "type": "boolean",
+                        "description": "Resolve and report without installing or writing the lockfile.",
+                    ]),
+                    "project_directory": .object([
+                        "type": "string",
+                        "description": "Project directory path.",
+                    ]),
+                ]),
+            ]),
+        ),
     ]
 
     private let server: Server

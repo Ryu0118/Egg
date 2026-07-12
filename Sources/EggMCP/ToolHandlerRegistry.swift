@@ -20,6 +20,8 @@ public actor ToolHandlerRegistry {
         DuplicateHandler.toolName: DuplicateHandler(),
         MoveHandler.toolName: MoveHandler(),
         InstallHandler.toolName: InstallHandler(),
+        SyncHandler.toolName: SyncHandler(),
+        UpdateHandler.toolName: UpdateHandler(),
 
         // Hatch handler — transaction flow only (preview/apply/rollback/
         // discard/transactions). No one-shot hatch: MCP has no prompt
