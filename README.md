@@ -12,6 +12,24 @@ egg turns reusable templates into reviewed project changes. Define macros in
 `config.yml`, put `___MACRO_NAME___` placeholders in files or directories, then
 let a person or an agent preview, apply, and roll back the generated result.
 
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start for Agents](#quick-start-for-agents)
+  - [Claude Code](#claude-code)
+  - [Codex](#codex)
+  - [APM (Agent Package Manager)](#apm-agent-package-manager)
+  - [GitHub CLI (`gh skill`)](#github-cli-gh-skill)
+  - [skills CLI (`npx skills`)](#skills-cli-npx-skills)
+- [Quick Start for Humans](#quick-start-for-humans)
+- [Agent Transaction Flow](#agent-transaction-flow)
+- [Template Basics](#template-basics)
+- [Installation](#installation)
+  - [Other methods](#other-methods)
+- [Documentation](#documentation)
+- [Development](#development)
+- [License](#license)
+
 ## Features
 
 - 🧩 **Typed template engine** — native placeholders and Stencil files support
