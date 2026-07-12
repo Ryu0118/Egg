@@ -11,14 +11,23 @@ public struct InstallResult: Sendable {
     /// Templates that failed to install.
     public let failed: [FailedTemplate]
 
+    /// The eggs.yml manifest path this install registered itself into, when
+    /// it was a `--global` git-source install with at least one template
+    /// installed. `nil` for project/local-path installs, or when
+    /// registration was attempted but failed (a warning is emitted instead
+    /// of failing the overall install).
+    public let manifestUpdated: String?
+
     public init(
         installed: [String],
         skipped: [SkippedTemplate],
         failed: [FailedTemplate],
+        manifestUpdated: String? = nil,
     ) {
         self.installed = installed
         self.skipped = skipped
         self.failed = failed
+        self.manifestUpdated = manifestUpdated
     }
 }
 
@@ -67,6 +76,7 @@ public extension InstallResult {
         public let installed: [String]
         public let skipped: [SkippedItem]
         public let failed: [FailedItem]
+        public let manifestUpdated: String?
 
         public struct SkippedItem: Codable, Sendable, Equatable {
             public let name: String
@@ -84,6 +94,7 @@ public extension InstallResult {
             installed: installed,
             skipped: skipped.map { .init(name: $0.name, reason: $0.reason.jsonValue) },
             failed: failed.map { .init(name: $0.name, error: $0.error.localizedDescription) },
+            manifestUpdated: manifestUpdated,
         )
     }
 }

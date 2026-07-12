@@ -158,6 +158,10 @@ package extension EggCommand.TemplateCommand {
                 let failedCount = result.failed.count
                 CLIOutput.printError("Failed to install \(failedCount) template(s).")
             }
+
+            if let manifestUpdated = result.manifestUpdated {
+                CLIOutput.printSuccess("Registered in \(manifestUpdated).")
+            }
         }
     }
 }
