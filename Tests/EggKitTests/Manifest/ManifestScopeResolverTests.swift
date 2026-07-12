@@ -37,14 +37,11 @@ struct ManifestScopeResolverTests {
         let env = try TestDirectories(fileManager: fileManager)
         defer { env.tearDown() }
 
-        #expect { try resolve(.all, env: env) } throws: { error in
-            guard case let ManifestScopeError.noManifestFound(searchedPaths) = error else {
-                return false
-            }
-            return searchedPaths == [
-                env.globalManifestURL.path(percentEncoded: false),
-                env.projectManifestURL.path(percentEncoded: false),
-            ]
+        #expect(throws: ManifestScopeError.noManifestFound(searchedPaths: [
+            env.globalManifestURL.path(percentEncoded: false),
+            env.projectManifestURL.path(percentEncoded: false),
+        ])) {
+            try resolve(.all, env: env)
         }
     }
 
@@ -55,13 +52,16 @@ struct ManifestScopeResolverTests {
     func explicitScopeMissing(_ selection: ManifestScopeSelection) throws {
         let env = try TestDirectories(fileManager: fileManager)
         defer { env.tearDown() }
+        let expectedScope = selection == .global ? "global" : "project"
 
-        #expect { try resolve(selection, env: env) } throws: { error in
-            guard case let ManifestScopeError.scopeManifestNotFound(scope, _) = error else {
-                return false
-            }
-            return (selection == .global && scope == "global") || (selection == .project && scope == "project")
+        let error = try #require(throws: ManifestScopeError.self) {
+            try resolve(selection, env: env)
         }
+        guard case let .scopeManifestNotFound(scope, _) = error else {
+            Issue.record("expected .scopeManifestNotFound, got \(error)")
+            return
+        }
+        #expect(scope == expectedScope)
     }
 
     @Test("global scope honors XDG_CONFIG_HOME")

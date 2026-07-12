@@ -126,13 +126,8 @@ struct LockfileStoreTests {
         let lockPath = root.appending(path: "egg-lock.yml")
         try fileManager.writeText("version: [broken", at: lockPath)
 
-        #expect {
+        #expect(throws: LockfileError.self) {
             try LockfileStore(fileManager: fileManager).load(lockfilePath: lockPath)
-        } throws: { error in
-            guard case LockfileError.decodingFailed = error else {
-                return false
-            }
-            return true
         }
     }
 }

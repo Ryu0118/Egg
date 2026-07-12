@@ -170,43 +170,41 @@ struct VersionResolverTests {
     // MARK: - Errors
 
     @Test("noMatchingVersion names the highest available semver tag")
-    func noMatchingVersion() {
+    func noMatchingVersion() throws {
         let tags = [
             GitRemoteTag(name: "1.0.0", objectSHA: sha("10")),
             GitRemoteTag(name: "1.1.0", objectSHA: sha("11")),
             GitRemoteTag(name: "2.0.0-beta.1", objectSHA: sha("2b")),
         ]
 
-        #expect {
+        let error = try #require(throws: ResolutionError.self) {
             try VersionResolver.resolve(
                 requirement: .from(SemanticVersion(major: 2, minor: 0, patch: 0)),
                 tags: tags,
                 url: "https://github.com/owner/repo.git",
             )
-        } throws: { error in
-            guard case let ResolutionError.noMatchingVersion(url, requirement, highest) = error else {
-                return false
-            }
-            return url == "https://github.com/owner/repo.git"
-                && requirement == "from: 2.0.0"
-                && highest == "2.0.0-beta.1"
         }
+        #expect(error == .noMatchingVersion(
+            url: "https://github.com/owner/repo.git",
+            requirement: "from: 2.0.0",
+            highestAvailable: "2.0.0-beta.1",
+        ))
     }
 
     @Test("noMatchingVersion reports when the remote has no semver tags at all")
-    func noSemverTags() {
-        #expect {
+    func noSemverTags() throws {
+        let error = try #require(throws: ResolutionError.self) {
             try VersionResolver.resolve(
                 requirement: .from(SemanticVersion(major: 1, minor: 0, patch: 0)),
                 tags: [GitRemoteTag(name: "nightly", objectSHA: sha("ff"))],
                 url: "https://github.com/owner/repo.git",
             )
-        } throws: { error in
-            guard case let ResolutionError.noMatchingVersion(_, _, highest) = error else {
-                return false
-            }
-            return highest == nil
         }
+        #expect(error == .noMatchingVersion(
+            url: "https://github.com/owner/repo.git",
+            requirement: "from: 1.0.0",
+            highestAvailable: nil,
+        ))
     }
 
     @Test("error descriptions match the documented format")

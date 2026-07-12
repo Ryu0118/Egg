@@ -130,30 +130,43 @@ struct TemplateSyncRunnerTests {
 
     // MARK: - Branch entries
 
-    @Test("branch sync pins the locked SHA even when the tip moved; update follows the tip")
-    func branchPinAndTip() async throws {
-        for (mode, expectedSHA) in [
-            (TemplateSyncRunner.SyncMode.sync, Self.branchTipSHA),
-            (.update, Self.movedTipSHA),
-        ] {
-            let env = try TestEnvironment()
-            defer { env.tearDown() }
-            try env.seedTemplate(named: "MyTemplate")
-            try env.writeManifest("""
-            templates:
-              - url: \(Self.repoURL)
-                branch: main
-            """)
-            try env.writeLock(branch: "main", revision: Self.branchTipSHA)
+    @Test(
+        "branch sync pins the locked SHA even when the tip moved; update follows the tip",
+        arguments: [
+            BranchPinTestCase(mode: .sync, expectedSHA: TemplateSyncRunnerTests.branchTipSHA),
+            BranchPinTestCase(mode: .update, expectedSHA: TemplateSyncRunnerTests.movedTipSHA),
+        ],
+    )
+    func branchPinAndTip(_ testCase: BranchPinTestCase) async throws {
+        let env = try TestEnvironment()
+        defer { env.tearDown() }
+        try env.seedTemplate(named: "MyTemplate")
+        try env.writeManifest("""
+        templates:
+          - url: \(Self.repoURL)
+            branch: main
+        """)
+        try env.writeLock(branch: "main", revision: Self.branchTipSHA)
 
-            let tagLister = MockGitTagLister(branchRevisions: ["main": Self.movedTipSHA])
-            let cloner = MockGitCloner(seedDirectory: env.seedDirectory, fileManager: env.fileManager)
+        let tagLister = MockGitTagLister(branchRevisions: ["main": Self.movedTipSHA])
+        let cloner = MockGitCloner(seedDirectory: env.seedDirectory, fileManager: env.fileManager)
 
-            let result = try await env.runner(mode: mode, tagLister: tagLister, cloner: cloner).run()
+        let result = try await env.runner(mode: testCase.mode, tagLister: tagLister, cloner: cloner).run()
 
-            let entry = try #require(result.scopes.first?.entries.first)
-            #expect(entry.resolvedRevision == expectedSHA, "mode: \(mode)")
-            #expect(cloner.requestedRefs == [.revision(expectedSHA)])
+        let entry = try #require(result.scopes.first?.entries.first)
+        #expect(entry.resolvedRevision == testCase.expectedSHA)
+        #expect(cloner.requestedRefs == [.revision(testCase.expectedSHA)])
+    }
+
+    struct BranchPinTestCase: CustomTestStringConvertible {
+        let mode: TemplateSyncRunner.SyncMode
+        let expectedSHA: String
+
+        var testDescription: String {
+            switch mode {
+            case .sync: "sync pins the locked SHA"
+            case .update: "update follows the branch tip"
+            }
         }
     }
 

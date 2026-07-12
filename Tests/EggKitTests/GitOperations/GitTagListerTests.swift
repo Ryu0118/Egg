@@ -105,21 +105,23 @@ struct GitTagListerTests {
     }
 
     @Test("throws lsRemoteFailed with stderr for a nonexistent repository")
-    func lsRemoteFailure() async {
+    func lsRemoteFailure() async throws {
         let url = GitURL(
             original: "/nonexistent/egg-tag-lister-test",
             normalized: "/nonexistent/egg-tag-lister-test",
         )
         let lister = GitTagLister()
 
-        await #expect {
+        let error = try await #require(throws: GitTagLister.Error.self) {
             try await lister.listTags(url: url)
-        } throws: { error in
-            guard case let GitTagLister.Error.lsRemoteFailed(failedURL, exitCode, stderr) = error else {
-                return false
-            }
-            return failedURL == "/nonexistent/egg-tag-lister-test" && exitCode != 0 && !stderr.isEmpty
         }
+        guard case let .lsRemoteFailed(failedURL, exitCode, stderr) = error else {
+            Issue.record("expected .lsRemoteFailed, got \(error)")
+            return
+        }
+        #expect(failedURL == "/nonexistent/egg-tag-lister-test")
+        #expect(exitCode != 0)
+        #expect(!stderr.isEmpty)
     }
 
     // MARK: - Helpers

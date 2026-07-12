@@ -106,14 +106,15 @@ struct ManifestLoaderTests {
         let manifestPath = root.appending(path: "egg.yml")
         try fileManager.writeText(testCase.yaml, at: manifestPath)
 
-        #expect {
+        let error = try #require(throws: ManifestLoaderError.self) {
             try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
-        } throws: { error in
-            guard case let ManifestLoaderError.invalidEntry(url, reason) = error else {
-                return false
-            }
-            return url == testCase.expectedURL && reason.contains(testCase.expectedReasonFragment)
         }
+        guard case let .invalidEntry(url, reason) = error else {
+            Issue.record("expected .invalidEntry, got \(error)")
+            return
+        }
+        #expect(url == testCase.expectedURL)
+        #expect(reason.contains(testCase.expectedReasonFragment))
     }
 
     struct InvalidEntryTestCase: CustomTestStringConvertible {
@@ -219,13 +220,8 @@ struct ManifestLoaderTests {
         defer { try? fileManager.removeItem(at: root) }
         let manifestPath = root.appending(path: "egg.yml")
 
-        #expect {
+        #expect(throws: ManifestLoaderError.manifestNotFound(path: manifestPath.path(percentEncoded: false))) {
             try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
-        } throws: { error in
-            guard case ManifestLoaderError.manifestNotFound = error else {
-                return false
-            }
-            return true
         }
     }
 
@@ -236,13 +232,12 @@ struct ManifestLoaderTests {
         let manifestPath = root.appending(path: "egg.yml")
         try fileManager.writeText("templates: {not: [a, list", at: manifestPath)
 
-        #expect {
+        let error = try #require(throws: ManifestLoaderError.self) {
             try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
-        } throws: { error in
-            guard case ManifestLoaderError.decodingFailed = error else {
-                return false
-            }
-            return true
+        }
+        guard case .decodingFailed = error else {
+            Issue.record("expected .decodingFailed, got \(error)")
+            return
         }
     }
 
