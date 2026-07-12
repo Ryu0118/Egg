@@ -51,6 +51,42 @@ codex plugin marketplace add ./Egg
 codex plugin add egg@egg
 ```
 
+### APM (Agent Package Manager)
+
+With [APM](https://github.com/microsoft/apm), one command installs both skills
+into any supported harness (Claude Code, Copilot, Cursor, Codex, and more) and
+pins them in `apm.lock.yaml`:
+
+```sh
+apm install Ryu0118/Egg
+```
+
+### GitHub CLI (`gh skill`)
+
+[GitHub CLI v2.90.0+](https://github.blog/changelog/2026-04-16-manage-agent-skills-with-github-cli/)
+ships a `gh skill` command (alias: `gh skills`). It pins to the latest release
+tag and records provenance (repo, ref, tree SHA) in the installed SKILL.md:
+
+```sh
+gh skill install Ryu0118/Egg egg-template --agent claude-code
+gh skill install Ryu0118/Egg egg-cli-guide --agent claude-code
+```
+
+Run `gh skill install Ryu0118/Egg` without a skill name for interactive
+selection, and use `--agent` / `--scope` to control where skills land.
+
+### skills CLI (`npx skills`)
+
+The [skills CLI](https://github.com/vercel-labs/skills) installs into the
+shared `.agents/skills/` directory used by many agents:
+
+```sh
+npx skills add Ryu0118/Egg --all
+```
+
+Use `--list` to inspect available skills first, or `-a claude-code` to target
+a specific agent.
+
 The plugin provides:
 
 - `egg-cli-guide` for CLI commands and the preview/apply/rollback flow.
