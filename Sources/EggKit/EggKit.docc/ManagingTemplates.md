@@ -58,7 +58,7 @@ independently: the global manifest at `$XDG_CONFIG_HOME/egg/eggs.yml`
 project manifest at `./eggs.yml` installs into `./.eggs/`.
 
 ```yaml
-templates:
+eggs:
   - url: owner/repo                # GitHub shorthand
     from: "1.0.0"                  # upToNextMajor: highest tag in [1.0.0, 2.0.0)
     only: [SwiftCLI]               # optional name filter (or `exclude:`)

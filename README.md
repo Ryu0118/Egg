@@ -274,7 +274,7 @@ let egg resolve and fetch them — a `Package.swift` for your templates:
 
 ```yaml
 # eggs.yml
-templates:
+eggs:
   - url: owner/repo                # GitHub shorthand
     from: "1.0.0"                  # SwiftPM-style upToNextMajor range
     only: [SwiftCLI, SwiftLibrary] # optional name filter (or `exclude:`)

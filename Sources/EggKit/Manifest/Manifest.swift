@@ -114,7 +114,7 @@ struct RawManifest: Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case templates
+        case templates = "eggs"
     }
 }
 

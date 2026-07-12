@@ -25,7 +25,7 @@ installs its own copy into its own `.eggs` directory.
 ## The manifest: eggs.yml
 
 ```yaml
-templates:
+eggs:
   - url: Ryu0118/swift-egg-templates   # GitHub shorthand
     from: "0.3.0"                       # upToNextMajor range
     only: [SwiftCLI, SwiftLibrary]      # optional name filter
@@ -63,7 +63,7 @@ filesystem:
 
 Git entries must carry exactly one of `from`/`exact`/`branch`/`revision`.
 Local entries must carry none (there is nothing to resolve — the directory
-is installed as-is on every sync). An empty or missing `templates:` key is
+is installed as-is on every sync). An empty or missing `eggs:` key is
 a valid no-op.
 
 ### What `from:` selects

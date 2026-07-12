@@ -18,7 +18,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 8d485b4f99ca5dc2f6d75eed16910f20555f9041349dcb5b4bcda51afb7aa5dd
+  checksum: 22d982f7ca87d30bddb09077269f887398d83ea9c9ca3bead5668d0f549cc1f1
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -33,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: de159d1f61134882f61345bf649db83197037914de58ae5d52888e5c25d12469
+  checksum: ee214d1c51f9561b7ef9b004f1ebeae5e076beb0bae45c9bfb6b6d020eccac00
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -83,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 48ad6a1b0b720cdc161e9bdddbc8d169edc095e449f51f03977127ef1af482a7
+  checksum: e910de5b97f74a574c59cdc6b71453ac1253ecee75c2daad00721a584165db85
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -121,7 +121,7 @@ rules:
   message: Manifest schema, resolution, lock semantics, sync/update CLI behavior,
     or install --global registration behavior changed - update the DocC Managing Templates
     manifest section (and README Template Manifests) if user-facing behavior changed.
-  checksum: a27fc043777fb224f99b2c386fca7ce6cdc0a0ef75a219be984c73f38af80d16
+  checksum: aec5770b562d7d2c0668e1f51f09d6142e017bc2e9690e74539315eafa4b228e
 - name: agents-project
   sources:
   - Package.swift

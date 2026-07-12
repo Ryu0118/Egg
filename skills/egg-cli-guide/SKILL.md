@@ -159,7 +159,7 @@ next to the manifest. Two independent scopes, never merged:
 ### Writing eggs.yml
 
 ```yaml
-templates:
+eggs:
   - url: owner/repo                # GitHub shorthand -> https://github.com/owner/repo.git
     from: "1.0.0"                  # SwiftPM-style upToNextMajor range: highest tag in [1.0.0, 2.0.0)
     only: [SwiftCLI, SwiftLibrary] # optional; install only these template names (or use `exclude:`)
@@ -183,7 +183,7 @@ explicitly want floating/unreleased content.
 1. Ask (or infer from context) which scope: personal/dotfiles setup →
    global; this specific project → project.
 2. Read or create the manifest at the scope's path above (`cat` it first —
-   append to `templates:` rather than overwriting an existing manifest).
+   append to `eggs:` rather than overwriting an existing manifest).
 3. Add an entry. Default to `from:` with the source repo's latest release
    tag as the lower bound unless the user asks for a branch or exact pin.
 4. Run `egg template sync --global` or `--project --json` and inspect the
