@@ -1,6 +1,6 @@
 ---
 name: egg-cli-guide
-description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, or wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open).
+description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open), or wants to declare/pin/sync template sources reproducibly via an eggs.yml manifest (egg template sync/update).
 ---
 
 # egg CLI Guide
@@ -122,6 +122,8 @@ Prefer `egg hatch direct` only for one-shot human use where a preview/rollback p
 | --- | --- |
 | `egg template create --name <n> --description <d> --location <global\|project>` | Scaffold a new template's `config.yml`. |
 | `egg template install <git-url\|path> [--branch/--tag/--revision] [--template ...] [--global] [--force]` | Install templates from a Git repo or a local directory. |
+| `egg template sync [--global\|--project] [--dry-run]` | Install everything declared in `eggs.yml` (global: `$XDG_CONFIG_HOME/egg/eggs.yml`, project: `./eggs.yml`), honoring `eggs-lock.yml` pins like `Package.resolved`. |
+| `egg template update [--global\|--project] [--dry-run]` | Re-resolve `from:` ranges and `branch:` entries to the latest eligible and rewrite `eggs-lock.yml`. |
 | `egg template list [--location <global\|project>] [--hide-description]` | List available templates. |
 | `egg template detail <name>` | Show macros, types, defaults, and an example command. |
 | `egg template validate <path>` | Validate a template's `config.yml`. |
@@ -136,9 +138,95 @@ Interactive fallbacks require a TTY. When stdin is not a TTY (agents, CI) and a 
 
 All `template` subcommands support an interactive mode when arguments are omitted, and accept `--project-directory`/`--template-search-paths` to look beyond the current directory.
 
+## Declaring Templates (eggs.yml)
+
+Use this instead of `egg template install` when the user wants templates to
+be *reproducible* — reinstalled the same way on another machine, pinned to a
+version, or tracked in dotfiles — rather than fetched once. Trigger phrases:
+"add this template repo to my setup", "pin this template to a version",
+"sync my templates", "manage templates in dotfiles", "keep templates up to
+date across machines".
+
+An `eggs.yml` manifest declares template sources; `egg template sync`
+resolves and installs them, recording the exact result in `eggs-lock.yml`
+next to the manifest. Two independent scopes, never merged:
+
+| Scope | Manifest path | Installs to |
+| --- | --- | --- |
+| Global | `$XDG_CONFIG_HOME/egg/eggs.yml` (default `~/.config/egg/eggs.yml`) | `~/.eggs/` |
+| Project | `<project>/eggs.yml` | `<project>/.eggs/` |
+
+### Writing eggs.yml
+
+```yaml
+templates:
+  - url: owner/repo                # GitHub shorthand -> https://github.com/owner/repo.git
+    from: "1.0.0"                  # SwiftPM-style upToNextMajor range: highest tag in [1.0.0, 2.0.0)
+    only: [SwiftCLI, SwiftLibrary] # optional; install only these template names (or use `exclude:`)
+  - url: git@github.com:owner/private-templates.git
+    branch: main                   # follow a branch; sync installs the locked SHA, update moves to the tip
+  - url: https://github.com/owner/repo.git
+    exact: "1.2.0"                 # single version, matches "1.2.0" or "v1.2.0"
+  - url: https://github.com/owner/repo2.git
+    revision: 6c0f1a2b9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a
+  - url: ./local-templates          # local path: no version key allowed, never locked
+```
+
+Each git entry (every `url` that isn't a bare local path) takes **exactly
+one** of `from:` / `exact:` / `branch:` / `revision:`. Prefer `from:` when
+the user wants to track new releases automatically; use `exact:` or
+`revision:` when they want a fixed pin; use `branch:` only when they
+explicitly want floating/unreleased content.
+
+### Workflow for an agent asked to add a template source
+
+1. Ask (or infer from context) which scope: personal/dotfiles setup →
+   global; this specific project → project.
+2. Read or create the manifest at the scope's path above (`cat` it first —
+   append to `templates:` rather than overwriting an existing manifest).
+3. Add an entry. Default to `from:` with the source repo's latest release
+   tag as the lower bound unless the user asks for a branch or exact pin.
+4. Run `egg template sync --global` or `--project --json` and inspect the
+   result: `entries[].failed` names any source that didn't resolve or
+   install, with the underlying git error.
+5. Report what was installed (`entries[].installed`) and the resolved
+   version (`entries[].resolvedVersion`).
+
+To move existing pins forward, run `egg template update` instead of
+hand-editing `eggs-lock.yml` — never edit the lockfile directly, it is
+regenerated on every sync/update.
+
+### `install --global` auto-registers into the manifest
+
+`egg template install <git-url> --global` also upserts an entry for that
+repo into the global `eggs.yml` (creating it if needed) and pins the result
+in `eggs-lock.yml`, so a one-shot global install is picked up by future
+`egg template sync --global` / `update --global` runs without any manual
+manifest editing. The requirement written depends on what was passed:
+
+| Flag | Requirement written |
+| --- | --- |
+| `--tag <name>`, parses as SemVer | `exact: <version>` |
+| `--tag <name>`, not SemVer | `revision: <resolved-SHA>` |
+| `--branch <name>` | `branch: <name>` |
+| `--revision <sha>` | `revision: <sha>` |
+| none (default branch) | `revision: <resolved-SHA>` |
+
+Re-running `install --global` against an already-declared URL replaces that
+entry's requirement rather than duplicating it, and preserves the existing
+`only:`/`exclude:` filter unless the new install passed `--template`/
+`--exclude` explicitly. `--project` and local-path installs never touch any
+manifest. If registration fails after templates already installed (e.g. a
+permission error), the install still succeeds — a warning is printed instead
+of failing the command.
+
+Full reference (field table, `from:` semantics, lock format, dotfiles
+workflow, troubleshooting): `egg template sync --help` / `egg template
+update --help`, or egg's published API documentation.
+
 ## MCP Integration
 
-`egg mcp` starts a Model Context Protocol server that mirrors the CLI transaction flow (`egg_template_detail`, `egg_hatch_preview`, `egg_hatch_apply`, `egg_hatch_rollback`, `egg_hatch_discard`, `egg_hatch_transactions`). There is no one-shot hatch tool over MCP — every hatch goes through `egg_hatch_preview` then `egg_hatch_apply`, so a caller always inspects the change set before anything is written. `egg_hatch_discard` takes a `force` boolean that is required when discarding an `applied` transaction — ask the user before setting it, since it deletes the rollback bundle and the apply can no longer be undone. Macro keys over MCP must use the exact config names (e.g. `___MODULE_NAME___`), not the kebab-case CLI flags. To disable sandboxing for `egg_hatch_preview`, first ask the user whether to run lifecycle scripts without sandbox protection. Do not classify script contents yourself; after explicit user approval, pass both `disable_sandbox: true` and `user_confirmed_no_sandbox: true`. When a template declares `sandbox.allowed_paths` and `egg_hatch_preview` fails with `SANDBOX EXTENDED WRITE ACCESS REQUIRED`, show the listed paths to the user, ask for approval, and retry with `allowed_write_paths` containing only the approved paths — never approve paths yourself.
+`egg mcp` starts a Model Context Protocol server that mirrors the CLI transaction flow (`egg_template_detail`, `egg_hatch_preview`, `egg_hatch_apply`, `egg_hatch_rollback`, `egg_hatch_discard`, `egg_hatch_transactions`). Manifest workflows are available as `egg_template_sync` and `egg_template_update` (arguments: `scope`, `dry_run`, `project_directory`), returning the same JSON as the CLI's `--json` flag. There is no one-shot hatch tool over MCP — every hatch goes through `egg_hatch_preview` then `egg_hatch_apply`, so a caller always inspects the change set before anything is written. `egg_hatch_discard` takes a `force` boolean that is required when discarding an `applied` transaction — ask the user before setting it, since it deletes the rollback bundle and the apply can no longer be undone. Macro keys over MCP must use the exact config names (e.g. `___MODULE_NAME___`), not the kebab-case CLI flags. To disable sandboxing for `egg_hatch_preview`, first ask the user whether to run lifecycle scripts without sandbox protection. Do not classify script contents yourself; after explicit user approval, pass both `disable_sandbox: true` and `user_confirmed_no_sandbox: true`. When a template declares `sandbox.allowed_paths` and `egg_hatch_preview` fails with `SANDBOX EXTENDED WRITE ACCESS REQUIRED`, show the listed paths to the user, ask for approval, and retry with `allowed_write_paths` containing only the approved paths — never approve paths yourself.
 
 ## Troubleshooting
 

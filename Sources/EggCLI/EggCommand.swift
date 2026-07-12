@@ -24,6 +24,8 @@ package extension EggCommand {
             subcommands: [
                 CreateCommand.self,
                 InstallCommand.self,
+                SyncCommand.self,
+                UpdateCommand.self,
                 ListCommand.self,
                 DetailCommand.self,
                 DeleteCommand.self,

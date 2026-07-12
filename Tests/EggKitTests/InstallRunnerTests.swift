@@ -66,6 +66,255 @@ struct InstallRunnerTests {
         }
     }
 
+    // MARK: - Global install manifest registration
+
+    @Test("global install with --tag parsed as SemVer registers an exact: requirement")
+    func registersExactForSemVerTag() async throws {
+        let (runner, manifestPath, cleanup) = try makeRegistrationEnvironment(ref: .tag("1.2.0"))
+        defer { cleanup() }
+
+        let result = try await runner.run()
+        #expect(result.manifestUpdated == manifestPath.path(percentEncoded: false))
+
+        let manifest = try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
+        let entry = try #require(manifest.templates.first)
+        #expect(entry.declaredURL == "https://github.com/user/repo.git")
+        guard case let .git(_, requirement) = entry.source else {
+            Issue.record("expected a git source")
+            return
+        }
+        #expect(requirement == .exact(SemanticVersion(major: 1, minor: 2, patch: 0)))
+
+        let lockfilePath = ManifestLocator.lockfileURL(forManifestAt: manifestPath)
+        let lockfile = try #require(try LockfileStore(fileManager: fileManager).load(lockfilePath: lockfilePath))
+        #expect(lockfile.entry(forURL: "https://github.com/user/repo.git") != nil)
+    }
+
+    @Test("global install with a non-SemVer --tag registers a revision: requirement")
+    func registersRevisionForNonSemVerTag() async throws {
+        let (runner, manifestPath, cleanup) = try makeRegistrationEnvironment(ref: .tag("release-candidate"))
+        defer { cleanup() }
+
+        _ = try await runner.run()
+
+        let manifest = try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
+        let entry = try #require(manifest.templates.first)
+        guard case let .git(_, requirement) = entry.source else {
+            Issue.record("expected a git source")
+            return
+        }
+        guard case .revision = requirement else {
+            Issue.record("expected .revision, got \(requirement)")
+            return
+        }
+    }
+
+    @Test("global install with --branch registers a branch: requirement")
+    func registersBranchRequirement() async throws {
+        let (runner, manifestPath, cleanup) = try makeRegistrationEnvironment(ref: .branch("develop"))
+        defer { cleanup() }
+
+        _ = try await runner.run()
+
+        let manifest = try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
+        let entry = try #require(manifest.templates.first)
+        guard case let .git(_, requirement) = entry.source else {
+            Issue.record("expected a git source")
+            return
+        }
+        #expect(requirement == .branch("develop"))
+    }
+
+    @Test("global install with --revision registers the SHA verbatim")
+    func registersRevisionVerbatim() async throws {
+        let sha = String(repeating: "f", count: 40)
+        let (runner, manifestPath, cleanup) = try makeRegistrationEnvironment(ref: .revision(sha))
+        defer { cleanup() }
+
+        _ = try await runner.run()
+
+        let manifest = try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
+        let entry = try #require(manifest.templates.first)
+        guard case let .git(_, requirement) = entry.source else {
+            Issue.record("expected a git source")
+            return
+        }
+        #expect(requirement == .revision(sha))
+    }
+
+    @Test("global install with no ref registers a revision: requirement resolved from HEAD")
+    func registersRevisionForDefaultBranch() async throws {
+        let (runner, manifestPath, cleanup) = try makeRegistrationEnvironment(ref: nil)
+        defer { cleanup() }
+
+        _ = try await runner.run()
+
+        let manifest = try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
+        let entry = try #require(manifest.templates.first)
+        guard case let .git(_, requirement) = entry.source else {
+            Issue.record("expected a git source")
+            return
+        }
+        guard case .revision = requirement else {
+            Issue.record("expected .revision, got \(requirement)")
+            return
+        }
+    }
+
+    @Test("project-scope install does not touch any manifest")
+    func projectInstallDoesNotRegister() async throws {
+        let (tempDir, projectDirectory, homeDirectory, sourceDirectory) = try makeRegistrationTestDirs(sourceDirectoryName: "cloned-repo")
+        defer { try? fileManager.removeItem(at: tempDir) }
+
+        let url = GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git")
+        let runner = InstallRunner(
+            mode: .direct(source: .git(url: url, ref: nil), location: .project, filter: .none),
+            force: false,
+            projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            fileManager: fileManager,
+            interaction: TestInteraction(),
+            gitCloner: MockGitCloner(clonedDirectory: sourceDirectory, fileManager: fileManager),
+            directoryCloner: APFSDirectoryCloner(),
+            templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),
+        )
+
+        let result = try await runner.run()
+        #expect(result.manifestUpdated == nil)
+
+        let projectManifestPath = projectDirectory.appending(path: "eggs.yml")
+        let globalManifestPath = homeDirectory.appending(path: ".config").appending(path: "egg").appending(path: "eggs.yml")
+        #expect(!fileManager.exists(projectManifestPath))
+        #expect(!fileManager.exists(globalManifestPath))
+    }
+
+    @Test("local-path install does not touch any manifest")
+    func localPathInstallDoesNotRegister() async throws {
+        let (tempDir, projectDirectory, homeDirectory, sourceDirectory) = try makeRegistrationTestDirs(sourceDirectoryName: "local-templates")
+        defer { try? fileManager.removeItem(at: tempDir) }
+
+        let runner = InstallRunner(
+            mode: .direct(source: .local(path: sourceDirectory), location: .global, filter: .none),
+            force: false,
+            projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            fileManager: fileManager,
+            interaction: TestInteraction(),
+            gitCloner: MockGitCloner(clonedDirectory: sourceDirectory, fileManager: fileManager),
+            directoryCloner: APFSDirectoryCloner(),
+            templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),
+        )
+
+        let result = try await runner.run()
+        #expect(result.manifestUpdated == nil)
+
+        let globalManifestPath = homeDirectory.appending(path: ".config").appending(path: "egg").appending(path: "eggs.yml")
+        #expect(!fileManager.exists(globalManifestPath))
+    }
+
+    @Test("re-installing the same URL replaces the manifest entry rather than duplicating it")
+    func reinstallReplacesEntry() async throws {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-registration-test")
+        defer { try? fileManager.removeItem(at: tempDir) }
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let clonedRepoDirectory = tempDir.appending(path: "cloned-repo")
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: clonedRepoDirectory, withIntermediateDirectories: true)
+        try setupClonedRepoTemplates(
+            templates: [RepoTemplate(name: "swift-module", config: Self.validConfig("Swift Module"))],
+            repoDirectory: clonedRepoDirectory,
+        )
+        let manifestPath = homeDirectory.appending(path: ".config").appending(path: "egg").appending(path: "eggs.yml")
+
+        let firstRunner = makeRegistrationRunner(tempDir: tempDir, ref: .branch("main"), force: true)
+        _ = try await firstRunner.run()
+
+        // Re-run with a different ref against the same environment (force
+        // so the already-installed template doesn't get skipped).
+        let secondRunner = makeRegistrationRunner(tempDir: tempDir, ref: .tag("2.0.0"), force: true)
+        _ = try await secondRunner.run()
+
+        let manifest = try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
+        #expect(manifest.templates.count == 1)
+        guard case let .git(_, requirement) = manifest.templates[0].source else {
+            Issue.record("expected a git source")
+            return
+        }
+        #expect(requirement == .exact(SemanticVersion(major: 2, minor: 0, patch: 0)))
+    }
+
+    /// Creates a fresh temp dir with `project`/`home`/`<sourceDirectoryName>`
+    /// subdirectories, seeded with one template in the source directory.
+    private func makeRegistrationTestDirs(
+        sourceDirectoryName: String,
+    ) throws -> (tempDir: URL, projectDirectory: URL, homeDirectory: URL, sourceDirectory: URL) {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-registration-test")
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let sourceDirectory = tempDir.appending(path: sourceDirectoryName)
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: sourceDirectory, withIntermediateDirectories: true)
+        try setupClonedRepoTemplates(
+            templates: [RepoTemplate(name: "swift-module", config: Self.validConfig("Swift Module"))],
+            repoDirectory: sourceDirectory,
+        )
+        return (tempDir, projectDirectory, homeDirectory, sourceDirectory)
+    }
+
+    private func makeRegistrationRunner(
+        tempDir: URL,
+        ref: GitRef?,
+        filter: TemplateFilter = .none,
+        force: Bool = false,
+    ) -> InstallRunner {
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let clonedRepoDirectory = tempDir.appending(path: "cloned-repo")
+        let mockGitCloner = MockGitCloner(clonedDirectory: clonedRepoDirectory, fileManager: fileManager)
+        let url = GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git")
+        return InstallRunner(
+            mode: .direct(source: .git(url: url, ref: ref), location: .global, filter: filter),
+            force: force,
+            projectDirectory: projectDirectory,
+            workingDirectory: projectDirectory,
+            homeDirectory: homeDirectory,
+            fileManager: fileManager,
+            interaction: TestInteraction(),
+            gitCloner: mockGitCloner,
+            directoryCloner: APFSDirectoryCloner(),
+            templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),
+            gitTagLister: MockGitTagLister(),
+        )
+    }
+
+    private func makeRegistrationEnvironment(
+        ref: GitRef?,
+        filter: TemplateFilter = .none,
+        force: Bool = false,
+    ) throws -> (runner: InstallRunner, manifestPath: URL, cleanup: () -> Void) {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-registration-test")
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let clonedRepoDirectory = tempDir.appending(path: "cloned-repo")
+
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: clonedRepoDirectory, withIntermediateDirectories: true)
+        try setupClonedRepoTemplates(
+            templates: [RepoTemplate(name: "swift-module", config: Self.validConfig("Swift Module"))],
+            repoDirectory: clonedRepoDirectory,
+        )
+
+        let runner = makeRegistrationRunner(tempDir: tempDir, ref: ref, filter: filter, force: force)
+        let manifestPath = homeDirectory.appending(path: ".config").appending(path: "egg").appending(path: "eggs.yml")
+        return (runner, manifestPath, { try? fileManager.removeItem(at: tempDir) })
+    }
+
     private func setupClonedRepoTemplates(
         templates: [RepoTemplate],
         repoDirectory: URL,
@@ -488,6 +737,7 @@ struct InstallRunnerTests {
 private struct MockGitCloner: GitCloning {
     let clonedDirectory: URL
     let fileManager: any FileManagerProtocol
+    var revision: String = "abc123abc123abc123abc123abc123abc123ab"
 
     func clone(url _: GitURL, to destination: URL, ref _: GitRef?) async throws {
         // Copy the cloned repo directory to destination
@@ -501,6 +751,22 @@ private struct MockGitCloner: GitCloning {
             let destItem = destination.appending(path: item.lastPathComponent)
             try fileManager.copyItem(at: item, to: destItem)
         }
+    }
+
+    func headRevision(at _: URL) async throws -> String {
+        revision
+    }
+}
+
+/// Reports no tags for any URL, so requirement resolution always falls back
+/// to the cloned directory's HEAD instead of hitting the network.
+private struct MockGitTagLister: GitTagListing {
+    func listTags(url _: GitURL) async throws -> [GitRemoteTag] {
+        []
+    }
+
+    func remoteBranchRevision(url _: GitURL, branch _: String) async throws -> String? {
+        nil
     }
 }
 

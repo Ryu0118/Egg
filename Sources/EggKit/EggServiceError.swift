@@ -4,6 +4,7 @@ public enum EggServiceError: Error, LocalizedError, Sendable {
     case invalidLocation(String)
     case invalidGitURL(String)
     case refNotAllowedForLocalPath(String)
+    case multipleRefOptions
     case sandboxPermissionRequired(paths: [String], templateName: String)
     case sandboxDisableRequiresConfirmation(templateName: String)
     case stagedHatchRequiresGitRepository(path: String, fileCount: Int, isExact: Bool)
@@ -21,6 +22,8 @@ public enum EggServiceError: Error, LocalizedError, Sendable {
             "Invalid Git URL: \(url)"
         case let .refNotAllowedForLocalPath(source):
             "A git ref cannot be used with the local path '\(source)': local sources copy the directory as-is. Use a git URL (e.g. file://\(source)) to install from a specific branch, tag, or commit."
+        case .multipleRefOptions:
+            "Only one of branch, tag, or revision can be specified."
         case let .sandboxPermissionRequired(paths, templateName):
             """
             ⚠️ SANDBOX EXTENDED WRITE ACCESS REQUIRED

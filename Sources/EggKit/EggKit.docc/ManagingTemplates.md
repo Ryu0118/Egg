@@ -44,6 +44,54 @@ egg template install https://github.com/example/templates --global
 | `-b`/`--branch`, `-t`/`--tag`, `-c`/`--commit` | Pin a Git ref (mutually relevant only for Git sources). |
 | `--include`, `--exclude` | Install (or skip) specific template names from a source that ships several. |
 
+A `--global` install from a Git source also registers itself into the
+global manifest, so future `sync`/`update` runs manage it too — see
+<doc:TemplateManifests>'s "Registering from install" section for exactly
+what gets written.
+
+## Declarative manifests: sync and update
+
+`sync` installs everything declared in an `eggs.yml` manifest instead of
+taking a source on the command line. Two scopes are processed
+independently: the global manifest at `$XDG_CONFIG_HOME/egg/eggs.yml`
+(default `~/.config/egg/eggs.yml`) installs into `~/.eggs/`, and the
+project manifest at `./eggs.yml` installs into `./.eggs/`.
+
+```yaml
+templates:
+  - url: owner/repo                # GitHub shorthand
+    from: "1.0.0"                  # upToNextMajor: highest tag in [1.0.0, 2.0.0)
+    only: [SwiftCLI]               # optional name filter (or `exclude:`)
+  - url: git@github.com:owner/private-templates.git
+    branch: main
+  - url: ./local-templates         # installed as-is, never locked
+```
+
+Every Git entry takes exactly one of `from:`, `exact:`, `branch:`, or
+`revision:`. Resolution enumerates the remote's tags without cloning,
+ignores non-semver tags and prereleases (unless the `from:` bound itself
+is a prerelease), tolerates a `v` prefix, and installs from the exact
+resolved commit.
+
+```sh
+egg template sync     # resolve, install, and write eggs-lock.yml
+egg template update   # re-resolve from:/branch: entries to the latest eligible
+```
+
+`sync` records each resolution (tag and commit SHA) in an `eggs-lock.yml`
+next to the manifest and reuses those pins while they still satisfy the
+manifest — `Package.resolved` semantics. `update` is the explicit way to
+move forward; editing the manifest constraint also invalidates the pin.
+Manifest-managed template names are overwritten on every sync; templates
+not declared in a manifest are never touched. Both commands accept
+`--global`/`--project`, `--dry-run`, and `--json`, and exit nonzero when
+any entry fails (healthy entries still install, and a failing entry keeps
+its previous lock pin).
+
+See <doc:TemplateManifests> for the full manifest reference: field
+tables, `from:` range semantics, lockfile format, reuse rules, and the
+dotfiles workflow.
+
 ## Inspecting
 
 `list` shows every template egg can find — global, project-local, and any

@@ -87,7 +87,9 @@ package extension EggCommand.TemplateCommand {
                 ).installTemplates(
                     source: url,
                     location: global ? "global" : "project",
-                    ref: branch ?? tag ?? revision,
+                    branch: branch,
+                    tag: tag,
+                    revision: revision,
                     include: template.isEmpty ? nil : template,
                     exclude: exclude.isEmpty ? nil : exclude,
                 )
@@ -155,6 +157,10 @@ package extension EggCommand.TemplateCommand {
             if !result.failed.isEmpty {
                 let failedCount = result.failed.count
                 CLIOutput.printError("Failed to install \(failedCount) template(s).")
+            }
+
+            if let manifestUpdated = result.manifestUpdated {
+                CLIOutput.printSuccess("Registered in \(manifestUpdated).")
             }
         }
     }

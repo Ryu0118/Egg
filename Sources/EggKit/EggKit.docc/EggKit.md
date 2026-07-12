@@ -27,6 +27,7 @@ before changing a project.
 - <doc:TemplateConfig>
 - <doc:TransactionFlow>
 - <doc:ManagingTemplates>
+- <doc:TemplateManifests>
 
 ### Reference
 

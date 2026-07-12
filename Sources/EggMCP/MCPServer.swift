@@ -347,9 +347,17 @@ public struct EggMCPServer {
                         "type": "string",
                         "description": "Where to install: 'global' or 'project'.",
                     ]),
-                    "ref": .object([
+                    "branch": .object([
                         "type": "string",
-                        "description": "Git ref (branch, tag, or commit) for Git sources.",
+                        "description": "Install from a specific branch (Git sources only). At most one of branch/tag/revision.",
+                    ]),
+                    "tag": .object([
+                        "type": "string",
+                        "description": "Install from a specific tag (Git sources only). At most one of branch/tag/revision.",
+                    ]),
+                    "revision": .object([
+                        "type": "string",
+                        "description": "Install from a specific commit SHA (Git sources only). At most one of branch/tag/revision.",
                     ]),
                     "include": .object([
                         "type": "array",
@@ -367,6 +375,48 @@ public struct EggMCPServer {
                     ]),
                 ]),
                 "required": .array(["source", "location"]),
+            ]),
+        ),
+        Tool(
+            name: "egg_template_sync",
+            description: "Installs templates declared in eggs.yml manifests, honoring eggs-lock.yml. Locked resolutions are reused while they satisfy the manifest requirement.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "scope": .object([
+                        "type": "string",
+                        "description": "Which manifest to sync: 'global' or 'project'. Omit to sync every manifest that exists.",
+                    ]),
+                    "dry_run": .object([
+                        "type": "boolean",
+                        "description": "Resolve and report without installing or writing the lockfile.",
+                    ]),
+                    "project_directory": .object([
+                        "type": "string",
+                        "description": "Project directory path.",
+                    ]),
+                ]),
+            ]),
+        ),
+        Tool(
+            name: "egg_template_update",
+            description: "Re-resolves eggs.yml manifests to the latest eligible versions (from: ranges move to the highest satisfying tag, branch: entries to the branch tip) and rewrites eggs-lock.yml.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "scope": .object([
+                        "type": "string",
+                        "description": "Which manifest to update: 'global' or 'project'. Omit to update every manifest that exists.",
+                    ]),
+                    "dry_run": .object([
+                        "type": "boolean",
+                        "description": "Resolve and report without installing or writing the lockfile.",
+                    ]),
+                    "project_directory": .object([
+                        "type": "string",
+                        "description": "Project directory path.",
+                    ]),
+                ]),
             ]),
         ),
     ]

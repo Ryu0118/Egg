@@ -19,7 +19,7 @@ The shared skills live under `.claude/plugins/egg/skills`.
 
 | Skill | Purpose |
 | --- | --- |
-| `egg-cli-guide` | CLI usage, argument ordering, and transaction flow. |
+| `egg-cli-guide` | CLI usage, argument ordering, transaction flow, and declaring/syncing templates via `eggs.yml`. |
 | `egg-template` | Creating and updating templates, macros, lifecycle hooks, and file layout. |
 
 Codex can also discover the same skills through `.agents/skills` when working
@@ -91,6 +91,8 @@ JSON that subcommand's `--json` flag would print.
 | `egg_template_move` | `egg template move --json` |
 | `egg_template_validate` | `egg template validate --json` |
 | `egg_template_install` | `egg template install --json` |
+| `egg_template_sync` | `egg template sync --json` |
+| `egg_template_update` | `egg template update --json` |
 | `egg_hatch_preview` | `egg hatch preview` |
 | `egg_hatch_apply` | `egg hatch apply` |
 | `egg_hatch_rollback` | `egg hatch rollback` |

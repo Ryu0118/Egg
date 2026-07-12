@@ -26,6 +26,11 @@ package struct InstallRunner {
     private let gitCloner: any GitCloning
     private let directoryCloner: any DirectoryCloning
     private let templateDiscoverer: any TemplateDiscovering
+    private let gitTagLister: any GitTagListing
+    private let manifestLocator: ManifestLocator
+    private let manifestLoader: ManifestLoader
+    private let manifestWriter: ManifestWriter
+    private let lockfileStore: LockfileStore
 
     /// Creates a new InstallRunner.
     ///
@@ -39,6 +44,9 @@ package struct InstallRunner {
     ///   - interaction: CLI interaction handler
     ///   - gitCloner: Git cloning implementation
     ///   - directoryCloner: Directory cloning implementation
+    ///   - gitTagLister: Lists remote tags, used to resolve a `--tag`
+    ///     install's commit SHA for manifest registration without an extra
+    ///     clone
     package init(
         mode: InstallRunnerMode,
         force: Bool,
@@ -49,6 +57,7 @@ package struct InstallRunner {
         interaction: some InteractionProviding = GuardedTerminal(),
         gitCloner: some GitCloning = GitCloner(),
         directoryCloner: some DirectoryCloning = APFSDirectoryCloner(),
+        gitTagLister: some GitTagListing = GitTagLister(),
     ) {
         self.mode = mode
         self.force = force
@@ -59,8 +68,13 @@ package struct InstallRunner {
         self.interaction = interaction
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
+        self.gitTagLister = gitTagLister
         templateDiscoverer = TemplateDiscoverer(fileManager: fileManager)
         templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+        manifestLocator = ManifestLocator()
+        manifestLoader = ManifestLoader(fileManager: fileManager)
+        manifestWriter = ManifestWriter(fileManager: fileManager)
+        lockfileStore = LockfileStore(fileManager: fileManager)
     }
 
     /// Internal initializer for testing with custom template discoverer.
@@ -75,6 +89,7 @@ package struct InstallRunner {
         gitCloner: some GitCloning,
         directoryCloner: some DirectoryCloning,
         templateDiscoverer: some TemplateDiscovering,
+        gitTagLister: some GitTagListing = GitTagLister(),
     ) {
         self.mode = mode
         self.force = force
@@ -86,7 +101,12 @@ package struct InstallRunner {
         self.gitCloner = gitCloner
         self.directoryCloner = directoryCloner
         self.templateDiscoverer = templateDiscoverer
+        self.gitTagLister = gitTagLister
         templateLocation = TemplateLocation(homeDirectory: homeDirectory)
+        manifestLocator = ManifestLocator()
+        manifestLoader = ManifestLoader(fileManager: fileManager)
+        manifestWriter = ManifestWriter(fileManager: fileManager)
+        lockfileStore = LockfileStore(fileManager: fileManager)
     }
 
     /// Runs the installation workflow.
@@ -99,7 +119,7 @@ package struct InstallRunner {
             return try await runInteractiveMode()
         case let .direct(source, locationKind, filter):
             let location = locationKind.toConcreteType(projectDirectory, workingDirectory: workingDirectory)
-            return try await runDirectMode(source: source, location: location, filter: filter)
+            return try await runDirectMode(source: source, locationKind: locationKind, location: location, filter: filter)
         }
     }
 
@@ -212,6 +232,7 @@ package struct InstallRunner {
 
     private func runDirectMode(
         source: TemplateSource,
+        locationKind: TemplateLocationType.Kind,
         location: TemplateLocationType,
         filter: TemplateFilter,
     ) async throws -> InstallResult {
@@ -270,7 +291,106 @@ package struct InstallRunner {
             failed: result.failed,
         )
 
+        // Global git-source installs that landed at least one template
+        // register themselves into the global manifest, so `sync`/`update`
+        // pick them up going forward. Must run before the temp-dir cleanup
+        // `defer` above fires, since resolving a floating ref's SHA reads
+        // the clone at `templatesDirectory`.
+        if locationKind == .global, case let .git(url, ref) = source, !result.installed.isEmpty {
+            let manifestPath = manifestLocator.globalManifestURL(homeDirectory: homeDirectory)
+            do {
+                let manifestPath = try await registerGlobalInstall(
+                    url: url,
+                    ref: ref,
+                    filter: filter,
+                    clonedDirectory: templatesDirectory,
+                    manifestPath: manifestPath,
+                )
+                result = InstallResult(
+                    installed: result.installed,
+                    skipped: result.skipped,
+                    failed: result.failed,
+                    manifestUpdated: manifestPath,
+                )
+                interaction.writeSuccess("Registered in \(manifestPath)")
+            } catch {
+                interaction.writeWarning("Installed, but failed to register in \(manifestPath.path(percentEncoded: false)): \(error.localizedDescription)")
+            }
+        }
+
         return result
+    }
+
+    /// Resolves the requirement to record for a global git install and
+    /// upserts it into the manifest and lockfile.
+    ///
+    /// - Returns: The manifest path, for the caller's success message.
+    private func registerGlobalInstall(
+        url: GitURL,
+        ref: GitRef?,
+        filter: TemplateFilter,
+        clonedDirectory: URL,
+        manifestPath: URL,
+    ) async throws -> String {
+        let (requirement, resolved) = try await resolveRequirement(url: url, ref: ref, clonedDirectory: clonedDirectory)
+
+        let entry = ManifestEntry(
+            declaredURL: url.original,
+            source: .git(url: url, requirement: requirement),
+            filter: filter,
+        )
+        let manifest = (try? manifestLoader.load(manifestPath: manifestPath)) ?? Manifest(templates: [])
+        try manifestWriter.save(manifest.upserting(entry), to: manifestPath)
+
+        let lockfilePath = ManifestLocator.lockfileURL(forManifestAt: manifestPath)
+        let lockedTemplate = LockedTemplate(
+            url: url.original,
+            requirement: LockedRequirement(requirement),
+            resolved: resolved,
+        )
+        let lockfile = (try? lockfileStore.load(lockfilePath: lockfilePath)) ?? Lockfile(templates: [])
+        try lockfileStore.save(lockfile.upserting(lockedTemplate), to: lockfilePath)
+
+        return manifestPath.path(percentEncoded: false)
+    }
+
+    /// Maps the install's `ref` onto the requirement to record in the
+    /// manifest, alongside the resolution to lock: a tag becomes `exact:`
+    /// when it parses as SemVer, otherwise (or with no ref at all) a
+    /// resolved commit SHA becomes `revision:`, and a branch is recorded
+    /// as-is (matching sync/update's floating semantics).
+    private func resolveRequirement(
+        url: GitURL,
+        ref: GitRef?,
+        clonedDirectory: URL,
+    ) async throws -> (requirement: VersionRequirement, resolved: LockedResolution) {
+        switch ref {
+        case let .branch(name):
+            let revision = try await gitCloner.headRevision(at: clonedDirectory)
+            return (.branch(name), LockedResolution(branch: name, revision: revision))
+        case let .tag(name):
+            let revision = try await resolvedTagRevision(named: name, url: url, clonedDirectory: clonedDirectory)
+            if let (version, _) = SemanticVersion.parse(tag: name) {
+                return (.exact(version), LockedResolution(version: version.description, tag: version.description, revision: revision))
+            }
+            return (.revision(revision), LockedResolution(revision: revision))
+        case let .revision(sha):
+            return (.revision(sha), LockedResolution(revision: sha))
+        case nil:
+            let revision = try await gitCloner.headRevision(at: clonedDirectory)
+            return (.revision(revision), LockedResolution(revision: revision))
+        }
+    }
+
+    /// Resolves a tag's commit SHA, preferring a remote `ls-remote` lookup
+    /// (no extra clone) and falling back to the local checkout's HEAD when
+    /// the tag isn't found that way.
+    private func resolvedTagRevision(named name: String, url: GitURL, clonedDirectory: URL) async throws -> String {
+        let tags = try await gitTagLister.listTags(url: url)
+        if let revision = tags.first(where: { $0.name == name })?.revision {
+            return revision
+        }
+        return try await gitCloner.headRevision(at: clonedDirectory)
     }
 
     private func installTemplates(

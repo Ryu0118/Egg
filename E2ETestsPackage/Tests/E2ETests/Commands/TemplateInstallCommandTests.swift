@@ -280,6 +280,78 @@ struct TemplateInstallCommandTests {
         #expect(!result.succeeded)
     }
 
+    // MARK: - Global Install Manifest Registration
+
+    @Test("install --global --tag registers an exact: requirement in eggs.yml, pins eggs-lock.yml, and a subsequent sync --global is a no-op")
+    func globalInstallWithTagRegistersManifestAndSyncIsNoOp() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+        let repoURL = try makeTaggedGitRepository(in: projectDir, templateName: "SwiftModule", tag: "1.0.0")
+
+        let install = try await runner.run(
+            arguments: ["template", "install", repoURL, "--global", "--tag", "1.0.0", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env,
+        )
+        #expect(install.succeeded, "Expected success but got exit code \(install.exitCode): \(install.stderr)")
+        #expect(install.stdout.contains("Registered in"))
+
+        let homeDir = try URL(filePath: #require(env["HOME"]))
+        #expect(fileManager.fileExists(atPath: homeDir.appending(path: ".eggs/SwiftModule").path(percentEncoded: false)))
+
+        let manifestPath = homeDir.appending(path: ".config/egg/eggs.yml")
+        let manifest = try String(contentsOf: manifestPath, encoding: .utf8)
+        #expect(manifest.contains("exact: 1.0.0"))
+        #expect(manifest.contains(repoURL))
+
+        let lockPath = homeDir.appending(path: ".config/egg/eggs-lock.yml")
+        #expect(fileManager.fileExists(atPath: lockPath.path(percentEncoded: false)))
+
+        // sync --global re-reads the manifest/lock this install just wrote;
+        // the pin already satisfies the requirement, so nothing re-resolves
+        // or re-installs.
+        let sync = try await runner.run(
+            arguments: ["template", "sync", "--global", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env,
+        )
+        #expect(sync.succeeded, "Expected success but got exit code \(sync.exitCode): \(sync.stderr)")
+    }
+
+    @Test("install --global with no ref registers a revision: requirement resolved from HEAD")
+    func globalInstallWithDefaultBranchRegistersRevision() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
+
+        let result = try await runner.run(
+            arguments: ["template", "install", fixture.repositoryURL, "--global", "--template", "SwiftModule", "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env,
+        )
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
+
+        let homeDir = try URL(filePath: #require(env["HOME"]))
+        let manifestPath = homeDir.appending(path: ".config/egg/eggs.yml")
+        let manifest = try String(contentsOf: manifestPath, encoding: .utf8)
+        #expect(manifest.contains("revision: \(fixture.revision)"))
+    }
+
+    @Test("install --project does not create any manifest")
+    func projectInstallDoesNotRegisterManifest() async throws {
+        let (runner, env, projectDir, cleanup) = try await makeTestEnvironment()
+        defer { cleanup() }
+        let fixture = try makeGitTemplateFixture(in: projectDir)
+
+        let result = try await runner.run(
+            arguments: ["template", "install", fixture.repositoryURL, "--project-directory", projectDir.path(percentEncoded: false)],
+            environment: env,
+        )
+        #expect(result.succeeded, "Expected success but got exit code \(result.exitCode): \(result.stderr)")
+        #expect(!result.stdout.contains("Registered in"))
+
+        let homeDir = try URL(filePath: #require(env["HOME"]))
+        #expect(!fileManager.fileExists(atPath: homeDir.appending(path: ".config/egg/eggs.yml").path(percentEncoded: false)))
+        #expect(!fileManager.fileExists(atPath: projectDir.appending(path: "eggs.yml").path(percentEncoded: false)))
+    }
+
     // MARK: - Local Path Installation
 
     @Test("installs both templates when given an absolute local directory path as the source")
@@ -431,6 +503,21 @@ struct TemplateInstallCommandTests {
             repositoryURL: repositoryDirectory.absoluteURL.standardizedFileURL.absoluteString,
             revision: revision,
         )
+    }
+
+    /// Creates a git repository containing one template, tagged so
+    /// `install --tag` and the resulting `eggs.yml` registration have a
+    /// real tag to resolve against.
+    private func makeTaggedGitRepository(in directory: URL, templateName: String, tag: String) throws -> String {
+        let repositoryDirectory = directory.appending(path: "tagged-git-fixture")
+        try setupLocalTemplates(at: repositoryDirectory, names: [templateName])
+        try runGit(["init", "--initial-branch", "main"], in: repositoryDirectory)
+        try runGit(["config", "user.name", "Egg E2E"], in: repositoryDirectory)
+        try runGit(["config", "user.email", "egg-e2e@example.com"], in: repositoryDirectory)
+        try runGit(["add", "."], in: repositoryDirectory)
+        try runGit(["commit", "-m", "Add template fixtures"], in: repositoryDirectory)
+        try runGit(["tag", tag], in: repositoryDirectory)
+        return repositoryDirectory.absoluteURL.standardizedFileURL.absoluteString
     }
 
     @discardableResult

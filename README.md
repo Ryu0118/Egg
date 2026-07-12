@@ -24,6 +24,7 @@ let a person or an agent preview, apply, and roll back the generated result.
 - [Quick Start for Humans](#quick-start-for-humans)
 - [Agent Transaction Flow](#agent-transaction-flow)
 - [Template Basics](#template-basics)
+- [Template Manifests (eggs.yml)](#template-manifests-eggyml)
 - [Installation](#installation)
   - [Other methods](#other-methods)
 - [Documentation](#documentation)
@@ -107,7 +108,7 @@ a specific agent.
 
 The plugin provides:
 
-- `egg-cli-guide` for CLI commands and the preview/apply/rollback flow.
+- `egg-cli-guide` for CLI commands, the preview/apply/rollback flow, and declaring/syncing templates via `eggs.yml`.
 - `egg-template` for creating and updating `config.yml` templates.
 - MCP server configuration for structured tool calls.
 
@@ -265,6 +266,59 @@ Run this to see the exact flags a template accepts:
 ```sh
 egg template detail SwiftPackage
 ```
+
+## Template Manifests (eggs.yml)
+
+Instead of installing templates imperatively, declare them in a manifest and
+let egg resolve and fetch them — a `Package.swift` for your templates:
+
+```yaml
+# eggs.yml
+templates:
+  - url: owner/repo                # GitHub shorthand
+    from: "1.0.0"                  # SwiftPM-style upToNextMajor range
+    only: [SwiftCLI, SwiftLibrary] # optional name filter (or `exclude:`)
+  - url: git@github.com:owner/private-templates.git
+    branch: main                   # follow a branch (floating, opt-in)
+  - url: https://github.com/owner/repo.git
+    exact: "1.2.0"                 # or pin a `revision:` SHA
+  - url: ./local-templates         # local paths install as-is, never locked
+```
+
+Two scopes, processed independently:
+
+| Scope | Manifest | Installs to |
+| --- | --- | --- |
+| Global | `$XDG_CONFIG_HOME/egg/eggs.yml` (default `~/.config/egg/eggs.yml`) | `~/.eggs/` |
+| Project | `./eggs.yml` | `./.eggs/` |
+
+```sh
+egg template sync     # resolve + install everything declared (both scopes)
+egg template update   # move from:/branch: entries to the latest eligible
+```
+
+`sync` writes an `eggs-lock.yml` next to the manifest recording the resolved
+tag and commit SHA per entry, and reuses those pins on later syncs while
+they still satisfy the manifest — the same semantics as `Package.resolved`.
+Commit the lock for reproducible templates across machines and teammates;
+edit `from:` (or run `update`) to move versions. Templates not declared in
+a manifest are never touched by `sync`.
+
+Because the global manifest lives under `~/.config/egg/`, a dotfiles
+symlink plus `egg template sync --global` reproduces your whole template
+setup on a new machine — lock included.
+
+Git entries always take exactly one of `from:`, `exact:`, `branch:`, or
+`revision:`. `from: "1.0.0"` selects the highest tag in `[1.0.0, 2.0.0)`,
+ignoring prereleases (a `v` tag prefix is fine); `exact:` matches by parsed
+version, so it finds both `1.2.0` and `v1.2.0`. Both commands accept
+`--global`/`--project`, `--dry-run`, and `--json`.
+
+`egg template install <url> --global` (the one-shot imperative install) also
+registers the repository into the global `eggs.yml` automatically, writing
+`exact:` for a SemVer `--tag`, `branch:` for `--branch`, or a resolved
+`revision:` otherwise — so future `sync`/`update` runs manage it too.
+`--project` and local-path installs are unaffected.
 
 ## Installation
 
