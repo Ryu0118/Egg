@@ -74,6 +74,7 @@ jobs:
         id: artifactbundle
         with:
           artifact_name: egg
+          version: ${{ inputs.version }}
 
       - name: Upload artifact bundle
         uses: actions/upload-artifact@v6
