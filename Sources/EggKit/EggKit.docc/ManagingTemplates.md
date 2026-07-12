@@ -89,8 +89,7 @@ any entry fails (healthy entries still install, and a failing entry keeps
 its previous lock pin).
 
 See <doc:TemplateManifests> for the full manifest reference: field
-tables, `from:` range semantics, lockfile format, reuse rules, and the
-dotfiles workflow.
+tables, `from:` range semantics, lockfile format, and reuse rules.
 
 ## Inspecting
 

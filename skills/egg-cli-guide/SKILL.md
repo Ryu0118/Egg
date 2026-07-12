@@ -220,8 +220,8 @@ manifest. If registration fails after templates already installed (e.g. a
 permission error), the install still succeeds — a warning is printed instead
 of failing the command.
 
-Full reference (field table, `from:` semantics, lock format, dotfiles
-workflow, troubleshooting): `egg template sync --help` / `egg template
+Full reference (field table, `from:` semantics, lock format,
+troubleshooting): `egg template sync --help` / `egg template
 update --help`, or egg's published API documentation.
 
 ## MCP Integration
