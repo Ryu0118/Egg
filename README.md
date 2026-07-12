@@ -24,6 +24,7 @@ let a person or an agent preview, apply, and roll back the generated result.
 - [Quick Start for Humans](#quick-start-for-humans)
 - [Agent Transaction Flow](#agent-transaction-flow)
 - [Template Basics](#template-basics)
+- [Template Manifests (egg.yml)](#template-manifests-eggyml)
 - [Installation](#installation)
   - [Other methods](#other-methods)
 - [Documentation](#documentation)
