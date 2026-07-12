@@ -45,7 +45,7 @@ struct TemplateSyncCommandTests {
             templateName: "SyncTemplate",
             tags: [("v1.0.0", false), ("1.1.0", true), ("2.0.0-beta.1", false)],
         )
-        try writeManifest(env, "templates:\n  - url: file://\(repo.path(percentEncoded: false))\n    from: \"1.0.0\"\n")
+        try writeManifest(env, "eggs:\n  - url: file://\(repo.path(percentEncoded: false))\n    from: \"1.0.0\"\n")
 
         // First sync: resolves 1.1.0, installs, writes the lock.
         let first = try await env.runner.run(
@@ -83,7 +83,7 @@ struct TemplateSyncCommandTests {
 
         // Bump the constraint past every release tag: sync fails naming the
         // highest available tag, and the previous pin survives.
-        try writeManifest(env, "templates:\n  - url: file://\(repo.path(percentEncoded: false))\n    from: \"2.0.0\"\n")
+        try writeManifest(env, "eggs:\n  - url: file://\(repo.path(percentEncoded: false))\n    from: \"2.0.0\"\n")
         let bumped = try await env.runner.run(
             arguments: ["template", "sync", "--project", "--project-directory", env.projectPath],
             environment: env.env,
@@ -103,7 +103,7 @@ struct TemplateSyncCommandTests {
 
         let localTemplates = env.projectDir.appending(path: "local-templates")
         try writeTemplate(named: "LocalOnly", into: localTemplates)
-        try writeManifest(env, "templates:\n  - url: ./local-templates\n")
+        try writeManifest(env, "eggs:\n  - url: ./local-templates\n")
 
         let result = try await env.runner.run(
             arguments: ["template", "sync", "--project", "--project-directory", env.projectPath],
@@ -142,7 +142,7 @@ struct TemplateSyncCommandTests {
         try writeManifest(
             env,
             """
-            templates:
+            eggs:
               - url: file:///nonexistent/egg-sync-e2e.git
                 branch: main
               - url: ./local-templates
