@@ -77,7 +77,7 @@ enum ManifestSyncCLI {
         fileManager: any FileManagerProtocol,
     ) async throws {
         // --global and --project together mean both, same as the default.
-        let bothScopes = global == project
+        let selection: ManifestScopeSelection = global == project ? .all : (global ? .global : .project)
 
         if json {
             let service = EggService(
@@ -85,7 +85,13 @@ enum ManifestSyncCLI {
                 projectDirectory: projectDirectory,
                 homeDirectory: CLIEnvironment.resolveHomeDirectory(),
             )
-            let scope: String? = bothScopes ? nil : (global ? "global" : "project")
+            // EggService keeps strings at its boundary (like installTemplates'
+            // location) because MCP callers arrive with strings.
+            let scope: String? = switch selection {
+            case .all: nil
+            case .global: "global"
+            case .project: "project"
+            }
             let result: SyncResult = switch mode {
             case .sync:
                 try await service.syncTemplates(scope: scope, dryRun: dryRun)
@@ -101,7 +107,6 @@ enum ManifestSyncCLI {
 
         do {
             let homeDirectory = CLIEnvironment.resolveHomeDirectory()
-            let selection: ManifestScopeSelection = bothScopes ? .all : (global ? .global : .project)
             let scopes = try ManifestScopeResolver.resolve(
                 selection: selection,
                 projectDirectory: projectDirectory,

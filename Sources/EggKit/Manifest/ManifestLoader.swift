@@ -24,31 +24,25 @@ package struct ManifestLoader {
         let data = try fileManager.readFile(at: manifestPath)
         let yamlString = String(decoding: data, as: UTF8.self)
 
-        // A comment-only or whitespace-only file parses as a null document,
-        // which cannot back a keyed container; treat it as an empty manifest.
-        // Malformed YAML must still surface as decodingFailed.
         do {
-            if try Yams.load(yaml: yamlString) == nil {
+            // A comment-only or whitespace-only file composes to no node,
+            // which cannot back a keyed container; treat it as an empty
+            // manifest. Malformed YAML still throws into the catch below.
+            guard let node = try Yams.compose(yaml: yamlString) else {
                 return Manifest(templates: [])
             }
+            let raw = try YAMLDecoder().decode(RawManifest.self, from: node)
+            return try Manifest(templates: raw.templates.map(ManifestEntry.make(from:)))
+        } catch let error as ManifestLoaderError {
+            // Entry-rule violations from ManifestEntry.make must surface as
+            // invalidEntry, not get re-wrapped as decodingFailed.
+            throw error
         } catch {
             throw ManifestLoaderError.decodingFailed(
                 path: manifestPath.path(percentEncoded: false),
                 underlying: error,
             )
         }
-
-        let raw: RawManifest
-        do {
-            raw = try YAMLDecoder().decode(RawManifest.self, from: data)
-        } catch {
-            throw ManifestLoaderError.decodingFailed(
-                path: manifestPath.path(percentEncoded: false),
-                underlying: error,
-            )
-        }
-
-        return try Manifest(templates: raw.templates.map(ManifestEntry.make(from:)))
     }
 }
 
