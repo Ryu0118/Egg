@@ -5,7 +5,7 @@ import Interaction
 /// Runs the declarative template workflow for `egg template sync` and
 /// `egg template update`.
 ///
-/// Per scope (global/project): load egg.yml → load egg-lock.yml → resolve
+/// Per scope (global/project): load eggs.yml → load eggs-lock.yml → resolve
 /// each entry (lock-aware for sync, always fresh for update) → install the
 /// entry's templates (manifest-managed templates are always overwritten;
 /// templates not in the manifest are never touched) → regenerate the
@@ -469,7 +469,7 @@ package extension TemplateSyncRunner {
             case let .noTemplatesFound(url):
                 "no valid templates found in '\(url)'. egg looks for <root>/config.yml, <root>/<name>/config.yml, and <root>/.eggs/<name>/config.yml."
             case let .nameCollision(name, winnerURL, loserURL):
-                "template '\(name)' from \(loserURL) conflicts with the same name already installed by \(winnerURL) (first entry in egg.yml wins). Use 'only:'/'exclude:' to disambiguate."
+                "template '\(name)' from \(loserURL) conflicts with the same name already installed by \(winnerURL) (first entry in eggs.yml wins). Use 'only:'/'exclude:' to disambiguate."
             }
         }
     }

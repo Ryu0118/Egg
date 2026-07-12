@@ -46,11 +46,11 @@ egg template install https://github.com/example/templates --global
 
 ## Declarative manifests: sync and update
 
-`sync` installs everything declared in an `egg.yml` manifest instead of
+`sync` installs everything declared in an `eggs.yml` manifest instead of
 taking a source on the command line. Two scopes are processed
-independently: the global manifest at `$XDG_CONFIG_HOME/egg/egg.yml`
-(default `~/.config/egg/egg.yml`) installs into `~/.eggs/`, and the
-project manifest at `./egg.yml` installs into `./.eggs/`.
+independently: the global manifest at `$XDG_CONFIG_HOME/egg/eggs.yml`
+(default `~/.config/egg/eggs.yml`) installs into `~/.eggs/`, and the
+project manifest at `./eggs.yml` installs into `./.eggs/`.
 
 ```yaml
 templates:
@@ -69,11 +69,11 @@ is a prerelease), tolerates a `v` prefix, and installs from the exact
 resolved commit.
 
 ```sh
-egg template sync     # resolve, install, and write egg-lock.yml
+egg template sync     # resolve, install, and write eggs-lock.yml
 egg template update   # re-resolve from:/branch: entries to the latest eligible
 ```
 
-`sync` records each resolution (tag and commit SHA) in an `egg-lock.yml`
+`sync` records each resolution (tag and commit SHA) in an `eggs-lock.yml`
 next to the manifest and reuses those pins while they still satisfy the
 manifest — `Package.resolved` semantics. `update` is the explicit way to
 move forward; editing the manifest constraint also invalidates the pin.

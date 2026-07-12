@@ -57,7 +57,7 @@ struct TemplateSyncCommandTests {
         #expect(first.stdout.contains("Installed 'SyncTemplate'"))
         #expect(fileManager.fileExists(atPath: env.projectDir.appending(path: ".eggs/SyncTemplate/config.yml").path(percentEncoded: false)))
 
-        let lockPath = env.projectDir.appending(path: "egg-lock.yml")
+        let lockPath = env.projectDir.appending(path: "eggs-lock.yml")
         let lockAfterFirst = try String(contentsOf: lockPath, encoding: .utf8)
         #expect(lockAfterFirst.contains("version: 1.1.0"))
         #expect(!lockAfterFirst.contains("2.0.0-beta.1"), "prereleases stay out of a release-bounded range")
@@ -113,7 +113,7 @@ struct TemplateSyncCommandTests {
         #expect(result.succeeded)
         #expect(result.stdout.contains("Installed 'LocalOnly'"))
         #expect(fileManager.fileExists(atPath: env.projectDir.appending(path: ".eggs/LocalOnly/config.yml").path(percentEncoded: false)))
-        #expect(!fileManager.fileExists(atPath: env.projectDir.appending(path: "egg-lock.yml").path(percentEncoded: false)))
+        #expect(!fileManager.fileExists(atPath: env.projectDir.appending(path: "eggs-lock.yml").path(percentEncoded: false)))
     }
 
     // MARK: - Errors and partial failure
@@ -195,7 +195,7 @@ struct TemplateSyncCommandTests {
     }
 
     private func writeManifest(_ env: SyncEnvironment, _ yaml: String) throws {
-        try yaml.write(to: env.projectDir.appending(path: "egg.yml"), atomically: true, encoding: .utf8)
+        try yaml.write(to: env.projectDir.appending(path: "eggs.yml"), atomically: true, encoding: .utf8)
     }
 
     private func writeTemplate(named name: String, into directory: URL) throws {

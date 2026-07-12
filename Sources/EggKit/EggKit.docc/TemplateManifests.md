@@ -1,6 +1,6 @@
 # Template Manifests
 
-Declare external template sources in `egg.yml` and let egg resolve, fetch,
+Declare external template sources in `eggs.yml` and let egg resolve, fetch,
 and pin them — a `Package.swift` for your templates.
 
 ## Overview
@@ -8,21 +8,21 @@ and pin them — a `Package.swift` for your templates.
 `egg template install` is imperative: it fetches templates once and leaves
 no record of where they came from or which version was installed. A
 manifest turns that into a declaration. You write *what* you want in
-`egg.yml`; `egg template sync` figures out *which revision* that means,
-installs it, and records the answer in `egg-lock.yml` so every later sync
+`eggs.yml`; `egg template sync` figures out *which revision* that means,
+installs it, and records the answer in `eggs-lock.yml` so every later sync
 — on this machine or another — produces the same bytes.
 
 Two manifest scopes exist and are processed independently:
 
 | Scope | Manifest | Lockfile | Installs to |
 | --- | --- | --- | --- |
-| Global | `$XDG_CONFIG_HOME/egg/egg.yml` (default `~/.config/egg/egg.yml`) | next to the manifest | `~/.eggs/` |
-| Project | `<project>/egg.yml` | `<project>/egg-lock.yml` | `<project>/.eggs/` |
+| Global | `$XDG_CONFIG_HOME/egg/eggs.yml` (default `~/.config/egg/eggs.yml`) | next to the manifest | `~/.eggs/` |
+| Project | `<project>/eggs.yml` | `<project>/eggs-lock.yml` | `<project>/.eggs/` |
 
 If the same URL appears in both manifests, nothing is merged: each scope
 installs its own copy into its own `.eggs` directory.
 
-## The manifest: egg.yml
+## The manifest: eggs.yml
 
 ```yaml
 templates:
@@ -83,7 +83,7 @@ with `git ls-remote --tags`, parses them as strict SemVer (non-semver tags
 are ignored), picks the highest satisfying version, and then installs from
 that tag's exact commit — the peeled commit for annotated tags.
 
-## The lockfile: egg-lock.yml
+## The lockfile: eggs-lock.yml
 
 `sync` writes the resolution result next to the manifest:
 
@@ -120,7 +120,7 @@ The lock follows `Package.resolved` semantics:
   URL left the manifest drop out, and a *failing* entry keeps its previous
   pin (a transient SSH failure must not lose your version).
 
-Commit `egg-lock.yml` alongside `egg.yml`. Entries are sorted and keys are
+Commit `eggs-lock.yml` alongside `eggs.yml`. Entries are sorted and keys are
 stable, so diffs stay one-line small: a version bump reads as exactly the
 `requirement`/`resolved` lines that changed.
 

@@ -2,7 +2,7 @@ import EggKit
 import Foundation
 
 /// Handler for `egg_template_sync` tool.
-/// Installs templates declared in egg.yml, honoring egg-lock.yml.
+/// Installs templates declared in eggs.yml, honoring eggs-lock.yml.
 struct SyncHandler: ToolHandler {
     static let toolName = "egg_template_sync"
 

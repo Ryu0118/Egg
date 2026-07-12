@@ -371,7 +371,7 @@ public struct EggMCPServer {
         ),
         Tool(
             name: "egg_template_sync",
-            description: "Installs templates declared in egg.yml manifests, honoring egg-lock.yml. Locked resolutions are reused while they satisfy the manifest requirement.",
+            description: "Installs templates declared in eggs.yml manifests, honoring eggs-lock.yml. Locked resolutions are reused while they satisfy the manifest requirement.",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -392,7 +392,7 @@ public struct EggMCPServer {
         ),
         Tool(
             name: "egg_template_update",
-            description: "Re-resolves egg.yml manifests to the latest eligible versions (from: ranges move to the highest satisfying tag, branch: entries to the branch tip) and rewrites egg-lock.yml.",
+            description: "Re-resolves eggs.yml manifests to the latest eligible versions (from: ranges move to the highest satisfying tag, branch: entries to the branch tip) and rewrites eggs-lock.yml.",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([

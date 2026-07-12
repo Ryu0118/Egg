@@ -2,7 +2,7 @@ import FileManagerProtocol
 import Foundation
 import Yams
 
-/// Loads and decodes egg.yml template manifests.
+/// Loads and decodes eggs.yml template manifests.
 package struct ManifestLoader {
     private let fileManager: any FileManagerProtocol
 
@@ -10,9 +10,9 @@ package struct ManifestLoader {
         self.fileManager = fileManager
     }
 
-    /// Loads a Manifest from the specified egg.yml path.
+    /// Loads a Manifest from the specified eggs.yml path.
     ///
-    /// - Parameter manifestPath: The path to the egg.yml file
+    /// - Parameter manifestPath: The path to the eggs.yml file
     /// - Returns: The decoded and validated Manifest
     /// - Throws: `ManifestLoaderError` if the file is not found, cannot be
     ///   decoded, or contains an invalid entry
@@ -46,7 +46,7 @@ package struct ManifestLoader {
     }
 }
 
-/// Errors that can occur when loading an egg.yml manifest.
+/// Errors that can occur when loading an eggs.yml manifest.
 package enum ManifestLoaderError: Error, LocalizedError, Equatable {
     case manifestNotFound(path: String)
     case decodingFailed(path: String, underlying: Error)
@@ -55,11 +55,11 @@ package enum ManifestLoaderError: Error, LocalizedError, Equatable {
     package var errorDescription: String? {
         switch self {
         case let .manifestNotFound(path):
-            "egg.yml not found at path: \(path)"
+            "eggs.yml not found at path: \(path)"
         case let .decodingFailed(path, underlying):
-            "Failed to decode egg.yml at \(path): \(ConfigDecodingErrorFormatter.message(for: underlying))"
+            "Failed to decode eggs.yml at \(path): \(ConfigDecodingErrorFormatter.message(for: underlying))"
         case let .invalidEntry(url, reason):
-            "Invalid entry '\(url)' in egg.yml: \(reason)"
+            "Invalid entry '\(url)' in eggs.yml: \(reason)"
         }
     }
 

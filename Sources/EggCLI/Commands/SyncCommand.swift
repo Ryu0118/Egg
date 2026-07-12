@@ -5,10 +5,10 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct SyncCommand: AsyncParsableCommand, HasProjectDirectory {
-        @Flag(name: .long, help: "Sync only the global manifest ($XDG_CONFIG_HOME/egg/egg.yml).")
+        @Flag(name: .long, help: "Sync only the global manifest ($XDG_CONFIG_HOME/egg/eggs.yml).")
         package var global: Bool = false
 
-        @Flag(name: .long, help: "Sync only the project manifest (./egg.yml).")
+        @Flag(name: .long, help: "Sync only the project manifest (./eggs.yml).")
         package var project: Bool = false
 
         @Flag(name: .long, help: "Resolve versions and report without installing or writing the lockfile.")
@@ -22,12 +22,12 @@ package extension EggCommand.TemplateCommand {
 
         package static let configuration = CommandConfiguration(
             commandName: "sync",
-            abstract: "Install templates declared in egg.yml, honoring egg-lock.yml.",
+            abstract: "Install templates declared in eggs.yml, honoring eggs-lock.yml.",
             discussion: """
             Reads the manifest(s) and installs every declared template:
 
-              Global:  $XDG_CONFIG_HOME/egg/egg.yml (default ~/.config/egg/egg.yml) → ~/.eggs
-              Project: ./egg.yml → ./.eggs
+              Global:  $XDG_CONFIG_HOME/egg/eggs.yml (default ~/.config/egg/eggs.yml) → ~/.eggs
+              Project: ./eggs.yml → ./.eggs
 
             By default both manifests are synced when they exist. Locked
             resolutions are reused while they satisfy the manifest (like

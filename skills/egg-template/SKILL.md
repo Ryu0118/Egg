@@ -1,7 +1,7 @@
 ---
 name: egg-template
 description: |
-  Create or update egg templates. Use when user wants to: (1) create a new template from scratch, (2) add/modify/remove macros, (3) update template files or lifecycle hooks, (4) convert files to Stencil format. For fetching/pinning/syncing existing templates from a repo (egg template install, egg.yml manifests, egg template sync/update), use egg-cli-guide instead.
+  Create or update egg templates. Use when user wants to: (1) create a new template from scratch, (2) add/modify/remove macros, (3) update template files or lifecycle hooks, (4) convert files to Stencil format. For fetching/pinning/syncing existing templates from a repo (egg template install, eggs.yml manifests, egg template sync/update), use egg-cli-guide instead.
 ---
 
 # egg Template
@@ -13,7 +13,7 @@ description: |
 | "create template", "new template" | Create |
 | "add macro", "modify", "rename", "remove" | Update |
 | Template name/path + changes | Update |
-| "install this template repo", "add/pin/sync templates from a repo", "keep templates up to date across machines" | Not this skill — use `egg-cli-guide`'s `egg template install` (one-shot fetch) or `egg.yml` manifest + `egg template sync`/`update` (declarative, reproducible) |
+| "install this template repo", "add/pin/sync templates from a repo", "keep templates up to date across machines" | Not this skill — use `egg-cli-guide`'s `egg template install` (one-shot fetch) or `eggs.yml` manifest + `egg template sync`/`update` (declarative, reproducible) |
 
 ## Create Workflow
 

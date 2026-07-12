@@ -24,7 +24,7 @@ let a person or an agent preview, apply, and roll back the generated result.
 - [Quick Start for Humans](#quick-start-for-humans)
 - [Agent Transaction Flow](#agent-transaction-flow)
 - [Template Basics](#template-basics)
-- [Template Manifests (egg.yml)](#template-manifests-eggyml)
+- [Template Manifests (eggs.yml)](#template-manifests-eggyml)
 - [Installation](#installation)
   - [Other methods](#other-methods)
 - [Documentation](#documentation)
@@ -108,7 +108,7 @@ a specific agent.
 
 The plugin provides:
 
-- `egg-cli-guide` for CLI commands, the preview/apply/rollback flow, and declaring/syncing templates via `egg.yml`.
+- `egg-cli-guide` for CLI commands, the preview/apply/rollback flow, and declaring/syncing templates via `eggs.yml`.
 - `egg-template` for creating and updating `config.yml` templates.
 - MCP server configuration for structured tool calls.
 
@@ -267,13 +267,13 @@ Run this to see the exact flags a template accepts:
 egg template detail SwiftPackage
 ```
 
-## Template Manifests (egg.yml)
+## Template Manifests (eggs.yml)
 
 Instead of installing templates imperatively, declare them in a manifest and
 let egg resolve and fetch them — a `Package.swift` for your templates:
 
 ```yaml
-# egg.yml
+# eggs.yml
 templates:
   - url: owner/repo                # GitHub shorthand
     from: "1.0.0"                  # SwiftPM-style upToNextMajor range
@@ -289,15 +289,15 @@ Two scopes, processed independently:
 
 | Scope | Manifest | Installs to |
 | --- | --- | --- |
-| Global | `$XDG_CONFIG_HOME/egg/egg.yml` (default `~/.config/egg/egg.yml`) | `~/.eggs/` |
-| Project | `./egg.yml` | `./.eggs/` |
+| Global | `$XDG_CONFIG_HOME/egg/eggs.yml` (default `~/.config/egg/eggs.yml`) | `~/.eggs/` |
+| Project | `./eggs.yml` | `./.eggs/` |
 
 ```sh
 egg template sync     # resolve + install everything declared (both scopes)
 egg template update   # move from:/branch: entries to the latest eligible
 ```
 
-`sync` writes an `egg-lock.yml` next to the manifest recording the resolved
+`sync` writes an `eggs-lock.yml` next to the manifest recording the resolved
 tag and commit SHA per entry, and reuses those pins on later syncs while
 they still satisfy the manifest — the same semantics as `Package.resolved`.
 Commit the lock for reproducible templates across machines and teammates;

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The egg-lock.yml document: the resolved state of an egg.yml manifest.
+/// The eggs-lock.yml document: the resolved state of an eggs.yml manifest.
 ///
 /// Sits next to its manifest and is regenerated from the manifest on every
 /// sync/update write; entries whose url left the manifest drop out. Local
@@ -24,7 +24,7 @@ package struct Lockfile: Codable, Equatable {
     }
 }
 
-/// One resolved manifest entry in egg-lock.yml.
+/// One resolved manifest entry in eggs-lock.yml.
 package struct LockedTemplate: Codable, Equatable {
     /// The normalized (post-shorthand) Git URL. Lookup key.
     package let url: String

@@ -2,8 +2,8 @@ import EggKit
 import Foundation
 
 /// Handler for `egg_template_update` tool.
-/// Re-resolves egg.yml to the latest eligible versions and rewrites
-/// egg-lock.yml.
+/// Re-resolves eggs.yml to the latest eligible versions and rewrites
+/// eggs-lock.yml.
 struct UpdateHandler: ToolHandler {
     static let toolName = "egg_template_update"
 

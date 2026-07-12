@@ -1,6 +1,6 @@
 ---
 name: egg-cli-guide
-description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open), or wants to declare/pin/sync template sources reproducibly via an egg.yml manifest (egg template sync/update).
+description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open), or wants to declare/pin/sync template sources reproducibly via an eggs.yml manifest (egg template sync/update).
 ---
 
 # egg CLI Guide
@@ -122,8 +122,8 @@ Prefer `egg hatch direct` only for one-shot human use where a preview/rollback p
 | --- | --- |
 | `egg template create --name <n> --description <d> --location <global\|project>` | Scaffold a new template's `config.yml`. |
 | `egg template install <git-url\|path> [--branch/--tag/--revision] [--template ...] [--global] [--force]` | Install templates from a Git repo or a local directory. |
-| `egg template sync [--global\|--project] [--dry-run]` | Install everything declared in `egg.yml` (global: `$XDG_CONFIG_HOME/egg/egg.yml`, project: `./egg.yml`), honoring `egg-lock.yml` pins like `Package.resolved`. |
-| `egg template update [--global\|--project] [--dry-run]` | Re-resolve `from:` ranges and `branch:` entries to the latest eligible and rewrite `egg-lock.yml`. |
+| `egg template sync [--global\|--project] [--dry-run]` | Install everything declared in `eggs.yml` (global: `$XDG_CONFIG_HOME/egg/eggs.yml`, project: `./eggs.yml`), honoring `eggs-lock.yml` pins like `Package.resolved`. |
+| `egg template update [--global\|--project] [--dry-run]` | Re-resolve `from:` ranges and `branch:` entries to the latest eligible and rewrite `eggs-lock.yml`. |
 | `egg template list [--location <global\|project>] [--hide-description]` | List available templates. |
 | `egg template detail <name>` | Show macros, types, defaults, and an example command. |
 | `egg template validate <path>` | Validate a template's `config.yml`. |
@@ -138,7 +138,7 @@ Interactive fallbacks require a TTY. When stdin is not a TTY (agents, CI) and a 
 
 All `template` subcommands support an interactive mode when arguments are omitted, and accept `--project-directory`/`--template-search-paths` to look beyond the current directory.
 
-## Declaring Templates (egg.yml)
+## Declaring Templates (eggs.yml)
 
 Use this instead of `egg template install` when the user wants templates to
 be *reproducible* — reinstalled the same way on another machine, pinned to a
@@ -147,16 +147,16 @@ version, or tracked in dotfiles — rather than fetched once. Trigger phrases:
 "sync my templates", "manage templates in dotfiles", "keep templates up to
 date across machines".
 
-An `egg.yml` manifest declares template sources; `egg template sync`
-resolves and installs them, recording the exact result in `egg-lock.yml`
+An `eggs.yml` manifest declares template sources; `egg template sync`
+resolves and installs them, recording the exact result in `eggs-lock.yml`
 next to the manifest. Two independent scopes, never merged:
 
 | Scope | Manifest path | Installs to |
 | --- | --- | --- |
-| Global | `$XDG_CONFIG_HOME/egg/egg.yml` (default `~/.config/egg/egg.yml`) | `~/.eggs/` |
-| Project | `<project>/egg.yml` | `<project>/.eggs/` |
+| Global | `$XDG_CONFIG_HOME/egg/eggs.yml` (default `~/.config/egg/eggs.yml`) | `~/.eggs/` |
+| Project | `<project>/eggs.yml` | `<project>/.eggs/` |
 
-### Writing egg.yml
+### Writing eggs.yml
 
 ```yaml
 templates:
@@ -193,7 +193,7 @@ explicitly want floating/unreleased content.
    version (`entries[].resolvedVersion`).
 
 To move existing pins forward, run `egg template update` instead of
-hand-editing `egg-lock.yml` — never edit the lockfile directly, it is
+hand-editing `eggs-lock.yml` — never edit the lockfile directly, it is
 regenerated on every sync/update.
 
 Full reference (field table, `from:` semantics, lock format, dotfiles

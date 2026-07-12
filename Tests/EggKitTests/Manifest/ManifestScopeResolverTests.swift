@@ -17,7 +17,7 @@ struct ManifestScopeResolverTests {
 
         #expect(scopes.map(\.kind) == [.global, .project])
         #expect(scopes[0].manifestURL == env.globalManifestURL)
-        #expect(scopes[0].lockfileURL == env.globalManifestURL.deletingLastPathComponent().appending(path: "egg-lock.yml"))
+        #expect(scopes[0].lockfileURL == env.globalManifestURL.deletingLastPathComponent().appending(path: "eggs-lock.yml"))
         #expect(scopes[1].manifestURL == env.projectManifestURL)
     }
 
@@ -69,7 +69,7 @@ struct ManifestScopeResolverTests {
         let env = try TestDirectories(fileManager: fileManager)
         defer { env.tearDown() }
         let xdgDirectory = env.root.appending(path: "xdg")
-        let manifestURL = xdgDirectory.appending(path: "egg/egg.yml")
+        let manifestURL = xdgDirectory.appending(path: "egg/eggs.yml")
         try fileManager.createDirectory(
             at: manifestURL.deletingLastPathComponent(),
             withIntermediateDirectories: true,
@@ -109,11 +109,11 @@ struct ManifestScopeResolverTests {
         let fileManager: any FileManagerProtocol
 
         var globalManifestURL: URL {
-            homeDirectory.appending(path: ".config/egg/egg.yml")
+            homeDirectory.appending(path: ".config/egg/eggs.yml")
         }
 
         var projectManifestURL: URL {
-            projectDirectory.appending(path: "egg.yml")
+            projectDirectory.appending(path: "eggs.yml")
         }
 
         init(fileManager: any FileManagerProtocol) throws {
@@ -170,7 +170,7 @@ struct EggServiceManifestTests {
             templates:
               - url: ./local-templates
             """,
-            at: project.appending(path: "egg.yml"),
+            at: project.appending(path: "eggs.yml"),
         )
 
         let service = EggService(

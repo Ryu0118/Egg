@@ -244,7 +244,7 @@ struct TemplateSyncRunnerTests {
         #expect(entries[0].installed == ["Shared"])
         let failure = try #require(entries[1].failed.first)
         #expect(failure.name == "Shared")
-        #expect(failure.error.localizedDescription.contains("first entry in egg.yml wins"))
+        #expect(failure.error.localizedDescription.contains("first entry in eggs.yml wins"))
 
         let marker = env.projectDirectory
             .appending(path: ".eggs/Shared/marker.txt")
@@ -363,11 +363,11 @@ private struct TestEnvironment {
     let fileManager: any FileManagerProtocol = FileManager.default
 
     var manifestURL: URL {
-        projectDirectory.appending(path: "egg.yml")
+        projectDirectory.appending(path: "eggs.yml")
     }
 
     var lockfileURL: URL {
-        projectDirectory.appending(path: "egg-lock.yml")
+        projectDirectory.appending(path: "eggs-lock.yml")
     }
 
     init() throws {

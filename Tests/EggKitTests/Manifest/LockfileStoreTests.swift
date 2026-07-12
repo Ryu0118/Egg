@@ -44,7 +44,7 @@ struct LockfileStoreTests {
 
         let root = try fileManager.makeTemporaryDirectory(prefix: "LockfileStoreTests")
         defer { try? fileManager.removeItem(at: root) }
-        let lockPath = root.appending(path: "egg-lock.yml")
+        let lockPath = root.appending(path: "eggs-lock.yml")
 
         let store = LockfileStore(fileManager: fileManager)
         try store.save(lockfile, to: lockPath)
@@ -98,7 +98,7 @@ struct LockfileStoreTests {
 
         let root = try fileManager.makeTemporaryDirectory(prefix: "LockfileStoreTests")
         defer { try? fileManager.removeItem(at: root) }
-        let lockPath = root.appending(path: "egg-lock.yml")
+        let lockPath = root.appending(path: "eggs-lock.yml")
         try LockfileStore(fileManager: fileManager).save(lockfile, to: lockPath)
 
         let yaml = try String(decoding: fileManager.readFile(at: lockPath), as: UTF8.self)
@@ -115,7 +115,7 @@ struct LockfileStoreTests {
         defer { try? fileManager.removeItem(at: root) }
 
         let loaded = try LockfileStore(fileManager: fileManager)
-            .load(lockfilePath: root.appending(path: "egg-lock.yml"))
+            .load(lockfilePath: root.appending(path: "eggs-lock.yml"))
         #expect(loaded == nil)
     }
 
@@ -123,7 +123,7 @@ struct LockfileStoreTests {
     func malformedLockfile() throws {
         let root = try fileManager.makeTemporaryDirectory(prefix: "LockfileStoreTests")
         defer { try? fileManager.removeItem(at: root) }
-        let lockPath = root.appending(path: "egg-lock.yml")
+        let lockPath = root.appending(path: "eggs-lock.yml")
         try fileManager.writeText("version: [broken", at: lockPath)
 
         #expect(throws: LockfileError.self) {

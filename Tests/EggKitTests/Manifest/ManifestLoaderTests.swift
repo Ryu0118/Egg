@@ -103,7 +103,7 @@ struct ManifestLoaderTests {
     func invalidEntries(_ testCase: InvalidEntryTestCase) throws {
         let root = try fileManager.makeTemporaryDirectory(prefix: "ManifestLoaderTests")
         defer { try? fileManager.removeItem(at: root) }
-        let manifestPath = root.appending(path: "egg.yml")
+        let manifestPath = root.appending(path: "eggs.yml")
         try fileManager.writeText(testCase.yaml, at: manifestPath)
 
         let error = try #require(throws: ManifestLoaderError.self) {
@@ -218,7 +218,7 @@ struct ManifestLoaderTests {
     func missingManifest() throws {
         let root = try fileManager.makeTemporaryDirectory(prefix: "ManifestLoaderTests")
         defer { try? fileManager.removeItem(at: root) }
-        let manifestPath = root.appending(path: "egg.yml")
+        let manifestPath = root.appending(path: "eggs.yml")
 
         #expect(throws: ManifestLoaderError.manifestNotFound(path: manifestPath.path(percentEncoded: false))) {
             try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
@@ -229,7 +229,7 @@ struct ManifestLoaderTests {
     func malformedYAML() throws {
         let root = try fileManager.makeTemporaryDirectory(prefix: "ManifestLoaderTests")
         defer { try? fileManager.removeItem(at: root) }
-        let manifestPath = root.appending(path: "egg.yml")
+        let manifestPath = root.appending(path: "eggs.yml")
         try fileManager.writeText("templates: {not: [a, list", at: manifestPath)
 
         let error = try #require(throws: ManifestLoaderError.self) {
@@ -246,7 +246,7 @@ struct ManifestLoaderTests {
     private func load(_ yaml: String) throws -> Manifest {
         let root = try fileManager.makeTemporaryDirectory(prefix: "ManifestLoaderTests")
         defer { try? fileManager.removeItem(at: root) }
-        let manifestPath = root.appending(path: "egg.yml")
+        let manifestPath = root.appending(path: "eggs.yml")
         try fileManager.writeText(yaml, at: manifestPath)
         return try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)
     }
@@ -257,7 +257,7 @@ struct ManifestLocatorTests {
     func xdgOverride() {
         let locator = ManifestLocator(environment: ["XDG_CONFIG_HOME": "/custom/xdg"])
         let url = locator.globalManifestURL(homeDirectory: URL(filePath: "/Users/tester", directoryHint: .isDirectory))
-        #expect(url.path(percentEncoded: false) == "/custom/xdg/egg/egg.yml")
+        #expect(url.path(percentEncoded: false) == "/custom/xdg/egg/eggs.yml")
     }
 
     @Test("global manifest falls back to ~/.config, ignoring empty XDG_CONFIG_HOME")
@@ -265,7 +265,7 @@ struct ManifestLocatorTests {
         let home = URL(filePath: "/Users/tester", directoryHint: .isDirectory)
         for environment in [[String: String](), ["XDG_CONFIG_HOME": ""]] {
             let url = ManifestLocator(environment: environment).globalManifestURL(homeDirectory: home)
-            #expect(url.path(percentEncoded: false) == "/Users/tester/.config/egg/egg.yml")
+            #expect(url.path(percentEncoded: false) == "/Users/tester/.config/egg/eggs.yml")
         }
     }
 
@@ -274,8 +274,8 @@ struct ManifestLocatorTests {
         let locator = ManifestLocator(environment: [:])
         let projectDirectory = URL(filePath: "/repo", directoryHint: .isDirectory)
         let manifestURL = locator.projectManifestURL(projectDirectory: projectDirectory)
-        #expect(manifestURL.path(percentEncoded: false) == "/repo/egg.yml")
+        #expect(manifestURL.path(percentEncoded: false) == "/repo/eggs.yml")
         let lockURL = ManifestLocator.lockfileURL(forManifestAt: manifestURL)
-        #expect(lockURL.path(percentEncoded: false) == "/repo/egg-lock.yml")
+        #expect(lockURL.path(percentEncoded: false) == "/repo/eggs-lock.yml")
     }
 }

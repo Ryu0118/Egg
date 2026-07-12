@@ -1,10 +1,10 @@
 import Foundation
 
-/// Computes the egg.yml / egg-lock.yml locations for both manifest scopes.
+/// Computes the eggs.yml / eggs-lock.yml locations for both manifest scopes.
 ///
-/// - Global: `$XDG_CONFIG_HOME/egg/egg.yml`, falling back to
-///   `~/.config/egg/egg.yml` — dotfiles-friendly.
-/// - Project: `<projectDirectory>/egg.yml`.
+/// - Global: `$XDG_CONFIG_HOME/egg/eggs.yml`, falling back to
+///   `~/.config/egg/eggs.yml` — dotfiles-friendly.
+/// - Project: `<projectDirectory>/eggs.yml`.
 package struct ManifestLocator {
     private let environment: [String: String]
 
@@ -21,16 +21,16 @@ package struct ManifestLocator {
         }
         return configDirectory
             .appending(path: "egg", directoryHint: .isDirectory)
-            .appending(path: "egg.yml")
+            .appending(path: "eggs.yml")
     }
 
     /// The project manifest location at the project root.
     package func projectManifestURL(projectDirectory: URL) -> URL {
-        projectDirectory.appending(path: "egg.yml")
+        projectDirectory.appending(path: "eggs.yml")
     }
 
     /// The lockfile sits next to its manifest.
     package static func lockfileURL(forManifestAt manifestURL: URL) -> URL {
-        manifestURL.deletingLastPathComponent().appending(path: "egg-lock.yml")
+        manifestURL.deletingLastPathComponent().appending(path: "eggs-lock.yml")
     }
 }

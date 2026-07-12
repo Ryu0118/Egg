@@ -5,10 +5,10 @@ import Foundation
 
 package extension EggCommand.TemplateCommand {
     struct UpdateCommand: AsyncParsableCommand, HasProjectDirectory {
-        @Flag(name: .long, help: "Update only the global manifest ($XDG_CONFIG_HOME/egg/egg.yml).")
+        @Flag(name: .long, help: "Update only the global manifest ($XDG_CONFIG_HOME/egg/eggs.yml).")
         package var global: Bool = false
 
-        @Flag(name: .long, help: "Update only the project manifest (./egg.yml).")
+        @Flag(name: .long, help: "Update only the project manifest (./eggs.yml).")
         package var project: Bool = false
 
         @Flag(name: .long, help: "Resolve versions and report without installing or writing the lockfile.")
@@ -22,12 +22,12 @@ package extension EggCommand.TemplateCommand {
 
         package static let configuration = CommandConfiguration(
             commandName: "update",
-            abstract: "Re-resolve egg.yml to the latest eligible versions and rewrite egg-lock.yml.",
+            abstract: "Re-resolve eggs.yml to the latest eligible versions and rewrite eggs-lock.yml.",
             discussion: """
             Like 'egg template sync', but ignores locked resolutions:
             'from:' ranges move to the highest satisfying version, and
             'branch:' entries move to the branch tip. The new resolutions
-            are recorded in egg-lock.yml.
+            are recorded in eggs-lock.yml.
             """,
         )
 

@@ -37,7 +37,7 @@ struct EggMCPTests {
         try """
         templates:
           - url: ./local-templates
-        """.write(to: project.appending(path: "egg.yml"), atomically: true, encoding: .utf8)
+        """.write(to: project.appending(path: "eggs.yml"), atomically: true, encoding: .utf8)
 
         let json = try await ToolHandlerRegistry.shared.execute(
             toolName: "egg_template_sync",

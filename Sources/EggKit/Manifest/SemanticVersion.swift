@@ -2,7 +2,7 @@ import Foundation
 
 /// A strict Semantic Versioning 2.0.0 version (https://semver.org).
 ///
-/// Used to resolve `from:`/`exact:` requirements in egg.yml against Git tags.
+/// Used to resolve `from:`/`exact:` requirements in eggs.yml against Git tags.
 /// Build metadata is preserved for display but ignored for precedence,
 /// equality, and hashing (SemVer 2.0 §10).
 package struct SemanticVersion: Hashable, CustomStringConvertible {

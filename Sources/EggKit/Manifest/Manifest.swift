@@ -1,6 +1,6 @@
 import Foundation
 
-/// A parsed egg.yml template manifest.
+/// A parsed eggs.yml template manifest.
 ///
 /// Declares external template sources to be resolved and installed by
 /// `egg template sync` / `egg template update`.
@@ -12,9 +12,9 @@ package struct Manifest: Equatable {
     }
 }
 
-/// One declared template source in egg.yml.
+/// One declared template source in eggs.yml.
 package struct ManifestEntry: Equatable {
-    /// The `url` value exactly as written in egg.yml (before shorthand
+    /// The `url` value exactly as written in eggs.yml (before shorthand
     /// expansion), used in user-facing messages.
     package let declaredURL: String
     package let source: ManifestEntrySource
@@ -76,7 +76,7 @@ package enum VersionRequirement: Equatable, CustomStringConvertible {
 
 // MARK: - Raw YAML decoding
 
-/// The egg.yml document as decoded from YAML, before entry validation.
+/// The eggs.yml document as decoded from YAML, before entry validation.
 struct RawManifest: Decodable {
     let templates: [RawManifestEntry]
 
@@ -90,7 +90,7 @@ struct RawManifest: Decodable {
     }
 }
 
-/// One raw egg.yml entry; validated and converted by ``ManifestEntry/make(from:)``.
+/// One raw eggs.yml entry; validated and converted by ``ManifestEntry/make(from:)``.
 struct RawManifestEntry: Decodable {
     let url: String
     let from: String?

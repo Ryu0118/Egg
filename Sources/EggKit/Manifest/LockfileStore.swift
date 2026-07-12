@@ -2,7 +2,7 @@ import FileManagerProtocol
 import Foundation
 import Yams
 
-/// Reads and writes egg-lock.yml next to its manifest.
+/// Reads and writes eggs-lock.yml next to its manifest.
 package struct LockfileStore {
     private let fileManager: any FileManagerProtocol
 
@@ -45,14 +45,14 @@ package struct LockfileStore {
     }
 }
 
-/// Errors that can occur when loading an egg-lock.yml.
+/// Errors that can occur when loading an eggs-lock.yml.
 package enum LockfileError: Error, LocalizedError, Equatable {
     case decodingFailed(path: String, underlying: Error)
 
     package var errorDescription: String? {
         switch self {
         case let .decodingFailed(path, underlying):
-            "Failed to decode egg-lock.yml at \(path): \(ConfigDecodingErrorFormatter.message(for: underlying))"
+            "Failed to decode eggs-lock.yml at \(path): \(ConfigDecodingErrorFormatter.message(for: underlying))"
         }
     }
 
