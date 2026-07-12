@@ -25,7 +25,7 @@ installs its own copy into its own `.eggs` directory.
 ## The manifest: eggs.yml
 
 ```yaml
-templates:
+eggs:
   - url: Ryu0118/swift-egg-templates   # GitHub shorthand
     from: "0.3.0"                       # upToNextMajor range
     only: [SwiftCLI, SwiftLibrary]      # optional name filter
@@ -63,7 +63,7 @@ filesystem:
 
 Git entries must carry exactly one of `from`/`exact`/`branch`/`revision`.
 Local entries must carry none (there is nothing to resolve — the directory
-is installed as-is on every sync). An empty or missing `templates:` key is
+is installed as-is on every sync). An empty or missing `eggs:` key is
 a valid no-op.
 
 ### What `from:` selects
@@ -177,24 +177,6 @@ silently widen an already-scoped entry back open.
 templates already installed (e.g. a permission error writing
 `~/.config/egg/`), the install itself still succeeds; a warning is printed
 instead.
-
-## Dotfiles workflow
-
-The global manifest lives under `~/.config/egg/`, so reproducing your
-template setup on a new machine is a symlink plus one command:
-
-```sh
-# Machine A
-mv ~/.config/egg ~/dotfiles/egg && ln -s ~/dotfiles/egg ~/.config/egg
-git -C ~/dotfiles add egg && git -C ~/dotfiles commit -m "egg templates"
-
-# Machine B
-ln -s ~/dotfiles/egg ~/.config/egg
-egg template sync --global     # same lock, same revisions, same templates
-```
-
-Version bumps are one-line manifest edits (or `egg template update`)
-whose lock diff you review and commit like any dependency bump.
 
 ## Troubleshooting
 

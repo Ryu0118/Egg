@@ -11,7 +11,7 @@ struct ManifestLoaderTests {
     @Test("decodes every entry kind, expanding GitHub shorthand")
     func decodesAllEntryKinds() throws {
         let manifest = try load("""
-        templates:
+        eggs:
           - url: Ryu0118/swift-egg-templates
             from: "0.3.0"
             only: [SwiftCLI, SwiftLibrary]
@@ -65,7 +65,7 @@ struct ManifestLoaderTests {
 
     @Test("empty templates list and missing key are both valid no-ops")
     func emptyManifests() throws {
-        #expect(try load("templates: []").templates.isEmpty)
+        #expect(try load("eggs: []").templates.isEmpty)
         #expect(try load("# just a comment").templates.isEmpty)
     }
 
@@ -77,7 +77,7 @@ struct ManifestLoaderTests {
     ])
     func localPathDisambiguation(_ path: String) throws {
         let manifest = try load("""
-        templates:
+        eggs:
           - url: \(path)
         """)
         #expect(manifest.templates.first?.source == .local(path: path))
@@ -86,7 +86,7 @@ struct ManifestLoaderTests {
     @Test("a bare two-segment name is shorthand, not a local path")
     func shorthandDisambiguation() throws {
         let manifest = try load("""
-        templates:
+        eggs:
           - url: owner/repo
             from: "1.0.0"
         """)
@@ -127,7 +127,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "two version keys on a git entry",
                 yaml: """
-                templates:
+                eggs:
                   - url: owner/repo
                     from: "1.0.0"
                     branch: main
@@ -138,7 +138,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "no version key on a git entry",
                 yaml: """
-                templates:
+                eggs:
                   - url: https://github.com/owner/repo.git
                 """,
                 expectedURL: "https://github.com/owner/repo.git",
@@ -147,7 +147,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "version key on a local path",
                 yaml: """
-                templates:
+                eggs:
                   - url: ./local-templates
                     from: "1.0.0"
                 """,
@@ -157,7 +157,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "only and exclude together",
                 yaml: """
-                templates:
+                eggs:
                   - url: owner/repo
                     from: "1.0.0"
                     only: [A]
@@ -169,7 +169,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "unparseable semver in from",
                 yaml: """
-                templates:
+                eggs:
                   - url: owner/repo
                     from: "1.0"
                 """,
@@ -179,7 +179,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "v-prefixed semver in exact is rejected",
                 yaml: """
-                templates:
+                eggs:
                   - url: owner/repo
                     exact: "v1.0.0"
                 """,
@@ -189,7 +189,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "empty branch",
                 yaml: """
-                templates:
+                eggs:
                   - url: owner/repo
                     branch: ""
                 """,
@@ -199,7 +199,7 @@ struct ManifestLoaderTests {
             InvalidEntryTestCase(
                 description: "empty url",
                 yaml: """
-                templates:
+                eggs:
                   - url: ""
                 """,
                 expectedURL: "",
@@ -230,7 +230,7 @@ struct ManifestLoaderTests {
         let root = try fileManager.makeTemporaryDirectory(prefix: "ManifestLoaderTests")
         defer { try? fileManager.removeItem(at: root) }
         let manifestPath = root.appending(path: "eggs.yml")
-        try fileManager.writeText("templates: {not: [a, list", at: manifestPath)
+        try fileManager.writeText("eggs: {not: [a, list", at: manifestPath)
 
         let error = try #require(throws: ManifestLoaderError.self) {
             try ManifestLoader(fileManager: fileManager).load(manifestPath: manifestPath)

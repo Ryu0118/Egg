@@ -18,7 +18,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "MyTemplate")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             from: "1.0.0"
         """)
@@ -57,7 +57,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "MyTemplate")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             from: "1.0.0"
         """)
@@ -81,7 +81,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "MyTemplate")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             from: "2.0.0"
         """)
@@ -106,7 +106,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "MyTemplate")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             from: "1.0.0"
         """)
@@ -142,7 +142,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "MyTemplate")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             branch: main
         """)
@@ -175,7 +175,7 @@ struct TemplateSyncRunnerTests {
         let env = try TestEnvironment()
         defer { env.tearDown() }
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             branch: develop
         """)
@@ -199,7 +199,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "LocalTemplate", in: env.projectDirectory.appending(path: "local-templates"))
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: ./local-templates
         """)
 
@@ -228,7 +228,7 @@ struct TemplateSyncRunnerTests {
         try env.seedTemplate(named: "Shared", in: firstDir, marker: "first")
         try env.seedTemplate(named: "Shared", in: secondDir, marker: "second")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: ./first
           - url: ./second
         """)
@@ -260,7 +260,7 @@ struct TemplateSyncRunnerTests {
         try env.seedTemplate(named: "MyTemplate")
         let failingURL = "git@github.com:owner/private.git"
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(failingURL)
             from: "1.0.0"
           - url: ./local-templates
@@ -298,7 +298,7 @@ struct TemplateSyncRunnerTests {
         defer { env.tearDown() }
         try env.seedTemplate(named: "MyTemplate")
         try env.writeManifest("""
-        templates:
+        eggs:
           - url: \(Self.repoURL)
             from: "1.0.0"
         """)
@@ -323,7 +323,7 @@ struct TemplateSyncRunnerTests {
     func emptyManifestPrunesLock() async throws {
         let env = try TestEnvironment()
         defer { env.tearDown() }
-        try env.writeManifest("templates: []")
+        try env.writeManifest("eggs: []")
         try env.writeLock(version: "1.1.0", tag: "v1.1.0", revision: Self.tagSHA)
 
         let result = try await env.runner(

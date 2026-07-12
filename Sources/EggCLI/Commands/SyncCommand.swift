@@ -37,7 +37,7 @@ package extension EggCommand.TemplateCommand {
 
             Example manifest:
 
-              templates:
+              eggs:
                 - url: owner/repo            # GitHub shorthand
                   from: "1.0.0"              # upToNextMajor range
                 - url: git@github.com:owner/private.git

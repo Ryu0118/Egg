@@ -74,7 +74,7 @@ struct ManifestScopeResolverTests {
             at: manifestURL.deletingLastPathComponent(),
             withIntermediateDirectories: true,
         )
-        try fileManager.writeText("templates: []", at: manifestURL)
+        try fileManager.writeText("eggs: []", at: manifestURL)
 
         let scopes = try ManifestScopeResolver.resolve(
             selection: .global,
@@ -135,11 +135,11 @@ struct ManifestScopeResolverTests {
                 at: globalManifestURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true,
             )
-            try fileManager.writeText("templates: []", at: globalManifestURL)
+            try fileManager.writeText("eggs: []", at: globalManifestURL)
         }
 
         func writeProjectManifest() throws {
-            try fileManager.writeText("templates: []", at: projectManifestURL)
+            try fileManager.writeText("eggs: []", at: projectManifestURL)
         }
     }
 }
@@ -167,7 +167,7 @@ struct EggServiceManifestTests {
         )
         try fileManager.writeText(
             """
-            templates:
+            eggs:
               - url: ./local-templates
             """,
             at: project.appending(path: "eggs.yml"),

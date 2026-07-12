@@ -274,7 +274,7 @@ let egg resolve and fetch them — a `Package.swift` for your templates:
 
 ```yaml
 # eggs.yml
-templates:
+eggs:
   - url: owner/repo                # GitHub shorthand
     from: "1.0.0"                  # SwiftPM-style upToNextMajor range
     only: [SwiftCLI, SwiftLibrary] # optional name filter (or `exclude:`)
@@ -303,10 +303,6 @@ they still satisfy the manifest — the same semantics as `Package.resolved`.
 Commit the lock for reproducible templates across machines and teammates;
 edit `from:` (or run `update`) to move versions. Templates not declared in
 a manifest are never touched by `sync`.
-
-Because the global manifest lives under `~/.config/egg/`, a dotfiles
-symlink plus `egg template sync --global` reproduces your whole template
-setup on a new machine — lock included.
 
 Git entries always take exactly one of `from:`, `exact:`, `branch:`, or
 `revision:`. `from: "1.0.0"` selects the highest tag in `[1.0.0, 2.0.0)`,

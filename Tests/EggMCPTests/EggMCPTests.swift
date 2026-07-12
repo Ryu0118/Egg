@@ -35,7 +35,7 @@ struct EggMCPTests {
           output: "./output"
         """.write(to: templateDir.appending(path: "config.yml"), atomically: true, encoding: .utf8)
         try """
-        templates:
+        eggs:
           - url: ./local-templates
         """.write(to: project.appending(path: "eggs.yml"), atomically: true, encoding: .utf8)
 

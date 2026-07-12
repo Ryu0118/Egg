@@ -58,7 +58,7 @@ independently: the global manifest at `$XDG_CONFIG_HOME/egg/eggs.yml`
 project manifest at `./eggs.yml` installs into `./.eggs/`.
 
 ```yaml
-templates:
+eggs:
   - url: owner/repo                # GitHub shorthand
     from: "1.0.0"                  # upToNextMajor: highest tag in [1.0.0, 2.0.0)
     only: [SwiftCLI]               # optional name filter (or `exclude:`)
@@ -89,8 +89,7 @@ any entry fails (healthy entries still install, and a failing entry keeps
 its previous lock pin).
 
 See <doc:TemplateManifests> for the full manifest reference: field
-tables, `from:` range semantics, lockfile format, reuse rules, and the
-dotfiles workflow.
+tables, `from:` range semantics, lockfile format, and reuse rules.
 
 ## Inspecting
 
