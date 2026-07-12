@@ -33,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: e4a72aafb731526e0ff838f7b80f8069c43d19ea0133e5b50deab6922dd7d550
+  checksum: de159d1f61134882f61345bf649db83197037914de58ae5d52888e5c25d12469
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -83,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 89557ef902c229e162272dd64378d6c64ba2922d982fa6e8062d5b66e785ff3d
+  checksum: 48ad6a1b0b720cdc161e9bdddbc8d169edc095e449f51f03977127ef1af482a7
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -113,13 +113,15 @@ rules:
   sources:
   - Sources/EggKit/Manifest/**/*.swift
   - Sources/EggKit/TemplateSyncRunner.swift
+  - Sources/EggKit/InstallRunner.swift
   - Sources/EggCLI/Commands/SyncCommand.swift
   - Sources/EggCLI/Commands/UpdateCommand.swift
+  - Sources/EggCLI/Commands/InstallCommand.swift
   doc: Sources/EggKit/EggKit.docc/ManagingTemplates.md
-  message: Manifest schema, resolution, lock semantics, or sync/update CLI behavior
-    changed - update the DocC Managing Templates manifest section (and README Template
-    Manifests) if user-facing behavior changed.
-  checksum: 773a7c67dc6d1016303ce2e94b39d019248d94dc77812f6788e252f3ce7c0fb4
+  message: Manifest schema, resolution, lock semantics, sync/update CLI behavior,
+    or install --global registration behavior changed - update the DocC Managing Templates
+    manifest section (and README Template Manifests) if user-facing behavior changed.
+  checksum: 3316bec23a340563fb9ac85099c62f61a5db7e6b2a64af81d55a5c403a0c146d
 - name: agents-project
   sources:
   - Package.swift

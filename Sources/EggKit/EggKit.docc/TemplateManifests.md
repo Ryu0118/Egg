@@ -148,6 +148,36 @@ Over MCP the same workflow is exposed as `egg_template_sync` and
 `egg_template_update` (arguments `scope`, `dry_run`, `project_directory`),
 returning the same JSON as the CLI's `--json` flag.
 
+## Registering from install
+
+`egg template install <git-url> --global` bridges the imperative and
+declarative worlds: after installing, it also upserts an entry for that
+repo into the global `eggs.yml` (creating it if needed) and pins the
+resolved commit in `eggs-lock.yml`, so the repo is managed by future
+`sync`/`update` runs without any manual manifest editing.
+
+| Install flag | Requirement written |
+| --- | --- |
+| `--tag <name>`, parses as SemVer | `exact: <version>` |
+| `--tag <name>`, not SemVer | `revision: <resolved-SHA>` |
+| `--branch <name>` | `branch: <name>` |
+| `--revision <sha>` | `revision: <sha>` |
+| none (default branch) | `revision: <resolved-SHA>` |
+
+Tag SHAs resolve via a remote `ls-remote` lookup (no extra clone); branch
+and default-branch SHAs resolve from the already-cloned working directory.
+Re-running `install --global` against an already-declared URL replaces that
+entry's requirement in place rather than duplicating it, and keeps the
+existing `only:`/`exclude:` filter unless the new install passed
+`--template`/`--exclude` explicitly — so a filter-less re-install can't
+silently widen an already-scoped entry back open.
+
+`--project` and local-path installs never touch any manifest — this is a
+`--global` git-source-only behavior. If registration fails after the
+templates already installed (e.g. a permission error writing
+`~/.config/egg/`), the install itself still succeeds; a warning is printed
+instead.
+
 ## Dotfiles workflow
 
 The global manifest lives under `~/.config/egg/`, so reproducing your

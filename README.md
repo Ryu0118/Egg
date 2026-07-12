@@ -314,6 +314,12 @@ ignoring prereleases (a `v` tag prefix is fine); `exact:` matches by parsed
 version, so it finds both `1.2.0` and `v1.2.0`. Both commands accept
 `--global`/`--project`, `--dry-run`, and `--json`.
 
+`egg template install <url> --global` (the one-shot imperative install) also
+registers the repository into the global `eggs.yml` automatically, writing
+`exact:` for a SemVer `--tag`, `branch:` for `--branch`, or a resolved
+`revision:` otherwise — so future `sync`/`update` runs manage it too.
+`--project` and local-path installs are unaffected.
+
 ## Installation
 
 ```sh

@@ -44,6 +44,11 @@ egg template install https://github.com/example/templates --global
 | `-b`/`--branch`, `-t`/`--tag`, `-c`/`--commit` | Pin a Git ref (mutually relevant only for Git sources). |
 | `--include`, `--exclude` | Install (or skip) specific template names from a source that ships several. |
 
+A `--global` install from a Git source also registers itself into the
+global manifest, so future `sync`/`update` runs manage it too — see
+<doc:TemplateManifests>'s "Registering from install" section for exactly
+what gets written.
+
 ## Declarative manifests: sync and update
 
 `sync` installs everything declared in an `eggs.yml` manifest instead of

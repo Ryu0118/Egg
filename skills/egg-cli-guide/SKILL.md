@@ -196,6 +196,30 @@ To move existing pins forward, run `egg template update` instead of
 hand-editing `eggs-lock.yml` — never edit the lockfile directly, it is
 regenerated on every sync/update.
 
+### `install --global` auto-registers into the manifest
+
+`egg template install <git-url> --global` also upserts an entry for that
+repo into the global `eggs.yml` (creating it if needed) and pins the result
+in `eggs-lock.yml`, so a one-shot global install is picked up by future
+`egg template sync --global` / `update --global` runs without any manual
+manifest editing. The requirement written depends on what was passed:
+
+| Flag | Requirement written |
+| --- | --- |
+| `--tag <name>`, parses as SemVer | `exact: <version>` |
+| `--tag <name>`, not SemVer | `revision: <resolved-SHA>` |
+| `--branch <name>` | `branch: <name>` |
+| `--revision <sha>` | `revision: <sha>` |
+| none (default branch) | `revision: <resolved-SHA>` |
+
+Re-running `install --global` against an already-declared URL replaces that
+entry's requirement rather than duplicating it, and preserves the existing
+`only:`/`exclude:` filter unless the new install passed `--template`/
+`--exclude` explicitly. `--project` and local-path installs never touch any
+manifest. If registration fails after templates already installed (e.g. a
+permission error), the install still succeeds — a warning is printed instead
+of failing the command.
+
 Full reference (field table, `from:` semantics, lock format, dotfiles
 workflow, troubleshooting): `egg template sync --help` / `egg template
 update --help`, or egg's published API documentation.
