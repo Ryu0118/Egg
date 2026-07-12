@@ -18,7 +18,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: e30c11ba77d025bb5a8a30f918f3f8c2fd97d75771e1879946b1a58fcc3a4aa7
+  checksum: dc46e56d4ad9ef1152d9f33b7b8ac8432cbbfbef170e3e7913d4032035d445f0
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -119,7 +119,7 @@ rules:
   message: Manifest schema, resolution, lock semantics, or sync/update CLI behavior
     changed - update the DocC Managing Templates manifest section (and README Template
     Manifests) if user-facing behavior changed.
-  checksum: f4e6da615c83c0eb1f3a3e27ffa1e226fc9dbccf0e5284cc5c3598d7fc958ba2
+  checksum: c34f402c7c9370f0f7e36aaca4bd677319f8728b2581d4c607ad4b1d751dfb28
 - name: agents-project
   sources:
   - Package.swift
