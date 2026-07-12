@@ -51,6 +51,16 @@ codex plugin marketplace add ./Egg
 codex plugin add egg@egg
 ```
 
+### APM (Agent Package Manager)
+
+With [APM](https://github.com/microsoft/apm), one command installs both skills
+into any supported harness (Claude Code, Copilot, Cursor, Codex, and more) and
+pins them in `apm.lock.yaml`:
+
+```sh
+apm install Ryu0118/Egg
+```
+
 The plugin provides:
 
 - `egg-cli-guide` for CLI commands and the preview/apply/rollback flow.
