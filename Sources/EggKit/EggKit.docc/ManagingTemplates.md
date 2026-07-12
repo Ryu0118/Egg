@@ -83,6 +83,10 @@ not declared in a manifest are never touched. Both commands accept
 any entry fails (healthy entries still install, and a failing entry keeps
 its previous lock pin).
 
+See <doc:TemplateManifests> for the full manifest reference: field
+tables, `from:` range semantics, lockfile format, reuse rules, and the
+dotfiles workflow.
+
 ## Inspecting
 
 `list` shows every template egg can find — global, project-local, and any
