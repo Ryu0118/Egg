@@ -18,7 +18,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 212f53e8de66c0a8a82e21daf1640b450e1f7c6912439f03b8598ae5d4a693d0
+  checksum: f3f65f2dd2b5640022792ddf272ca3f3046544e94371e8285758cc5bc5969543
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -33,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: ab90615025cf24235f3d8cc58abc2f51e03fb7ae288d9a601a4fe950665943b2
+  checksum: e4a72aafb731526e0ff838f7b80f8069c43d19ea0133e5b50deab6922dd7d550
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -69,7 +69,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: d9ed1fff3edb0ee437e936a23455058208724d3eb0ee72d7b1fbe398c8b55f03
+  checksum: 69226da046c50e5e6f059c0aa2fa7b5c5ca07f9ff38fc02d08471e6537244a82
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -83,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: ea98a77f95ebd402ead815f839b5ca786544da4a32ace12169e34463910776ab
+  checksum: 89557ef902c229e162272dd64378d6c64ba2922d982fa6e8062d5b66e785ff3d
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift

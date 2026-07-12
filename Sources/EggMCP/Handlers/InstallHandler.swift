@@ -11,7 +11,9 @@ struct InstallHandler: ToolHandler {
         let location = try context.arguments.requireString("location")
         let include = context.arguments.optionalStringArray("include")
         let exclude = context.arguments.optionalStringArray("exclude")
-        let ref = context.arguments.optionalString("ref")
+        let branch = context.arguments.optionalString("branch")
+        let tag = context.arguments.optionalString("tag")
+        let revision = context.arguments.optionalString("revision")
         let projectDir = context.arguments.optionalString("project_directory").map { URL(filePath: $0) }
 
         let service = EggService(
@@ -22,7 +24,9 @@ struct InstallHandler: ToolHandler {
         let result = try await service.installTemplates(
             source: source,
             location: location,
-            ref: ref,
+            branch: branch,
+            tag: tag,
+            revision: revision,
             include: include,
             exclude: exclude,
         )

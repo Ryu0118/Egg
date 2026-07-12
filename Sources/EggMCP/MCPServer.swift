@@ -347,9 +347,17 @@ public struct EggMCPServer {
                         "type": "string",
                         "description": "Where to install: 'global' or 'project'.",
                     ]),
-                    "ref": .object([
+                    "branch": .object([
                         "type": "string",
-                        "description": "Git ref (branch, tag, or commit) for Git sources.",
+                        "description": "Install from a specific branch (Git sources only). At most one of branch/tag/revision.",
+                    ]),
+                    "tag": .object([
+                        "type": "string",
+                        "description": "Install from a specific tag (Git sources only). At most one of branch/tag/revision.",
+                    ]),
+                    "revision": .object([
+                        "type": "string",
+                        "description": "Install from a specific commit SHA (Git sources only). At most one of branch/tag/revision.",
                     ]),
                     "include": .object([
                         "type": "array",

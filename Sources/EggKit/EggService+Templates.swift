@@ -4,10 +4,10 @@ import Foundation
 /// Template CRUD: list, detail, create, delete, duplicate, move, validate,
 /// install. Each method resolves a `Template`/location and hands off to the
 /// `Runner` that owns the actual logic — see `EggService.swift`'s doc comment.
-extension EggService {
+public extension EggService {
     // MARK: - List Templates
 
-    public func listTemplates(location: String? = nil) async throws -> ListResult {
+    func listTemplates(location: String? = nil) async throws -> ListResult {
         let locationType = try parseLocationType(location)
 
         let runner = ListRunner(
@@ -27,7 +27,7 @@ extension EggService {
 
     // MARK: - Template Detail
 
-    public func templateDetail(templateName: String) async throws -> DetailResult {
+    func templateDetail(templateName: String) async throws -> DetailResult {
         let template = try await findTemplate(templateName)
         let location = determineLocation(for: template, templateName: templateName)
 
@@ -45,7 +45,7 @@ extension EggService {
 
     // MARK: - Create Template
 
-    public func createTemplate(
+    func createTemplate(
         name: String,
         description: String,
         location: String,
@@ -66,7 +66,7 @@ extension EggService {
 
     // MARK: - Delete Template
 
-    public func deleteTemplate(templateName: String) async throws -> DeleteResult {
+    func deleteTemplate(templateName: String) async throws -> DeleteResult {
         let template = try await findTemplate(templateName)
         let location = determineLocation(for: template, templateName: templateName)
 
@@ -89,7 +89,7 @@ extension EggService {
 
     // MARK: - Duplicate Template
 
-    public func duplicateTemplate(
+    func duplicateTemplate(
         sourceName: String,
         newName: String,
         newDescription: String? = nil,
@@ -124,7 +124,7 @@ extension EggService {
 
     // MARK: - Move Template
 
-    public func moveTemplate(
+    func moveTemplate(
         templateName: String,
         targetLocation: String,
     ) async throws -> MoveResult {
@@ -157,7 +157,7 @@ extension EggService {
 
     // MARK: - Validate Template
 
-    public func validateTemplate(templatePath: String) async throws -> ValidateResult {
+    func validateTemplate(templatePath: String) async throws -> ValidateResult {
         let path = URL(filePath: templatePath)
         let configLoader = ConfigLoader(fileManager: fileManager)
         let config: Config
@@ -187,15 +187,17 @@ extension EggService {
 
     // MARK: - Install Templates
 
-    public func installTemplates(
+    func installTemplates(
         source: String,
         location: String,
-        ref: String? = nil,
+        branch: String? = nil,
+        tag: String? = nil,
+        revision: String? = nil,
         include: [String]? = nil,
         exclude: [String]? = nil,
     ) async throws -> InstallResult {
         let locationKind = try parseLocationKind(location)
-        let templateSource = try parseTemplateSource(source, ref: ref)
+        let templateSource = try parseTemplateSource(source, branch: branch, tag: tag, revision: revision)
         let filter = parseTemplateFilter(include: include, exclude: exclude)
 
         let runner = InstallRunner(
@@ -216,7 +218,7 @@ extension EggService {
     // MARK: - Shared Helpers
 
     /// Creates a TemplatesFinder with the service's configuration.
-    func makeTemplatesFinder(workingDirectory: URL? = nil) -> TemplatesFinder {
+    internal func makeTemplatesFinder(workingDirectory: URL? = nil) -> TemplatesFinder {
         TemplatesFinder(
             fileManager: fileManager,
             projectDirectory: projectDirectory,
@@ -227,12 +229,12 @@ extension EggService {
     }
 
     /// Finds a template by name.
-    func findTemplate(_ name: String, workingDirectory: URL? = nil) async throws -> Template {
+    internal func findTemplate(_ name: String, workingDirectory: URL? = nil) async throws -> Template {
         try await makeTemplatesFinder(workingDirectory: workingDirectory).fetchTemplate(name)
     }
 
     /// Determines the location type for a template.
-    func determineLocation(for template: Template, templateName: String) -> TemplateLocationType {
+    internal func determineLocation(for template: Template, templateName: String) -> TemplateLocationType {
         TemplateLocation(homeDirectory: homeDirectory)
             .determineLocation(
                 templateName: templateName,
@@ -244,7 +246,7 @@ extension EggService {
     }
 
     /// Parses a location string to TemplateLocationType.
-    func parseLocationType(_ location: String?, required: Bool = false) throws -> TemplateLocationType? {
+    internal func parseLocationType(_ location: String?, required: Bool = false) throws -> TemplateLocationType? {
         guard let location else { return nil }
 
         switch location {
@@ -261,7 +263,7 @@ extension EggService {
     }
 
     /// Parses a location string to TemplateLocationType.Kind.
-    func parseLocationKind(_ location: String) throws -> TemplateLocationType.Kind {
+    internal func parseLocationKind(_ location: String) throws -> TemplateLocationType.Kind {
         switch location {
         case "global":
             return .global
@@ -273,11 +275,33 @@ extension EggService {
     }
 
     /// Parses source string to TemplateSource.
-    func parseTemplateSource(_ source: String, ref: String?) throws -> TemplateSource {
+    ///
+    /// - Parameters: at most one of `branch`/`tag`/`revision` may be
+    ///   non-`nil` (mirrors `InstallArgumentsValidator`'s CLI validation).
+    internal func parseTemplateSource(
+        _ source: String,
+        branch: String?,
+        tag: String?,
+        revision: String?,
+    ) throws -> TemplateSource {
+        guard [branch, tag, revision].compactMap(\.self).count <= 1 else {
+            throw EggServiceError.multipleRefOptions
+        }
+
+        let ref: GitRef? = if let branch {
+            .branch(branch)
+        } else if let tag {
+            .tag(tag)
+        } else if let revision {
+            .revision(revision)
+        } else {
+            nil
+        }
+
         // GitURLParser knows every supported scheme (https, ssh, git, file,
         // credentialed); anything it can't parse is a local filesystem path.
         if let gitURL = GitURLParser().parse(source) {
-            return .git(url: gitURL, ref: ref.map(Self.gitRef(from:)))
+            return .git(url: gitURL, ref: ref)
         }
         // Local sources copy the working tree as-is, so a ref cannot be
         // honored — reject it loudly (matching the CLI validator) instead of
@@ -288,16 +312,8 @@ extension EggService {
         return .local(path: URL(filePath: source))
     }
 
-    /// Maps the service's single `ref` string onto a GitRef: a 40-hex string
-    /// is a commit SHA; anything else works as `--branch`, which git accepts
-    /// for both branches and tags.
-    static func gitRef(from ref: String) -> GitRef {
-        let isCommitSHA = ref.count == 40 && ref.allSatisfy(\.isHexDigit)
-        return isCommitSHA ? .revision(ref) : .branch(ref)
-    }
-
     /// Parses include/exclude filters to TemplateFilter.
-    func parseTemplateFilter(include: [String]?, exclude: [String]?) -> TemplateFilter {
+    internal func parseTemplateFilter(include: [String]?, exclude: [String]?) -> TemplateFilter {
         if let include, !include.isEmpty {
             .include(include)
         } else if let exclude, !exclude.isEmpty {
