@@ -16,7 +16,7 @@ rules:
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 5e2c0ab6195e1c450cb9edc44d12dba36e07d11316cf308fe4cdea1adcbedff2
+  checksum: 89cd2ff058952cfdb0a7d5fb2671e1880730c2f4cb7d257ce35bd649bddf49c8
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -117,13 +117,4 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: 3ea823167da89b6bd87b7c09c472fc7912b69d342542c00c215baa99703ce97b
-excludes:
-- .build/**
-- '**/.build/**'
-- .swiftpm/**
-- '**/.swiftpm/**'
-- .nest/**
-- E2ETestsPackage/.build/**
-- .git/**
-- '**/.DS_Store'
+  checksum: cea8dc71d59442d6ca71a72a13d7366041e721d33e7178ec491eff3e0cfa8233
