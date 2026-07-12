@@ -266,6 +266,53 @@ Run this to see the exact flags a template accepts:
 egg template detail SwiftPackage
 ```
 
+## Template Manifests (egg.yml)
+
+Instead of installing templates imperatively, declare them in a manifest and
+let egg resolve and fetch them — a `Package.swift` for your templates:
+
+```yaml
+# egg.yml
+templates:
+  - url: owner/repo                # GitHub shorthand
+    from: "1.0.0"                  # SwiftPM-style upToNextMajor range
+    only: [SwiftCLI, SwiftLibrary] # optional name filter (or `exclude:`)
+  - url: git@github.com:owner/private-templates.git
+    branch: main                   # follow a branch (floating, opt-in)
+  - url: https://github.com/owner/repo.git
+    exact: "1.2.0"                 # or pin a `revision:` SHA
+  - url: ./local-templates         # local paths install as-is, never locked
+```
+
+Two scopes, processed independently:
+
+| Scope | Manifest | Installs to |
+| --- | --- | --- |
+| Global | `$XDG_CONFIG_HOME/egg/egg.yml` (default `~/.config/egg/egg.yml`) | `~/.eggs/` |
+| Project | `./egg.yml` | `./.eggs/` |
+
+```sh
+egg template sync     # resolve + install everything declared (both scopes)
+egg template update   # move from:/branch: entries to the latest eligible
+```
+
+`sync` writes an `egg-lock.yml` next to the manifest recording the resolved
+tag and commit SHA per entry, and reuses those pins on later syncs while
+they still satisfy the manifest — the same semantics as `Package.resolved`.
+Commit the lock for reproducible templates across machines and teammates;
+edit `from:` (or run `update`) to move versions. Templates not declared in
+a manifest are never touched by `sync`.
+
+Because the global manifest lives under `~/.config/egg/`, a dotfiles
+symlink plus `egg template sync --global` reproduces your whole template
+setup on a new machine — lock included.
+
+Git entries always take exactly one of `from:`, `exact:`, `branch:`, or
+`revision:`. `from: "1.0.0"` selects the highest tag in `[1.0.0, 2.0.0)`,
+ignoring prereleases (a `v` tag prefix is fine); `exact:` matches by parsed
+version, so it finds both `1.2.0` and `v1.2.0`. Both commands accept
+`--global`/`--project`, `--dry-run`, and `--json`.
+
 ## Installation
 
 ```sh

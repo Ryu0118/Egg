@@ -12,11 +12,13 @@ rules:
   - Sources/EggCLI/Commands/MCPCommand.swift
   - Sources/EggCLI/Commands/MoveCommand.swift
   - Sources/EggCLI/Commands/OpenCommand.swift
+  - Sources/EggCLI/Commands/SyncCommand.swift
+  - Sources/EggCLI/Commands/UpdateCommand.swift
   - Sources/EggCLI/Commands/ValidateCommand.swift
   doc: README.md
   message: CLI command surface changed - update README if commands, options, or usage
     changed.
-  checksum: 89cd2ff058952cfdb0a7d5fb2671e1880730c2f4cb7d257ce35bd649bddf49c8
+  checksum: e30c11ba77d025bb5a8a30f918f3f8c2fd97d75771e1879946b1a58fcc3a4aa7
 - name: readme-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -31,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: b4a163d900cd259d58287ddd8a3a981fd4036b95c9f6206015bf835b7f1caf08
+  checksum: 25e4b45e5889d8b54e5ef383bddbe1c6c0fb0336cf6ad4faa2f6d5abba6adc3a
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -81,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: c43e6833ba6d3a32115dcd95f628905cfced34616a6bc24003d7e571626ece97
+  checksum: c42cd9026f97173594b26de015631481e491b3467a8de00d423c05fcacd4abd9
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -107,6 +109,17 @@ rules:
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
   checksum: 2cae795365660cd5030f3576cacfbdeef181af40dbd1068dbf90a3e12592bdba
+- name: docc-managing-templates-manifest
+  sources:
+  - Sources/EggKit/Manifest/**/*.swift
+  - Sources/EggKit/TemplateSyncRunner.swift
+  - Sources/EggCLI/Commands/SyncCommand.swift
+  - Sources/EggCLI/Commands/UpdateCommand.swift
+  doc: Sources/EggKit/EggKit.docc/ManagingTemplates.md
+  message: Manifest schema, resolution, lock semantics, or sync/update CLI behavior
+    changed - update the DocC Managing Templates manifest section (and README Template
+    Manifests) if user-facing behavior changed.
+  checksum: f4e6da615c83c0eb1f3a3e27ffa1e226fc9dbccf0e5284cc5c3598d7fc958ba2
 - name: agents-project
   sources:
   - Package.swift
