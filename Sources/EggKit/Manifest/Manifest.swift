@@ -10,6 +10,30 @@ package struct Manifest: Equatable {
     package init(templates: [ManifestEntry]) {
         self.templates = templates
     }
+
+    /// Returns a new manifest with `entry` merged in: replaces any existing
+    /// entry sharing the same `lockKey`, or appends when none matches.
+    ///
+    /// The requirement always replaces; the filter only replaces when
+    /// `entry.filter` is non-`.none`, so a filter-less re-install (e.g. a
+    /// plain `egg template install --global <url>` re-run) doesn't silently
+    /// widen an existing entry's `only:`/`exclude:` scope back open.
+    package func upserting(_ entry: ManifestEntry) -> Manifest {
+        guard let key = entry.source.lockKey,
+              let index = templates.firstIndex(where: { $0.source.lockKey == key })
+        else {
+            return Manifest(templates: templates + [entry])
+        }
+
+        var merged = templates
+        let existing = merged[index]
+        merged[index] = ManifestEntry(
+            declaredURL: entry.declaredURL,
+            source: entry.source,
+            filter: entry.filter == .none ? existing.filter : entry.filter,
+        )
+        return Manifest(templates: merged)
+    }
 }
 
 /// One declared template source in eggs.yml.
@@ -74,11 +98,15 @@ package enum VersionRequirement: Equatable, CustomStringConvertible {
     }
 }
 
-// MARK: - Raw YAML decoding
+// MARK: - Raw YAML decoding/encoding
 
 /// The eggs.yml document as decoded from YAML, before entry validation.
-struct RawManifest: Decodable {
+struct RawManifest: Codable {
     let templates: [RawManifestEntry]
+
+    init(templates: [RawManifestEntry]) {
+        self.templates = templates
+    }
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -91,7 +119,7 @@ struct RawManifest: Decodable {
 }
 
 /// One raw eggs.yml entry; validated and converted by ``ManifestEntry/make(from:)``.
-struct RawManifestEntry: Decodable {
+struct RawManifestEntry: Codable {
     let url: String
     let from: String?
     let exact: String?
@@ -99,6 +127,65 @@ struct RawManifestEntry: Decodable {
     let revision: String?
     let only: [String]?
     let exclude: [String]?
+}
+
+extension RawManifest {
+    /// Converts a typed ``Manifest`` back into its raw YAML shape, sorted by
+    /// `declaredURL` so repeated writes produce stable diffs.
+    package init(_ manifest: Manifest) {
+        templates = manifest.templates
+            .sorted { $0.declaredURL < $1.declaredURL }
+            .map(RawManifestEntry.init)
+    }
+}
+
+extension RawManifestEntry {
+    init(_ entry: ManifestEntry) {
+        url = entry.declaredURL
+
+        switch entry.source {
+        case let .git(_, requirement):
+            switch requirement {
+            case let .from(version):
+                from = version.description
+                exact = nil
+                branch = nil
+                revision = nil
+            case let .exact(version):
+                from = nil
+                exact = version.description
+                branch = nil
+                revision = nil
+            case let .branch(name):
+                from = nil
+                exact = nil
+                branch = name
+                revision = nil
+            case let .revision(sha):
+                from = nil
+                exact = nil
+                branch = nil
+                revision = sha
+            }
+        case .local:
+            from = nil
+            exact = nil
+            branch = nil
+            revision = nil
+        }
+
+        switch entry.filter {
+        case .none:
+            only = nil
+            exclude = nil
+        case let .include(names):
+            only = names
+            exclude = nil
+        case let .exclude(names):
+            only = nil
+            exclude = names
+        }
+    }
 }
 
 extension ManifestEntry {

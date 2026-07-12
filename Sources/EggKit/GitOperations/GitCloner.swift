@@ -18,6 +18,12 @@ package protocol GitCloning: Sendable {
     ///   - ref: Optional Git reference (branch/tag/revision). If `nil`, uses the default branch.
     /// - Throws: `GitCloner.Error` if cloning fails
     func clone(url: GitURL, to destination: URL, ref: GitRef?) async throws
+
+    /// Returns the commit SHA currently checked out at `destination`.
+    ///
+    /// - Parameter destination: A directory previously populated by `clone(url:to:ref:)`.
+    /// - Throws: `GitCloner.Error` if `git rev-parse HEAD` fails.
+    func headRevision(at destination: URL) async throws -> String
 }
 
 /// Clones Git repositories using the system `git` command.
@@ -41,6 +47,29 @@ package struct GitCloner: GitCloning {
             try await cloneAndCheckout(url: url, to: destination, revision: sha)
         case nil:
             try await cloneDefault(url: url, to: destination)
+        }
+    }
+
+    package func headRevision(at destination: URL) async throws -> String {
+        let result = try await processRunner.run(
+            .path("/usr/bin/git"),
+            arguments: Arguments(["rev-parse", "HEAD"]),
+            environment: .inherit,
+            workingDirectory: FilePath(destination.path),
+            platformOptions: PlatformOptions(),
+            input: .none,
+            output: .bytes(limit: .max),
+            error: .bytes(limit: .max),
+        )
+
+        switch result.terminationStatus {
+        case let .exited(code) where code != 0:
+            let stderr = String(decoding: result.standardError, as: UTF8.self)
+            throw Error.headRevisionFailed(path: destination.path(percentEncoded: false), exitCode: code, stderr: stderr)
+        case .unhandledException:
+            throw Error.headRevisionFailed(path: destination.path(percentEncoded: false), exitCode: -1, stderr: "Unhandled exception")
+        default:
+            return String(decoding: result.standardOutput, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
 
@@ -152,6 +181,8 @@ package extension GitCloner {
         case checkoutFailed(ref: GitRef, exitCode: Int32, stderr: String)
         /// The specified ref (branch/tag/revision) was not found
         case refNotFound(ref: GitRef)
+        /// `git rev-parse HEAD` failed at a previously-cloned directory
+        case headRevisionFailed(path: String, exitCode: Int32, stderr: String)
 
         package var errorDescription: String? {
             switch self {
@@ -171,6 +202,13 @@ package extension GitCloner {
 
             case let .refNotFound(ref):
                 return "\(ref.typeDescription.capitalized) '\(ref.value)' was not found in the repository"
+
+            case let .headRevisionFailed(path, exitCode, stderr):
+                var message = "Failed to resolve HEAD revision at '\(path)' (exit code: \(exitCode))"
+                if !stderr.isEmpty {
+                    message += "\n\(stderr)"
+                }
+                return message
             }
         }
     }

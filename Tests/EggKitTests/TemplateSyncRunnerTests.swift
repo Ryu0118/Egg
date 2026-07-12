@@ -516,4 +516,8 @@ private final class MockGitCloner: GitCloning, @unchecked Sendable {
             try fileManager.copyItem(at: item, to: destination.appending(path: item.lastPathComponent))
         }
     }
+
+    func headRevision(at _: URL) async throws -> String {
+        "abc123abc123abc123abc123abc123abc123ab"
+    }
 }

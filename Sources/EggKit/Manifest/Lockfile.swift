@@ -22,6 +22,17 @@ package struct Lockfile: Codable, Equatable {
     package func entry(forURL url: String) -> LockedTemplate? {
         templates.first { $0.url == url }
     }
+
+    /// Returns a new lockfile with `entry` merged in: replaces any existing
+    /// entry sharing the same `url`, or appends when none matches.
+    package func upserting(_ entry: LockedTemplate) -> Lockfile {
+        guard let index = templates.firstIndex(where: { $0.url == entry.url }) else {
+            return Lockfile(version: version, templates: templates + [entry])
+        }
+        var merged = templates
+        merged[index] = entry
+        return Lockfile(version: version, templates: merged)
+    }
 }
 
 /// One resolved manifest entry in eggs-lock.yml.

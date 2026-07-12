@@ -488,6 +488,7 @@ struct InstallRunnerTests {
 private struct MockGitCloner: GitCloning {
     let clonedDirectory: URL
     let fileManager: any FileManagerProtocol
+    var revision: String = "abc123abc123abc123abc123abc123abc123ab"
 
     func clone(url _: GitURL, to destination: URL, ref _: GitRef?) async throws {
         // Copy the cloned repo directory to destination
@@ -501,6 +502,10 @@ private struct MockGitCloner: GitCloning {
             let destItem = destination.appending(path: item.lastPathComponent)
             try fileManager.copyItem(at: item, to: destItem)
         }
+    }
+
+    func headRevision(at _: URL) async throws -> String {
+        revision
     }
 }
 
