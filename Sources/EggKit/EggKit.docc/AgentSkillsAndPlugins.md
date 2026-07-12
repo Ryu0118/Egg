@@ -19,7 +19,7 @@ The shared skills live under `.claude/plugins/egg/skills`.
 
 | Skill | Purpose |
 | --- | --- |
-| `egg-cli-guide` | CLI usage, argument ordering, and transaction flow. |
+| `egg-cli-guide` | CLI usage, argument ordering, transaction flow, and declaring/syncing templates via `egg.yml`. |
 | `egg-template` | Creating and updating templates, macros, lifecycle hooks, and file layout. |
 
 Codex can also discover the same skills through `.agents/skills` when working

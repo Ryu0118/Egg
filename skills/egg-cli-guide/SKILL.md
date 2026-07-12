@@ -1,6 +1,6 @@
 ---
 name: egg-cli-guide
-description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, or wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open).
+description: CLI usage guide for the egg scaffolding tool. Use when an agent or user wants to hatch a template, needs the preview/apply/rollback/discard/transactions transaction flow, wants to manage templates (create/list/detail/install/validate/duplicate/move/delete/open), or wants to declare/pin/sync template sources reproducibly via an egg.yml manifest (egg template sync/update).
 ---
 
 # egg CLI Guide
@@ -137,6 +137,68 @@ All `template` subcommands accept `--json` to emit machine-readable JSON on stdo
 Interactive fallbacks require a TTY. When stdin is not a TTY (agents, CI) and a command would prompt, egg fails fast with the prompt's question and the flags to pass instead of hanging — so a missing argument surfaces as an immediate error, never a stuck process.
 
 All `template` subcommands support an interactive mode when arguments are omitted, and accept `--project-directory`/`--template-search-paths` to look beyond the current directory.
+
+## Declaring Templates (egg.yml)
+
+Use this instead of `egg template install` when the user wants templates to
+be *reproducible* — reinstalled the same way on another machine, pinned to a
+version, or tracked in dotfiles — rather than fetched once. Trigger phrases:
+"add this template repo to my setup", "pin this template to a version",
+"sync my templates", "manage templates in dotfiles", "keep templates up to
+date across machines".
+
+An `egg.yml` manifest declares template sources; `egg template sync`
+resolves and installs them, recording the exact result in `egg-lock.yml`
+next to the manifest. Two independent scopes, never merged:
+
+| Scope | Manifest path | Installs to |
+| --- | --- | --- |
+| Global | `$XDG_CONFIG_HOME/egg/egg.yml` (default `~/.config/egg/egg.yml`) | `~/.eggs/` |
+| Project | `<project>/egg.yml` | `<project>/.eggs/` |
+
+### Writing egg.yml
+
+```yaml
+templates:
+  - url: owner/repo                # GitHub shorthand -> https://github.com/owner/repo.git
+    from: "1.0.0"                  # SwiftPM-style upToNextMajor range: highest tag in [1.0.0, 2.0.0)
+    only: [SwiftCLI, SwiftLibrary] # optional; install only these template names (or use `exclude:`)
+  - url: git@github.com:owner/private-templates.git
+    branch: main                   # follow a branch; sync installs the locked SHA, update moves to the tip
+  - url: https://github.com/owner/repo.git
+    exact: "1.2.0"                 # single version, matches "1.2.0" or "v1.2.0"
+  - url: https://github.com/owner/repo2.git
+    revision: 6c0f1a2b9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a
+  - url: ./local-templates          # local path: no version key allowed, never locked
+```
+
+Each git entry (every `url` that isn't a bare local path) takes **exactly
+one** of `from:` / `exact:` / `branch:` / `revision:`. Prefer `from:` when
+the user wants to track new releases automatically; use `exact:` or
+`revision:` when they want a fixed pin; use `branch:` only when they
+explicitly want floating/unreleased content.
+
+### Workflow for an agent asked to add a template source
+
+1. Ask (or infer from context) which scope: personal/dotfiles setup →
+   global; this specific project → project.
+2. Read or create the manifest at the scope's path above (`cat` it first —
+   append to `templates:` rather than overwriting an existing manifest).
+3. Add an entry. Default to `from:` with the source repo's latest release
+   tag as the lower bound unless the user asks for a branch or exact pin.
+4. Run `egg template sync --global` or `--project --json` and inspect the
+   result: `entries[].failed` names any source that didn't resolve or
+   install, with the underlying git error.
+5. Report what was installed (`entries[].installed`) and the resolved
+   version (`entries[].resolvedVersion`).
+
+To move existing pins forward, run `egg template update` instead of
+hand-editing `egg-lock.yml` — never edit the lockfile directly, it is
+regenerated on every sync/update.
+
+Full reference (field table, `from:` semantics, lock format, dotfiles
+workflow, troubleshooting): `egg template sync --help` / `egg template
+update --help`, or egg's published API documentation.
 
 ## MCP Integration
 

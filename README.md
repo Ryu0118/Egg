@@ -108,7 +108,7 @@ a specific agent.
 
 The plugin provides:
 
-- `egg-cli-guide` for CLI commands and the preview/apply/rollback flow.
+- `egg-cli-guide` for CLI commands, the preview/apply/rollback flow, and declaring/syncing templates via `egg.yml`.
 - `egg-template` for creating and updating `config.yml` templates.
 - MCP server configuration for structured tool calls.
 
