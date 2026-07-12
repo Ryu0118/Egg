@@ -141,50 +141,29 @@ extension RawManifest {
 
 extension RawManifestEntry {
     init(_ entry: ManifestEntry) {
-        url = entry.declaredURL
+        let requirement: VersionRequirement? = if case let .git(_, requirement) = entry.source { requirement } else { nil }
 
-        switch entry.source {
-        case let .git(_, requirement):
-            switch requirement {
-            case let .from(version):
-                from = version.description
-                exact = nil
-                branch = nil
-                revision = nil
-            case let .exact(version):
-                from = nil
-                exact = version.description
-                branch = nil
-                revision = nil
-            case let .branch(name):
-                from = nil
-                exact = nil
-                branch = name
-                revision = nil
-            case let .revision(sha):
-                from = nil
-                exact = nil
-                branch = nil
-                revision = sha
-            }
-        case .local:
-            from = nil
-            exact = nil
-            branch = nil
-            revision = nil
+        switch requirement {
+        case let .from(version):
+            self.init(url: entry.declaredURL, from: version.description, exact: nil, branch: nil, revision: nil, filter: entry.filter)
+        case let .exact(version):
+            self.init(url: entry.declaredURL, from: nil, exact: version.description, branch: nil, revision: nil, filter: entry.filter)
+        case let .branch(name):
+            self.init(url: entry.declaredURL, from: nil, exact: nil, branch: name, revision: nil, filter: entry.filter)
+        case let .revision(sha):
+            self.init(url: entry.declaredURL, from: nil, exact: nil, branch: nil, revision: sha, filter: entry.filter)
+        case nil:
+            self.init(url: entry.declaredURL, from: nil, exact: nil, branch: nil, revision: nil, filter: entry.filter)
         }
+    }
 
-        switch entry.filter {
-        case .none:
-            only = nil
-            exclude = nil
-        case let .include(names):
-            only = names
-            exclude = nil
-        case let .exclude(names):
-            only = nil
-            exclude = names
+    private init(url: String, from: String?, exact: String?, branch: String?, revision: String?, filter: TemplateFilter) {
+        let (only, exclude): ([String]?, [String]?) = switch filter {
+        case .none: (nil, nil)
+        case let .include(names): (names, nil)
+        case let .exclude(names): (nil, names)
         }
+        self.init(url: url, from: from, exact: exact, branch: branch, revision: revision, only: only, exclude: exclude)
     }
 }
 

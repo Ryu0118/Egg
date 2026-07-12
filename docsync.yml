@@ -121,7 +121,7 @@ rules:
   message: Manifest schema, resolution, lock semantics, sync/update CLI behavior,
     or install --global registration behavior changed - update the DocC Managing Templates
     manifest section (and README Template Manifests) if user-facing behavior changed.
-  checksum: 3316bec23a340563fb9ac85099c62f61a5db7e6b2a64af81d55a5c403a0c146d
+  checksum: a27fc043777fb224f99b2c386fca7ce6cdc0a0ef75a219be984c73f38af80d16
 - name: agents-project
   sources:
   - Package.swift
@@ -132,7 +132,7 @@ rules:
   doc: AGENTS.md
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
-  checksum: d5358b4394e27e637467ace78ee0b8fd1f0727029779065ffbe38e96cc3ec208
+  checksum: a95da0c3275c547fe028cd91f0b8d106d6ec8e97d5faf0baba131d2c23ca6b2c
 excludes:
 - .build/**
 - '**/.build/**'

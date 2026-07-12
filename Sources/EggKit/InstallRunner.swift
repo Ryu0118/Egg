@@ -332,7 +332,7 @@ package struct InstallRunner {
         clonedDirectory: URL,
         manifestPath: URL,
     ) async throws -> String {
-        let (requirement, revision) = try await resolveRequirement(url: url, ref: ref, clonedDirectory: clonedDirectory)
+        let (requirement, resolved) = try await resolveRequirement(url: url, ref: ref, clonedDirectory: clonedDirectory)
 
         let entry = ManifestEntry(
             declaredURL: url.original,
@@ -343,14 +343,6 @@ package struct InstallRunner {
         try manifestWriter.save(manifest.upserting(entry), to: manifestPath)
 
         let lockfilePath = ManifestLocator.lockfileURL(forManifestAt: manifestPath)
-        let resolved = switch requirement {
-        case let .exact(version):
-            LockedResolution(version: version.description, tag: version.description, revision: revision)
-        case let .branch(name):
-            LockedResolution(branch: name, revision: revision)
-        case .revision, .from:
-            LockedResolution(revision: revision)
-        }
         let lockedTemplate = LockedTemplate(
             url: url.original,
             requirement: LockedRequirement(requirement),
@@ -363,30 +355,30 @@ package struct InstallRunner {
     }
 
     /// Maps the install's `ref` onto the requirement to record in the
-    /// manifest, alongside the resolved commit SHA to lock: a tag becomes
-    /// `exact:` when it parses as SemVer, otherwise (or with no ref at all)
-    /// a resolved commit SHA becomes `revision:`, and a branch is recorded
+    /// manifest, alongside the resolution to lock: a tag becomes `exact:`
+    /// when it parses as SemVer, otherwise (or with no ref at all) a
+    /// resolved commit SHA becomes `revision:`, and a branch is recorded
     /// as-is (matching sync/update's floating semantics).
     private func resolveRequirement(
         url: GitURL,
         ref: GitRef?,
         clonedDirectory: URL,
-    ) async throws -> (requirement: VersionRequirement, revision: String) {
+    ) async throws -> (requirement: VersionRequirement, resolved: LockedResolution) {
         switch ref {
         case let .branch(name):
             let revision = try await gitCloner.headRevision(at: clonedDirectory)
-            return (.branch(name), revision)
+            return (.branch(name), LockedResolution(branch: name, revision: revision))
         case let .tag(name):
             let revision = try await resolvedTagRevision(named: name, url: url, clonedDirectory: clonedDirectory)
             if let (version, _) = SemanticVersion.parse(tag: name) {
-                return (.exact(version), revision)
+                return (.exact(version), LockedResolution(version: version.description, tag: version.description, revision: revision))
             }
-            return (.revision(revision), revision)
+            return (.revision(revision), LockedResolution(revision: revision))
         case let .revision(sha):
-            return (.revision(sha), sha)
+            return (.revision(sha), LockedResolution(revision: sha))
         case nil:
             let revision = try await gitCloner.headRevision(at: clonedDirectory)
-            return (.revision(revision), revision)
+            return (.revision(revision), LockedResolution(revision: revision))
         }
     }
 
@@ -394,18 +386,11 @@ package struct InstallRunner {
     /// (no extra clone) and falling back to the local checkout's HEAD when
     /// the tag isn't found that way.
     private func resolvedTagRevision(named name: String, url: GitURL, clonedDirectory: URL) async throws -> String {
-        if let revision = try await tagRevision(named: name, url: url) {
+        let tags = try await gitTagLister.listTags(url: url)
+        if let revision = tags.first(where: { $0.name == name })?.revision {
             return revision
         }
         return try await gitCloner.headRevision(at: clonedDirectory)
-    }
-
-    /// Looks up a tag's resolved commit SHA from the remote without an
-    /// extra clone, falling back to `nil` (letting the caller use the local
-    /// checkout's HEAD instead) if the tag can't be found this way.
-    private func tagRevision(named name: String, url: GitURL) async throws -> String? {
-        let tags = try await gitTagLister.listTags(url: url)
-        return tags.first { $0.name == name }?.revision
     }
 
     private func installTemplates(

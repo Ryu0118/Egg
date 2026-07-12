@@ -163,20 +163,9 @@ struct InstallRunnerTests {
 
     @Test("project-scope install does not touch any manifest")
     func projectInstallDoesNotRegister() async throws {
-        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-registration-test")
+        let (tempDir, projectDirectory, homeDirectory, sourceDirectory) = try makeRegistrationTestDirs(sourceDirectoryName: "cloned-repo")
         defer { try? fileManager.removeItem(at: tempDir) }
-        let projectDirectory = tempDir.appending(path: "project")
-        let homeDirectory = tempDir.appending(path: "home")
-        let clonedRepoDirectory = tempDir.appending(path: "cloned-repo")
-        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: clonedRepoDirectory, withIntermediateDirectories: true)
-        try setupClonedRepoTemplates(
-            templates: [RepoTemplate(name: "swift-module", config: Self.validConfig("Swift Module"))],
-            repoDirectory: clonedRepoDirectory,
-        )
 
-        let mockGitCloner = MockGitCloner(clonedDirectory: clonedRepoDirectory, fileManager: fileManager)
         let url = GitURL(original: "https://github.com/user/repo.git", normalized: "https://github.com/user/repo.git")
         let runner = InstallRunner(
             mode: .direct(source: .git(url: url, ref: nil), location: .project, filter: .none),
@@ -186,7 +175,7 @@ struct InstallRunnerTests {
             homeDirectory: homeDirectory,
             fileManager: fileManager,
             interaction: TestInteraction(),
-            gitCloner: mockGitCloner,
+            gitCloner: MockGitCloner(clonedDirectory: sourceDirectory, fileManager: fileManager),
             directoryCloner: APFSDirectoryCloner(),
             templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),
         )
@@ -202,28 +191,18 @@ struct InstallRunnerTests {
 
     @Test("local-path install does not touch any manifest")
     func localPathInstallDoesNotRegister() async throws {
-        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-registration-test")
+        let (tempDir, projectDirectory, homeDirectory, sourceDirectory) = try makeRegistrationTestDirs(sourceDirectoryName: "local-templates")
         defer { try? fileManager.removeItem(at: tempDir) }
-        let projectDirectory = tempDir.appending(path: "project")
-        let homeDirectory = tempDir.appending(path: "home")
-        let localTemplatesDirectory = tempDir.appending(path: "local-templates")
-        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: localTemplatesDirectory, withIntermediateDirectories: true)
-        try setupClonedRepoTemplates(
-            templates: [RepoTemplate(name: "swift-module", config: Self.validConfig("Swift Module"))],
-            repoDirectory: localTemplatesDirectory,
-        )
 
         let runner = InstallRunner(
-            mode: .direct(source: .local(path: localTemplatesDirectory), location: .global, filter: .none),
+            mode: .direct(source: .local(path: sourceDirectory), location: .global, filter: .none),
             force: false,
             projectDirectory: projectDirectory,
             workingDirectory: projectDirectory,
             homeDirectory: homeDirectory,
             fileManager: fileManager,
             interaction: TestInteraction(),
-            gitCloner: MockGitCloner(clonedDirectory: localTemplatesDirectory, fileManager: fileManager),
+            gitCloner: MockGitCloner(clonedDirectory: sourceDirectory, fileManager: fileManager),
             directoryCloner: APFSDirectoryCloner(),
             templateDiscoverer: TemplateDiscoverer(fileManager: fileManager),
         )
@@ -266,6 +245,25 @@ struct InstallRunnerTests {
             return
         }
         #expect(requirement == .exact(SemanticVersion(major: 2, minor: 0, patch: 0)))
+    }
+
+    /// Creates a fresh temp dir with `project`/`home`/`<sourceDirectoryName>`
+    /// subdirectories, seeded with one template in the source directory.
+    private func makeRegistrationTestDirs(
+        sourceDirectoryName: String,
+    ) throws -> (tempDir: URL, projectDirectory: URL, homeDirectory: URL, sourceDirectory: URL) {
+        let tempDir = try fileManager.makeTemporaryDirectory(prefix: "install-registration-test")
+        let projectDirectory = tempDir.appending(path: "project")
+        let homeDirectory = tempDir.appending(path: "home")
+        let sourceDirectory = tempDir.appending(path: sourceDirectoryName)
+        try fileManager.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: homeDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: sourceDirectory, withIntermediateDirectories: true)
+        try setupClonedRepoTemplates(
+            templates: [RepoTemplate(name: "swift-module", config: Self.validConfig("Swift Module"))],
+            repoDirectory: sourceDirectory,
+        )
+        return (tempDir, projectDirectory, homeDirectory, sourceDirectory)
     }
 
     private func makeRegistrationRunner(
