@@ -59,6 +59,8 @@ struct TemplateSyncCommandTests {
 
         let lockPath = env.projectDir.appending(path: "eggs-lock.yml")
         let lockAfterFirst = try String(contentsOf: lockPath, encoding: .utf8)
+        #expect(lockAfterFirst.contains("eggs:"), "lockfile top-level key mirrors the manifest's eggs: key")
+        #expect(!lockAfterFirst.contains("templates:"))
         #expect(lockAfterFirst.contains("version: 1.1.0"))
         #expect(!lockAfterFirst.contains("2.0.0-beta.1"), "prereleases stay out of a release-bounded range")
 
