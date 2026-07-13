@@ -159,6 +159,35 @@ post_hatch:
 Use lifecycle hooks when generated files need package installation, code
 generation, formatting, or validation.
 
+### Shell quoting in `run:` commands
+
+Every `___MACRO___` and `${{ … }}` reference in a `run:` command is
+substituted before the shell executes, and each value is wrapped in single
+quotes so it always lands as one safe shell token — macro values are user
+input, and raw substitution would expose word splitting, globbing, and
+`$(…)` command injection.
+
+Because the substitution is already quoted, never wrap a reference in your
+own quotes. Inside a `"…"` string the injected single quotes turn into
+literal characters and silently corrupt the value:
+
+```yaml
+# Bad: NAME becomes 'MyApp' — literal quotes included
+- run: |
+    NAME="___APP_NAME___"
+    mkdir -p "___OUTPUT_PATH___/sub"
+
+# Good: reference bare, then interpolate the shell variable
+- run: |
+    NAME=___APP_NAME___
+    OUT=___OUTPUT_PATH___
+    mkdir -p "$OUT/sub"
+```
+
+Bare references are fine as standalone arguments, in assignments, and when
+concatenated with a suffix (`FULL=___NAME___Client`); the shell strips the
+injected quotes. Only placement inside a double-quoted string breaks.
+
 ### Conditions on step outputs
 
 An `if` expression can reference a prior step's output. Write the reference

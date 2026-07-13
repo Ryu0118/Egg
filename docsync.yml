@@ -33,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: fff72b970bc34f6857ebdb50f55d3f112675fa2c15ab6b5166922dd5baeebcd2
+  checksum: 340054b87030f7725a5c128590aa676764175304d7b476dd6f66beb41488885d
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -46,7 +46,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: 0f29e857882ea4463bdaffbc7b2412bb813d967b8d8b106d180a3e05d17ea3d1
+  checksum: 43e91942ebc91cba9b17617cc0dca4ec41e4601249b96bb20f8ad7bea5c61fa4
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -83,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 4bd80d46feb93f847fe5ff7992f104ca7ced15b774a0e9dec770ac363855f470
+  checksum: 78c70e39862ef41c41f080c578b75742d2f585f9b3337ba9a04363a4d59ca35c
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -96,7 +96,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: 0f29e857882ea4463bdaffbc7b2412bb813d967b8d8b106d180a3e05d17ea3d1
+  checksum: 43e91942ebc91cba9b17617cc0dca4ec41e4601249b96bb20f8ad7bea5c61fa4
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -133,12 +133,3 @@ rules:
   message: Project architecture or workflow changed - update AGENTS.md/CLAUDE.md if
     agent guidance changed.
   checksum: a95da0c3275c547fe028cd91f0b8d106d6ec8e97d5faf0baba131d2c23ca6b2c
-excludes:
-- .build/**
-- '**/.build/**'
-- .swiftpm/**
-- '**/.swiftpm/**'
-- .nest/**
-- E2ETestsPackage/.build/**
-- .git/**
-- '**/.DS_Store'
