@@ -88,8 +88,7 @@ that tag's exact commit — the peeled commit for annotated tags.
 `sync` writes the resolution result next to the manifest:
 
 ```yaml
-version: 1
-templates:
+eggs:
 - requirement:
     from: "0.3.0"
   resolved:
@@ -97,6 +96,7 @@ templates:
     tag: "0.4.2"
     version: 0.4.2
   url: https://github.com/Ryu0118/swift-egg-templates.git
+version: 1
 ```
 
 | Manifest requirement | Lock records |

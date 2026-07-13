@@ -17,6 +17,13 @@ package struct Lockfile: Codable, Equatable {
         self.templates = templates
     }
 
+    /// The YAML key mirrors the manifest's top-level `eggs:` key (see
+    /// RawManifest); the Swift property keeps the descriptive name.
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case templates = "eggs"
+    }
+
     /// Looks up the locked entry for a normalized manifest URL (the
     /// ``ManifestEntrySource/lockKey``).
     package func entry(forURL url: String) -> LockedTemplate? {

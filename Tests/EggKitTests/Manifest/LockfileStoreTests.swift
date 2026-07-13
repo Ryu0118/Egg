@@ -109,6 +109,30 @@ struct LockfileStoreTests {
         #expect(!yaml.contains("from:"))
     }
 
+    @Test("top-level YAML key is eggs:, matching the manifest's key")
+    func topLevelKeyIsEggs() throws {
+        let lockfile = Lockfile(templates: [
+            LockedTemplate(
+                url: "https://github.com/a/repo.git",
+                requirement: LockedRequirement(.branch("main")),
+                resolved: LockedResolution(branch: "main", revision: String(repeating: "a", count: 40)),
+            ),
+        ])
+
+        let root = try fileManager.makeTemporaryDirectory(prefix: "LockfileStoreTests")
+        defer { try? fileManager.removeItem(at: root) }
+        let lockPath = root.appending(path: "eggs-lock.yml")
+        let store = LockfileStore(fileManager: fileManager)
+        try store.save(lockfile, to: lockPath)
+
+        let yaml = try String(decoding: fileManager.readFile(at: lockPath), as: UTF8.self)
+        #expect(yaml.contains("eggs:"))
+        #expect(!yaml.contains("templates:"))
+
+        let loaded = try #require(try store.load(lockfilePath: lockPath))
+        #expect(loaded.templates == lockfile.templates)
+    }
+
     @Test("missing lockfile loads as nil, not an error")
     func missingLockfile() throws {
         let root = try fileManager.makeTemporaryDirectory(prefix: "LockfileStoreTests")

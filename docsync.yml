@@ -121,7 +121,7 @@ rules:
   message: Manifest schema, resolution, lock semantics, sync/update CLI behavior,
     or install --global registration behavior changed - update the DocC Managing Templates
     manifest section (and README Template Manifests) if user-facing behavior changed.
-  checksum: aec5770b562d7d2c0668e1f51f09d6142e017bc2e9690e74539315eafa4b228e
+  checksum: 4fe43e45b90168df019bee4028af2cb72ef71e7e5f8bdff412e0ffd5bb950724
 - name: agents-project
   sources:
   - Package.swift
