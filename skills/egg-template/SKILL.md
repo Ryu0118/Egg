@@ -24,7 +24,8 @@ description: |
 
 2. **Define macros** → See [references/config-spec.md](references/config-spec.md)
 
-3. **Configure lifecycle hooks** (optional) → See [references/lifecycle.md](references/lifecycle.md)
+3. **Configure lifecycle hooks** (optional) → See [references/lifecycle.md](references/lifecycle.md).
+   When writing `run:` commands, read its "Shell Quoting in `run:`" section first — wrapping `___MACRO___` or `${{ ... }}` in your own quotes silently corrupts the value.
 
 4. **Configure hatch**: output, excludes
 
