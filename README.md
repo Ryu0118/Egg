@@ -343,7 +343,7 @@ nest install Ryu0118/Egg
 #### Mise ([jdx/mise](https://github.com/jdx/mise))
 
 ```sh
-mise use -g ubi:Ryu0118/Egg
+mise use -g github:Ryu0118/Egg
 ```
 
 #### Build from source
