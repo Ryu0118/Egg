@@ -29,30 +29,59 @@ public protocol DirectoryCloning: Sendable {
 ///
 /// ## Requirements
 /// - macOS with APFS filesystem
-/// - Source and destination must be on the same APFS volume for CoW benefits
+/// - Falls back to a regular copy when source and destination are on different
+///   volumes or on a filesystem without clone support
 public struct APFSDirectoryCloner: DirectoryCloning, Sendable {
-    public init() {}
+    /// Returns 0 on success or the errno of a failed clonefile(2) call.
+    /// Injectable so unit tests can force cross-volume failures (EXDEV)
+    /// without a second real volume.
+    typealias CloneSyscall = @Sendable (
+        _ source: UnsafePointer<CChar>,
+        _ destination: UnsafePointer<CChar>,
+        _ flags: UInt32,
+    ) -> Int32
+
+    private let cloneSyscall: CloneSyscall
+
+    public init() {
+        // errno is read inside the closure, synchronously after the failed
+        // call, so the thread-local value is still the clonefile failure.
+        self.init { src, dst, flags in
+            clonefile(src, dst, flags) == 0 ? 0 : errno
+        }
+    }
+
+    init(cloneSyscall: @escaping CloneSyscall) {
+        self.cloneSyscall = cloneSyscall
+    }
 
     public func clone(from source: URL, to destination: URL) async throws {
         guard source.isFileURL, destination.isFileURL else {
             throw CloningError.invalidURL
         }
 
-        let result = source.withUnsafeFileSystemRepresentation { srcPath in
+        let errorCode = source.withUnsafeFileSystemRepresentation { srcPath in
             destination.withUnsafeFileSystemRepresentation { dstPath in
                 guard let srcPath, let dstPath else {
-                    return Int32(-1)
+                    return EINVAL
                 }
-                // Use CLONE_NOFOLLOW (0x0001) to preserve symbolic links as-is
-                // instead of following them and cloning their targets.
-                return clonefile(srcPath, dstPath, UInt32(CLONE_NOFOLLOW))
+                // CLONE_NOFOLLOW preserves symbolic links as-is instead of
+                // following them and cloning their targets.
+                return cloneSyscall(srcPath, dstPath, UInt32(CLONE_NOFOLLOW))
             }
         }
 
-        if result != 0 {
-            let errorCode = errno
-            let errorMessage = String(cString: strerror(errorCode))
-            throw CloningError.systemError(code: errorCode, message: errorMessage)
+        switch errorCode {
+        case 0:
+            return
+        case EXDEV, ENOTSUP:
+            // clonefile(2) can't cross volumes (EXDEV) or run on non-cloning
+            // filesystems (ENOTSUP). copyItem preserves symlinks as links —
+            // same semantics as CLONE_NOFOLLOW — and fails on an existing
+            // destination just like clonefile, so only the CoW speedup is lost.
+            try FileManager.default.copyItem(at: source, to: destination)
+        default:
+            throw CloningError.systemError(code: errorCode, message: String(cString: strerror(errorCode)))
         }
     }
 }
