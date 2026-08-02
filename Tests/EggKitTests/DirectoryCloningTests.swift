@@ -83,6 +83,141 @@ struct DirectoryCloningTests {
         let systemError = CloningError.systemError(code: 17, message: "File exists")
         #expect(systemError.errorDescription == "Cloning failed with error code 17: File exists")
     }
+
+    @Test("clone(from:to:) falls back to copyItem when clonefile(2) fails with EXDEV, preserving symlinks")
+    func fallsBackToCopyOnEXDEV() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
+
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
+
+        try setupSource(
+            [
+                .file(path: "dir/target.txt", content: "nested target"),
+                .symlink(path: "dir/link.txt", target: "target.txt"),
+            ],
+            in: sourceDir,
+            using: fileManager,
+        )
+
+        let cloner = APFSDirectoryCloner { _, _, _ in EXDEV }
+
+        try await cloner.clone(from: sourceDir, to: destDir)
+
+        try verify(
+            [
+                .fileContent(path: "dir/target.txt", expected: "nested target"),
+                .symlinkExists(path: "dir/link.txt", target: "target.txt"),
+            ],
+            in: destDir,
+            using: fileManager,
+        )
+    }
+
+    @Test("clone(from:to:) falls back to FileManager.copyItem when clonefile(2) fails with ENOTSUP")
+    func fallsBackToCopyOnENOTSUP() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
+
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
+
+        try setupSource(
+            [.file(path: "file.txt", content: "hello")],
+            in: sourceDir,
+            using: fileManager,
+        )
+
+        let cloner = APFSDirectoryCloner { _, _, _ in ENOTSUP }
+
+        try await cloner.clone(from: sourceDir, to: destDir)
+
+        try verify(
+            [.fileContent(path: "file.txt", expected: "hello")],
+            in: destDir,
+            using: fileManager,
+        )
+    }
+
+    @Test("clone(from:to:) falls back correctly when the source itself is a symlink, as used by per-file cloning")
+    func fallsBackWhenSourceIsSymlinkItself() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
+
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
+
+        try setupSource(
+            [
+                .file(path: "target.txt", content: "target content"),
+                .symlink(path: "link.txt", target: "target.txt"),
+            ],
+            in: sourceDir,
+            using: fileManager,
+        )
+        try fileManager.createDirectory(at: destDir, withIntermediateDirectories: true)
+
+        let cloner = APFSDirectoryCloner { _, _, _ in EXDEV }
+
+        try await cloner.clone(
+            from: sourceDir.appending(path: "link.txt"),
+            to: destDir.appending(path: "link.txt"),
+        )
+
+        try verify(
+            [.symlinkExists(path: "link.txt", target: "target.txt")],
+            in: destDir,
+            using: fileManager,
+        )
+    }
+
+    @Test("clone(from:to:) throws CloningError.systemError for an errno that isn't EXDEV/ENOTSUP")
+    func throwsOnNonFallbackErrno() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
+
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
+
+        try setupSource(
+            [.file(path: "file.txt", content: "hello")],
+            in: sourceDir,
+            using: fileManager,
+        )
+
+        let cloner = APFSDirectoryCloner { _, _, _ in EACCES }
+
+        await #expect(throws: CloningError.systemError(code: EACCES, message: String(cString: strerror(EACCES)))) {
+            try await cloner.clone(from: sourceDir, to: destDir)
+        }
+    }
+
+    @Test("clone(from:to:) still throws when the EXDEV fallback copy targets a destination that already exists")
+    func fallbackStillFailsWhenDestinationExists() async throws {
+        let fileManager: any FileManagerProtocol = FileManager.default
+        let tempDirURL = try fileManager.makeTemporaryDirectory(prefix: "DirectoryCloningTests")
+        let tempDir = URL(filePath: tempDirURL.path(percentEncoded: false))
+
+        let sourceDir = tempDir.appending(path: "source")
+        let destDir = tempDir.appending(path: "dest")
+
+        try fileManager.createDirectory(at: sourceDir, withIntermediateDirectories: true)
+        try fileManager.writeText("source content", at: sourceDir.appending(path: "file.txt"), encoding: .utf8)
+
+        try fileManager.createDirectory(at: destDir, withIntermediateDirectories: true)
+        try fileManager.writeText("dest content", at: destDir.appending(path: "existing.txt"), encoding: .utf8)
+
+        let cloner = APFSDirectoryCloner { _, _, _ in EXDEV }
+
+        await #expect(throws: (any Error).self) {
+            try await cloner.clone(from: sourceDir, to: destDir)
+        }
+    }
 }
 
 extension DirectoryCloningTests {
