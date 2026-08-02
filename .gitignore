@@ -13,3 +13,4 @@ DerivedData/
 .serena
 .plan/
 remove_marks.py
+.worktrees/
