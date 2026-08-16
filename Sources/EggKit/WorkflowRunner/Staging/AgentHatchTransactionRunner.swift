@@ -982,8 +982,18 @@ package struct AgentHatchTransactionRunner {
             _ = try fileManager.copyIfExists(from: source, to: destination)
 
             let appliedFile = workRoot.appending(path: change.path)
+            // A symlink (e.g. a directory alias like `.claude/rules -> ../.agents/rules`,
+            // which lifecycle scripts commonly create) reports `exists(_:)` true but
+            // `readFile` follows it and throws `.fileReadNoSuchFile` when the target is a
+            // directory — content can't be read through a link that way. Hash the link's
+            // destination string instead of its target's bytes: it still changes if the
+            // link is redirected, which is all this hash needs to detect.
             let afterHash: String? = if change.kind == "delete" {
                 nil
+            } else if fileManager.isSymbolicLink(at: appliedFile) {
+                try Self.sha256(of: Data(
+                    fileManager.destinationOfSymbolicLink(atPath: appliedFile.path(percentEncoded: false)).utf8,
+                ))
             } else if fileManager.exists(appliedFile) {
                 try Self.sha256(of: fileManager.readFile(at: appliedFile))
             } else {
