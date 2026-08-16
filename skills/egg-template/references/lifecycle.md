@@ -76,6 +76,8 @@ echo "key=value"
 
 > **Stencil reserved names:** don't name an output key `count`, `first`, or `last` — Stencil's dictionary resolver treats those as built-in accessors (`.count`/`.first`/`.last`) and returns that instead of your value, silently. This is Stencil's own behavior, not egg's; it only affects `.stencil` files (`${{ }}` in config.yml/native files is unaffected).
 
+> **One line per output:** `echo "key=value"` is parsed line by line — each output line is its own independent `key=value` pair, so a `value` containing an embedded newline silently truncates to just its first line; every subsequent line is either dropped (no `=`) or misread as an unrelated key. If a value is naturally multi-line (e.g. built up across loop iterations), join it with a single-line separator (space, comma, `;`) before echoing it, and split it back apart wherever it's consumed.
+
 **Example:**
 ```yaml
 pre_hatch:
