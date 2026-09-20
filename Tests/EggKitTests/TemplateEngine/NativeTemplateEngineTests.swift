@@ -146,6 +146,43 @@ struct NativeTemplateEngineTests {
                 builtInMacroContext: defaultContext,
                 expectedOutput: "{{ pre_hatch.setup.outputs.version }}",
             ),
+
+            // MARK: - Foreign ${{ }} phases (GitHub Actions and friends)
+
+            TestCase(
+                description: "keeps a GitHub Actions steps output reference verbatim",
+                input: "run: echo \"${{ steps.build.outputs.sha }}\"",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectedOutput: "run: echo \"${{ steps.build.outputs.sha }}\"",
+            ),
+            TestCase(
+                description: "keeps a GitHub Actions needs output reference verbatim",
+                input: "version: ${{ needs.test.outputs.version }}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectedOutput: "version: ${{ needs.test.outputs.version }}",
+            ),
+            TestCase(
+                description: "keeps a GitHub Actions context reference without outputs verbatim",
+                input: "name: ${{ github.workflow }}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectedOutput: "name: ${{ github.workflow }}",
+            ),
+            TestCase(
+                description: "resolves an egg phase alongside a foreign one in the same file",
+                input: "egg: ${{ pre_hatch.setup.outputs.version }} gha: ${{ steps.b.outputs.x }}",
+                macros: [],
+                stepOutputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
+                ],
+                builtInMacroContext: defaultContext,
+                expectedOutput: "egg: 1.0.0 gha: ${{ steps.b.outputs.x }}",
+            ),
         ]
 
         var testDescription: String {

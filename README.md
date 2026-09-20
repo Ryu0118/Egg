@@ -153,6 +153,23 @@ import {{ module }}
 {% endfor %}
 ```
 
+When the generated file uses `{{ }}` for its own purposes — a GitHub Actions
+workflow, a Helm chart, a Jinja2 or Handlebars template — wrap that text in
+`{% raw %}` … `{% endraw %}` so Stencil emits it verbatim instead of resolving it
+as an undefined variable:
+
+```yaml
+# .github/workflows/ci.yml.stencil -> .github/workflows/ci.yml
+name: {{ ___PROJECT_NAME___ }}
+{% raw %}
+run: echo "${{ github.workflow }} at ${{ steps.build.outputs.sha }}"
+{% endraw %}
+```
+
+Raw blocks are only needed in `.stencil` files. A plain `.yml` keeps its
+`${{ steps.… }}` and `${{ needs.… }}` references as-is, since the native engine
+claims only egg's own `${{ pre_hatch.… }}` / `${{ post_hatch.… }}` phases.
+
 Hatch the template interactively:
 
 ```sh

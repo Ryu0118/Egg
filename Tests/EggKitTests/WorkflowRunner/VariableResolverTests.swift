@@ -21,12 +21,12 @@ struct VariableResolverTests {
 
         switch testCase.expectation {
         case let .success(expectedResult):
-            let result = try await resolver.resolve(testCase.input)
+            let result = try await resolver.resolve(testCase.input, destination: testCase.destination)
             #expect(result == expectedResult)
 
         case let .failure(expectedError):
             let error = await #expect(throws: LifecycleStepError.self) {
-                try await resolver.resolve(testCase.input)
+                try await resolver.resolve(testCase.input, destination: testCase.destination)
             }
 
             guard let error else {
@@ -51,6 +51,9 @@ struct VariableResolverTests {
         let outputs: [TestOutput]
         let expectation: Expectation
         let builtInMacroContext: BuiltInMacroContext?
+        /// Defaults to `.text` so the cases written before `Destination` gained a third
+        /// case keep exercising egg's strict "every `${{ }}` is mine" behavior.
+        var destination: VariableResolver.Destination = .text
 
         static let defaultBuiltInMacroContext = BuiltInMacroContext(
             outputDirectory: nil,
@@ -413,6 +416,66 @@ struct VariableResolverTests {
                     currentDate: Date(timeIntervalSince1970: 0),
                     environment: ["USER": "egg"],
                 ),
+            ),
+
+            // MARK: - Foreign ${{ }} phases in file content
+
+            TestCase(
+                description: "leaves a GitHub Actions steps reference in file content alone",
+                input: "run: echo ${{ steps.build.outputs.sha }}",
+                macros: [],
+                outputs: [],
+                expectation: .success(expectedResult: "run: echo ${{ steps.build.outputs.sha }}"),
+                builtInMacroContext: nil,
+                destination: .fileContent,
+            ),
+            TestCase(
+                description: "leaves a GitHub Actions needs reference in file content alone",
+                input: "v: ${{ needs.test.outputs.version }}",
+                macros: [],
+                outputs: [],
+                expectation: .success(expectedResult: "v: ${{ needs.test.outputs.version }}"),
+                builtInMacroContext: nil,
+                destination: .fileContent,
+            ),
+            TestCase(
+                description: "still resolves an egg phase in file content",
+                input: "v: ${{ pre_hatch.setup.outputs.version }}",
+                macros: [],
+                outputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
+                ],
+                expectation: .success(expectedResult: "v: 1.0.0"),
+                builtInMacroContext: nil,
+                destination: .fileContent,
+            ),
+            TestCase(
+                description: "still reports an unknown key under a known phase in file content",
+                input: "v: ${{ pre_hatch.setup.outputs.missing }}",
+                macros: [],
+                outputs: [
+                    TestOutput(phase: .preHatch, stepId: "setup", values: ["version": "1.0.0"]),
+                ],
+                expectation: .failure(expectedError: .undefinedOutputReference(
+                    phase: .preHatch,
+                    stepId: "setup",
+                    key: "missing",
+                )),
+                builtInMacroContext: nil,
+                destination: .fileContent,
+            ),
+            TestCase(
+                description: "still reports an unknown phase in a shell command",
+                input: "echo ${{ steps.build.outputs.sha }}",
+                macros: [],
+                outputs: [],
+                expectation: .failure(expectedError: .undefinedOutputReference(
+                    phase: .preHatch, // Fallback to .preHatch for invalid phase
+                    stepId: "build",
+                    key: "sha",
+                )),
+                builtInMacroContext: nil,
+                destination: .shellCommand,
             ),
         ]
 

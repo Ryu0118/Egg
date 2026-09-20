@@ -9,6 +9,11 @@
 /// 1. Resolve built-in macros (___DATE___, ___UUID___, etc.)
 /// 2. Resolve user-defined macros (___PROJECT_NAME___, etc.)
 /// 3. Resolve step outputs (${{ pre_hatch.setup.outputs.version }})
+///
+/// Only egg's own `LifecyclePhase` spellings are claimed in step 3: a `${{ … }}` reference whose
+/// phase is something else (e.g. a GitHub Actions workflow's `${{ steps.build.outputs.sha }}`)
+/// belongs to the generated file's own format and is emitted verbatim. See
+/// `VariableResolver.Destination.fileContent`.
 struct NativeTemplateEngine: TemplateEngine {
     func render(_ content: String, with context: TemplateContext) async throws -> String {
         let resolver = VariableResolver(
@@ -16,6 +21,6 @@ struct NativeTemplateEngine: TemplateEngine {
             outputs: context.outputs,
             builtInMacroContext: context.builtInMacroContext,
         )
-        return try await resolver.resolve(content)
+        return try await resolver.resolve(content, destination: .fileContent)
     }
 }

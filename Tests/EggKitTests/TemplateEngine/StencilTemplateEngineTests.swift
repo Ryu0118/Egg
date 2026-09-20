@@ -270,8 +270,127 @@ struct StencilTemplateEngineTests {
                 expectation: .success("v$1.0.0"),
             ),
 
+            // MARK: - Raw blocks
+
+            TestCase(
+                description: "emits a GitHub Actions expression inside a raw block verbatim",
+                input: "{% raw %}${{ github.workflow }}{% endraw %}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("${{ github.workflow }}"),
+            ),
+            TestCase(
+                description: "still renders macros outside a raw block",
+                input: "{% raw %}${{ github.sha }}{% endraw %} for {{ ___PROJECT_NAME___ }}",
+                macros: [
+                    ResolvedMacro(name: "___PROJECT_NAME___", description: "", value: .string("MyApp")),
+                ],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("${{ github.sha }} for MyApp"),
+            ),
+            TestCase(
+                description: "leaves a Stencil variable inside a raw block unexpanded",
+                input: "{% raw %}{{ ___PROJECT_NAME___ }}{% endraw %}",
+                macros: [
+                    ResolvedMacro(name: "___PROJECT_NAME___", description: "", value: .string("MyApp")),
+                ],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("{{ ___PROJECT_NAME___ }}"),
+            ),
+            TestCase(
+                description: "leaves a built-in macro inside a raw block unresolved",
+                input: "{% raw %}___DATE___{% endraw %} ___DATE___",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success(
+                    "___DATE___ " + BuiltInMacros.formatDate(Date(timeIntervalSince1970: 0), format: nil),
+                ),
+            ),
+            TestCase(
+                description: "handles several independent raw blocks in one file",
+                input: "{% raw %}${{ a }}{% endraw %}|{{ ___NAME___ }}|{% raw %}${{ b }}{% endraw %}",
+                macros: [
+                    ResolvedMacro(name: "___NAME___", description: "", value: .string("mid")),
+                ],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("${{ a }}|mid|${{ b }}"),
+            ),
+            TestCase(
+                description: "leaves Stencil tags inside a raw block unexecuted",
+                input: "{% raw %}{% if x %}kept{% endif %}{% endraw %}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("{% if x %}kept{% endif %}"),
+            ),
+            TestCase(
+                description: "repeats a raw block once per loop iteration",
+                input: "{% for item in ___ITEMS___ %}{% raw %}${{ x }}{% endraw %}{{ item }};{% endfor %}",
+                macros: [
+                    ResolvedMacro(name: "___ITEMS___", description: "", value: .array(["a", "b"])),
+                ],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("${{ x }}a;${{ x }}b;"),
+            ),
+            TestCase(
+                description: "drops a raw block inside a false conditional",
+                input: "{% if ___FLAG___ %}{% raw %}${{ x }}{% endraw %}{% endif %}done",
+                macros: [
+                    ResolvedMacro(name: "___FLAG___", description: "", value: .boolean(false)),
+                ],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("done"),
+            ),
+            TestCase(
+                description: "accepts raw tags without surrounding whitespace",
+                input: "{%raw%}${{ x }}{%endraw%}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("${{ x }}"),
+            ),
+            TestCase(
+                description: "preserves a multi-line raw body exactly",
+                input: "head\n{% raw %}\nline1: ${{ a }}\nline2: ${{ b }}\n{% endraw %}\ntail",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .success("head\n\nline1: ${{ a }}\nline2: ${{ b }}\n\ntail"),
+            ),
+
             // MARK: - Error handling
 
+            TestCase(
+                description: "fails on nested raw tags",
+                input: "{% raw %}a{% raw %}b{% endraw %}c{% endraw %}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .syntaxError,
+            ),
+            TestCase(
+                description: "fails on an unclosed raw tag",
+                input: "before\n{% raw %}${{ x }}\nno end tag",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .syntaxError,
+            ),
+            TestCase(
+                description: "fails on an endraw with no open raw block",
+                input: "stray {% endraw %}",
+                macros: [],
+                stepOutputs: [],
+                builtInMacroContext: defaultContext,
+                expectation: .syntaxError,
+            ),
             TestCase(
                 description: "fails on syntax error",
                 input: "{% if ___VAR___ %}unclosed",
