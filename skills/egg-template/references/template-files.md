@@ -68,6 +68,47 @@ struct ___FEATURE_NAME___View: View {
 }
 ```
 
+### Raw Blocks (`{% raw %}`)
+
+Anything between `{% raw %}` and `{% endraw %}` is emitted verbatim: Stencil tags,
+egg macros and built-ins alike are all left alone.
+
+Use it whenever the generated file's own format also spells interpolation with
+`{{ … }}` — GitHub Actions, Helm/Go templates, Jinja2, Handlebars, Mustache.
+Without it, `${{ github.workflow }}` renders as a bare `$`, because Stencil resolves
+`{{ github.workflow }}` as an undefined variable and drops it.
+
+```yaml
+# .github/workflows/ci.yml.stencil -> .github/workflows/ci.yml
+name: {{ ___PROJECT_NAME___ }}
+jobs:
+  build:
+    steps:
+      - id: build
+        run: swift build
+{% raw %}
+      - run: echo "built ${{ steps.build.outputs.sha }} in ${{ github.workflow }}"
+{% endraw %}
+```
+
+Rules:
+
+- Blocks cannot nest; a `{% raw %}` inside an open block is an error.
+- An unclosed `{% raw %}` and a stray `{% endraw %}` are both errors, reported with a line number.
+- A raw body cannot contain the literal text `{% endraw %}`.
+- Raw tags are found before Stencil parses the file, so one inside a `{# ... #}`
+  comment still opens a block.
+- Whitespace is flexible: `{%raw%}`, `{% raw %}` and `{%- raw -%}` are all recognized,
+  though the `-` whitespace-control markers have no effect on a raw block.
+- A raw body is assumed to have balanced `{% ... %}` tags. A stray, unclosed `{%`
+  inside one swallows the following `{% endraw %}`, which surfaces as an
+  "unclosed {% raw %}" error.
+
+**Native (non-`.stencil`) files need no raw blocks.** The native engine only claims
+`${{ pre_hatch... }}` / `${{ post_hatch... }}` — egg's own lifecycle phases. A GitHub
+Actions `${{ steps.build.outputs.sha }}` or `${{ needs.test.outputs.version }}` in a
+plain `.yml` passes through untouched.
+
 ## When to Use Stencil
 
 | Scenario | Use Stencil? |

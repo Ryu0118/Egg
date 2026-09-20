@@ -144,6 +144,36 @@ Step outputs are available in Stencil files with dot notation:
 > returns that instead of your value. This is Stencil's own behavior and
 > only affects `.stencil` files.
 
+### Escaping `{{ }}` with `{% raw %}`
+
+Some generated files spell interpolation `{{ … }}` themselves — GitHub Actions
+workflows, Helm charts, Jinja2, Handlebars, Mustache. Stencil would resolve those
+expressions as undefined variables and drop them, so `${{ github.workflow }}`
+renders as a bare `$`.
+
+Wrap that text in `{% raw %}` … `{% endraw %}` to emit it verbatim. Stencil tags,
+egg macros, and built-ins are all left alone inside the block:
+
+```yaml
+# .github/workflows/ci.yml.stencil -> .github/workflows/ci.yml
+name: {{ ___PROJECT_NAME___ }}
+{% raw %}
+run: echo "${{ github.workflow }} at ${{ steps.build.outputs.sha }}"
+{% endraw %}
+```
+
+Raw blocks cannot nest, and an unclosed `{% raw %}` or an unmatched `{% endraw %}`
+fails the hatch with the offending line number. A raw body cannot contain the
+literal text `{% endraw %}`, and its `{% … %}` tags are assumed to be balanced.
+Because the tags are found before Stencil parses the file, a `{% raw %}` inside a
+`{# … #}` comment still opens a block. Whitespace-control markers (`{%- raw -%}`)
+are accepted but have no effect.
+
+Native (non-`.stencil`) files need no escaping. The native engine claims only
+`${{ pre_hatch.… }}` and `${{ post_hatch.… }}` — egg's own lifecycle phases — so a
+workflow's `${{ steps.build.outputs.sha }}` or `${{ needs.test.outputs.version }}`
+passes through untouched.
+
 ## Lifecycle Hooks
 
 `pre_hatch` and `post_hatch` run shell steps around template expansion:

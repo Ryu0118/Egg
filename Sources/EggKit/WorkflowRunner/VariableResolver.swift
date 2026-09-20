@@ -9,18 +9,32 @@ import Foundation
 /// The two-pass design ensures macros are fully resolved before output references,
 /// preventing ambiguity and enabling macros to be used in output reference patterns.
 ///
-/// This resolver is shared by two very different consumers, distinguished by `resolve(_:destination:)`:
-/// - `NativeTemplateEngine` renders plain file content — substituted values must appear verbatim.
+/// This resolver is shared by several very different consumers, distinguished by `resolve(_:destination:)`:
+/// - `NativeTemplateEngine` renders plain file content — substituted values must appear verbatim,
+///   and unknown `${{ }}` phases belong to the file's own target format (see `.fileContent`).
+/// - `TemplateExpander` / `PhaseRunner` / `SandboxAllowedPathsResolver` resolve paths and config
+///   values — substituted values appear verbatim, and every `${{ }}` is egg's own DSL (see `.text`).
 /// - `LifecycleStepRunner` builds a `/bin/sh -c` command string — substituted values must be
 ///   shell-quoted, since they may originate from an untrusted MCP caller's `macros` argument
 ///   or from a step's captured stdout, and raw substitution would let shell metacharacters
 ///   (`;`, `$()`, backticks, `|`) escape the intended single argument.
 struct VariableResolver {
     /// Where the resolved text will be used, which determines whether substituted
-    /// values need shell quoting.
+    /// values need shell quoting and how unknown `${{ }}` phases are treated.
     enum Destination {
-        /// Plain-text output (e.g. template file content) — substitute values verbatim.
+        /// Plain-text output for egg's own inputs (paths, `hatch.output`, `sandbox.allowed_paths`)
+        /// — substitute values verbatim, and treat every `${{ }}` reference as egg DSL, so an
+        /// unrecognized phase is a typo worth reporting.
         case text
+        /// The body of a template file — substitute values verbatim, but leave `${{ }}` references
+        /// whose phase is not an egg `LifecyclePhase` completely untouched.
+        ///
+        /// A generated file's own format frequently owns the `${{ … }}` spelling: GitHub Actions
+        /// workflows write `${{ steps.build.outputs.sha }}` and `${{ needs.test.outputs.version }}`,
+        /// which are structurally indistinguishable from egg's `${{ pre_hatch.step.outputs.key }}`.
+        /// Resolving them would abort the whole hatch on a reference the template never meant for
+        /// egg, so only the phases egg actually defines are claimed here.
+        case fileContent
         /// A `/bin/sh -c` command string — substitute values as shell-quoted literals.
         case shellCommand
     }
@@ -88,6 +102,12 @@ struct VariableResolver {
             let phase = String(match.output.1)
             let stepId = String(match.output.2)
             let key = String(match.output.3)
+
+            // In a template file's body, a phase egg does not define belongs to the file's own
+            // format (e.g. GitHub Actions' `steps.` / `needs.`), not to egg. Leave it verbatim.
+            if destination == .fileContent, LifecyclePhase(rawValue: phase) == nil {
+                continue
+            }
 
             // Lookup value in storage
             let value = try await getOutputValue(from: outputs, phase: phase, stepId: stepId, key: key)
