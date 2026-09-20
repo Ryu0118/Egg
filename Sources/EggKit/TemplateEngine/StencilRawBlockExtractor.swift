@@ -32,6 +32,11 @@ import Foundation
 /// - `{% raw %}` inside a Stencil comment (`{# … #}`) still opens a block.
 /// - `{% raw %}` produced by a Stencil expression (`{{ "{% raw %}" }}`) is not seen at all.
 /// - A raw body cannot contain the literal text `{% endraw %}`, since that closes the block.
+/// - A raw body is assumed to have balanced `{% … %}` tags: a stray, unclosed `{%` inside one
+///   pairs with the closing `%}` of the following `{% endraw %}` and hides it, which then
+///   surfaces as `unclosedRawTag`.
+/// - Stencil's whitespace-control markers (`{%- raw -%}`) are accepted but have no effect on
+///   the block, which is reproduced byte for byte.
 enum StencilRawBlockExtractor {
     /// A raw block that was lifted out of the template.
     struct Block: Equatable {

@@ -164,8 +164,10 @@ run: echo "${{ github.workflow }} at ${{ steps.build.outputs.sha }}"
 
 Raw blocks cannot nest, and an unclosed `{% raw %}` or an unmatched `{% endraw %}`
 fails the hatch with the offending line number. A raw body cannot contain the
-literal text `{% endraw %}`. Because the tags are found before Stencil parses the
-file, a `{% raw %}` inside a `{# … #}` comment still opens a block.
+literal text `{% endraw %}`, and its `{% … %}` tags are assumed to be balanced.
+Because the tags are found before Stencil parses the file, a `{% raw %}` inside a
+`{# … #}` comment still opens a block. Whitespace-control markers (`{%- raw -%}`)
+are accepted but have no effect.
 
 Native (non-`.stencil`) files need no escaping. The native engine claims only
 `${{ pre_hatch.… }}` and `${{ post_hatch.… }}` — egg's own lifecycle phases — so a

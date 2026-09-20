@@ -98,7 +98,11 @@ Rules:
 - A raw body cannot contain the literal text `{% endraw %}`.
 - Raw tags are found before Stencil parses the file, so one inside a `{# ... #}`
   comment still opens a block.
-- Whitespace is flexible: `{%raw%}`, `{% raw %}` and `{%- raw -%}` all work.
+- Whitespace is flexible: `{%raw%}`, `{% raw %}` and `{%- raw -%}` are all recognized,
+  though the `-` whitespace-control markers have no effect on a raw block.
+- A raw body is assumed to have balanced `{% ... %}` tags. A stray, unclosed `{%`
+  inside one swallows the following `{% endraw %}`, which surfaces as an
+  "unclosed {% raw %}" error.
 
 **Native (non-`.stencil`) files need no raw blocks.** The native engine only claims
 `${{ pre_hatch... }}` / `${{ post_hatch... }}` — egg's own lifecycle phases. A GitHub
