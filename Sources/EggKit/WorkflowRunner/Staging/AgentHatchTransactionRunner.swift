@@ -65,6 +65,10 @@ package struct AgentHatchTransactionRunner {
             homeDirectory: homeDirectory,
             interaction: GuardedTerminal(),
             isInteractive: false,
+            // stdout carries this flow's JSON result and nothing else.
+            // Lifecycle script output reaches the caller through
+            // AgentHatchPreviewResult.scriptOutput instead.
+            suppressHumanProgress: true,
             override: true,
         )
     }
@@ -500,7 +504,14 @@ package struct AgentHatchTransactionRunner {
         let detector = GitStagingChangeDetector(processRunner: processRunner, fileManager: fileManager)
         try await detector.recordBaseline(in: tempWork, filter: pathFilter)
         let snapshotWarnings = snapshotSizeWarnings(for: tempWork)
-        let outputPath = try await runWorkflow(in: tempWork, resolvedMacros: resolvedMacros, allowedPaths: grant.granted)
+        let outputCollector = LifecycleScriptOutputCollector()
+        let outputPath = try await runWorkflow(
+            in: tempWork,
+            resolvedMacros: resolvedMacros,
+            allowedPaths: grant.granted,
+            outputCollector: outputCollector,
+        )
+        let scriptOutput = await outputCollector.drain()
         let summary = try await detector.changes(in: tempWork, filter: pathFilter)
         var changes = makeAgentChanges(summary)
         if includeDiff {
@@ -557,6 +568,7 @@ package struct AgentHatchTransactionRunner {
             rollbackGuarantee: "scoped",
             changes: changes,
             warnings: warnings,
+            scriptOutput: scriptOutput,
             nextCommands: AgentTransactionCommands(
                 apply: "egg hatch apply \(token)\(workingDirectoryArgument)",
                 discard: "egg hatch discard \(token)\(workingDirectoryArgument)",
@@ -792,7 +804,12 @@ package struct AgentHatchTransactionRunner {
         return path
     }
 
-    private func runWorkflow(in workspace: URL, resolvedMacros: [ResolvedMacro], allowedPaths: [URL]) async throws -> URL {
+    private func runWorkflow(
+        in workspace: URL,
+        resolvedMacros: [ResolvedMacro],
+        allowedPaths: [URL],
+        outputCollector: LifecycleScriptOutputCollector,
+    ) async throws -> URL {
         let macros = remapPathMacros(resolvedMacros, from: workingDirectory, to: workspace)
         let outputs = StepOutputsStorage()
         let environment = [
@@ -818,6 +835,7 @@ package struct AgentHatchTransactionRunner {
                 workingDirectory: workspace,
                 additionalEnvironment: environment,
                 executionEnvironment: executionEnvironment,
+                outputCollector: outputCollector,
             )
         }
 
@@ -842,6 +860,7 @@ package struct AgentHatchTransactionRunner {
                 workingDirectory: workspace,
                 additionalEnvironment: environment,
                 executionEnvironment: executionEnvironment,
+                outputCollector: outputCollector,
             )
         }
 

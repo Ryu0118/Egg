@@ -33,16 +33,26 @@ struct PhaseRunner {
     private let homeDirectory: URL
     private let interaction: any InteractionProviding
     private let isInteractive: Bool
+    private let suppressHumanProgress: Bool
     private let override: Bool
     private let processEnvironment: [String: String]
     private let builtInMacroDate: Date
 
+    /// - Parameters:
+    ///   - isInteractive: Whether prompting the user is possible — drives the
+    ///     overwrite confirmation in ``TemplateExpander``.
+    ///   - suppressHumanProgress: Whether to keep stdout free of human-facing
+    ///     progress lines. Only the agent transaction flow sets this, because
+    ///     its JSON result owns stdout. It is deliberately separate from
+    ///     `isInteractive`: `egg hatch direct` cannot prompt, yet should still
+    ///     print what lifecycle scripts say.
     init(
         processRunner: any ProcessRunning,
         fileManager: some FileManagerProtocol,
         homeDirectory: URL,
         interaction: some InteractionProviding = GuardedTerminal(),
         isInteractive: Bool,
+        suppressHumanProgress: Bool = false,
         override: Bool,
         processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
         builtInMacroDate: Date = Date(),
@@ -52,6 +62,7 @@ struct PhaseRunner {
         self.homeDirectory = homeDirectory
         self.interaction = interaction
         self.isInteractive = isInteractive
+        self.suppressHumanProgress = suppressHumanProgress
         self.override = override
         self.processEnvironment = processEnvironment
         self.builtInMacroDate = builtInMacroDate
@@ -76,6 +87,7 @@ struct PhaseRunner {
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
+        outputCollector: LifecycleScriptOutputCollector? = nil,
     ) async throws {
         progress("🥚 Pre-hatch script executing...")
 
@@ -91,7 +103,8 @@ struct PhaseRunner {
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
             builtInMacroContext: builtInContext,
-            isInteractive: isInteractive,
+            suppressHumanProgress: suppressHumanProgress,
+            outputCollector: outputCollector,
         )
 
         _ = try await stepRunner.execute(
@@ -194,6 +207,7 @@ struct PhaseRunner {
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
+        outputCollector: LifecycleScriptOutputCollector? = nil,
     ) async throws {
         progress("🐥 Post-hatch script executing...")
 
@@ -209,7 +223,8 @@ struct PhaseRunner {
             additionalEnvironment: additionalEnvironment,
             executionEnvironment: executionEnvironment,
             builtInMacroContext: builtInContext,
-            isInteractive: isInteractive,
+            suppressHumanProgress: suppressHumanProgress,
+            outputCollector: outputCollector,
         )
 
         _ = try await stepRunner.execute(
@@ -220,12 +235,11 @@ struct PhaseRunner {
         )
     }
 
-    /// Emits a human-facing progress line, but only in interactive mode.
+    /// Emits a human-facing progress line, unless stdout is reserved for JSON.
     ///
-    /// Non-interactive (agent transaction) runs keep stdout clean so the JSON
-    /// result is the only thing on stdout and stays machine-parseable.
+    /// See ``suppressHumanProgress`` — only the agent transaction flow sets it.
     private func progress(_ message: StyledText, tab: UInt = 0) {
-        guard isInteractive else { return }
+        guard !suppressHumanProgress else { return }
         interaction.writeLine(message, tab: tab)
     }
 

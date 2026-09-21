@@ -24,6 +24,17 @@ import ProcessRunning
 ///     merging: StepOutputsStorage()
 /// )
 /// ```
+/// Collects stdout chunks as they stream in, so output survives a step that
+/// throws. Mirrors `LineStreamer`'s contract: the streaming closure calls it
+/// serially from the awaiting context.
+private final class CapturedOutput {
+    private(set) var text = ""
+
+    func append(_ chunk: String) {
+        text += chunk
+    }
+}
+
 struct LifecycleStepRunner {
     private let processRunner: any ProcessRunning
     private let workingDirectory: URL
@@ -31,7 +42,8 @@ struct LifecycleStepRunner {
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
     private let builtInMacroContext: BuiltInMacroContext
-    private let isInteractive: Bool
+    private let suppressHumanProgress: Bool
+    private let outputCollector: LifecycleScriptOutputCollector?
 
     init(
         processRunner: any ProcessRunning,
@@ -40,7 +52,8 @@ struct LifecycleStepRunner {
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
         builtInMacroContext: BuiltInMacroContext,
-        isInteractive: Bool = true,
+        suppressHumanProgress: Bool = false,
+        outputCollector: LifecycleScriptOutputCollector? = nil,
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
@@ -48,7 +61,8 @@ struct LifecycleStepRunner {
         self.additionalEnvironment = additionalEnvironment
         self.executionEnvironment = executionEnvironment
         self.builtInMacroContext = builtInMacroContext
-        self.isInteractive = isInteractive
+        self.suppressHumanProgress = suppressHumanProgress
+        self.outputCollector = outputCollector
     }
 
     /// Executes all steps in a lifecycle phase.
@@ -75,12 +89,14 @@ struct LifecycleStepRunner {
         return outputs
     }
 
-    /// Emits a human-facing progress line, but only in interactive mode.
+    /// Emits a human-facing progress line, unless stdout is reserved for JSON.
     ///
-    /// Non-interactive (agent transaction) runs keep stdout clean so the JSON
-    /// result is the only thing on stdout and stays machine-parseable.
+    /// Only the agent transaction flow suppresses these: its JSON result is
+    /// the sole thing on stdout and must stay machine-parseable. Every other
+    /// run — including non-interactive `egg hatch direct` — shows them, which
+    /// is how a template author's script output reaches a human.
     private func progress(_ message: StyledText, tab: UInt) {
-        guard isInteractive else { return }
+        guard !suppressHumanProgress else { return }
         interaction.writeLine(message, tab: tab)
     }
 
@@ -105,6 +121,7 @@ struct LifecycleStepRunner {
 
         guard try await shouldExecute(step, given: macros, and: outputs) else {
             progress("⏭️ \(stepLabel): Skipped (condition not met)", tab: 1)
+            await outputCollector?.recordSkipped(phase: phase, index: index, id: step.id)
             return
         }
 
@@ -123,10 +140,24 @@ struct LifecycleStepRunner {
         let lineStreamer = LineStreamer { line in
             progress("\(line)", tab: 2)
         }
-        let stdout = try await shellRunner.executeStreaming(resolvedCommand) { chunk in
-            lineStreamer.append(chunk)
+        // Accumulate here rather than relying on executeStreaming's return
+        // value: a step that exits non-zero throws, and its output — usually
+        // the most useful output there is — would be lost with it.
+        let captured = CapturedOutput()
+        let stdout: String
+        do {
+            stdout = try await shellRunner.executeStreaming(resolvedCommand) { chunk in
+                captured.append(chunk)
+                lineStreamer.append(chunk)
+            }
+        } catch {
+            lineStreamer.flush()
+            await outputCollector?.record(phase: phase, index: index, id: step.id, stdout: captured.text)
+            throw error
         }
         lineStreamer.flush()
+
+        await outputCollector?.record(phase: phase, index: index, id: step.id, stdout: stdout)
 
         if let stepId = step.id {
             let parsedOutputs = StepOutputParser.parse(stdout)
