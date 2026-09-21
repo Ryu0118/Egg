@@ -1,3 +1,3 @@
 package enum EggVersion {
-    package static let current = "0.3.0"
+    package static let current = "0.3.1"
 }
