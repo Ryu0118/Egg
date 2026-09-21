@@ -30,12 +30,17 @@ import ProcessRunning
 private final class CapturedOutput {
     private(set) var text = ""
 
+    /// Tracks `text`'s UTF-8 byte count incrementally so `append` doesn't
+    /// re-scan the whole accumulated string on every chunk.
+    private var byteCount = 0
+
     /// Stops accumulating once past what the collector would keep anyway.
     /// A `pre_hatch` step running a build can print megabytes, and this
     /// buffer duplicates what `executeStreaming` already holds.
     func append(_ chunk: String) {
-        guard text.utf8.count < LifecycleScriptOutput.byteLimit else { return }
+        guard byteCount < LifecycleScriptOutput.byteLimit else { return }
         text += chunk
+        byteCount += chunk.utf8.count
     }
 }
 
