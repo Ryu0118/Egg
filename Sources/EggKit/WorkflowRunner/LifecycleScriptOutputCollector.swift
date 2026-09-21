@@ -22,16 +22,21 @@ actor LifecycleScriptOutputCollector {
     /// prefix is decoded leniently so a cut multi-byte sequence degrades to a
     /// replacement character instead of dropping the whole chunk.
     func record(phase: LifecyclePhase, index: Int, id: String?, stdout: String) {
-        let bytes = Array(stdout.utf8)
-        let truncated = bytes.count > LifecycleScriptOutput.byteLimit
-        let retained = truncated ? Array(bytes.prefix(LifecycleScriptOutput.byteLimit)) : bytes
+        guard stdout.utf8.count > LifecycleScriptOutput.byteLimit else {
+            entries.append(
+                LifecycleScriptOutput(phase: phase.rawValue, index: index, id: id, stdout: stdout),
+            )
+            return
+        }
+
+        let retained = Array(stdout.utf8.prefix(LifecycleScriptOutput.byteLimit))
         entries.append(
             LifecycleScriptOutput(
                 phase: phase.rawValue,
                 index: index,
                 id: id,
                 stdout: String(decoding: retained, as: UTF8.self),
-                truncated: truncated,
+                truncated: true,
             ),
         )
     }
