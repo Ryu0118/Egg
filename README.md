@@ -194,7 +194,10 @@ egg hatch discard <applyToken> [--force]
 egg hatch transactions
 ```
 
-`preview` returns JSON with the proposed changes and an `applyToken`. `apply`
+`preview` returns JSON with the proposed changes, an `applyToken`, and
+`scriptOutput` — what the template's lifecycle scripts printed. Those scripts
+run during `preview`, so that is where any instruction they leave for the reader
+("now run `pnpm install`") shows up. `apply`
 writes the approved changes and returns a `rollbackId`. `rollback` restores the
 pre-apply state when the generated result should be undone; a rolled-back
 transaction can be re-applied with the same token. `discard` deletes a

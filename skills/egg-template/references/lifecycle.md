@@ -90,6 +90,36 @@ hatch:
   output: ${{ pre_hatch.setup.outputs.root }}
 ```
 
+## Where Script Output Goes
+
+Anything a step prints on stdout reaches whoever is hatching, so `echo` is the
+way to leave them instructions ("now run `pnpm install`", "a config was written
+to X"). How it reaches them depends on who is hatching:
+
+| Hatching as | Where the output appears |
+|---|---|
+| A human (`egg hatch`, `egg hatch <name> ...`) | Streamed to the terminal, line by line, under the step's label |
+| An agent (`egg hatch preview`, MCP `egg_hatch_preview`) | The `scriptOutput` array in the JSON result — stdout itself is reserved for that JSON |
+
+Both are always on; there is no flag to enable either.
+
+Each `scriptOutput` entry carries the step's `phase` (`pre_hatch` or
+`post_hatch`), its `index`, its `id` when declared, and:
+
+- `stdout` — everything the step printed, verbatim. This is separate from
+  Step Outputs above: the `key=value` parsing still happens, and those lines
+  also appear here as plain text.
+- `truncated` — `true` when output passed the 64 KB per-step cap. The
+  **leading** bytes are what survive, so put a message you want read at the
+  top of a step rather than after a noisy build.
+- `skipped` — `true` when the step's `if:` condition was false, so a reader
+  can tell "this step printed nothing" from "this step never ran".
+
+`scriptOutput` is produced by `preview`, not `apply`: lifecycle scripts run
+while the template is staged, and `apply` only copies the resulting files.
+The `hatch` phase is pure file expansion with no script steps, so it never
+appears there.
+
 ## Conditional Execution
 
 Use `if` with JavaScript expressions. Macros are available as variables.
