@@ -33,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: 3c11ac30e9650b42cfa7b4b1ab49fba1e9005326bd7fa15043b3dc70a874af4e
+  checksum: f2950767ea5b36087cf607e7164ee62c9a94787321fd9460c87dd506610cda87
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -46,7 +46,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: 29f7d06f2f4910a371f1ed52faba1c5c2222157a74c4b82b79a02fd15cd4cee9
+  checksum: 778eee2b46cbfb8d072f110f5cf5c4b980c75e0c27e63a4f8c5ea133e04a4c2c
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -69,7 +69,7 @@ rules:
   message: hatch/preview CLI flags, MCP tool schema, or sandbox consent flow changed
     - update the egg-cli-guide skill (transaction flow / sandbox sections) if agent-facing
     usage changed.
-  checksum: 4588c5893825417d06d2f9224eff88569d3f9719e5d0a49ac31fa4694c6781a1
+  checksum: 01efd12905e48d5d1fb74825095a475f760b5da36883f436a675109e8e919291
 - name: docc-agent-integrations
   sources:
   - .claude/plugins/egg/.claude-plugin/plugin.json
@@ -83,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: 86c95db616e0fe013a8e1eddfcce8931a548087ad325091bbcbb56052933a584
+  checksum: 7df41d2de1e8d3be3004019e461484c6c50f81332bf3c16814ae151315f74d9c
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -96,7 +96,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: 29f7d06f2f4910a371f1ed52faba1c5c2222157a74c4b82b79a02fd15cd4cee9
+  checksum: 778eee2b46cbfb8d072f110f5cf5c4b980c75e0c27e63a4f8c5ea133e04a4c2c
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
@@ -108,7 +108,7 @@ rules:
   doc: Sources/EggKit/EggKit.docc/TransactionFlow.md
   message: Preview/apply/rollback/discard behavior changed - update the DocC Transaction
     Flow article if command usage, guarantees, or failure behavior changed.
-  checksum: 691d1c640847d973e90e567feeac7588a6a62ee71f3439199e81785ac53b650a
+  checksum: 44ad289a0e8815f3ba6d03dd46de404457a833f4858fe74d95148595f8e0d68f
 - name: docc-managing-templates-manifest
   sources:
   - Sources/EggKit/Manifest/**/*.swift

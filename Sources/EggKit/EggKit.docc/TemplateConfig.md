@@ -189,6 +189,12 @@ post_hatch:
 Use lifecycle hooks when generated files need package installation, code
 generation, formatting, or validation.
 
+Whatever a step prints on stdout reaches whoever is hatching, so `echo` is how a
+template leaves them instructions. A human sees it streamed in the terminal; an
+agent reads it from `scriptOutput` in the `egg hatch preview` result, where each
+entry is tagged with its phase, index, and `id`. See <doc:TransactionFlow> for
+that payload's shape.
+
 ### Shell quoting in `run:` commands
 
 Every `___MACRO___` and `${{ … }}` reference in a `run:` command is

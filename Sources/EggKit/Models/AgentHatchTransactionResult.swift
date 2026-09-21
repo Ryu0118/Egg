@@ -10,6 +10,16 @@ public struct AgentHatchPreviewResult: Codable, Sendable, Equatable {
     public let rollbackGuarantee: String
     public let changes: [AgentChangeEntry]
     public let warnings: [AgentTransactionWarning]
+
+    /// What each lifecycle step printed on stdout while the preview ran.
+    ///
+    /// Lifecycle scripts run during `preview`, in the staging clone — `apply`
+    /// only copies the resulting files — so this is the one result that can
+    /// carry their output, and it is always populated (there is no flag to
+    /// opt in: a template author's message is useless if the reader has to
+    /// know to ask for it). Empty when the template declares no steps.
+    public let scriptOutput: [LifecycleScriptOutput]
+
     public let nextCommands: AgentTransactionCommands
 
     public init(
@@ -22,6 +32,7 @@ public struct AgentHatchPreviewResult: Codable, Sendable, Equatable {
         rollbackGuarantee: String,
         changes: [AgentChangeEntry],
         warnings: [AgentTransactionWarning],
+        scriptOutput: [LifecycleScriptOutput] = [],
         nextCommands: AgentTransactionCommands,
     ) {
         self.status = status
@@ -33,7 +44,25 @@ public struct AgentHatchPreviewResult: Codable, Sendable, Equatable {
         self.rollbackGuarantee = rollbackGuarantee
         self.changes = changes
         self.warnings = warnings
+        self.scriptOutput = scriptOutput
         self.nextCommands = nextCommands
+    }
+
+    /// Decodes `scriptOutput` leniently so results written by an egg version
+    /// that predates the field still decode.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        status = try container.decode(String.self, forKey: .status)
+        applyToken = try container.decode(String.self, forKey: .applyToken)
+        templateName = try container.decode(String.self, forKey: .templateName)
+        workingDirectory = try container.decode(String.self, forKey: .workingDirectory)
+        outputDirectory = try container.decode(String.self, forKey: .outputDirectory)
+        strategy = try container.decode(String.self, forKey: .strategy)
+        rollbackGuarantee = try container.decode(String.self, forKey: .rollbackGuarantee)
+        changes = try container.decode([AgentChangeEntry].self, forKey: .changes)
+        warnings = try container.decode([AgentTransactionWarning].self, forKey: .warnings)
+        scriptOutput = try container.decodeIfPresent([LifecycleScriptOutput].self, forKey: .scriptOutput) ?? []
+        nextCommands = try container.decode(AgentTransactionCommands.self, forKey: .nextCommands)
     }
 }
 

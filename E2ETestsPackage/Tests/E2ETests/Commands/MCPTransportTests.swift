@@ -138,6 +138,42 @@ struct MCPTransportTests {
         }
     }
 
+    /// The CLI and MCP serialize the same result struct, so this holds by
+    /// construction — but "by construction" is exactly the kind of claim that
+    /// stops being true the first time someone hand-builds a response
+    /// dictionary here. Observe it over the real transport instead.
+    @Test("preview carries lifecycle script output over the transport, as the CLI does")
+    func previewReportsScriptOutputOverTheTransport() async throws {
+        let root = try makeProject(template: (
+            name: "Talkative",
+            config: """
+            name: Talkative
+            description: d
+            hatch:
+              output: .
+            post_hatch:
+              - id: instructions
+                run: echo NEXT-STEPS-FROM-TEMPLATE
+            """,
+            files: ["hello.txt": "hello\n"],
+        ))
+        defer { try? fileManager.removeItem(at: root) }
+        let cwd = root.path(percentEncoded: false)
+
+        try await withMCPRunner { mcp in
+            let preview = try await mcp.callToolJSON("egg_hatch_preview", arguments: [
+                "template_name": "Talkative",
+                "output_directory": cwd,
+                "project_directory": cwd,
+            ])
+
+            let entries = try #require(preview["scriptOutput"]?.arrayValue)
+            let instructions = try #require(entries.first { $0["id"]?.stringValue == "instructions" })
+            #expect(instructions["phase"]?.stringValue == "post_hatch")
+            #expect(instructions["stdout"]?.stringValue?.contains("NEXT-STEPS-FROM-TEMPLATE") == true)
+        }
+    }
+
     @Test("sandbox consent is enforced over the transport and satisfied by allowed_write_paths")
     func sandboxConsentIsEnforcedOverTheTransport() async throws {
         let root = try makeProject()

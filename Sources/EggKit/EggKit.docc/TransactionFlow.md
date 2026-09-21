@@ -42,6 +42,16 @@ so one identifier names the whole lifecycle.
 `preview` creates an isolated staging area, expands the template, runs lifecycle
 steps, and reports the proposed changes.
 
+Because lifecycle scripts run *here* — `apply` only copies the resulting files —
+this is also the only response that can carry what they printed. The result's
+`scriptOutput` holds one entry per step reached, each naming its `phase`
+(`pre_hatch` / `post_hatch`), `index`, and `id` when declared, plus `stdout`,
+`truncated` (set when output passed the 64 KB per-step cap, keeping the leading
+bytes), and `skipped` (set when the step's `if:` condition was false, so an
+empty `stdout` is unambiguous). It is always populated — a template author's
+message is useless if the reader has to know to ask for it. This raw capture is
+independent of the `key=value` step outputs, which keep their own namespace.
+
 The staging area is two clones of the working directory (workspace +
 reference), covering git-tracked files plus untracked files that aren't
 gitignored — egg's own `.egg/` records are always excluded, like git

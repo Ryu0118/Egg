@@ -69,7 +69,8 @@ Recommended agent flow:
 
 1. Read template details.
 2. Preview the hatch request.
-3. Inspect changes and warnings.
+3. Inspect changes, warnings, and `scriptOutput` — relay anything the
+   template's lifecycle scripts printed, since it appears nowhere else.
 4. Apply only after approval.
 5. Roll back when the generated result should be undone.
 

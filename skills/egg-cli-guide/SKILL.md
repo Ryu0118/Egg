@@ -68,7 +68,8 @@ rolledBack ──discard──▶ deleted
 applied ──discard --force──▶ deleted (records only; applied files stay)
 ```
 
-- **`preview`** stages the template in an isolated clone and reports the proposed `changes`, any `warnings`, and an `applyToken`. Nothing is written to the working directory yet.
+- **`preview`** stages the template in an isolated clone and reports the proposed `changes`, any `warnings`, the `scriptOutput` of its lifecycle scripts, and an `applyToken`. Nothing is written to the working directory yet.
+  - **`scriptOutput` is how a template author talks to you.** Lifecycle scripts run during `preview` (`apply` only copies the resulting files), so this is the only response that carries what they printed — a `post_hatch` step saying "now run `pnpm install`" reaches you here or nowhere. Read it before you report the preview as done. Each entry names its `phase` (`pre_hatch` or `post_hatch`), `index`, and `id` when the step declares one, plus `stdout`, `truncated`, and `skipped`. A step whose `if:` condition was false is reported with `skipped: true` and empty `stdout`, so "printed nothing" stays distinguishable from "never ran". Output past 64 KB per step is cut with `truncated: true`, keeping the leading bytes — where a deliberate message lives, ahead of any build noise. The `hatch` phase is pure file expansion and has no script steps, so it never appears. When a step exits non-zero the preview fails instead of returning a result, and that step's stdout is reported in the error message itself (there keeping the trailing bytes, where a failure's cause is).
   - `--include <pathspec>` forces a normally git-ignored path into the change set.
   - `--exclude <pathspec>` drops matching paths from the change set.
   - `--output <dir>` sets the directory the generated output targets. It is also the directory staging clones from and applies back into — use it to scope staging to a subdirectory of a large repository (the transaction records land under it). Follow the returned `nextCommands` verbatim: they carry the matching `--working-directory <dir>` that apply/rollback/discard need to find those records.
@@ -87,7 +88,7 @@ Run `egg template detail <name>` before `preview` to learn exactly which macro f
 
 1. `egg template detail <name>` to read required macros.
 2. `egg hatch preview <name> --macro-name value ...` to produce an `applyToken` and a change list.
-3. Inspect `changes` and `warnings` in the JSON response.
+3. Inspect `changes`, `warnings`, and `scriptOutput` in the JSON response. Relay anything the lifecycle scripts printed for the user — it is the template author's message and it appears nowhere else.
 4. `egg hatch apply <applyToken>` once the plan looks correct.
 5. `egg hatch rollback <rollbackId>` if something needs to be undone — and `egg hatch apply <applyToken>` again if the rollback should itself be undone.
 6. Once the user accepts the applied result and no undo is needed anymore, clean up with `egg hatch discard <applyToken> --force` (ask the user first — this deletes the rollback bundle). Run `egg hatch transactions` periodically to find leftovers, including `orphanedRollback` entries from older egg versions, and discard them.

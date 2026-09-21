@@ -87,6 +87,9 @@ struct ShellScriptRunner {
             throw LifecycleStepError.shellExecutionError(
                 command: command,
                 exitCode: exitCode,
+                // Already decoded above — carrying it costs nothing, and
+                // without it the step's own account of why it failed is lost.
+                stdout: stdout,
                 stderr: "",
             )
         }
