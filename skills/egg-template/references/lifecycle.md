@@ -120,6 +120,12 @@ while the template is staged, and `apply` only copies the resulting files.
 The `hatch` phase is pure file expansion with no script steps, so it never
 appears there.
 
+If a step exits non-zero the hatch fails and there is no result to carry
+`scriptOutput` at all — that step's stdout is reported in the error message
+instead, so a script can still explain itself as it dies. That copy keeps the
+**trailing** bytes, the inverse of the cap above, because a failure's cause is
+at the end of its output rather than the start.
+
 ## Conditional Execution
 
 Use `if` with JavaScript expressions. Macros are available as variables.

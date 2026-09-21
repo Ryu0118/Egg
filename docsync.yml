@@ -33,7 +33,7 @@ rules:
   message: Agent integration surface changed - review README Quick Start for Agents
     and Agent Transaction Flow sections, and update only if Claude Code, Codex, skills,
     plugin, or MCP usage changed.
-  checksum: 38011ab0d5115c89c701d47e74be01c28df306d03eb37df2fc1d005cace952df
+  checksum: f2950767ea5b36087cf607e7164ee62c9a94787321fd9460c87dd506610cda87
 - name: readme-template-authoring
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -46,7 +46,7 @@ rules:
   message: Template config, macro, lifecycle, or Stencil behavior changed - review
     README Template Basics and Quick Start for Humans sections, and update only if
     user-facing authoring guidance changed.
-  checksum: ca83a2562feac2d0c964072dfc3a00ae43889975039eb1cc9934bcee3e3cdf89
+  checksum: 778eee2b46cbfb8d072f110f5cf5c4b980c75e0c27e63a4f8c5ea133e04a4c2c
 - name: readme-docs-deploy
   sources:
   - .github/workflows/docs.yml
@@ -83,7 +83,7 @@ rules:
   message: Agent plugin, skill, or MCP surface changed - update the DocC Agent Skills
     and Plugins article if install steps, capabilities, or recommended agent flow
     changed.
-  checksum: d855979e207f5cad60544775ffd038a13220f4d09cc88313defd5fafb3d53491
+  checksum: 7df41d2de1e8d3be3004019e461484c6c50f81332bf3c16814ae151315f74d9c
 - name: docc-template-config
   sources:
   - Sources/EggKit/Config/**/*.swift
@@ -96,7 +96,7 @@ rules:
   message: Template config, macro type, lifecycle, native template, or Stencil behavior
     changed - update the DocC Template Config article if user-facing template authoring
     behavior changed.
-  checksum: ca83a2562feac2d0c964072dfc3a00ae43889975039eb1cc9934bcee3e3cdf89
+  checksum: 778eee2b46cbfb8d072f110f5cf5c4b980c75e0c27e63a4f8c5ea133e04a4c2c
 - name: docc-transaction-flow
   sources:
   - Sources/EggCLI/Commands/HatchTransactionCommands.swift
