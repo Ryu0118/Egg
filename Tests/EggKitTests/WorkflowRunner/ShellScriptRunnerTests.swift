@@ -46,7 +46,7 @@ struct ShellScriptRunnerTests {
                 try await runner.executeStreaming(testCase.command) { _ in }
             }
 
-            guard let error, case let .shellExecutionError(_, exitCode, _) = error else {
+            guard let error, case let .shellExecutionError(_, exitCode, _, _) = error else {
                 Issue.record("Expected shellExecutionError but got different error")
                 return
             }
@@ -93,7 +93,7 @@ struct ShellScriptRunnerTests {
                 try await runner.executeStreaming(testCase.command) { _ in }
             }
 
-            guard let error, case let .shellExecutionError(_, exitCode, _) = error else {
+            guard let error, case let .shellExecutionError(_, exitCode, _, _) = error else {
                 Issue.record("Expected shellExecutionError but got different error")
                 return
             }

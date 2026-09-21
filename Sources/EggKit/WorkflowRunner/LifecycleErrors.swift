@@ -1,7 +1,13 @@
 import Foundation
 
 enum LifecycleStepError: LocalizedError, Equatable {
-    case shellExecutionError(command: String, exitCode: Int32, stderr: String)
+    /// A `run:` step exited non-zero.
+    ///
+    /// `stdout` carries what the step printed before failing — usually the
+    /// most useful thing there is for diagnosing it. This error is the only
+    /// place that output can travel: the step's result object never comes
+    /// into existence, so anything not carried here is lost.
+    case shellExecutionError(command: String, exitCode: Int32, stdout: String, stderr: String)
     case undefinedOutputReference(phase: LifecyclePhase, stepId: String, key: String)
     case conditionEvaluationError(condition: String, reason: String)
     case invalidOutputDirectory(String)
@@ -9,9 +15,10 @@ enum LifecycleStepError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case let .shellExecutionError(command, exitCode, stderr):
+        case let .shellExecutionError(command, exitCode, stdout, stderr):
             """
             Shell command failed with exit code \(exitCode): \(command)
+            stdout: \(Self.truncateForDisplay(stdout))
             stderr: \(stderr)
             """
         case let .undefinedOutputReference(phase, stepId, key):
@@ -32,5 +39,19 @@ enum LifecycleStepError: LocalizedError, Equatable {
             2. Or use --no-sandbox flag with explicit user permission
             """
         }
+    }
+
+    /// Caps a failing step's stdout for display.
+    ///
+    /// Keeps the **tail**, unlike `LifecycleScriptOutput`, which keeps the
+    /// head: there the interesting content is an author's message written up
+    /// front, here it is whatever the command said just before it died.
+    private static func truncateForDisplay(_ stdout: String) -> String {
+        let bytes = Array(stdout.utf8)
+        guard bytes.count > LifecycleScriptOutput.byteLimit else {
+            return stdout
+        }
+        let tail = String(decoding: bytes.suffix(LifecycleScriptOutput.byteLimit), as: UTF8.self)
+        return "…(truncated)\n\(tail)"
     }
 }

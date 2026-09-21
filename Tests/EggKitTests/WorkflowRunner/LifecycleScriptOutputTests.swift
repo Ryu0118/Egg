@@ -153,6 +153,30 @@ struct LifecycleScriptOutputTests {
 
     // MARK: - Failure
 
+    /// The failure path is where script output matters most, and it is also
+    /// the one path with no result object to attach it to — a throwing
+    /// `runWorkflow` never reaches the collector's drain. The error itself
+    /// has to carry it, and the CLI renders errors by `localizedDescription`
+    /// alone, so that description is the payload.
+    @Test("A preview whose step exits non-zero reports what that step printed in the error itself")
+    func failingPreviewReportsScriptOutputInTheError() async throws {
+        let workspace = try makeWorkspace()
+        defer { try? fileManager.removeItem(at: workspace.root) }
+
+        let error = await #expect(throws: LifecycleStepError.self) {
+            try await makeRunner(
+                workspace: workspace,
+                postHatch: [Config.LifecycleStep(
+                    id: "doomed",
+                    run: "echo IMPORTANT-DIAGNOSTIC; exit 3",
+                )],
+            ).preview()
+        }
+
+        let description = try #require(error?.localizedDescription)
+        #expect(description.contains("IMPORTANT-DIAGNOSTIC"))
+    }
+
     @Test("A step that exits non-zero still hands back what it printed before failing")
     func failingStepRetainsItsPartialOutput() async throws {
         let workingDirectory = try fileManager.makeTemporaryDirectory(prefix: "LifecycleScriptOutputTests")
