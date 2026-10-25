@@ -107,6 +107,11 @@ and description, plus a ready-to-run example command:
 egg template detail SwiftPackage
 ```
 
+When a project-local and a global template share a name, the project-local
+one wins everywhere a name is resolved (`detail`, `hatch`, and the MCP tools).
+`--location project` or `--location global` restricts `detail` to that one
+location, and `list` shows both entries so the shadowing is visible.
+
 `open` reveals the template's directory in Finder, useful when you know the
 name but not where it lives (global vs. project).
 

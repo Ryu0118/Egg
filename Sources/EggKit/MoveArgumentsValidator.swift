@@ -46,7 +46,7 @@ package struct MoveArgumentsValidator {
         }
 
         // Find the template
-        guard let sourcePath = try await templatesFinder.validTemplateDirectory(templateName) else {
+        guard let sourcePath = try await templatesFinder.validTemplateDirectory(templateName, globalBeforeProject: true) else {
             throw Error.templateNotFound(name: templateName)
         }
 
