@@ -9,6 +9,7 @@ struct DetailHandler: ToolHandler {
     func execute(with context: ToolContext) async throws -> String {
         let templateName = try context.arguments.requireString("template_name")
         let searchPaths = context.arguments.optionalStringArray("template_search_paths")?.map { URL(filePath: $0) } ?? []
+        let location = context.arguments.optionalString("location")
         let projectDir = context.arguments.optionalString("project_directory").map { URL(filePath: $0) }
 
         let service = EggService(
@@ -17,7 +18,7 @@ struct DetailHandler: ToolHandler {
             additionalSearchPaths: searchPaths,
         )
 
-        let result = try await service.templateDetail(templateName: templateName)
+        let result = try await service.templateDetail(templateName: templateName, location: location)
 
         return try JSONEncoderHelper.encode(result)
     }
