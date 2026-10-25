@@ -75,9 +75,12 @@ Useful flags:
 Lifecycle steps run under `sandbox-exec` with a write boundary: writes are
 allowed only inside the staging clone, on external paths the template declares
 in `sandbox.allowed_paths` *and* the caller consents to with `--allow-write`,
-and in the system temp directories (`/private/tmp`, `/private/var/folders`),
-which scripts need for scratch space and atomic writes. Writes to the real
-working directory and everywhere else are denied.
+and in the temp directories (`/private/tmp`, `/private/var/folders`, plus the
+directory `TMPDIR` points to when it lives elsewhere, such as an external
+volume). The `TMPDIR` rule is resolved to its real path and covers exactly that
+directory, not its parent; it is skipped when it would contain a protected
+path. Scripts need these for scratch space and atomic writes. Writes to the
+real working directory and everywhere else are denied.
 
 The sandbox is deliberately **not** a confidentiality boundary: steps can read
 any file the user can read, and network access is allowed (dependency
