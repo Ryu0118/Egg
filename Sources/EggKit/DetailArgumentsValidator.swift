@@ -41,7 +41,7 @@ package struct DetailArgumentsValidator {
             return .interactive(location: location)
         }
 
-        let template = try await templatesFinder.fetchTemplate(templateName)
+        let template = try await templatesFinder.fetchTemplate(templateName, location: location)
         let templateLocation = TemplateLocation(homeDirectory: homeDirectory)
             .determineLocation(
                 templateName: templateName,

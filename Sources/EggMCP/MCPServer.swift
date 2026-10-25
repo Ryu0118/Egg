@@ -39,6 +39,11 @@ public struct EggMCPServer {
                         "type": "string",
                         "description": "Name of the template to get details for.",
                     ]),
+                    "location": .object([
+                        "type": "string",
+                        "enum": .array(["global", "project"]),
+                        "description": "Search only this location: 'global' or 'project'. If not specified, project templates take precedence over global ones of the same name.",
+                    ]),
                     "project_directory": .object([
                         "type": "string",
                         "description": "Project directory path.",

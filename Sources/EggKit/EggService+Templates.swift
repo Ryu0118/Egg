@@ -27,8 +27,12 @@ public extension EggService {
 
     // MARK: - Template Detail
 
-    func templateDetail(templateName: String) async throws -> DetailResult {
-        let template = try await findTemplate(templateName)
+    /// - Parameter location: `"global"` or `"project"` restricts the search to
+    ///   that location. When `nil`, project templates take precedence over
+    ///   global ones of the same name.
+    func templateDetail(templateName: String, location requestedLocation: String? = nil) async throws -> DetailResult {
+        let restriction = try parseLocationType(requestedLocation, required: true)
+        let template = try await findTemplate(templateName, location: restriction)
         let location = determineLocation(for: template, templateName: templateName)
 
         let runner = DetailRunner(
@@ -229,8 +233,12 @@ public extension EggService {
     }
 
     /// Finds a template by name.
-    internal func findTemplate(_ name: String, workingDirectory: URL? = nil) async throws -> Template {
-        try await makeTemplatesFinder(workingDirectory: workingDirectory).fetchTemplate(name)
+    internal func findTemplate(
+        _ name: String,
+        workingDirectory: URL? = nil,
+        location: TemplateLocationType? = nil,
+    ) async throws -> Template {
+        try await makeTemplatesFinder(workingDirectory: workingDirectory).fetchTemplate(name, location: location)
     }
 
     /// Determines the location type for a template.

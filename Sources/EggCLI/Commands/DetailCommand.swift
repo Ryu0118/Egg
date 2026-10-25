@@ -8,7 +8,7 @@ package extension EggCommand.TemplateCommand {
         @Argument(help: "The name of the template to show details for (optional for interactive mode).")
         package var templateName: String?
 
-        @Option(name: .long, help: "Filter by location: 'global' or 'project'.", completion: .list(["global", "project"]))
+        @Option(name: .long, help: "Search only this location: 'global' or 'project'. Without it, project templates take precedence over global ones of the same name.", completion: .list(["global", "project"]))
         package var location: TemplateLocationType.Kind?
 
         @Option(name: .long, help: "Directory containing the template (defaults to current directory).", completion: .directory)
@@ -53,7 +53,7 @@ package extension EggCommand.TemplateCommand {
                     projectDirectory: resolveProjectDirectory(),
                     homeDirectory: CLIEnvironment.resolveHomeDirectory(),
                     additionalSearchPaths: resolveTemplateSearchPaths(),
-                ).templateDetail(templateName: templateName)
+                ).templateDetail(templateName: templateName, location: location?.rawValue)
                 try CLIOutput.printJSON(result)
                 return
             }

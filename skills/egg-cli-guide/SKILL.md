@@ -19,7 +19,7 @@ egg <subcommand>
 - **Global**: `~/.eggs/<TemplateName>/`
 - **Project-local**: `./.eggs/<TemplateName>/`
 
-Project-local templates take precedence over global ones.
+Project-local templates take precedence over global ones of the same name: `detail`, `hatch`, and the MCP tools resolve custom `--template-search-paths` first, then project, then global. `egg template detail <name> --location <global|project>` (and the `location` argument of `egg_template_detail`) searches only that location. `egg template list` shows both entries (under `~/.eggs` and `./.eggs`, or with `location` set in JSON) when a project template shadows a global one.
 
 ## Agent Transaction Flow (egg hatch)
 
@@ -126,7 +126,7 @@ Prefer `egg hatch direct` only for one-shot human use where a preview/rollback p
 | `egg template sync [--global\|--project] [--dry-run]` | Install everything declared in `eggs.yml` (global: `$XDG_CONFIG_HOME/egg/eggs.yml`, project: `./eggs.yml`), honoring `eggs-lock.yml` pins like `Package.resolved`. |
 | `egg template update [--global\|--project] [--dry-run]` | Re-resolve `from:` ranges and `branch:` entries to the latest eligible and rewrite `eggs-lock.yml`. |
 | `egg template list [--location <global\|project>] [--hide-description]` | List available templates. |
-| `egg template detail <name>` | Show macros, types, defaults, and an example command. |
+| `egg template detail <name> [--location <global\|project>]` | Show macros, types, defaults, and an example command. `--location` restricts the search to one location. |
 | `egg template validate <path>` | Validate a template's `config.yml`. |
 | `egg template duplicate <name> --name <new> --description <d>` | Copy a template under a new name. |
 | `egg template move <name> --to <global\|project> [--force]` | Move a template between locations. |
