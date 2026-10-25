@@ -18,17 +18,34 @@ struct ShellScriptRunner {
     private let workingDirectory: URL
     private let additionalEnvironment: [String: String]
     private let executionEnvironment: ExecutionEnvironment
+    private let temporaryDirectory: URL
 
+    /// - Parameter temporaryDirectory: The temp directory the sandbox must
+    ///   keep writable. Defaults to ``processTemporaryDirectory``.
     init(
         processRunner: any ProcessRunning,
         workingDirectory: URL,
         additionalEnvironment: [String: String] = [:],
         executionEnvironment: ExecutionEnvironment = .unsandboxed,
+        temporaryDirectory: URL = processTemporaryDirectory,
     ) {
         self.processRunner = processRunner
         self.workingDirectory = workingDirectory
         self.additionalEnvironment = additionalEnvironment
         self.executionEnvironment = executionEnvironment
+        self.temporaryDirectory = temporaryDirectory
+    }
+
+    /// The temp directory child scripts see through `TMPDIR`.
+    ///
+    /// `TMPDIR` is read directly because `FileManager.temporaryDirectory` does
+    /// not reliably reflect it (on Darwin it can come from `confstr`), and the
+    /// scripts inherit the environment variable, not Foundation's answer.
+    static var processTemporaryDirectory: URL {
+        if let value = ProcessInfo.processInfo.environment["TMPDIR"], !value.isEmpty {
+            return URL(filePath: value, directoryHint: .isDirectory)
+        }
+        return FileManager.default.temporaryDirectory
     }
 
     /// Executes a shell command and streams stdout in real-time.
@@ -46,7 +63,7 @@ struct ShellScriptRunner {
         let (executable, arguments) = makeExecutableAndArguments(for: command)
 
         // Resolve symlinks in working directory for macOS sandbox-exec compatibility
-        let resolvedWorkingDirectory = resolveRealPath(workingDirectory.path(percentEncoded: false))
+        let resolvedWorkingDirectory = Self.resolveRealPath(workingDirectory.path(percentEncoded: false))
 
         let result = try await processRunner.run(
             executable,
@@ -97,6 +114,90 @@ struct ShellScriptRunner {
         return stdout
     }
 
+    /// Generates a Sandbox Profile Language (SBPL) profile that restricts file access.
+    ///
+    /// The profile:
+    /// - Denies all operations by default
+    /// - Allows process execution (required for running commands)
+    /// - Allows read access to all files
+    /// - Allows read/write access only to the staging root directory
+    /// - Allows read/write access to additional allowed paths (from config.sandbox.allowed_paths)
+    /// - Allows read/write access to the system temp directories and to the effective
+    ///   temp directory (`TMPDIR`) when it lives elsewhere, e.g. on an external volume
+    /// - Explicitly denies write access to the original working directory
+    /// - Allows network access (some scripts may need it)
+    ///
+    /// Reference: https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf
+    static func generateSandboxProfile(
+        for configuration: SandboxConfiguration,
+        temporaryDirectory: URL? = nil,
+    ) -> String {
+        let writableRootPath = resolveRealPath(configuration.writableRoot.path(percentEncoded: false))
+        let escapedWritableRoot = escapeForSandboxProfile(writableRootPath)
+
+        let deniedRules = configuration.deniedPaths.map { path -> String in
+            let resolved = resolveRealPath(path.path(percentEncoded: false))
+            let escaped = escapeForSandboxProfile(resolved)
+            return """
+            (deny file-write* (subpath "\(escaped)"))
+            (deny file-read* (subpath "\(escaped)"))
+            """
+        }.joined(separator: "\n")
+
+        let allowedPathRules = configuration.allowedPaths.map { path -> String in
+            let resolved = resolveRealPath(path.path(percentEncoded: false))
+            let escaped = escapeForSandboxProfile(resolved)
+            return """
+            ; Allow write access to user-specified path: \(path.path(percentEncoded: false))
+            (allow file-write* (subpath "\(escaped)"))
+            """
+        }.joined(separator: "\n")
+
+        let temporaryDirectoryRules = effectiveTemporaryDirectory(temporaryDirectory, configuration: configuration)
+            .map { path -> String in
+                let escaped = escapeForSandboxProfile(path)
+                return """
+                ; Allow read/write access to the effective temp directory (TMPDIR) outside the system temp directories
+                (allow file-read* (subpath "\(escaped)"))
+                (allow file-write* (subpath "\(escaped)"))
+                """
+            } ?? ""
+
+        return """
+        (version 1)
+        (deny default)
+        ; Allow all process operations (exec, fork, etc.)
+        (allow process*)
+        ; Allow reading all files
+        (allow file-read*)
+        \(deniedRules)
+        ; Allow full read/write access to sandbox directory only
+        (allow file-write* (subpath "\(escapedWritableRoot)"))
+        \(allowedPathRules)
+        ; Allow read/write access to system temp directories (needed for atomic writes, locks, etc.)
+        (allow file-read* (subpath "/private/var/folders"))
+        (allow file-read* (subpath "/private/tmp"))
+        (allow file-write* (subpath "/private/var/folders"))
+        (allow file-write* (subpath "/private/tmp"))
+        \(temporaryDirectoryRules)
+        ; Allow read/write to /dev/null (used by many commands for discarding output)
+        (allow file-read* (literal "/dev/null"))
+        (allow file-write* (literal "/dev/null"))
+        ; Allow file I/O control operations
+        (allow file-ioctl)
+        ; Allow network (some scripts may need it)
+        (allow network*)
+        ; Allow sysctl for process management
+        (allow sysctl-read)
+        ; Allow mach lookups for IPC
+        (allow mach-lookup)
+        ; Allow signal handling
+        (allow signal)
+        ; Allow IPC operations
+        (allow ipc-posix*)
+        """
+    }
+
     /// Computes the merged environment by inheriting parent process environment
     /// and adding any additional environment variables.
     ///
@@ -127,7 +228,7 @@ struct ShellScriptRunner {
             return (.path("/bin/sh"), ["-c", command])
 
         case let .sandboxed(configuration):
-            let profile = generateSandboxProfile(for: configuration)
+            let profile = Self.generateSandboxProfile(for: configuration, temporaryDirectory: temporaryDirectory)
             return (
                 .path("/usr/bin/sandbox-exec"),
                 ["-p", profile, "/bin/sh", "-c", command],
@@ -135,83 +236,67 @@ struct ShellScriptRunner {
         }
     }
 
-    /// Generates a Sandbox Profile Language (SBPL) profile that restricts file access.
-    ///
-    /// The profile:
-    /// - Denies all operations by default
-    /// - Allows process execution (required for running commands)
-    /// - Allows read access to all files
-    /// - Allows read/write access only to the staging root directory
-    /// - Allows read/write access to additional allowed paths (from config.sandbox.allowed_paths)
-    /// - Explicitly denies write access to the original working directory
-    /// - Allows network access (some scripts may need it)
-    ///
-    /// Reference: https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf
-    private func generateSandboxProfile(for configuration: SandboxConfiguration) -> String {
-        let writableRootPath = resolveRealPath(configuration.writableRoot.path(percentEncoded: false))
-        let escapedWritableRoot = writableRootPath.replacingOccurrences(of: "\"", with: "\\\"")
-
-        let deniedRules = configuration.deniedPaths.map { path -> String in
-            let resolved = resolveRealPath(path.path(percentEncoded: false))
-            let escaped = resolved.replacingOccurrences(of: "\"", with: "\\\"")
-            return """
-            (deny file-write* (subpath "\(escaped)"))
-            (deny file-read* (subpath "\(escaped)"))
-            """
-        }.joined(separator: "\n")
-
-        let allowedPathRules = configuration.allowedPaths.map { path -> String in
-            let resolved = resolveRealPath(path.path(percentEncoded: false))
-            let escaped = resolved.replacingOccurrences(of: "\"", with: "\\\"")
-            return """
-            ; Allow write access to user-specified path: \(path.path(percentEncoded: false))
-            (allow file-write* (subpath "\(escaped)"))
-            """
-        }.joined(separator: "\n")
-
-        return """
-        (version 1)
-        (deny default)
-        ; Allow all process operations (exec, fork, etc.)
-        (allow process*)
-        ; Allow reading all files
-        (allow file-read*)
-        \(deniedRules)
-        ; Allow full read/write access to sandbox directory only
-        (allow file-write* (subpath "\(escapedWritableRoot)"))
-        \(allowedPathRules)
-        ; Allow read/write access to system temp directories (needed for atomic writes, locks, etc.)
-        (allow file-read* (subpath "/private/var/folders"))
-        (allow file-read* (subpath "/private/tmp"))
-        (allow file-write* (subpath "/private/var/folders"))
-        (allow file-write* (subpath "/private/tmp"))
-        ; Allow read/write to /dev/null (used by many commands for discarding output)
-        (allow file-read* (literal "/dev/null"))
-        (allow file-write* (literal "/dev/null"))
-        ; Allow file I/O control operations
-        (allow file-ioctl)
-        ; Allow network (some scripts may need it)
-        (allow network*)
-        ; Allow sysctl for process management
-        (allow sysctl-read)
-        ; Allow mach lookups for IPC
-        (allow mach-lookup)
-        ; Allow signal handling
-        (allow signal)
-        ; Allow IPC operations
-        (allow ipc-posix*)
-        """
-    }
-
     /// Resolves symlinks in a path using C's realpath.
     ///
     /// This is necessary because sandbox-exec uses real paths, not symlinked paths.
     /// For example, `/var/folders/...` must be `/private/var/folders/...` for sandbox rules.
-    private func resolveRealPath(_ path: String) -> String {
+    private static func resolveRealPath(_ path: String) -> String {
         var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
         guard let result = realpath(path, &buffer) else {
             return path
         }
         return String(cString: result)
+    }
+
+    /// Returns the canonical path of `temporaryDirectory` when the profile must
+    /// add a rule for it, or `nil` when it needs none.
+    ///
+    /// A rule is skipped when the directory is empty, missing, or `/`; already
+    /// covered by the system temp directories or the sandbox's writable root;
+    /// or contains a denied path. The last case matters because the temp rule
+    /// comes after the deny rules and would otherwise re-open a directory the
+    /// sandbox exists to protect (e.g. `TMPDIR` set to a parent of the project).
+    /// The rule covers exactly this directory's subtree, never its parent.
+    private static func effectiveTemporaryDirectory(
+        _ temporaryDirectory: URL?,
+        configuration: SandboxConfiguration,
+    ) -> String? {
+        guard let temporaryDirectory else { return nil }
+        let rawPath = temporaryDirectory.path(percentEncoded: false)
+        var isDirectory: ObjCBool = false
+        guard !rawPath.isEmpty,
+              FileManager.default.fileExists(atPath: rawPath, isDirectory: &isDirectory),
+              isDirectory.boolValue
+        else {
+            return nil
+        }
+
+        // realpath so /var vs /private/var and symlinked TMPDIR values match what
+        // the sandbox sees.
+        let resolved = resolveRealPath(rawPath)
+        guard resolved != "/" else { return nil }
+
+        let alreadyWritable = ["/private/var/folders", "/private/tmp", resolveRealPath(configuration.writableRoot.path(percentEncoded: false))]
+        if alreadyWritable.contains(where: { isPath(resolved, insideOrEqualTo: $0) }) {
+            return nil
+        }
+
+        let deniedPaths = configuration.deniedPaths.map { resolveRealPath($0.path(percentEncoded: false)) }
+        if deniedPaths.contains(where: { isPath($0, insideOrEqualTo: resolved) }) {
+            return nil
+        }
+
+        return resolved
+    }
+
+    private static func isPath(_ path: String, insideOrEqualTo root: String) -> Bool {
+        path == root || path.hasPrefix(root.hasSuffix("/") ? root : root + "/")
+    }
+
+    /// Escapes a path for use inside an SBPL string literal, where `\` and `"` are special.
+    private static func escapeForSandboxProfile(_ path: String) -> String {
+        path
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 }
